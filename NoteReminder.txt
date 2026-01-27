@@ -1,0 +1,19 @@
+📌 DATABASE / PRISMA SETUP — For Later
+
+You reached the part of the tutorial that required Prisma, but it failed to install due to a network/engine issue.
+
+When the tutorial starts using a DATABASE (e.g., Prisma models, PlanetScale, Supabase):
+
+1️⃣ Run this to install a working Prisma version:
+   npm install -D prisma@5.7.1
+
+2️⃣ Then initialize Prisma:
+   npx prisma init
+
+3️⃣ Open the new prisma/schema.prisma file and edit your models.
+
+4️⃣ Add your DATABASE_URL to the .env file like this:
+   DATABASE_URL="mysql://user:password@host:port/db_name"
+
+If anything breaks again, tell ChatGPT:
+➡️ “Fix Prisma engine fetch error during init.”
