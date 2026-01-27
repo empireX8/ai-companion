@@ -64,25 +64,20 @@ export async function POST(req: Request) {
           return new NextResponse("Subscription id is required", { status: 400 });
         }
 
-        const subscription = await stripe.subscriptions.retrieve(
-          stripeSubscriptionId
-        );
+        const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
+        const item = subscription.items?.data?.[0];
         const stripeCustomerId = String(subscription.customer);
-        const stripePriceId = subscription.items.data?.[0]?.price?.id ?? null;
-        const cpe =
-          // Some Stripe API versions/models attach period end on the subscription item
-          (subscription as any)?.items?.data?.[0]?.current_period_end ??
-          // Fallback: older/other shapes
-          (subscription as any)?.current_period_end;
+        const stripePriceId = item?.price?.id ?? null;
 
-        if (!cpe || Number.isNaN(Number(cpe))) {
-          return new NextResponse("Missing current_period_end on subscription", {
+        const cpe = item?.current_period_end;
+        if (!cpe) {
+          return new NextResponse("Missing current_period_end on subscription item", {
             status: 400,
           });
         }
 
-        const stripeCurrentPeriodEnd = new Date(Number(cpe) * 1000);
+        const stripeCurrentPeriodEnd = new Date(cpe * 1000);
 
         try {
           const existing = await prismadb.userSubscription.findFirst({
@@ -133,25 +128,16 @@ export async function POST(req: Request) {
         const stripeSubscriptionId = getSubscriptionIdFromInvoice(invoice);
         if (!stripeSubscriptionId) break;
 
-        const subscription =
-          (await stripe.subscriptions.retrieve(
-            stripeSubscriptionId
-          )) as Stripe.Subscription & {
-            current_period_end: number;
-          };
+        const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-        const stripePriceId =
-          subscription.items.data[0]?.price?.id ?? null;
+        const item = subscription.items?.data?.[0];
+        const stripeCustomerId = String(subscription.customer);
+        const stripePriceId = item?.price?.id ?? null;
 
-        const cpe =
-          (subscription as any)?.items?.data?.[0]?.current_period_end ??
-          (subscription as any)?.current_period_end;
+        const cpe = item?.current_period_end;
+        if (!cpe) break;
 
-        if (!cpe || Number.isNaN(Number(cpe))) {
-          break;
-        }
-
-        const stripeCurrentPeriodEnd = new Date(Number(cpe) * 1000);
+        const stripeCurrentPeriodEnd = new Date(cpe * 1000);
 
         await prismadb.userSubscription.updateMany({
           where: { stripeSubscriptionId },
