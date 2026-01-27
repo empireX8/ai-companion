@@ -142,6 +142,7 @@ export async function POST(req: Request) {
         await prismadb.userSubscription.updateMany({
           where: { stripeSubscriptionId },
           data: {
+            stripeCustomerId,
             stripePriceId,
             stripeCurrentPeriodEnd,
           },
