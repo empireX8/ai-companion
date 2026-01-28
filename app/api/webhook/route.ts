@@ -165,6 +165,23 @@ export async function POST(req: Request) {
         break;
       }
 
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription;
+
+        if (subscription.cancel_at_period_end || subscription.status !== "active") {
+          await prismadb.userSubscription.updateMany({
+            where: { stripeSubscriptionId: subscription.id },
+            data: {
+              stripeSubscriptionId: null,
+              stripePriceId: null,
+              stripeCurrentPeriodEnd: null,
+            },
+          });
+        }
+
+        break;
+      }
+
       default:
         break;
     }
