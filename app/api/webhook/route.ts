@@ -154,7 +154,12 @@ export async function POST(req: Request) {
         const subscription = event.data.object as Stripe.Subscription;
 
         await prismadb.userSubscription.updateMany({
-          where: { stripeSubscriptionId: subscription.id },
+          where: {
+            OR: [
+              { stripeSubscriptionId: subscription.id },
+              { stripeCustomerId: String(subscription.customer) },
+            ],
+          },
           data: {
             stripeSubscriptionId: null,
             stripePriceId: null,
@@ -170,7 +175,12 @@ export async function POST(req: Request) {
 
         if (subscription.cancel_at_period_end || subscription.status !== "active") {
           await prismadb.userSubscription.updateMany({
-            where: { stripeSubscriptionId: subscription.id },
+            where: {
+              OR: [
+                { stripeSubscriptionId: subscription.id },
+                { stripeCustomerId: String(subscription.customer) },
+              ],
+            },
             data: {
               stripeSubscriptionId: null,
               stripePriceId: null,
