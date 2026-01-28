@@ -67,7 +67,6 @@ export async function POST(req: Request) {
         const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
         const item = subscription.items?.data?.[0];
-        const stripeCustomerId = String(subscription.customer);
         const stripePriceId = item?.price?.id ?? null;
 
         const cpe = item?.current_period_end;
@@ -89,7 +88,7 @@ export async function POST(req: Request) {
             await prismadb.userSubscription.update({
               where: { id: existing.id },
               data: {
-                stripeCustomerId,
+                stripeCustomerId: String(subscription.customer),
                 stripeSubscriptionId,
                 stripePriceId,
                 stripeCurrentPeriodEnd,
@@ -99,7 +98,7 @@ export async function POST(req: Request) {
             await prismadb.userSubscription.create({
               data: {
                 userId,
-                stripeCustomerId,
+                stripeCustomerId: String(subscription.customer),
                 stripeSubscriptionId,
                 stripePriceId,
                 stripeCurrentPeriodEnd,
@@ -131,7 +130,6 @@ export async function POST(req: Request) {
         const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
         const item = subscription.items?.data?.[0];
-        const stripeCustomerId = String(subscription.customer);
         const stripePriceId = item?.price?.id ?? null;
 
         const cpe = item?.current_period_end;
@@ -142,7 +140,7 @@ export async function POST(req: Request) {
         await prismadb.userSubscription.updateMany({
           where: { stripeSubscriptionId },
           data: {
-            stripeCustomerId,
+            stripeCustomerId: String(subscription.customer),
             stripePriceId,
             stripeCurrentPeriodEnd,
           },
