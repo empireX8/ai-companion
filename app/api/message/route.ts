@@ -39,6 +39,55 @@ const shouldPromptForMemoryUpdate = (content: string) => {
   return GOVERNANCE_TRIGGER_PATTERNS.some((pattern) => pattern.test(content));
 };
 
+const AFFIRMATIVE_TOKENS = [
+  "yes",
+  "y",
+  "yeah",
+  "yep",
+  "correct",
+  "do it",
+  "update it",
+  "please do",
+  "confirm",
+];
+
+const NEGATIVE_TOKENS = [
+  "no",
+  "n",
+  "nope",
+  "don't",
+  "do not",
+  "leave it",
+  "keep it",
+  "cancel",
+];
+
+const startsWithIntentToken = (content: string, tokens: string[]) => {
+  const normalized = content.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+
+  return tokens.some(
+    (token) =>
+      normalized === token ||
+      normalized.startsWith(`${token} `) ||
+      normalized.startsWith(`${token},`) ||
+      normalized.startsWith(`${token}.`) ||
+      normalized.startsWith(`${token}!`)
+  );
+};
+
+const isAffirmative = (content: string) => {
+  return startsWithIntentToken(content, AFFIRMATIVE_TOKENS);
+};
+
+const isNegative = (content: string) => {
+  return startsWithIntentToken(content, NEGATIVE_TOKENS);
+};
+
+const toSingleLine = (value: string) => value.replace(/\s+/g, " ").trim();
+
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
@@ -83,6 +132,44 @@ export async function POST(req: Request) {
       modelName,
     };
     const memory = await SessionMemoryManager.getInstance();
+    const createTextStreamResponse = (text: string) => {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(text));
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      });
+    };
+    const persistAssistantReply = async (text: string) => {
+      const finalText = text.trim();
+      if (!finalText) {
+        return;
+      }
+
+      const assistantDbMessage = await prismadb.message.create({
+        data: {
+          userId,
+          sessionId: session.id,
+          role: "assistant",
+          content: finalText,
+        },
+      });
+
+      await memory.appendToTranscript(memoryKey, `AI: ${finalText}`);
+      await memory.upsertVector(memoryKey, {
+        id: assistantDbMessage.id,
+        role: "assistant",
+        content: finalText,
+        createdAt: assistantDbMessage.createdAt,
+      });
+    };
 
     const userMessage = await prismadb.message.create({
       data: {
@@ -113,6 +200,71 @@ export async function POST(req: Request) {
       );
     }
 
+    const pendingCandidate = await prismadb.referenceItem.findFirst({
+      where: {
+        userId,
+        status: "candidate",
+        sourceSessionId: session.id,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      select: {
+        id: true,
+        type: true,
+        statement: true,
+        supersedesId: true,
+      },
+    });
+
+    if (pendingCandidate && isAffirmative(normalizedContent)) {
+      await prismadb.$transaction(async (tx) => {
+        if (pendingCandidate.supersedesId) {
+          await tx.referenceItem.update({
+            where: { id: pendingCandidate.supersedesId },
+            data: {
+              status: "superseded",
+              supersedesId: pendingCandidate.id,
+            },
+          });
+        }
+
+        await tx.referenceItem.update({
+          where: { id: pendingCandidate.id },
+          data: {
+            status: "active",
+          },
+        });
+      });
+
+      const confirmationText = `Done — I updated your saved ${pendingCandidate.type} to: "${pendingCandidate.statement}".`;
+      try {
+        await persistAssistantReply(confirmationText);
+      } catch (error) {
+        console.log("[MESSAGE_CONFIRM_APPLY_PERSIST_ERROR]", error);
+      }
+
+      return createTextStreamResponse(confirmationText);
+    }
+
+    if (pendingCandidate && isNegative(normalizedContent)) {
+      await prismadb.referenceItem.update({
+        where: { id: pendingCandidate.id },
+        data: {
+          status: "superseded",
+        },
+      });
+
+      const discardText = `Got it — I won't change your saved ${pendingCandidate.type}.`;
+      try {
+        await persistAssistantReply(discardText);
+      } catch (error) {
+        console.log("[MESSAGE_CONFIRM_DISCARD_PERSIST_ERROR]", error);
+      }
+
+      return createTextStreamResponse(discardText);
+    }
+
     const sessionTranscript = await memory.readTranscript(memoryKey);
     const userTranscript = await memory.readTranscript(memoryKey, 4_000, "user");
     const sessionRelevant = await memory.queryRelevant(
@@ -136,11 +288,55 @@ export async function POST(req: Request) {
             orderBy: [{ confidence: "desc" }, { updatedAt: "desc" }],
             take: 3,
             select: {
+              id: true,
               type: true,
               statement: true,
             },
           })
         : [];
+    const governedOldItem =
+      maybeMemoryUpdate && governedType && governedReferences.length > 0
+        ? governedReferences[0]
+        : null;
+
+    if (governedOldItem && governedType) {
+      const existingCandidate = await prismadb.referenceItem.findFirst({
+        where: {
+          userId,
+          status: "candidate",
+          sourceSessionId: session.id,
+          type: governedType,
+          supersedesId: governedOldItem.id,
+          statement: normalizedContent,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (existingCandidate) {
+        await prismadb.referenceItem.update({
+          where: { id: existingCandidate.id },
+          data: {
+            status: "candidate",
+            sourceMessageId: userMessage.id,
+          },
+        });
+      } else {
+        await prismadb.referenceItem.create({
+          data: {
+            userId,
+            type: governedType,
+            statement: normalizedContent,
+            confidence: "medium",
+            status: "candidate",
+            supersedesId: governedOldItem.id,
+            sourceSessionId: session.id,
+            sourceMessageId: userMessage.id,
+          },
+        });
+      }
+    }
 
     const fallbackMessages = await prismadb.message.findMany({
       where: {
@@ -173,15 +369,10 @@ export async function POST(req: Request) {
       "If the user asks where you learned something that is not in Long-term memory and not in the recent transcript, say you are not sure and ask for clarification.",
     ].join(" ");
     const governancePrompt =
-      maybeMemoryUpdate && governedType && governedReferences.length > 0
-        ? [
-            "The latest user message may conflict with saved memory.",
-            `Do not overwrite memory automatically. Ask exactly one confirmation question in this style: Do you want me to update your saved ${governedType} from 'OLD' to 'NEW'?`,
-            `Use one of these existing saved ${governedType} statements as OLD:\n${governedReferences
-              .map((item) => `- ${item.statement}`)
-              .join("\n")}`,
-            `Treat the user's newest claim as NEW and wait for confirmation.`,
-          ].join("\n")
+      governedOldItem && governedType
+        ? `Respond with exactly one question and nothing else: Do you want me to update your saved ${governedType} from '${toSingleLine(
+            governedOldItem.statement
+          )}' to '${toSingleLine(normalizedContent)}'?`
         : "";
     const retrievedUserMemory = [userRelevant, userTranscript].filter(Boolean).join("\n");
     const sessionMemoryBlock = [sessionRelevant, effectiveSessionTranscript]
@@ -207,22 +398,7 @@ export async function POST(req: Request) {
           return;
         }
 
-        const assistantDbMessage = await prismadb.message.create({
-          data: {
-            userId,
-            sessionId: session.id,
-            role: "assistant",
-            content: finalText,
-          },
-        });
-
-        await memory.appendToTranscript(memoryKey, `AI: ${finalText}`);
-        await memory.upsertVector(memoryKey, {
-          id: assistantDbMessage.id,
-          role: "assistant",
-          content: finalText,
-          createdAt: assistantDbMessage.createdAt,
-        });
+        await persistAssistantReply(finalText);
       },
     });
 

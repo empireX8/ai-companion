@@ -10,7 +10,7 @@ export const Sidebar = () => {
 
   const routes = [
     { icon: LayoutDashboard, label: "Home", href: "/" },
-    { icon: Plus, label: "Create", href: "/companion/new" }, // ✅ fixed
+    { icon: Plus, label: "Create", href: "/chat" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
 
