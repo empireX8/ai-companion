@@ -857,6 +857,12 @@ export default function ChatPage() {
                 Weekly audit
               </Link>
               <p className="mt-1 text-xs text-muted-foreground">Facts-only weekly trend.</p>
+              <Link
+                href="/import"
+                className="mt-2 inline-flex text-xs text-primary transition-opacity hover:opacity-80"
+              >
+                Import chat export
+              </Link>
             </div>
           </div>
         ) : null}

@@ -1,0 +1,491 @@
+import type { PrismaClient } from "@prisma/client";
+
+import { detectContradictions } from "./contradiction-detection";
+import prismadb from "./prismadb";
+
+type SupportedRole = "user" | "assistant";
+
+type ExtractedMessage = {
+  role: SupportedRole;
+  content: string;
+  createdAt: Date | null;
+};
+
+export type ExtractedConversation = {
+  title: string | null;
+  messages: ExtractedMessage[];
+};
+
+export const MAX_IMPORT_FILE_BYTES = 15 * 1024 * 1024;
+
+const toErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Unknown error";
+
+const normalizeText = (value: string) => value.replace(/\r\n/g, "\n").trim();
+
+const parseTimestamp = (value: unknown): Date | null => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  const milliseconds = value > 1_000_000_000_000 ? value : value * 1000;
+  const parsed = new Date(milliseconds);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const mapRole = (value: unknown): SupportedRole | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.toLowerCase();
+  if (normalized.includes("user") || normalized.includes("human")) {
+    return "user";
+  }
+
+  if (normalized.includes("assistant") || normalized.includes("chatgpt")) {
+    return "assistant";
+  }
+
+  return null;
+};
+
+const extractText = (value: unknown): string | null => {
+  if (typeof value === "string") {
+    const normalized = normalizeText(value);
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  if (Array.isArray(value)) {
+    const joined = value
+      .map((item) => (typeof item === "string" ? item : null))
+      .filter((item): item is string => Boolean(item))
+      .join("\n");
+    return extractText(joined);
+  }
+
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (Array.isArray(record.parts)) {
+    return extractText(record.parts);
+  }
+
+  if (typeof record.text === "string") {
+    return extractText(record.text);
+  }
+
+  if (typeof record.content === "string") {
+    return extractText(record.content);
+  }
+
+  return null;
+};
+
+const parseMessageLike = (value: unknown): ExtractedMessage | null => {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const author = typeof record.author === "object" && record.author !== null
+    ? (record.author as Record<string, unknown>)
+    : null;
+  const role =
+    mapRole(author?.role) ??
+    mapRole(author?.name) ??
+    mapRole(record.role) ??
+    mapRole(record.sender);
+
+  if (!role) {
+    return null;
+  }
+
+  const content =
+    extractText(record.content) ??
+    extractText(
+      typeof record.message === "object" && record.message !== null
+        ? (record.message as Record<string, unknown>).content
+        : null
+    );
+
+  if (!content) {
+    return null;
+  }
+
+  return {
+    role,
+    content,
+    createdAt:
+      parseTimestamp(record.create_time) ??
+      parseTimestamp(record.created_at) ??
+      parseTimestamp(record.timestamp),
+  };
+};
+
+const parseConversationFromMapping = (conversation: Record<string, unknown>): ExtractedMessage[] => {
+  const mapping = conversation.mapping;
+  if (typeof mapping !== "object" || mapping === null) {
+    return [];
+  }
+
+  const nodes = Object.values(mapping as Record<string, unknown>);
+  const parsed = nodes
+    .map((node, index) => {
+      if (typeof node !== "object" || node === null) {
+        return null;
+      }
+
+      const record = node as Record<string, unknown>;
+      const message = record.message;
+      const parsedMessage = parseMessageLike(message);
+      if (!parsedMessage) {
+        return null;
+      }
+
+      return {
+        index,
+        message: {
+          ...parsedMessage,
+          createdAt:
+            parsedMessage.createdAt ??
+            parseTimestamp(record.create_time) ??
+            parseTimestamp(record.update_time),
+        },
+      };
+    })
+    .filter(
+      (entry): entry is { index: number; message: ExtractedMessage } => Boolean(entry)
+    )
+    .sort((left, right) => {
+      const leftTime = left.message.createdAt?.getTime();
+      const rightTime = right.message.createdAt?.getTime();
+      if (leftTime !== undefined && rightTime !== undefined && leftTime !== rightTime) {
+        return leftTime - rightTime;
+      }
+      if (leftTime !== undefined && rightTime === undefined) {
+        return -1;
+      }
+      if (leftTime === undefined && rightTime !== undefined) {
+        return 1;
+      }
+      return left.index - right.index;
+    });
+
+  return parsed.map((entry) => entry.message);
+};
+
+const parseConversationFromMessagesArray = (
+  conversation: Record<string, unknown>
+): ExtractedMessage[] => {
+  if (!Array.isArray(conversation.messages)) {
+    return [];
+  }
+
+  return conversation.messages
+    .map((message) => parseMessageLike(message))
+    .filter((message): message is ExtractedMessage => Boolean(message));
+};
+
+const parseConversation = (
+  rawConversation: unknown,
+  index: number
+): { conversation?: ExtractedConversation; error?: string } => {
+  if (typeof rawConversation !== "object" || rawConversation === null) {
+    return {
+      error: `Conversation ${index + 1}: invalid shape`,
+    };
+  }
+
+  const conversationRecord = rawConversation as Record<string, unknown>;
+  const title =
+    typeof conversationRecord.title === "string" && conversationRecord.title.trim().length > 0
+      ? conversationRecord.title.trim()
+      : null;
+
+  const fromMapping = parseConversationFromMapping(conversationRecord);
+  const fromMessages = parseConversationFromMessagesArray(conversationRecord);
+  const messages = (fromMapping.length > 0 ? fromMapping : fromMessages).map((message) => ({
+    ...message,
+    content: normalizeText(message.content),
+  }));
+
+  const filtered = messages.filter((message) => message.content.length > 0);
+  if (filtered.length === 0) {
+    return {
+      error: `Conversation ${index + 1}: no importable user/assistant messages`,
+    };
+  }
+
+  return {
+    conversation: {
+      title,
+      messages: filtered,
+    },
+  };
+};
+
+const getConversationCandidates = (raw: unknown): unknown[] => {
+  if (Array.isArray(raw)) {
+    return raw;
+  }
+
+  if (typeof raw !== "object" || raw === null) {
+    return [];
+  }
+
+  const record = raw as Record<string, unknown>;
+  if (Array.isArray(record.conversations)) {
+    return record.conversations;
+  }
+
+  if (typeof record.mapping === "object" && record.mapping !== null) {
+    return [record];
+  }
+
+  if (Array.isArray(record.messages)) {
+    return [record];
+  }
+
+  return [];
+};
+
+export function validateImportFile(file: File | null): {
+  ok: true;
+} | {
+  ok: false;
+  status: number;
+  error: string;
+} {
+  if (!file) {
+    return { ok: false, status: 400, error: "Missing file field `file`" };
+  }
+
+  const lowerName = file.name.toLowerCase();
+  const lowerType = file.type.toLowerCase();
+  if (lowerName.endsWith(".zip") || lowerType.includes("zip")) {
+    return {
+      ok: false,
+      status: 400,
+      error: "ZIP imports are not supported in v1. Please upload a JSON export file.",
+    };
+  }
+
+  if (file.size > MAX_IMPORT_FILE_BYTES) {
+    return {
+      ok: false,
+      status: 413,
+      error: `File too large. Maximum size is ${MAX_IMPORT_FILE_BYTES} bytes.`,
+    };
+  }
+
+  return { ok: true };
+}
+
+export function parseJsonSafe(raw: string):
+  | { ok: true; value: unknown }
+  | { ok: false; error: string } {
+  try {
+    return {
+      ok: true,
+      value: JSON.parse(raw),
+    };
+  } catch {
+    return {
+      ok: false,
+      error: "Invalid JSON file",
+    };
+  }
+}
+
+export function extractChatGptConversations(raw: unknown): {
+  conversations: ExtractedConversation[];
+  errors: string[];
+} {
+  const candidates = getConversationCandidates(raw);
+  const conversations: ExtractedConversation[] = [];
+  const errors: string[] = [];
+
+  candidates.forEach((candidate, index) => {
+    const parsed = parseConversation(candidate, index);
+    if (parsed.error) {
+      errors.push(parsed.error);
+      return;
+    }
+    if (parsed.conversation) {
+      conversations.push(parsed.conversation);
+    }
+  });
+
+  return { conversations, errors };
+}
+
+export async function importExtractedConversations({
+  userId,
+  conversations,
+  db = prismadb,
+}: {
+  userId: string;
+  conversations: ExtractedConversation[];
+  db?: PrismaClient;
+}): Promise<{
+  sessionsCreated: number;
+  messagesCreated: number;
+  contradictionsCreated: number;
+  errors: string[];
+}> {
+  let sessionsCreated = 0;
+  let messagesCreated = 0;
+  let contradictionsCreated = 0;
+  const errors: string[] = [];
+
+  for (const [conversationIndex, conversation] of conversations.entries()) {
+    try {
+      const created = await db.$transaction(async (tx) => {
+        const startedAt =
+          conversation.messages.find((message) => message.createdAt)?.createdAt ?? undefined;
+        const session = await tx.session.create({
+          data: {
+            userId,
+            label: conversation.title ?? `Imported conversation ${conversationIndex + 1}`,
+            ...(startedAt ? { startedAt } : {}),
+          },
+          select: { id: true },
+        });
+
+        const createdMessages: Array<{ id: string; content: string }> = [];
+        for (const message of conversation.messages) {
+          const createdMessage = await tx.message.create({
+            data: {
+              userId,
+              sessionId: session.id,
+              role: message.role,
+              content: message.content,
+              ...(message.createdAt ? { createdAt: message.createdAt } : {}),
+            },
+            select: { id: true, role: true, content: true },
+          });
+
+          if (createdMessage.role === "user" && createdMessage.content.trim().length >= 15) {
+            createdMessages.push({
+              id: createdMessage.id,
+              content: createdMessage.content,
+            });
+          }
+        }
+
+        return {
+          sessionId: session.id,
+          importedMessageCount: conversation.messages.length,
+          userMessagesForDetection: createdMessages,
+        };
+      });
+
+      sessionsCreated += 1;
+      messagesCreated += created.importedMessageCount;
+
+      for (const importedMessage of created.userMessagesForDetection) {
+        try {
+          const detections = await detectContradictions({
+            userId,
+            messageContent: importedMessage.content,
+          });
+          if (detections.length === 0) {
+            continue;
+          }
+
+          const now = new Date();
+          await db.$transaction(async (tx) => {
+            for (const detection of detections.slice(0, 2)) {
+              if (detection.existingNodeId) {
+                const existingNode = await tx.contradictionNode.findFirst({
+                  where: {
+                    id: detection.existingNodeId,
+                    userId,
+                    status: { in: ["open", "explored"] },
+                  },
+                  select: { id: true },
+                });
+
+                if (!existingNode) {
+                  continue;
+                }
+
+                await tx.contradictionEvidence.create({
+                  data: {
+                    nodeId: existingNode.id,
+                    sessionId: created.sessionId,
+                    messageId: importedMessage.id,
+                    quote: importedMessage.content,
+                  },
+                });
+                await tx.contradictionNode.update({
+                  where: { id: existingNode.id },
+                  data: {
+                    evidenceCount: { increment: 1 },
+                    lastEvidenceAt: now,
+                    lastTouchedAt: now,
+                  },
+                });
+                continue;
+              }
+
+              const createdNode = await tx.contradictionNode.create({
+                data: {
+                  userId,
+                  title: detection.title,
+                  sideA: detection.sideA,
+                  sideB: detection.sideB,
+                  type: detection.type,
+                  confidence: detection.confidence,
+                  status: "open",
+                  sourceSessionId: created.sessionId,
+                  sourceMessageId: importedMessage.id,
+                  evidenceCount: 1,
+                  lastEvidenceAt: now,
+                  recommendedRung: "rung1_gentle_mirror",
+                  escalationLevel: 0,
+                },
+                select: { id: true },
+              });
+
+              await tx.contradictionEvidence.create({
+                data: {
+                  nodeId: createdNode.id,
+                  sessionId: created.sessionId,
+                  messageId: importedMessage.id,
+                  quote: importedMessage.content,
+                },
+              });
+
+              contradictionsCreated += 1;
+            }
+          });
+        } catch (error) {
+          errors.push(
+            `Conversation ${conversationIndex + 1} message ${importedMessage.id}: contradiction detection failed (${toErrorMessage(
+              error
+            )})`
+          );
+        }
+      }
+    } catch (error) {
+      errors.push(
+        `Conversation ${conversationIndex + 1}: import failed (${toErrorMessage(error)})`
+      );
+    }
+  }
+
+  return {
+    sessionsCreated,
+    messagesCreated,
+    contradictionsCreated,
+    errors,
+  };
+}

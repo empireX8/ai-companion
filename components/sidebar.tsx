@@ -9,6 +9,7 @@ import {
   ChartNoAxesColumn,
   Split,
   BookOpenText,
+  Upload,
 } from "lucide-react";
 
 export const Sidebar = () => {
@@ -20,6 +21,7 @@ export const Sidebar = () => {
     { icon: Plus, label: "Create", href: "/chat" },
     { icon: Split, label: "Contradictions", href: "/contradictions" },
     { icon: BookOpenText, label: "References", href: "/references" },
+    { icon: Upload, label: "Import", href: "/import" },
     { icon: ChartNoAxesColumn, label: "Audit", href: "/audit" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
