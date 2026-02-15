@@ -3,6 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 
 import prismadb from "@/lib/prismadb";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const { userId } = await auth();
@@ -30,7 +32,11 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(items);
+    return NextResponse.json(items, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
+    });
   } catch (error) {
     console.log("[REFERENCE_LIST_GET_ERROR]", error);
     return new NextResponse("Internal Error", { status: 500 });

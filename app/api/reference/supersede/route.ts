@@ -1,18 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
+import { REFERENCE_CONFIDENCE, REFERENCE_TYPES } from "@/lib/reference-enums";
 import prismadb from "@/lib/prismadb";
-
-const REFERENCE_TYPES = [
-  "constraint",
-  "pattern",
-  "goal",
-  "preference",
-  "assumption",
-  "hypothesis",
-] as const;
-
-const REFERENCE_CONFIDENCE = ["low", "medium", "high"] as const;
+import { ReferenceSourceError, resolveReferenceSource } from "@/lib/reference-source";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -75,26 +66,19 @@ export async function POST(req: Request) {
       return new NextResponse("Invalid source message id", { status: 400 });
     }
 
-    if (sourceSessionId) {
-      const session = await prismadb.session.findFirst({
-        where: { id: sourceSessionId, userId },
-        select: { id: true },
+    let source;
+    try {
+      source = await resolveReferenceSource({
+        userId,
+        sourceSessionId,
+        sourceMessageId,
+        db: prismadb,
       });
-
-      if (!session) {
-        return new NextResponse("Source session not found", { status: 404 });
+    } catch (error) {
+      if (error instanceof ReferenceSourceError) {
+        return new NextResponse(error.message, { status: error.status });
       }
-    }
-
-    if (sourceMessageId) {
-      const message = await prismadb.message.findFirst({
-        where: { id: sourceMessageId, userId },
-        select: { id: true },
-      });
-
-      if (!message) {
-        return new NextResponse("Source message not found", { status: 404 });
-      }
+      throw error;
     }
 
     const oldItem = await prismadb.referenceItem.findFirst({
@@ -144,8 +128,8 @@ export async function POST(req: Request) {
           type,
           confidence,
           status: "active",
-          sourceSessionId: sourceSessionId || null,
-          sourceMessageId: sourceMessageId || null,
+          sourceSessionId: source.sourceSessionId || null,
+          sourceMessageId: source.sourceMessageId || null,
         },
         select: REFERENCE_SELECT,
       });

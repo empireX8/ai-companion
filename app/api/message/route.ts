@@ -3,90 +3,57 @@ import { auth } from "@clerk/nextjs/server";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
+import {
+  detectReferenceIntentType,
+  isAffirmative,
+  isNegative,
+  pickBestPreferenceMatch,
+  shouldPromptForMemoryUpdate,
+} from "@/lib/memory-governance";
+import { detectContradictions } from "@/lib/contradiction-detection";
+import { getTop3WithOptionalSurfacing } from "@/lib/contradiction-surface";
 import prismadb from "@/lib/prismadb";
 import { getActiveReferenceMemory } from "@/lib/reference-memory";
 import { SessionMemoryManager } from "@/lib/session-memory";
-
-const GOVERNANCE_TRIGGER_PATTERNS = [
-  /\bi don't\b/i,
-  /\bi do not\b/i,
-  /\bnot anymore\b/i,
-  /\bactually\b/i,
-  /\bchanged my mind\b/i,
-  /\binstead\b/i,
-  /\bno longer\b/i,
-];
+import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
 
 type GovernedType = "preference" | "goal" | "constraint";
 
-const detectGovernedType = (content: string): GovernedType | null => {
-  if (/\bgoal\b|\bplan\b|\bwant to\b|\btrying to\b/i.test(content)) {
-    return "goal";
-  }
-
-  if (/\bprefer\b|\bpreference\b|\bi like\b|\bi dislike\b/i.test(content)) {
-    return "preference";
-  }
-
-  if (/\bconstraint\b|\bmust\b|\bcannot\b|\bcan't\b|\bnever\b|\balways\b/i.test(content)) {
-    return "constraint";
-  }
-
-  return null;
-};
-
-const shouldPromptForMemoryUpdate = (content: string) => {
-  return GOVERNANCE_TRIGGER_PATTERNS.some((pattern) => pattern.test(content));
-};
-
-const AFFIRMATIVE_TOKENS = [
-  "yes",
-  "y",
-  "yeah",
-  "yep",
-  "correct",
-  "do it",
-  "update it",
-  "please do",
-  "confirm",
-];
-
-const NEGATIVE_TOKENS = [
-  "no",
-  "n",
-  "nope",
-  "don't",
-  "do not",
-  "leave it",
-  "keep it",
-  "cancel",
-];
-
-const startsWithIntentToken = (content: string, tokens: string[]) => {
-  const normalized = content.trim().toLowerCase();
-  if (!normalized) {
-    return false;
-  }
-
-  return tokens.some(
-    (token) =>
-      normalized === token ||
-      normalized.startsWith(`${token} `) ||
-      normalized.startsWith(`${token},`) ||
-      normalized.startsWith(`${token}.`) ||
-      normalized.startsWith(`${token}!`)
-  );
-};
-
-const isAffirmative = (content: string) => {
-  return startsWithIntentToken(content, AFFIRMATIVE_TOKENS);
-};
-
-const isNegative = (content: string) => {
-  return startsWithIntentToken(content, NEGATIVE_TOKENS);
-};
-
 const toSingleLine = (value: string) => value.replace(/\s+/g, " ").trim();
+const truncateForPrompt = (value: string, maxLength = 240) => {
+  const normalized = toSingleLine(value);
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  if (maxLength <= 3) {
+    return normalized.slice(0, maxLength);
+  }
+
+  return `${normalized.slice(0, maxLength - 3)}...`;
+};
+
+const buildTopContradictionsBlock = (
+  items: Awaited<ReturnType<typeof getTop3WithOptionalSurfacing>>["items"]
+) => {
+  if (!items.length) {
+    return "";
+  }
+
+  const lines = ["TOP CONTRADICTIONS (salience-ranked, max 3):"];
+  for (const [index, item] of items.entries()) {
+    lines.push(`${index + 1}) [${item.type}] ${truncateForPrompt(item.title, 180)}`);
+    lines.push(`A: ${truncateForPrompt(item.sideA)}`);
+    lines.push(`B: ${truncateForPrompt(item.sideB)}`);
+    lines.push(`recommended_rung: ${item.recommendedRung ?? "rung1_gentle_mirror"}`);
+    lines.push(`status: ${item.status}`);
+    lines.push(
+      `lastEvidenceAt: ${item.lastEvidenceAt ? item.lastEvidenceAt.toISOString() : "n/a"}`
+    );
+  }
+
+  return lines.join("\n");
+};
 
 export async function POST(req: Request) {
   try {
@@ -200,6 +167,87 @@ export async function POST(req: Request) {
       );
     }
 
+    if (userMessage.role === "user") {
+      await ensureWeeklyAuditForCurrentWeek(userId, new Date());
+    }
+
+    if (userMessage.role === "user" && normalizedContent.length >= 15) {
+      const detections = await detectContradictions({
+        userId,
+        messageContent: normalizedContent,
+      });
+
+      if (detections.length) {
+        const now = new Date();
+        await prismadb.$transaction(async (tx) => {
+          for (const detection of detections.slice(0, 2)) {
+            if (detection.existingNodeId) {
+              const existingNode = await tx.contradictionNode.findFirst({
+                where: {
+                  id: detection.existingNodeId,
+                  userId,
+                  status: { in: ["open", "explored"] },
+                },
+                select: { id: true },
+              });
+
+              if (!existingNode) {
+                continue;
+              }
+
+              await tx.contradictionEvidence.create({
+                data: {
+                  nodeId: existingNode.id,
+                  sessionId: session.id,
+                  messageId: userMessage.id,
+                  quote: normalizedContent,
+                },
+              });
+
+              await tx.contradictionNode.update({
+                where: { id: existingNode.id },
+                data: {
+                  evidenceCount: { increment: 1 },
+                  lastEvidenceAt: now,
+                  lastTouchedAt: now,
+                },
+              });
+
+              continue;
+            }
+
+            const createdNode = await tx.contradictionNode.create({
+              data: {
+                userId,
+                title: detection.title,
+                sideA: detection.sideA,
+                sideB: detection.sideB,
+                type: detection.type,
+                confidence: detection.confidence,
+                status: "open",
+                sourceSessionId: session.id,
+                sourceMessageId: userMessage.id,
+                evidenceCount: 1,
+                lastEvidenceAt: now,
+                recommendedRung: "rung1_gentle_mirror",
+                escalationLevel: 0,
+              },
+              select: { id: true },
+            });
+
+            await tx.contradictionEvidence.create({
+              data: {
+                nodeId: createdNode.id,
+                sessionId: session.id,
+                messageId: userMessage.id,
+                quote: normalizedContent,
+              },
+            });
+          }
+        });
+      }
+    }
+
     const pendingCandidate = await prismadb.referenceItem.findFirst({
       where: {
         userId,
@@ -274,39 +322,98 @@ export async function POST(req: Request) {
       "session"
     );
     const userRelevant = await memory.queryRelevant(memoryKey, normalizedContent, 6, "user");
-    const referenceMemory = await getActiveReferenceMemory(userId);
-    const governedType = detectGovernedType(normalizedContent);
-    const maybeMemoryUpdate = shouldPromptForMemoryUpdate(normalizedContent);
-    const governedReferences =
-      maybeMemoryUpdate && governedType
-        ? await prismadb.referenceItem.findMany({
-            where: {
-              userId,
-              status: "active",
-              type: governedType,
-            },
-            orderBy: [{ confidence: "desc" }, { updatedAt: "desc" }],
-            take: 3,
-            select: {
-              id: true,
-              type: true,
-              statement: true,
-            },
-          })
-        : [];
-    const governedOldItem =
-      maybeMemoryUpdate && governedType && governedReferences.length > 0
-        ? governedReferences[0]
+    const referenceIntentType = detectReferenceIntentType(normalizedContent);
+    const governedType: GovernedType | null =
+      referenceIntentType === "preference" ||
+      referenceIntentType === "goal" ||
+      referenceIntentType === "constraint"
+        ? referenceIntentType
         : null;
-
-    if (governedOldItem && governedType) {
-      const existingCandidate = await prismadb.referenceItem.findFirst({
+    const maybeMemoryUpdate = shouldPromptForMemoryUpdate(normalizedContent);
+    if (maybeMemoryUpdate && governedType) {
+      const activeItems = await prismadb.referenceItem.findMany({
         where: {
           userId,
-          status: "candidate",
-          sourceSessionId: session.id,
+          status: "active",
           type: governedType,
-          supersedesId: governedOldItem.id,
+        },
+        orderBy: [{ confidence: "desc" }, { updatedAt: "desc" }],
+        take: governedType === "preference" ? 25 : 1,
+        select: {
+          id: true,
+          type: true,
+          statement: true,
+        },
+      });
+
+      const preferenceMatch =
+        governedType === "preference"
+          ? pickBestPreferenceMatch(activeItems, normalizedContent)
+          : null;
+      const governedOldItem =
+        governedType === "preference"
+          ? preferenceMatch?.item ?? null
+          : activeItems[0] ?? null;
+      const hasConflictingActiveItem =
+        governedType === "preference"
+          ? (preferenceMatch?.score ?? 0) > 0
+          : activeItems.length > 0;
+
+      if (hasConflictingActiveItem && governedOldItem) {
+        const existingCandidate = await prismadb.referenceItem.findFirst({
+          where: {
+            userId,
+            status: "candidate",
+            sourceSessionId: session.id,
+            type: governedType,
+            supersedesId: governedOldItem.id,
+            statement: normalizedContent,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (existingCandidate) {
+          await prismadb.referenceItem.update({
+            where: { id: existingCandidate.id },
+            data: {
+              status: "candidate",
+              sourceMessageId: userMessage.id,
+            },
+          });
+        } else {
+          await prismadb.referenceItem.create({
+            data: {
+              userId,
+              type: governedType,
+              statement: normalizedContent,
+              confidence: "medium",
+              status: "candidate",
+              supersedesId: governedOldItem.id,
+              sourceSessionId: session.id,
+              sourceMessageId: userMessage.id,
+            },
+          });
+        }
+
+        const confirmationQuestion = `Do you want me to update your saved ${governedType} from '${toSingleLine(
+          governedOldItem.statement
+        )}' to '${toSingleLine(normalizedContent)}'?`;
+        try {
+          await persistAssistantReply(confirmationQuestion);
+        } catch (error) {
+          console.log("[MESSAGE_CONFIRM_QUESTION_PERSIST_ERROR]", error);
+        }
+
+        return createTextStreamResponse(confirmationQuestion);
+      }
+
+      const existingActive = await prismadb.referenceItem.findFirst({
+        where: {
+          userId,
+          status: "active",
+          type: governedType,
           statement: normalizedContent,
         },
         select: {
@@ -314,29 +421,38 @@ export async function POST(req: Request) {
         },
       });
 
-      if (existingCandidate) {
-        await prismadb.referenceItem.update({
-          where: { id: existingCandidate.id },
-          data: {
-            status: "candidate",
-            sourceMessageId: userMessage.id,
-          },
-        });
-      } else {
+      if (!existingActive) {
         await prismadb.referenceItem.create({
           data: {
             userId,
             type: governedType,
             statement: normalizedContent,
             confidence: "medium",
-            status: "candidate",
-            supersedesId: governedOldItem.id,
+            status: "active",
             sourceSessionId: session.id,
             sourceMessageId: userMessage.id,
           },
         });
       }
+
+      const savedText = `Saved — I stored that as a ${governedType}.`;
+      try {
+        await persistAssistantReply(savedText);
+      } catch (error) {
+        console.log("[MESSAGE_GOVERNANCE_SAVE_PERSIST_ERROR]", error);
+      }
+
+      return createTextStreamResponse(savedText);
     }
+
+    const [referenceMemory, topContradictions] = await Promise.all([
+      getActiveReferenceMemory(userId),
+      getTop3WithOptionalSurfacing({
+        userId,
+        mode: "recorded",
+      }),
+    ]);
+    const topContradictionsBlock = buildTopContradictionsBlock(topContradictions.items);
 
     const fallbackMessages = await prismadb.message.findMany({
       where: {
@@ -368,12 +484,7 @@ export async function POST(req: Request) {
       "Do not mention databases, code, prompts, or retrieval.",
       "If the user asks where you learned something that is not in Long-term memory and not in the recent transcript, say you are not sure and ask for clarification.",
     ].join(" ");
-    const governancePrompt =
-      governedOldItem && governedType
-        ? `Respond with exactly one question and nothing else: Do you want me to update your saved ${governedType} from '${toSingleLine(
-            governedOldItem.statement
-          )}' to '${toSingleLine(normalizedContent)}'?`
-        : "";
+    const governancePrompt = "";
     const retrievedUserMemory = [userRelevant, userTranscript].filter(Boolean).join("\n");
     const sessionMemoryBlock = [sessionRelevant, effectiveSessionTranscript]
       .filter(Boolean)
@@ -382,6 +493,7 @@ export async function POST(req: Request) {
       baseSystem,
       governancePrompt,
       referenceMemory ? `Long-term memory:\n${referenceMemory}` : "",
+      topContradictionsBlock,
       retrievedUserMemory ? `Relevant memory:\n${retrievedUserMemory}` : "",
       sessionMemoryBlock ? `Recent transcript:\n${sessionMemoryBlock}` : "",
     ]

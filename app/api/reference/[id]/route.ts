@@ -1,21 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
+import {
+  REFERENCE_CONFIDENCE,
+  REFERENCE_STATUS,
+  REFERENCE_TYPES,
+} from "@/lib/reference-enums";
 import prismadb from "@/lib/prismadb";
 
-const REFERENCE_TYPES = [
-  "constraint",
-  "pattern",
-  "goal",
-  "preference",
-  "assumption",
-  "hypothesis",
-] as const;
-
-const REFERENCE_CONFIDENCE = ["low", "medium", "high"] as const;
-const REFERENCE_STATUS = ["active", "superseded", "candidate"] as const;
-
-type ReferenceConfidence = (typeof REFERENCE_CONFIDENCE)[number];
+type ReferenceConfidence = "low" | "medium" | "high";
 
 const CONFIDENCE_SCORE: Record<ReferenceConfidence, number> = {
   low: 1,

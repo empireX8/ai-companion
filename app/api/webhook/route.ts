@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 
 import { stripe } from "@/lib/stripe";
 import prismadb from "@/lib/prismadb";
+import { claimStripeEvent } from "@/lib/stripe-event-idempotency";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,11 @@ export async function POST(req: Request) {
   }
 
   try {
+    const claimed = await claimStripeEvent(event.id);
+    if (!claimed) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
     switch (event.type) {
       /** ✅ FIRST PAYMENT */
       case "checkout.session.completed": {

@@ -1,0 +1,203 @@
+type GovernedType = "preference" | "goal" | "constraint";
+type ReferenceIntentType = GovernedType | "rule";
+
+const GOVERNANCE_TRIGGER_PATTERNS = [
+  /\bi dont\b/i,
+  /\bi don't\b/i,
+  /\bi do not\b/i,
+  /\bnot anymore\b/i,
+  /\banymore\b/i,
+  /\bno more\b/i,
+  /\bi like .*\bagain\b/i,
+  /\bi like .*\bnow\b/i,
+  /\bi prefer .*\bagain\b/i,
+  /\bi prefer .*\bnow\b/i,
+  /\bactually\b/i,
+  /\bchanged my mind\b/i,
+  /\binstead\b/i,
+  /\bno longer\b/i,
+];
+
+const RULE_LIKE_PATTERN = /^when i say .* respond with exactly/i;
+
+const AFFIRMATIVE_TOKENS = [
+  "yes",
+  "y",
+  "yeah",
+  "yep",
+  "correct",
+  "do it",
+  "update it",
+  "please do",
+  "confirm",
+];
+
+const NEGATIVE_TOKENS = [
+  "no",
+  "n",
+  "nope",
+  "don't",
+  "do not",
+  "leave it",
+  "keep it",
+  "cancel",
+];
+
+export const GOVERNANCE_STOPWORDS = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "that",
+  "this",
+  "you",
+  "your",
+  "are",
+  "was",
+  "were",
+  "have",
+  "has",
+  "had",
+  "will",
+  "would",
+  "should",
+  "can",
+  "could",
+  "from",
+  "into",
+  "onto",
+  "about",
+  "just",
+  "really",
+  "very",
+  "more",
+  "less",
+  "not",
+  "dont",
+  "don't",
+  "doesnt",
+  "doesn't",
+  "didnt",
+  "didn't",
+  "anymore",
+  "again",
+  "like",
+  "dislike",
+  "prefer",
+  "preference",
+  "say",
+  "respond",
+  "exactly",
+  "when",
+]);
+
+type PreferenceItem = { id: string; type: string; statement: string };
+
+const startsWithIntentToken = (content: string, tokens: string[]) => {
+  const normalized = content.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+
+  return tokens.some(
+    (token) =>
+      normalized === token ||
+      normalized.startsWith(`${token} `) ||
+      normalized.startsWith(`${token},`) ||
+      normalized.startsWith(`${token}.`) ||
+      normalized.startsWith(`${token}!`)
+  );
+};
+
+export const isRuleLikeStatement = (statement: string) => {
+  return RULE_LIKE_PATTERN.test(statement.trim().toLowerCase());
+};
+
+const chooseTopicAwarePreference = (items: PreferenceItem[]) => {
+  const nonRuleItems = items.filter((item) => !isRuleLikeStatement(item.statement));
+  return nonRuleItems.length > 0 ? nonRuleItems : items;
+};
+
+export const detectReferenceIntentType = (content: string): ReferenceIntentType | null => {
+  if (RULE_LIKE_PATTERN.test(content.trim())) {
+    return "rule";
+  }
+
+  if (/\bgoal\b|\bplan\b|\bwant to\b|\btrying to\b/i.test(content)) {
+    return "goal";
+  }
+
+  if (
+    /\bprefer\b|\bpreference\b|\bi like\b|\bi dislike\b|\bi dont like\b|\bi don't like\b|\bi do not like\b/i.test(
+      content
+    )
+  ) {
+    return "preference";
+  }
+
+  if (/\bconstraint\b|\bmust\b|\bcannot\b|\bcan't\b|\bnever\b|\balways\b/i.test(content)) {
+    return "constraint";
+  }
+
+  return null;
+};
+
+export const shouldPromptForMemoryUpdate = (content: string) => {
+  return GOVERNANCE_TRIGGER_PATTERNS.some((pattern) => pattern.test(content));
+};
+
+export const isAffirmative = (content: string) => {
+  return startsWithIntentToken(content, AFFIRMATIVE_TOKENS);
+};
+
+export const isNegative = (content: string) => {
+  return startsWithIntentToken(content, NEGATIVE_TOKENS);
+};
+
+export const tokenizeMeaningful = (value: string) => {
+  return value
+    .toLowerCase()
+    .split(/[^a-z0-9]+/g)
+    .filter((token) => token.length >= 3 && !GOVERNANCE_STOPWORDS.has(token));
+};
+
+export const scoreTokenOverlap = (left: string, right: string) => {
+  const leftTokens = new Set(tokenizeMeaningful(left));
+  const rightTokens = new Set(tokenizeMeaningful(right));
+  let score = 0;
+
+  for (const token of leftTokens) {
+    if (rightTokens.has(token)) {
+      score += 1;
+    }
+  }
+
+  return score;
+};
+
+export const pickBestPreferenceMatch = (items: PreferenceItem[], content: string) => {
+  const scopedItems = chooseTopicAwarePreference(items);
+  const contentTokens = new Set(tokenizeMeaningful(content));
+
+  if (scopedItems.length === 0) {
+    return { item: null, score: 0 };
+  }
+
+  if (contentTokens.size === 0) {
+    return { item: scopedItems[0], score: 0 };
+  }
+
+  let bestItem = scopedItems[0];
+  let bestScore = -1;
+
+  for (const item of scopedItems) {
+    const score = scoreTokenOverlap(item.statement, content);
+    if (score > bestScore) {
+      bestScore = score;
+      bestItem = item;
+    }
+  }
+
+  return { item: bestItem, score: bestScore };
+};
+
