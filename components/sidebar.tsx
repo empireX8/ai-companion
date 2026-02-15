@@ -2,7 +2,14 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Settings, Plus } from "lucide-react";
+import {
+  LayoutDashboard,
+  Settings,
+  Plus,
+  ChartNoAxesColumn,
+  Split,
+  BookOpenText,
+} from "lucide-react";
 
 export const Sidebar = () => {
   const router = useRouter();
@@ -11,6 +18,9 @@ export const Sidebar = () => {
   const routes = [
     { icon: LayoutDashboard, label: "Home", href: "/" },
     { icon: Plus, label: "Create", href: "/chat" },
+    { icon: Split, label: "Contradictions", href: "/contradictions" },
+    { icon: BookOpenText, label: "References", href: "/references" },
+    { icon: ChartNoAxesColumn, label: "Audit", href: "/audit" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
 

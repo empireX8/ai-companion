@@ -4,9 +4,9 @@ const ChatLayout = ({
   children: React.ReactNode;
 }) => {
   return (
-    <div className="mx-auto max-w-4xl h-full w-full">
+    <main className="min-h-screen bg-background">
       {children}
-    </div>
+    </main>
   );
 };
 
