@@ -1,6 +1,6 @@
 generator client {
-  provider        = "prisma-client-js"
-  output          = "../node_modules/.prisma/client"
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -32,16 +32,38 @@ model Companion {
   @@index([categoryId])
 }
 
-model Message {
-  id          String    @id @default(uuid())
-  role        Role
-  content     String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  companionId String
-  userId      String?
-  companion   Companion @relation(fields: [companionId], references: [id], onDelete: Cascade)
+model Session {
+  id                        String              @id @default(uuid())
+  userId                    String
+  label                     String?
+  startedAt                 DateTime            @default(now())
+  endedAt                   DateTime?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  messages                  Message[]
+  referenceItemsFromSession ReferenceItem[]     @relation("ReferenceItemSourceSession")
+  contradictionNodes        ContradictionNode[]
 
+  @@index([userId])
+  @@index([userId, startedAt])
+}
+
+model Message {
+  id                        String              @id @default(uuid())
+  sessionId                 String
+  userId                    String
+  role                      Role
+  content                   String
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  companionId               String?
+  companion                 Companion?          @relation(fields: [companionId], references: [id], onDelete: SetNull)
+  session                   Session             @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  referenceItemsFromMessage ReferenceItem[]     @relation("ReferenceItemSourceMessage")
+  contradictionNodes        ContradictionNode[]
+
+  @@index([sessionId, createdAt])
+  @@index([userId, createdAt])
   @@index([companionId])
 }
 
@@ -54,8 +76,152 @@ model UserSubscription {
   stripeCurrentPeriodEnd DateTime? @map("stripe_current_period_end")
 }
 
+model StripeEvent {
+  id          String   @id
+  processedAt DateTime @default(now())
+}
+
+model WeeklyAudit {
+  id                      String   @id @default(cuid())
+  userId                  String
+  weekStart               DateTime
+  generatedAt             DateTime @default(now())
+  activeReferenceCount    Int
+  openContradictionCount  Int
+  totalContradictionCount Int
+  top3AvgComputedWeight   Float
+  top3Ids                 String[]
+  totalAvoidanceCount     Int
+  totalSnoozeCount        Int
+  contradictionDensity    Float
+  stabilityProxy          Float
+  top3Snapshot            Json?
+
+  @@unique([userId, weekStart])
+  @@index([userId, generatedAt])
+}
+
+model ReferenceItem {
+  id              String              @id @default(uuid())
+  userId          String
+  type            ReferenceType
+  confidence      ReferenceConfidence
+  status          ReferenceStatus
+  statement       String
+  sourceSessionId String?
+  sourceMessageId String?
+  supersedesId    String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  sourceSession   Session?            @relation("ReferenceItemSourceSession", fields: [sourceSessionId], references: [id], onDelete: SetNull)
+  sourceMessage   Message?            @relation("ReferenceItemSourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  supersedes      ReferenceItem?      @relation("ReferenceItemSupersedes", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy    ReferenceItem[]     @relation("ReferenceItemSupersedes")
+
+  @@index([userId, status])
+  @@index([userId, type])
+  @@index([sourceSessionId])
+  @@index([sourceMessageId])
+}
+
+model ContradictionNode {
+  id              String                  @id @default(cuid())
+  userId          String
+  title           String
+  sideA           String
+  sideB           String
+  type            ContradictionType
+  confidence      ReferenceConfidence     @default(low)
+  status          ContradictionStatus     @default(open)
+  weight          Float                   @default(0)
+  snoozeCount     Int                     @default(0)
+  timesSurfaced   Int                     @default(0)
+  lastSurfacedAt  DateTime?
+  lastEvidenceAt  DateTime?
+  evidenceCount   Int                     @default(0)
+  recommendedRung ProbeRung?
+  escalationLevel Int                     @default(0)
+  avoidanceCount  Int                     @default(0)
+  lastEscalatedAt DateTime?
+  lastAvoidedAt   DateTime?
+  rung            ProbeRung?
+  snoozedUntil    DateTime?
+  createdAt       DateTime                @default(now())
+  lastTouchedAt   DateTime                @default(now())
+  sourceSessionId String?
+  sourceMessageId String?
+  sourceSession   Session?                @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
+  sourceMessage   Message?                @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  evidence        ContradictionEvidence[]
+
+  @@index([userId, status, weight])
+  @@index([userId, lastTouchedAt])
+  @@index([userId, escalationLevel, weight])
+}
+
+model ContradictionEvidence {
+  id        String            @id @default(cuid())
+  nodeId    String
+  node      ContradictionNode @relation(fields: [nodeId], references: [id], onDelete: Restrict)
+  sessionId String?
+  messageId String?
+  quote     String?
+  createdAt DateTime          @default(now())
+
+  @@index([nodeId])
+}
+
 enum Role {
   user
   assistant
   system
+}
+
+enum ReferenceType {
+  constraint
+  pattern
+  goal
+  preference
+  assumption
+  hypothesis
+  rule
+}
+
+enum ReferenceConfidence {
+  low
+  medium
+  high
+}
+
+enum ReferenceStatus {
+  candidate
+  active
+  superseded
+  inactive
+}
+
+enum ContradictionType {
+  goal_behavior_gap
+  value_conflict
+  constraint_conflict
+  belief_conflict
+  pattern_loop
+  narrative_conflict
+}
+
+enum ContradictionStatus {
+  open
+  snoozed
+  explored
+  resolved
+  accepted_tradeoff
+  archived_tension
+}
+
+enum ProbeRung {
+  rung1_gentle_mirror
+  rung2_explicit_contradiction
+  rung3_evidence_pressure
+  rung4_forced_choice_framing
+  rung5_structured_probe_offer
 }
