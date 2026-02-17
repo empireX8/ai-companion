@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
+import JSZip from "jszip";
 
 import { detectContradictions } from "./contradiction-detection";
 import prismadb from "./prismadb";
@@ -17,6 +18,18 @@ export type ExtractedConversation = {
 };
 
 export const MAX_IMPORT_FILE_BYTES = 15 * 1024 * 1024;
+export const MAX_EXTRACTED_CONVERSATIONS_JSON_BYTES = 100 * 1024 * 1024;
+
+export class ImportChatGptError extends Error {
+  status: number;
+  errors: string[];
+
+  constructor(status: number, errors: string[]) {
+    super(errors[0] ?? "Import failed");
+    this.status = status;
+    this.errors = errors;
+  }
+}
 
 const toErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown error";
@@ -269,11 +282,13 @@ export function validateImportFile(file: File | null): {
 
   const lowerName = file.name.toLowerCase();
   const lowerType = file.type.toLowerCase();
-  if (lowerName.endsWith(".zip") || lowerType.includes("zip")) {
+  const isZip = lowerName.endsWith(".zip") || lowerType.includes("zip");
+  const isJson = lowerName.endsWith(".json") || lowerType.includes("json");
+  if (!isZip && !isJson) {
     return {
       ok: false,
       status: 400,
-      error: "ZIP imports are not supported in v1. Please upload a JSON export file.",
+      error: "Unsupported file type. Upload a ChatGPT export ZIP or conversations.json.",
     };
   }
 
@@ -304,6 +319,39 @@ export function parseJsonSafe(raw: string):
   }
 }
 
+export async function extractConversationsJsonFromZip(
+  zipBytes: Buffer,
+  maxExtractedBytes = MAX_EXTRACTED_CONVERSATIONS_JSON_BYTES
+): Promise<Buffer> {
+  try {
+    const archive = await JSZip.loadAsync(zipBytes);
+    const entry = Object.entries(archive.files).find(
+      ([path, file]) => !file.dir && path.toLowerCase().endsWith("conversations.json")
+    );
+    if (!entry) {
+      throw new ImportChatGptError(400, ["Zip missing conversations.json"]);
+    }
+
+    const zippedFile = entry[1];
+    const extracted = Buffer.from(await zippedFile.async("uint8array"));
+    if (extracted.length > maxExtractedBytes) {
+      throw new ImportChatGptError(400, [
+        `Extracted conversations.json too large. Maximum size is ${maxExtractedBytes} bytes.`,
+      ]);
+    }
+
+    return extracted;
+  } catch (error) {
+    if (error instanceof ImportChatGptError) {
+      throw error;
+    }
+
+    throw new ImportChatGptError(400, [
+      "Invalid or encrypted ZIP archive. Upload a standard ChatGPT export ZIP.",
+    ]);
+  }
+}
+
 export function extractChatGptConversations(raw: unknown): {
   conversations: ExtractedConversation[];
   errors: string[];
@@ -324,6 +372,92 @@ export function extractChatGptConversations(raw: unknown): {
   });
 
   return { conversations, errors };
+}
+
+export async function ingestChatGptConversationsJson({
+  userId,
+  jsonBytes,
+  db = prismadb,
+}: {
+  userId: string;
+  jsonBytes: Buffer;
+  db?: PrismaClient;
+}): Promise<{
+  sessionsCreated: number;
+  messagesCreated: number;
+  contradictionsCreated: number;
+  errors: string[];
+}> {
+  const parsedResult = parseJsonSafe(jsonBytes.toString("utf8"));
+  if (!parsedResult.ok) {
+    throw new ImportChatGptError(400, [parsedResult.error]);
+  }
+
+  const extracted = extractChatGptConversations(parsedResult.value);
+  if (extracted.conversations.length === 0) {
+    throw new ImportChatGptError(400, [...extracted.errors, "No importable conversations found"]);
+  }
+
+  const imported = await importExtractedConversations({
+    userId,
+    conversations: extracted.conversations,
+    db,
+  });
+
+  return {
+    sessionsCreated: imported.sessionsCreated,
+    messagesCreated: imported.messagesCreated,
+    contradictionsCreated: imported.contradictionsCreated,
+    errors: [...extracted.errors, ...imported.errors],
+  };
+}
+
+export async function importChatGptExport({
+  userId,
+  bytes,
+  filename,
+  contentType,
+  db = prismadb,
+  maxExtractedBytes = MAX_EXTRACTED_CONVERSATIONS_JSON_BYTES,
+  zipExtractor = extractConversationsJsonFromZip,
+  jsonImporter = ingestChatGptConversationsJson,
+}: {
+  userId: string;
+  bytes: Buffer;
+  filename: string;
+  contentType?: string;
+  db?: PrismaClient;
+  maxExtractedBytes?: number;
+  zipExtractor?: (zipBytes: Buffer, maxBytes: number) => Promise<Buffer>;
+  jsonImporter?: (params: { userId: string; jsonBytes: Buffer; db?: PrismaClient }) => Promise<{
+    sessionsCreated: number;
+    messagesCreated: number;
+    contradictionsCreated: number;
+    errors: string[];
+  }>;
+}): Promise<{
+  sessionsCreated: number;
+  messagesCreated: number;
+  contradictionsCreated: number;
+  errors: string[];
+}> {
+  const lowerName = filename.toLowerCase();
+  const lowerType = (contentType ?? "").toLowerCase();
+  const isZip = lowerName.endsWith(".zip") || lowerType.includes("zip");
+  const isJson = lowerName.endsWith(".json") || lowerType.includes("json");
+
+  if (!isZip && !isJson) {
+    throw new ImportChatGptError(400, [
+      "Unsupported file type. Upload a ChatGPT export ZIP or conversations.json.",
+    ]);
+  }
+
+  if (isZip) {
+    const jsonBytes = await zipExtractor(bytes, maxExtractedBytes);
+    return jsonImporter({ userId, jsonBytes, db });
+  }
+
+  return jsonImporter({ userId, jsonBytes: bytes, db });
 }
 
 export async function importExtractedConversations({

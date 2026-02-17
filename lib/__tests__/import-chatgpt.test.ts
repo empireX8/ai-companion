@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ImportChatGptError,
   MAX_IMPORT_FILE_BYTES,
   extractChatGptConversations,
+  importChatGptExport,
   parseJsonSafe,
   validateImportFile,
 } from "../import-chatgpt";
@@ -57,17 +59,14 @@ describe("import-chatgpt validation", () => {
     }
   });
 
-  it("rejects zip and oversized uploads", () => {
+  it("accepts zip and rejects oversized uploads", () => {
     const zipFile = {
       name: "export.zip",
       type: "application/zip",
       size: 10,
     } as unknown as File;
     const zipResult = validateImportFile(zipFile);
-    expect(zipResult.ok).toBe(false);
-    if (!zipResult.ok) {
-      expect(zipResult.status).toBe(400);
-    }
+    expect(zipResult.ok).toBe(true);
 
     const oversized = {
       name: "export.json",
@@ -87,5 +86,65 @@ describe("import-chatgpt validation", () => {
 
     const invalid = parseJsonSafe("{not-json");
     expect(invalid.ok).toBe(false);
+  });
+});
+
+describe("import-chatgpt zip handling", () => {
+  it("imports from zip when conversations.json is extracted", async () => {
+    const extractedJson = Buffer.from(JSON.stringify(SAMPLE_EXPORT));
+    const zipExtractor = async () => extractedJson;
+    const jsonImporter = async () => ({
+      sessionsCreated: 1,
+      messagesCreated: 2,
+      contradictionsCreated: 0,
+      errors: [],
+    });
+
+    const result = await importChatGptExport({
+      userId: "user_1",
+      bytes: Buffer.from("zip-bytes"),
+      filename: "chatgpt-export.zip",
+      contentType: "application/zip",
+      zipExtractor,
+      jsonImporter,
+    });
+
+    expect(result.sessionsCreated).toBe(1);
+    expect(result.messagesCreated).toBe(2);
+  });
+
+  it("throws when zip is missing conversations.json", async () => {
+    await expect(
+      importChatGptExport({
+        userId: "user_1",
+        bytes: Buffer.from("zip-bytes"),
+        filename: "chatgpt-export.zip",
+        contentType: "application/zip",
+        zipExtractor: async () => {
+          throw new ImportChatGptError(400, ["Zip missing conversations.json"]);
+        },
+      })
+    ).rejects.toMatchObject({
+      status: 400,
+      errors: ["Zip missing conversations.json"],
+    });
+  });
+
+  it("throws when extracted conversations.json is too large", async () => {
+    await expect(
+      importChatGptExport({
+        userId: "user_1",
+        bytes: Buffer.from("zip-bytes"),
+        filename: "chatgpt-export.zip",
+        contentType: "application/zip",
+        zipExtractor: async () => {
+          throw new ImportChatGptError(400, [
+            "Extracted conversations.json too large. Maximum size is 100 bytes.",
+          ]);
+        },
+      })
+    ).rejects.toMatchObject({
+      status: 400,
+    });
   });
 });

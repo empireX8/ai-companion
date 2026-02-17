@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 import {
-  extractChatGptConversations,
-  importExtractedConversations,
-  parseJsonSafe,
+  ImportChatGptError,
+  importChatGptExport,
   validateImportFile,
 } from "@/lib/import-chatgpt";
 
@@ -35,45 +34,32 @@ export async function POST(req: Request) {
     }
 
     const safeFile = file as File;
-    const rawText = await safeFile.text();
-    const parsedResult = parseJsonSafe(rawText);
-    if (!parsedResult.ok) {
-      return NextResponse.json(
-        {
-          sessionsCreated: 0,
-          messagesCreated: 0,
-          contradictionsCreated: 0,
-          errors: [parsedResult.error],
-        },
-        { status: 400 }
-      );
-    }
-
-    const extracted = extractChatGptConversations(parsedResult.value);
-    if (extracted.conversations.length === 0) {
-      return NextResponse.json(
-        {
-          sessionsCreated: 0,
-          messagesCreated: 0,
-          contradictionsCreated: 0,
-          errors: [...extracted.errors, "No importable conversations found"],
-        },
-        { status: 400 }
-      );
-    }
-
-    const imported = await importExtractedConversations({
+    const imported = await importChatGptExport({
       userId,
-      conversations: extracted.conversations,
+      bytes: Buffer.from(await safeFile.arrayBuffer()),
+      filename: safeFile.name,
+      contentType: safeFile.type,
     });
 
     return NextResponse.json({
       sessionsCreated: imported.sessionsCreated,
       messagesCreated: imported.messagesCreated,
       contradictionsCreated: imported.contradictionsCreated,
-      errors: [...extracted.errors, ...imported.errors],
+      errors: imported.errors,
     });
   } catch (error) {
+    if (error instanceof ImportChatGptError) {
+      return NextResponse.json(
+        {
+          sessionsCreated: 0,
+          messagesCreated: 0,
+          contradictionsCreated: 0,
+          errors: error.errors,
+        },
+        { status: error.status }
+      );
+    }
+
     console.log("[IMPORT_CHATGPT_POST_ERROR]", error);
     return NextResponse.json(
       {

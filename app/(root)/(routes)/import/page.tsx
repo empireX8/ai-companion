@@ -53,13 +53,13 @@ export default function ImportPage() {
     <div className="h-full space-y-4 p-4">
       <h1 className="text-lg font-medium">Import Chat Exports</h1>
       <p className="text-sm text-muted-foreground">
-        Upload a ChatGPT JSON export. ZIP files are not supported in v1.
+        Upload ChatGPT export zip or conversations.json.
       </p>
 
       <form onSubmit={onSubmit} className="space-y-3 rounded-md border border-border bg-card p-4">
         <input
           type="file"
-          accept=".json,application/json"
+          accept="application/json,.json,application/zip,.zip"
           onChange={(event) => setFile(event.target.files?.[0] ?? null)}
           className="block w-full text-sm"
         />
