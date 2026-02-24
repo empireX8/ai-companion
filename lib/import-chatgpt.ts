@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import JSZip from "jszip";
 
 import { detectContradictions } from "./contradiction-detection";
+import { detectReferenceIntentType, pickBestPreferenceMatch } from "./memory-governance";
 import prismadb from "./prismadb";
 
 type SupportedRole = "user" | "assistant";
@@ -244,6 +245,13 @@ const parseConversation = (
   };
 };
 
+export function parseConversationForImport(
+  rawConversation: unknown,
+  index: number
+): { conversation?: ExtractedConversation; error?: string } {
+  return parseConversation(rawConversation, index);
+}
+
 const getConversationCandidates = (raw: unknown): unknown[] => {
   if (Array.isArray(raw)) {
     return raw;
@@ -460,6 +468,65 @@ export async function importChatGptExport({
   return jsonImporter({ userId, jsonBytes: bytes, db });
 }
 
+export type GovernedReferenceType = "goal" | "preference" | "constraint";
+export type ImportRefCache = Map<GovernedReferenceType, string[]>;
+
+export async function extractReferenceFromImportedMessage({
+  userId,
+  message,
+  sessionId,
+  db,
+  refCache,
+}: {
+  userId: string;
+  message: { id: string; content: string };
+  sessionId: string;
+  db: PrismaClient;
+  refCache: ImportRefCache;
+}): Promise<boolean> {
+  const intentType = detectReferenceIntentType(message.content);
+  if (!intentType || intentType === "rule") {
+    return false;
+  }
+
+  const type = intentType as GovernedReferenceType;
+  const statement = message.content.replace(/\s+/g, " ").trim();
+
+  if (!refCache.has(type)) {
+    const existing = await db.referenceItem.findMany({
+      where: { userId, type, status: "active" },
+      select: { statement: true },
+    });
+    refCache.set(type, existing.map((r) => r.statement));
+  }
+
+  const cached = refCache.get(type)!;
+  if (cached.length > 0) {
+    const { score } = pickBestPreferenceMatch(
+      cached.map((s, i) => ({ id: String(i), type, statement: s })),
+      statement
+    );
+    if (score >= 2) {
+      return false;
+    }
+  }
+
+  await db.referenceItem.create({
+    data: {
+      userId,
+      type,
+      statement,
+      confidence: "low",
+      status: "active",
+      sourceSessionId: sessionId,
+      sourceMessageId: message.id,
+    },
+  });
+
+  cached.push(statement);
+  return true;
+}
+
 export async function importExtractedConversations({
   userId,
   conversations,
@@ -478,6 +545,7 @@ export async function importExtractedConversations({
   let messagesCreated = 0;
   let contradictionsCreated = 0;
   const errors: string[] = [];
+  const refCache: ImportRefCache = new Map();
 
   for (const [conversationIndex, conversation] of conversations.entries()) {
     try {
@@ -525,6 +593,20 @@ export async function importExtractedConversations({
       messagesCreated += created.importedMessageCount;
 
       for (const importedMessage of created.userMessagesForDetection) {
+        try {
+          await extractReferenceFromImportedMessage({
+            userId,
+            message: importedMessage,
+            sessionId: created.sessionId,
+            db,
+            refCache,
+          });
+        } catch (error) {
+          errors.push(
+            `Conversation ${conversationIndex + 1} message ${importedMessage.id}: reference extraction failed (${toErrorMessage(error)})`
+          );
+        }
+
         try {
           const detections = await detectContradictions({
             userId,

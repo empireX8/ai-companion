@@ -1,9 +1,12 @@
+import type { PrismaClient } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 
 import {
   ImportChatGptError,
+  ImportRefCache,
   MAX_IMPORT_FILE_BYTES,
   extractChatGptConversations,
+  extractReferenceFromImportedMessage,
   importChatGptExport,
   parseJsonSafe,
   validateImportFile,
@@ -146,5 +149,158 @@ describe("import-chatgpt zip handling", () => {
     ).rejects.toMatchObject({
       status: 400,
     });
+  });
+});
+
+type FakeReferenceRow = { statement: string };
+
+function makeMockDb(seedRows: FakeReferenceRow[] = []) {
+  const rows = [...seedRows];
+  return {
+    referenceItem: {
+      findMany: async ({ where }: { where: { type?: string } }) => {
+        const type = where.type;
+        return rows.filter((r) => !type || (r as { type?: string }).type === type);
+      },
+      create: async ({ data }: { data: { statement: string; type: string } }) => {
+        const row = { ...data };
+        rows.push(row as FakeReferenceRow);
+        return row;
+      },
+    },
+  } as unknown as PrismaClient;
+}
+
+describe("extractReferenceFromImportedMessage", () => {
+  const baseArgs = {
+    userId: "user_test",
+    sessionId: "session_test",
+    message: { id: "msg_1", content: "" },
+  };
+
+  it("creates a goal reference for goal-like messages", async () => {
+    const db = makeMockDb();
+    const refCache: ImportRefCache = new Map();
+    const created = await extractReferenceFromImportedMessage({
+      ...baseArgs,
+      message: { id: "msg_1", content: "I want to run a marathon this year" },
+      db,
+      refCache,
+    });
+    expect(created).toBe(true);
+    expect(refCache.get("goal")).toContain("I want to run a marathon this year");
+  });
+
+  it("creates a preference reference for preference-like messages", async () => {
+    const db = makeMockDb();
+    const refCache: ImportRefCache = new Map();
+    const created = await extractReferenceFromImportedMessage({
+      ...baseArgs,
+      message: { id: "msg_2", content: "I prefer working in the mornings" },
+      db,
+      refCache,
+    });
+    expect(created).toBe(true);
+    expect(refCache.get("preference")).toContain("I prefer working in the mornings");
+  });
+
+  it("creates a constraint reference for constraint-like messages", async () => {
+    const db = makeMockDb();
+    const refCache: ImportRefCache = new Map();
+    const created = await extractReferenceFromImportedMessage({
+      ...baseArgs,
+      message: { id: "msg_3", content: "I must finish the report by Friday" },
+      db,
+      refCache,
+    });
+    expect(created).toBe(true);
+    expect(refCache.get("constraint")).toContain("I must finish the report by Friday");
+  });
+
+  it("returns false and skips creation for non-reference messages", async () => {
+    const db = makeMockDb();
+    const refCache: ImportRefCache = new Map();
+    const created = await extractReferenceFromImportedMessage({
+      ...baseArgs,
+      message: { id: "msg_4", content: "The weather is nice today" },
+      db,
+      refCache,
+    });
+    expect(created).toBe(false);
+    expect(refCache.size).toBe(0);
+  });
+
+  it("returns false and skips creation for rule-like statements", async () => {
+    const db = makeMockDb();
+    const refCache: ImportRefCache = new Map();
+    const created = await extractReferenceFromImportedMessage({
+      ...baseArgs,
+      message: { id: "msg_5", content: "When I say hi respond with exactly hello" },
+      db,
+      refCache,
+    });
+    expect(created).toBe(false);
+  });
+
+  it("deduplicates when token overlap score is 2 or more", async () => {
+    const db = makeMockDb();
+    const refCache: ImportRefCache = new Map([
+      ["goal", ["I want to run a marathon this year"]],
+    ]);
+    // "run" + "marathon" overlap → score ≥ 2 → skip
+    const created = await extractReferenceFromImportedMessage({
+      ...baseArgs,
+      message: { id: "msg_6", content: "I want to run a marathon every year" },
+      db,
+      refCache,
+    });
+    expect(created).toBe(false);
+  });
+
+  it("allows creation when token overlap score is below 2", async () => {
+    const db = makeMockDb();
+    const refCache: ImportRefCache = new Map([["goal", ["I want to travel abroad"]]]);
+    // "marathon" doesn't overlap with "travel" or "abroad" → score < 2 → create
+    const created = await extractReferenceFromImportedMessage({
+      ...baseArgs,
+      message: { id: "msg_7", content: "I want to run a marathon" },
+      db,
+      refCache,
+    });
+    expect(created).toBe(true);
+  });
+
+  it("seeds cache from DB on first call for a type", async () => {
+    const db = makeMockDb([{ statement: "I prefer dark mode" } as FakeReferenceRow]);
+    const refCache: ImportRefCache = new Map();
+    // cache is empty initially; DB should be queried to seed it
+    await extractReferenceFromImportedMessage({
+      ...baseArgs,
+      message: { id: "msg_8", content: "I prefer dark mode" },
+      db,
+      refCache,
+    });
+    // After seeding, cache should contain the DB row. Dedup means no new row created.
+    expect(refCache.get("preference")).toContain("I prefer dark mode");
+  });
+
+  it("updates cache after a new reference is created", async () => {
+    const db = makeMockDb();
+    const refCache: ImportRefCache = new Map();
+    await extractReferenceFromImportedMessage({
+      ...baseArgs,
+      message: { id: "msg_9", content: "I prefer reading before bed" },
+      db,
+      refCache,
+    });
+    // Second distinct message should still be created (different tokens)
+    const created = await extractReferenceFromImportedMessage({
+      ...baseArgs,
+      message: { id: "msg_10", content: "I prefer coffee over tea" },
+      db,
+      refCache,
+    });
+    expect(created).toBe(true);
+    expect(refCache.get("preference")?.length).toBe(2);
   });
 });

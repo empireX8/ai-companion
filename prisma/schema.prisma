@@ -171,6 +171,45 @@ model ContradictionEvidence {
   @@index([nodeId])
 }
 
+model ImportUploadSession {
+  id                      String               @id @default(cuid())
+  userId                  String
+  filename                String
+  contentType             String
+  bytesTotal              BigInt
+  chunkSize               Int
+  totalChunks             Int
+  status                  ImportUploadStatus   @default(pending)
+  processingProgress      Int                  @default(0)
+  processedConversations  Int                  @default(0)
+  processedMessages       Int                  @default(0)
+  sessionsCreated         Int                  @default(0)
+  messagesCreated         Int                  @default(0)
+  contradictionsCreated   Int                  @default(0)
+  resultErrors            String[]
+  error                   String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  startedAt               DateTime?
+  finishedAt              DateTime?
+  chunks                  ImportUploadChunk[]
+
+  @@index([userId, createdAt])
+}
+
+model ImportUploadChunk {
+  id         String              @id @default(cuid())
+  sessionId  String
+  chunkIndex Int
+  sizeBytes  Int
+  checksum   String?
+  createdAt  DateTime            @default(now())
+  session    ImportUploadSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, chunkIndex])
+  @@index([sessionId, createdAt])
+}
+
 enum Role {
   user
   assistant
@@ -224,4 +263,14 @@ enum ProbeRung {
   rung3_evidence_pressure
   rung4_forced_choice_framing
   rung5_structured_probe_offer
+}
+
+enum ImportUploadStatus {
+  pending
+  uploading
+  uploaded
+  processing
+  complete
+  failed
+  expired
 }
