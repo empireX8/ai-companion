@@ -6,6 +6,11 @@ import {
   REFERENCE_STATUS,
   REFERENCE_TYPES,
 } from "@/lib/reference-enums";
+import {
+  performReferenceAction,
+  ReferenceNotFoundError,
+  ReferenceTransitionError,
+} from "@/lib/reference-actions";
 import prismadb from "@/lib/prismadb";
 
 type ReferenceConfidence = "low" | "medium" | "high";
@@ -38,7 +43,7 @@ const maxConfidence = (
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } | Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -52,6 +57,31 @@ export async function PATCH(
     if (!id) {
       return new NextResponse("Reference id is required", { status: 400 });
     }
+
+    const body = await req.json();
+
+    // ── Action-based dispatch ─────────────────────────────────────────────────
+    if (body?.action) {
+      try {
+        const result = await performReferenceAction({
+          userId,
+          referenceId: id,
+          action: body.action,
+          payload: body.payload,
+        });
+        return NextResponse.json(result);
+      } catch (error) {
+        if (error instanceof ReferenceNotFoundError) {
+          return new NextResponse(error.message, { status: 404 });
+        }
+        if (error instanceof ReferenceTransitionError) {
+          return new NextResponse(error.message, { status: 422 });
+        }
+        throw error;
+      }
+    }
+
+    // ── Legacy field-update dispatch ──────────────────────────────────────────
 
     const currentItem = await prismadb.referenceItem.findFirst({
       where: { id, userId },
@@ -68,8 +98,6 @@ export async function PATCH(
     if (!currentItem) {
       return new NextResponse("Reference not found", { status: 404 });
     }
-
-    const body = await req.json();
     const hasStatement = typeof body?.statement === "string";
     const hasType = typeof body?.type === "string";
     const hasConfidence = typeof body?.confidence === "string";

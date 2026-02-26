@@ -102,21 +102,22 @@ model WeeklyAudit {
 }
 
 model ReferenceItem {
-  id              String              @id @default(uuid())
-  userId          String
-  type            ReferenceType
-  confidence      ReferenceConfidence
-  status          ReferenceStatus
-  statement       String
-  sourceSessionId String?
-  sourceMessageId String?
-  supersedesId    String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  sourceSession   Session?            @relation("ReferenceItemSourceSession", fields: [sourceSessionId], references: [id], onDelete: SetNull)
-  sourceMessage   Message?            @relation("ReferenceItemSourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)
-  supersedes      ReferenceItem?      @relation("ReferenceItemSupersedes", fields: [supersedesId], references: [id], onDelete: SetNull)
-  supersededBy    ReferenceItem[]     @relation("ReferenceItemSupersedes")
+  id                 String                       @id @default(uuid())
+  userId             String
+  type               ReferenceType
+  confidence         ReferenceConfidence
+  status             ReferenceStatus
+  statement          String
+  sourceSessionId    String?
+  sourceMessageId    String?
+  supersedesId       String?
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  sourceSession      Session?                     @relation("ReferenceItemSourceSession", fields: [sourceSessionId], references: [id], onDelete: SetNull)
+  sourceMessage      Message?                     @relation("ReferenceItemSourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  supersedes         ReferenceItem?               @relation("ReferenceItemSupersedes", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy       ReferenceItem[]              @relation("ReferenceItemSupersedes")
+  contradictionLinks ContradictionReferenceLink[]
 
   @@index([userId, status])
   @@index([userId, type])
@@ -153,16 +154,33 @@ model ContradictionNode {
   sourceSession   Session?                @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
   sourceMessage   Message?                @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
   evidence        ContradictionEvidence[]
+  referenceLinks  ContradictionReferenceLink[]
 
   @@index([userId, status, weight])
   @@index([userId, lastTouchedAt])
   @@index([userId, escalationLevel, weight])
 }
 
+model ContradictionReferenceLink {
+  id              String            @id @default(cuid())
+  contradictionId String
+  referenceId     String
+  asserted        Boolean           @default(false)
+  assertedAt      DateTime?
+  createdAt       DateTime          @default(now())
+  contradiction   ContradictionNode @relation(fields: [contradictionId], references: [id], onDelete: Cascade)
+  reference       ReferenceItem     @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+
+  @@unique([contradictionId, referenceId])
+  @@index([contradictionId])
+  @@index([referenceId])
+}
+
 model ContradictionEvidence {
   id        String            @id @default(cuid())
   nodeId    String
   node      ContradictionNode @relation(fields: [nodeId], references: [id], onDelete: Restrict)
+  source    String            @default("user_input")
   sessionId String?
   messageId String?
   quote     String?

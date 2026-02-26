@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { computeRecommendedRung } from "@/lib/contradiction-escalation";
 import { CONTRADICTION_STATUS } from "@/lib/contradiction-enums";
 import { createContradictionSchema } from "@/lib/contradiction-schema";
+import { expireSnoozedContradictionsForUser } from "@/lib/contradiction-snooze-expiry";
 import { getTop3WithOptionalSurfacing } from "@/lib/contradiction-surface";
 import {
   ContradictionSourceError,
@@ -176,6 +177,8 @@ export async function GET(req: Request) {
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
+
+    await expireSnoozedContradictionsForUser({ userId });
 
     const { searchParams } = new URL(req.url);
     const topParam = searchParams.get("top");

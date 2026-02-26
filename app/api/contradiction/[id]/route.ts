@@ -65,9 +65,42 @@ const TERMINAL_STATUSES: ContradictionStatus[] = [
 
 const NON_TERMINAL_STATUSES: ContradictionStatus[] = ["open", "snoozed", "explored"];
 
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams?.id;
+    if (!id) {
+      return new NextResponse("Contradiction id is required", { status: 400 });
+    }
+
+    const node = await prismadb.contradictionNode.findFirst({
+      where: { id, userId },
+      select: CONTRADICTION_WITH_EVIDENCE,
+    });
+
+    if (!node) {
+      return new NextResponse("Contradiction not found", { status: 404 });
+    }
+
+    return NextResponse.json(node);
+  } catch (error) {
+    console.log("[CONTRADICTION_GET_DETAIL_ERROR]", error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } | Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -127,7 +160,8 @@ export async function PATCH(
       if (
         input.action === "resolve" ||
         input.action === "accept_tradeoff" ||
-        input.action === "archive_tension"
+        input.action === "archive_tension" ||
+        input.action === "unsnooze"
       ) {
         forceSnoozedUntilNull = true;
       }

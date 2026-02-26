@@ -52,4 +52,23 @@ describe("applyContradictionAction", () => {
       applyContradictionAction("accepted_tradeoff", "accept_tradeoff")
     ).toThrowError(ContradictionTransitionError);
   });
+
+  it("unsnooze transitions snoozed → open", () => {
+    expect(applyContradictionAction("snoozed", "unsnooze")).toEqual({
+      nextStatus: "open",
+      touches: {},
+    });
+  });
+
+  it("unsnooze rejects any status that is not snoozed", () => {
+    expect(() => applyContradictionAction("open", "unsnooze")).toThrowError(
+      ContradictionTransitionError
+    );
+    expect(() => applyContradictionAction("explored", "unsnooze")).toThrowError(
+      ContradictionTransitionError
+    );
+    expect(() => applyContradictionAction("resolved", "unsnooze")).toThrowError(
+      ContradictionTransitionError
+    );
+  });
 });

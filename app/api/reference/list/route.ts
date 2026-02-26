@@ -16,17 +16,18 @@ export async function GET() {
     const items = await prismadb.referenceItem.findMany({
       where: {
         userId,
-        status: "active",
+        status: { in: ["active", "candidate", "inactive"] },
       },
       orderBy: {
         updatedAt: "desc",
       },
-      take: 50,
+      take: 100,
       select: {
         id: true,
         type: true,
         confidence: true,
         statement: true,
+        status: true,
         createdAt: true,
         updatedAt: true,
       },

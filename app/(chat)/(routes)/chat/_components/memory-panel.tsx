@@ -256,7 +256,7 @@ export function MemoryPanel({
           {items.map((item) => (
             <li
               key={item.id}
-              className={`relative rounded-xl bg-[var(--memory-card-bg)] p-4 shadow-[inset_0_0_0_1px_var(--memory-card-border)] before:absolute before:top-3 before:bottom-3 before:left-0 before:w-[3px] before:rounded-full before:content-[''] ${accentClass}`}
+              className={`relative rounded-xl bg-(--memory-card-bg) p-4 shadow-[inset_0_0_0_1px_var(--memory-card-border)] before:absolute before:top-3 before:bottom-3 before:left-0 before:w-0.75 before:rounded-full before:content-[''] ${accentClass}`}
             >
               <p className="text-sm leading-snug text-foreground">{item.statement}</p>
               <div className="mt-2 flex items-center gap-2 text-[11px] text-text-dim">
@@ -531,7 +531,7 @@ export function MemoryPanel({
           />
 
           {pendingCandidate ? (
-            <div className="relative rounded-xl bg-memory-pending/10 p-4 shadow-[inset_0_0_0_1px_var(--memory-card-border)] before:absolute before:top-3 before:bottom-3 before:left-0 before:w-[3px] before:rounded-full before:bg-memory-pending/40 before:content-['']">
+            <div className="relative rounded-xl bg-memory-pending/10 p-4 shadow-[inset_0_0_0_1px_var(--memory-card-border)] before:absolute before:top-3 before:bottom-3 before:left-0 before:w-0.75 before:rounded-full before:bg-memory-pending/40 before:content-['']">
               <p className="text-sm leading-snug text-foreground">{pendingCandidate.statement}</p>
               <div className="mt-2 flex items-center gap-2 text-[11px] text-text-dim">
                 <Clock3 className="h-3 w-3 text-text-dim" />

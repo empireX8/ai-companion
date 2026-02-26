@@ -11,7 +11,12 @@
     "postinstall": "prisma generate",
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
-    "db:seed": "ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' prisma/seed.ts"
+    "db:seed": "ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' prisma/seed.ts",
+    "db:local": "docker start companion-db 2>/dev/null || docker run -d --name companion-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=companion -p 5432:5432 postgres:16-alpine && echo 'Waiting for Postgres...' && sleep 3 && echo 'companion-db is ready.'",
+    "db:stop": "docker stop companion-db && echo 'companion-db stopped.'",
+    "db:migrate": "prisma migrate dev",
+    "db:reset": "prisma migrate reset --force",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.8",

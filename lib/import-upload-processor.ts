@@ -15,6 +15,7 @@ import {
   parseConversationForImport,
   type ExtractedConversation,
 } from "./import-chatgpt";
+import { reconcileImportedStructureForUser } from "./import-reconcile";
 import prismadb from "./prismadb";
 
 const BATCH_SIZE = 100;
@@ -291,6 +292,16 @@ export async function processChatImportSession({
         updatedAt: new Date(),
       },
     });
+
+    try {
+      await reconcileImportedStructureForUser({ userId: session.userId, db });
+    } catch (reconcileError) {
+      const msg = reconcileError instanceof Error ? reconcileError.message : "Unknown error";
+      await db.importUploadSession.update({
+        where: { id: session.id },
+        data: { resultErrors: [...parseErrors, `reconcile: failed (${msg})`] },
+      });
+    }
 
     await storage.deleteChunks(session.id);
   } catch (error) {

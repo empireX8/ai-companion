@@ -4,6 +4,7 @@ export type ContradictionAction =
   | "avoid"
   | "surface_ack"
   | "snooze"
+  | "unsnooze"
   | "explore"
   | "resolve"
   | "accept_tradeoff"
@@ -39,6 +40,17 @@ export function applyContradictionAction(
 
   if (action === "surface_ack") {
     return { nextStatus: currentStatus, touches: {} };
+  }
+
+  if (action === "unsnooze") {
+    if (currentStatus !== "snoozed") {
+      throw new ContradictionTransitionError(
+        "UNSNOOZE_REQUIRES_SNOOZED_STATUS",
+        "UNSNOOZE_REQUIRES_SNOOZED_STATUS"
+      );
+    }
+
+    return { nextStatus: "open", touches: {} };
   }
 
   if (action === "reopen") {

@@ -17,6 +17,7 @@ import {
 import { UserButton } from "@clerk/nextjs";
 
 import { MemoryPanel } from "./_components/memory-panel";
+import { NowTray } from "./_components/now-tray";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -150,6 +151,8 @@ export default function ChatPage() {
 
   const [isUserScrolled, setIsUserScrolled] = useState(false);
   const messageScrollRef = useRef<HTMLDivElement>(null);
+  // Tracks which sessionId has already had its scroll position restored this mount
+  const didRestoreRef = useRef<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -372,6 +375,38 @@ export default function ChatPage() {
       window.clearInterval(intervalId);
     };
   }, [sessionId]);
+
+  // ── Scroll persistence ──────────────────────────────────────────────────────
+
+  const saveScrollPosition = useCallback(() => {
+    if (!sessionId || !messageScrollRef.current) return;
+    sessionStorage.setItem(
+      `double:chat:scrollTop:${sessionId}`,
+      String(messageScrollRef.current.scrollTop)
+    );
+  }, [sessionId]);
+
+  // Fallback: save scroll when the user navigates away
+  useEffect(() => {
+    window.addEventListener("beforeunload", saveScrollPosition);
+    return () => window.removeEventListener("beforeunload", saveScrollPosition);
+  }, [saveScrollPosition]);
+
+  // Restore scroll once per session after messages have loaded
+  useEffect(() => {
+    if (!sessionId || messages.length === 0) return;
+    if (didRestoreRef.current === sessionId) return;
+    didRestoreRef.current = sessionId;
+    const stored = sessionStorage.getItem(`double:chat:scrollTop:${sessionId}`);
+    if (!stored) return;
+    const top = Number(stored);
+    if (!Number.isFinite(top) || top <= 0) return;
+    requestAnimationFrame(() => {
+      if (messageScrollRef.current) {
+        messageScrollRef.current.scrollTop = top;
+      }
+    });
+  }, [sessionId, messages]);
 
   useEffect(() => {
     scrollToBottom(false);
@@ -777,22 +812,11 @@ export default function ChatPage() {
         <p className="font-display text-[10px] uppercase tracking-wider text-text-dim">
           Top contradictions
         </p>
-        {isLoadingNow ? (
-          <p className="mt-2 text-xs text-muted-foreground">Loading...</p>
-        ) : topContradictions.length === 0 ? (
-          <p className="mt-2 text-xs text-muted-foreground">No active contradictions.</p>
-        ) : (
-          <ul className="mt-2 space-y-2">
-            {topContradictions.map((node, index) => (
-              <li key={node.id} className="rounded border border-border p-2">
-                <p className="text-xs text-text-dim">{index + 1}. [{node.type}]</p>
-                <p className="mt-1 text-sm font-medium text-foreground">{node.title}</p>
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{node.sideA}</p>
-                <p className="line-clamp-2 text-xs text-muted-foreground">{node.sideB}</p>
-              </li>
-            ))}
-          </ul>
-        )}
+        <NowTray
+          items={topContradictions}
+          onActionComplete={fetchNowDashboard}
+          onNavigate={saveScrollPosition}
+        />
       </div>
     </div>
   );
@@ -1280,7 +1304,7 @@ export default function ChatPage() {
       </Sheet>
 
       <Sheet open={mobileMemoryOpen} onOpenChange={setMobileMemoryOpen}>
-        <SheetContent side="right" className="w-[22rem] border-l border-border bg-sidebar p-0 [&>button]:hidden">
+        <SheetContent side="right" className="w-88 border-l border-border bg-sidebar p-0 [&>button]:hidden">
           <MemoryPanel
             savedReferences={savedReferences}
             pendingCandidate={pendingCandidate}

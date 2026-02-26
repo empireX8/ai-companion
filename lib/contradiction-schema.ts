@@ -42,6 +42,7 @@ export const patchContradictionSchema = z.object({
       "avoid",
       "surface_ack",
       "snooze",
+      "unsnooze",
       "explore",
       "resolve",
       "accept_tradeoff",

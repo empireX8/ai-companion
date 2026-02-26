@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 type ImportSummary = {
   sessionsCreated: number;
@@ -442,15 +443,15 @@ export default function ImportPage() {
             </div>
           </div>
           <p>Your cognitive structure is now live.</p>
-          <a href="/chat" className="block underline">
+          <Link href="/chat" className="block underline">
             → View Sessions
-          </a>
-          <a href="/contradictions" className="block underline">
+          </Link>
+          <Link href="/contradictions" className="block underline">
             → Review Contradictions
-          </a>
-          <a href="/audit" className="block underline">
+          </Link>
+          <Link href="/audit" className="block underline">
             → Open Weekly Audit
-          </a>
+          </Link>
 
           {result.errors.length > 0 ? (
             <div>
