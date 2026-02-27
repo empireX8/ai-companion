@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 import { initUploadSession, toHttpErrorPayload, type InitUploadInput } from "@/lib/import-upload-service";
+import { serverLogMetric } from "@/lib/metrics-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +28,14 @@ export async function POST(req: Request) {
         chunkSize: Number(body.chunkSize),
         totalChunks: Number(body.totalChunks),
       },
+    });
+
+    void serverLogMetric({
+      userId,
+      name: "import.upload.init",
+      meta: { sessionId: result.sessionId, filename: body.filename ?? null, bytesTotal: Number(body.bytesTotal) },
+      source: "server",
+      route: "/api/upload/init",
     });
 
     return NextResponse.json(result);

@@ -228,17 +228,34 @@ export async function GET(req: Request) {
         return new NextResponse("Invalid contradiction status", { status: 400 });
       }
 
+      const page = Math.max(1, Number(searchParams.get("page") ?? 1));
+      const limit = Math.min(Math.max(1, Number(searchParams.get("limit") ?? 20)), 100);
+      const skip = (page - 1) * limit;
+
       nodes = await prismadb.contradictionNode.findMany({
         where: {
           userId,
           ...(typedStatus ? { status: typedStatus } : {}),
         },
         orderBy: [{ weight: "desc" }, { lastTouchedAt: "desc" }],
-        take: 50,
+        take: limit,
+        skip,
         select: CONTRADICTION_WITH_EVIDENCE,
       });
+
+      // Paginated envelope — consumed exclusively via fetchContradictions() in lib/nodes-api.ts.
+      // Do NOT call this path directly; unwrap payload.items on the client side.
+      return NextResponse.json(
+        { items: nodes, page, limit, hasMore: nodes.length === limit },
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          },
+        }
+      );
     }
 
+    // top-3 path only — returns a raw ContradictionNode[] (no envelope)
     return NextResponse.json(nodes, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",

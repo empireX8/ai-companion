@@ -5,6 +5,7 @@ import {
   addWeeks,
   ensureWeeklyAuditForWeekStart,
   getWeekStart,
+  WeeklyAuditLockedError,
 } from "@/lib/weekly-audit";
 
 export const dynamic = "force-dynamic";
@@ -27,17 +28,29 @@ export async function POST(req: Request) {
 
     const now = new Date();
     const createdWeekStarts: string[] = [];
-    const skippedWeekStarts: string[] = [];
+    const skippedExistingWeekStarts: string[] = [];
+    const skippedLockedWeekStarts: string[] = [];
+    const errors: string[] = [];
 
     for (let index = 0; index < weeks; index += 1) {
       const targetNow = addWeeks(now, -index);
-      const ensured = await ensureWeeklyAuditForWeekStart(userId, targetNow);
       const weekStartIso = getWeekStart(targetNow).toISOString();
 
-      if (ensured.created) {
-        createdWeekStarts.push(weekStartIso);
-      } else {
-        skippedWeekStarts.push(weekStartIso);
+      try {
+        const ensured = await ensureWeeklyAuditForWeekStart(userId, targetNow);
+        if (ensured.created) {
+          createdWeekStarts.push(weekStartIso);
+        } else {
+          skippedExistingWeekStarts.push(weekStartIso);
+        }
+      } catch (e) {
+        if (e instanceof WeeklyAuditLockedError) {
+          skippedLockedWeekStarts.push(weekStartIso);
+        } else {
+          errors.push(
+            `${weekStartIso}: ${e instanceof Error ? e.message : String(e)}`
+          );
+        }
       }
     }
 
@@ -45,10 +58,13 @@ export async function POST(req: Request) {
       {
         weeksRequested: weeks,
         weeksConsidered: weeks,
-        created: createdWeekStarts.length,
-        skipped: skippedWeekStarts.length,
+        createdCount: createdWeekStarts.length,
+        skippedExistingCount: skippedExistingWeekStarts.length,
+        skippedLockedCount: skippedLockedWeekStarts.length,
         createdWeekStarts,
-        skippedWeekStarts,
+        skippedExistingWeekStarts,
+        skippedLockedWeekStarts,
+        errors,
       },
       {
         headers: {

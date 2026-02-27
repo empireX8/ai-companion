@@ -10,6 +10,7 @@ import {
   fetchReferenceDetail,
   performReferenceActionApi,
 } from "@/lib/nodes-api";
+import { DetailSkeleton } from "@/components/skeletons/DetailSkeleton";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -120,9 +121,7 @@ export default function ReferenceDetailPage() {
   // ── Early returns ─────────────────────────────────────────────────────────────
 
   if (loading) {
-    return (
-      <div className="p-6 text-sm text-muted-foreground">Loading reference...</div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (unauthorized) {
@@ -135,8 +134,19 @@ export default function ReferenceDetailPage() {
 
   if (fetchError || !detail) {
     return (
-      <div className="p-6 text-sm text-destructive">
-        {fetchError ?? "Reference not found."}
+      <div className="p-6">
+        <p className="text-sm text-destructive">
+          {fetchError ?? "Reference not found."}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          It may have been deleted or you may not have access.
+        </p>
+        <Link
+          href="/references"
+          className="mt-3 inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
+        >
+          Back to references
+        </Link>
       </div>
     );
   }

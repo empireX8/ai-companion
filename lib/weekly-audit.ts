@@ -1,5 +1,8 @@
 import prismadb from "./prismadb";
 import { getTopContradictions, type ContradictionTopDb } from "./contradiction-top";
+import { InvariantViolationError, WeeklyAuditInvalidDataError } from "./invariant-errors";
+
+export { WeeklyAuditInvalidDataError } from "./invariant-errors";
 
 type WeeklyAuditMetricsDb = ContradictionTopDb & {
   referenceItem: {
@@ -22,11 +25,22 @@ type WeeklyAuditEnsureDb = WeeklyAuditMetricsDb & {
   weeklyAudit: {
     findUnique: (args: {
       where: { userId_weekStart: { userId: string; weekStart: Date } };
-      select?: { id: true };
-    }) => Promise<{ id: string } | null>;
+      select?: { id: true; status?: true };
+    }) => Promise<{ id: string; status?: string } | null>;
     create: (args: { data: WeeklyAuditInput }) => Promise<{ id: string }>;
   };
 };
+
+export class WeeklyAuditLockedError extends InvariantViolationError {
+  constructor(auditId: string) {
+    super(
+      `WeeklyAudit ${auditId} is locked and cannot be modified.`,
+      "WEEKLY_AUDIT_LOCKED",
+      { auditId }
+    );
+    this.name = "WeeklyAuditLockedError";
+  }
+}
 
 export type WeeklyAuditInput = {
   userId: string;
@@ -52,6 +66,103 @@ export type WeeklyAuditInput = {
     sideB: string;
   }>;
 };
+
+// ── Validation helpers ────────────────────────────────────────────────────────
+
+/**
+ * Throws WeeklyAuditLockedError if the supplied audit row is locked.
+ * Use before any write that must not touch a locked record.
+ */
+export function assertNotLocked(audit: { id: string; status: string }): void {
+  if (audit.status === "locked") {
+    throw new WeeklyAuditLockedError(audit.id);
+  }
+}
+
+/**
+ * Validates that a WeeklyAuditInput satisfies all structural invariants.
+ * Throws WeeklyAuditInvalidDataError for any violation.
+ *
+ * Invariants enforced:
+ *  - Integer counters >= 0
+ *  - top3AvgComputedWeight >= 0
+ *  - contradictionDensity >= 0
+ *  - stabilityProxy in [0, 1]
+ *  - top3Ids length <= 3 (reject if > 3)
+ *  - top3Ids must not contain duplicate ids
+ *  - weekStart must be a Monday at 00:00 UTC
+ */
+export function assertValidWeeklyAuditData(data: WeeklyAuditInput): void {
+  const integerCounters: Array<[string, number]> = [
+    ["activeReferenceCount", data.activeReferenceCount],
+    ["openContradictionCount", data.openContradictionCount],
+    ["totalContradictionCount", data.totalContradictionCount],
+    ["totalAvoidanceCount", data.totalAvoidanceCount],
+    ["totalSnoozeCount", data.totalSnoozeCount],
+  ];
+
+  for (const [field, value] of integerCounters) {
+    if (!Number.isInteger(value) || value < 0) {
+      throw new WeeklyAuditInvalidDataError(
+        `${field} must be a non-negative integer (got ${value})`,
+        { field, value }
+      );
+    }
+  }
+
+  if (!Number.isFinite(data.top3AvgComputedWeight) || data.top3AvgComputedWeight < 0) {
+    throw new WeeklyAuditInvalidDataError(
+      `top3AvgComputedWeight must be >= 0 (got ${data.top3AvgComputedWeight})`,
+      { field: "top3AvgComputedWeight", value: data.top3AvgComputedWeight }
+    );
+  }
+
+  if (!Number.isFinite(data.contradictionDensity) || data.contradictionDensity < 0) {
+    throw new WeeklyAuditInvalidDataError(
+      `contradictionDensity must be >= 0 (got ${data.contradictionDensity})`,
+      { field: "contradictionDensity", value: data.contradictionDensity }
+    );
+  }
+
+  if (
+    !Number.isFinite(data.stabilityProxy) ||
+    data.stabilityProxy < 0 ||
+    data.stabilityProxy > 1
+  ) {
+    throw new WeeklyAuditInvalidDataError(
+      `stabilityProxy must be in [0, 1] (got ${data.stabilityProxy})`,
+      { field: "stabilityProxy", value: data.stabilityProxy }
+    );
+  }
+
+  if (data.top3Ids.length > 3) {
+    throw new WeeklyAuditInvalidDataError(
+      `top3Ids must have at most 3 entries (got ${data.top3Ids.length})`,
+      { field: "top3Ids", count: data.top3Ids.length }
+    );
+  }
+
+  const idSet = new Set(data.top3Ids);
+  if (idSet.size !== data.top3Ids.length) {
+    throw new WeeklyAuditInvalidDataError("top3Ids must not contain duplicate ids", {
+      field: "top3Ids",
+    });
+  }
+
+  const normalized = getWeekStart(data.weekStart);
+  if (normalized.getTime() !== data.weekStart.getTime()) {
+    throw new WeeklyAuditInvalidDataError(
+      `weekStart must be a Monday at 00:00 UTC (got ${data.weekStart.toISOString()})`,
+      {
+        field: "weekStart",
+        given: data.weekStart.toISOString(),
+        expected: normalized.toISOString(),
+      }
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const truncate = (value: string, maxLength: number) => {
   const normalized = value.replace(/\s+/g, " ").trim();
@@ -118,7 +229,7 @@ export async function buildWeeklyAudit(
   const contradictionDensity = openContradictionCount / (activeReferenceCount + 1);
   const stabilityProxy = 1 / (1 + contradictionDensity);
 
-  return {
+  const result: WeeklyAuditInput = {
     userId,
     weekStart,
     activeReferenceCount,
@@ -142,6 +253,9 @@ export async function buildWeeklyAudit(
       sideB: truncate(item.sideB, 240),
     })),
   };
+
+  assertValidWeeklyAuditData(result);
+  return result;
 }
 
 const isUniqueConstraintError = (error: unknown): boolean => {
@@ -174,10 +288,13 @@ export async function ensureWeeklyAuditForWeekStart(
         weekStart,
       },
     },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 
   if (existing) {
+    if (existing.status === "locked") {
+      throw new WeeklyAuditLockedError(existing.id);
+    }
     return { weekStart, created: false };
   }
 

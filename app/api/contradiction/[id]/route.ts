@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import type { ContradictionStatus } from "@prisma/client";
 
 import {
+  computeEscalationCooldown,
   computeEscalationLevel,
   computeRecommendedRung,
   shouldEscalate,
@@ -18,6 +19,7 @@ import {
   resolveContradictionSource,
 } from "@/lib/contradiction-source";
 import prismadb from "@/lib/prismadb";
+import { serverLogMetric } from "@/lib/metrics-server";
 
 const CONTRADICTION_WITH_EVIDENCE = {
   id: true,
@@ -91,7 +93,12 @@ export async function GET(
       return new NextResponse("Contradiction not found", { status: 404 });
     }
 
-    return NextResponse.json(node);
+    const cooldown = computeEscalationCooldown(node.lastEscalatedAt);
+    return NextResponse.json({
+      ...node,
+      cooldownActive: cooldown.active,
+      cooldownUntil: cooldown.until?.toISOString() ?? null,
+    });
   } catch (error) {
     console.log("[CONTRADICTION_GET_DETAIL_ERROR]", error);
     return new NextResponse("Internal Error", { status: 500 });
@@ -152,7 +159,24 @@ export async function PATCH(
         statusOverride = transition.nextStatus;
       } catch (error) {
         if (error instanceof ContradictionTransitionError) {
-          return new NextResponse(error.message, { status: error.status });
+          void serverLogMetric({
+            userId,
+            name: "invariant.violation",
+            level: "warn",
+            meta: {
+              code: error.code,
+              route: "/api/contradiction/[id]",
+              entityId: id,
+              action: input.action,
+              currentStatus: currentNode.status,
+            },
+            source: "server",
+            route: `/api/contradiction/${id}`,
+          });
+          return NextResponse.json(
+            { error: { code: error.code, message: error.message } },
+            { status: 409 }
+          );
         }
         throw error;
       }

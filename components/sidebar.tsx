@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
+  Activity,
   LayoutDashboard,
   Settings,
   Plus,
@@ -23,6 +24,7 @@ export const Sidebar = () => {
     { icon: BookOpenText, label: "References", href: "/references" },
     { icon: Upload, label: "Import", href: "/import" },
     { icon: ChartNoAxesColumn, label: "Audit", href: "/audit" },
+    { icon: Activity, label: "Metrics", href: "/metrics" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
 

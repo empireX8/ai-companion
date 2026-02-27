@@ -19,6 +19,9 @@ import {
   unlinkReferenceFromContradiction,
 } from "@/lib/nodes-api";
 import { getSnoozedLabel } from "@/lib/contradiction-snooze-label";
+import { DetailSkeleton } from "@/components/skeletons/DetailSkeleton";
+import { postMetricEvent } from "@/lib/metrics-api";
+import { undoManager } from "@/lib/undo-manager";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -234,6 +237,25 @@ export default function ContradictionDetailPage() {
 
     try {
       await performContradictionAction(id, action, snoozedUntil);
+
+      // Metric + undo registration for reversible actions
+      if (action === "resolve" || action === "snooze" || action === "accept_tradeoff") {
+        void postMetricEvent({
+          name: `contradiction.${action}.executed`,
+          meta: { contradictionId: id },
+          route: "/contradictions/[id]",
+        });
+        undoManager.addUndoAction({
+          id,
+          name: `contradiction.${action}`,
+          expiresAt: Date.now() + 10_000,
+          revert: async () => {
+            await performContradictionAction(id, "reopen");
+            const refreshed = await fetchContradictionById(id);
+            if (refreshed) setDetail(refreshed);
+          },
+        });
+      }
     } catch (err) {
       setDetail(prevDetail);
       setActionError(err instanceof Error ? err.message : "Action failed");
@@ -285,11 +307,7 @@ export default function ContradictionDetailPage() {
   // ── Early returns ─────────────────────────────────────────────────────────
 
   if (loading) {
-    return (
-      <div className="p-6 text-sm text-muted-foreground">
-        Loading contradiction...
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (unauthorized) {
@@ -302,8 +320,19 @@ export default function ContradictionDetailPage() {
 
   if (fetchError || !detail) {
     return (
-      <div className="p-6 text-sm text-destructive">
-        {fetchError ?? "Contradiction not found."}
+      <div className="p-6">
+        <p className="text-sm text-destructive">
+          {fetchError ?? "Contradiction not found."}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          It may have been deleted or you may not have access.
+        </p>
+        <Link
+          href="/contradictions"
+          className="mt-3 inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
+        >
+          Back to contradictions
+        </Link>
       </div>
     );
   }
@@ -422,6 +451,16 @@ export default function ContradictionDetailPage() {
           rung={detail.recommendedRung ?? "n/a"} escalation=
           {detail.escalationLevel}
         </p>
+        {detail.cooldownActive && (
+          <div className="mt-1">
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              Cooldown active
+            </span>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">
+              Escalation eligible at {formatDate(detail.cooldownUntil)}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Action row */}

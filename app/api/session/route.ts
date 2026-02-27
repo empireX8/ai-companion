@@ -14,11 +14,17 @@ export async function POST() {
     const session = await prismadb.session.create({
       data: {
         userId,
+        origin: "native",
       },
       select: {
         id: true,
       },
     });
+
+    // TODO(B2-native): Native sessions accumulate messages incrementally during
+    // chat; there is no single batch boundary here to wrap in a DerivationRun.
+    // Wire DerivationRun(scope="native") around the per-message inference step
+    // once a clean processing boundary exists in the message handler.
 
     return NextResponse.json({ sessionId: session.id });
   } catch (error) {

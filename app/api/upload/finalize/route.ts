@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 import { finalizeUploadSession, toHttpErrorPayload } from "@/lib/import-upload-service";
+import { serverLogMetric } from "@/lib/metrics-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +19,19 @@ export async function POST(req: Request) {
     const result = await finalizeUploadSession({
       userId,
       sessionId,
+    });
+
+    void serverLogMetric({
+      userId,
+      name: "import.upload.finalize",
+      meta: {
+        sessionId,
+        sessionsCreated: (result as Record<string, unknown>).sessionsCreated ?? null,
+        messagesCreated: (result as Record<string, unknown>).messagesCreated ?? null,
+        contradictionsCreated: (result as Record<string, unknown>).contradictionsCreated ?? null,
+      },
+      source: "server",
+      route: "/api/upload/finalize",
     });
 
     return NextResponse.json(result, { status: 202 });

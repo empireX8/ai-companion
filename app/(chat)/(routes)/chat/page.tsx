@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  Archive,
   Brain,
   Clock3,
   ChevronLeft,
@@ -116,6 +117,11 @@ export default function ChatPage() {
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
+
+  const [sessionTab, setSessionTab] = useState<"native" | "imported">("native");
+  const [importedSessions, setImportedSessions] = useState<ChatSession[]>([]);
+  const [isLoadingImportedSessions, setIsLoadingImportedSessions] = useState(false);
+  const [importedSessionsLoaded, setImportedSessionsLoaded] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   const [referenceStatement, setReferenceStatement] = useState("");
@@ -169,6 +175,19 @@ export default function ChatPage() {
       setSessions(data);
     } finally {
       setIsLoadingSessions(false);
+    }
+  }, []);
+
+  const fetchImportedSessions = useCallback(async () => {
+    setIsLoadingImportedSessions(true);
+    try {
+      const response = await fetch("/api/session/list?origin=imported", { method: "GET" });
+      if (!response.ok) throw new Error("Failed to load imported sessions");
+      const data = (await response.json()) as ChatSession[];
+      setImportedSessions(data);
+      setImportedSessionsLoaded(true);
+    } finally {
+      setIsLoadingImportedSessions(false);
     }
   }, []);
 
@@ -908,58 +927,136 @@ export default function ChatPage() {
 
   const renderSessionsList = () => (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border p-2">
+      {/* Tab strip */}
+      <div className="flex border-b border-border">
         <button
           type="button"
-          onClick={() => void onCreateNewSession()}
-          disabled={isCreatingSession || isLoadingSession}
-          className="flex w-full items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
+          onClick={() => setSessionTab("native")}
+          className={`flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+            sessionTab === "native"
+              ? "border-b-2 border-primary text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
         >
-          <Plus className="h-4 w-4 shrink-0" />
-          <span>{isCreatingSession ? "Creating..." : "New session"}</span>
+          <MessageSquare className="h-3.5 w-3.5" />
+          Sessions
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setSessionTab("imported");
+            if (!importedSessionsLoaded) void fetchImportedSessions();
+          }}
+          className={`flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+            sessionTab === "imported"
+              ? "border-b-2 border-primary text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Archive className="h-3.5 w-3.5" />
+          Imported archive
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
-        {isLoadingSessions ? (
-          <p className="px-2 py-2 text-xs text-muted-foreground">Loading sessions...</p>
-        ) : sessions.length === 0 ? (
-          <p className="px-2 py-2 text-xs text-muted-foreground">No sessions yet.</p>
-        ) : (
-          <ul className="space-y-1">
-            {sessions.map((session) => {
-              const isActive = selectedSessionId === session.id;
-              return (
-                <li key={session.id}>
-                  <button
-                    type="button"
-                    onClick={() => void onSelectSession(session.id)}
-                    className={`flex w-full items-start gap-2.5 rounded-md px-3 py-2.5 text-left transition-colors ${
-                      isActive
-                        ? "bg-accent text-foreground"
-                        : "text-sidebar-foreground hover:bg-accent/50 hover:text-foreground"
-                    }`}
-                  >
-                    <MessageSquare
-                      className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
-                        isActive ? "text-primary" : "text-text-dim"
+      {sessionTab === "native" ? (
+        <>
+          <div className="border-b border-border p-2">
+            <button
+              type="button"
+              onClick={() => void onCreateNewSession()}
+              disabled={isCreatingSession || isLoadingSession}
+              className="flex w-full items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4 shrink-0" />
+              <span>{isCreatingSession ? "Creating..." : "New session"}</span>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2">
+            {isLoadingSessions ? (
+              <p className="px-2 py-2 text-xs text-muted-foreground">Loading sessions...</p>
+            ) : sessions.length === 0 ? (
+              <p className="px-2 py-2 text-xs text-muted-foreground">No sessions yet.</p>
+            ) : (
+              <ul className="space-y-1">
+                {sessions.map((session) => {
+                  const isActive = selectedSessionId === session.id;
+                  return (
+                    <li key={session.id}>
+                      <button
+                        type="button"
+                        onClick={() => void onSelectSession(session.id)}
+                        className={`flex w-full items-start gap-2.5 rounded-md px-3 py-2.5 text-left transition-colors ${
+                          isActive
+                            ? "bg-accent text-foreground"
+                            : "text-sidebar-foreground hover:bg-accent/50 hover:text-foreground"
+                        }`}
+                      >
+                        <MessageSquare
+                          className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
+                            isActive ? "text-primary" : "text-text-dim"
+                          }`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium leading-tight">
+                            {session.label || shortenId(session.id)}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {new Date(session.startedAt).toLocaleString()}
+                          </p>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 overflow-y-auto p-2">
+          {isLoadingImportedSessions ? (
+            <p className="px-2 py-2 text-xs text-muted-foreground">Loading imported sessions...</p>
+          ) : importedSessions.length === 0 ? (
+            <p className="px-2 py-2 text-xs text-muted-foreground">
+              No imported sessions. Import your ChatGPT history to see them here.
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {importedSessions.map((session) => {
+                const isActive = selectedSessionId === session.id;
+                return (
+                  <li key={session.id}>
+                    <button
+                      type="button"
+                      onClick={() => void onSelectSession(session.id)}
+                      className={`flex w-full items-start gap-2.5 rounded-md px-3 py-2.5 text-left transition-colors ${
+                        isActive
+                          ? "bg-accent text-foreground"
+                          : "text-sidebar-foreground hover:bg-accent/50 hover:text-foreground"
                       }`}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium leading-tight">
-                        {session.label || shortenId(session.id)}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {new Date(session.startedAt).toLocaleString()}
-                      </p>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+                    >
+                      <Archive
+                        className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
+                          isActive ? "text-primary" : "text-text-dim"
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium leading-tight">
+                          {session.label || shortenId(session.id)}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {new Date(session.startedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 

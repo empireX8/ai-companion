@@ -1,17 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  createWeeklyAuditBackfill,
+  createWeeklyAuditSnapshot,
   fetchWeeklyAudit,
+  fetchWeeklyAuditCompare,
   fetchWeeklyTrend,
+  lockWeeklyAudit,
   type Top3SnapshotItem,
   type WeeklyAudit,
+  type WeeklyAuditCompareResponse,
   type WeeklyAuditDelta,
   type WeeklyAuditPreview,
   type WeeklyTrendResponse,
 } from "@/lib/audit-api";
+import { postMetricEvent } from "@/lib/metrics-api";
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
 
@@ -201,50 +207,45 @@ export default function AuditPage() {
     loading: true,
     error: null,
   });
+  const [isCreating, setIsCreating] = useState(false);
+  const [isLocking, setIsLocking] = useState(false);
+  const [isBackfilling, setIsBackfilling] = useState(false);
+
+  // Compare state
+  const compareInitRef = useRef(false);
+  const [compareFrom, setCompareFrom] = useState<string>("");
+  const [compareTo, setCompareTo] = useState<string>("");
+  const [compareResult, setCompareResult] = useState<WeeklyAuditCompareResponse | null>(null);
+  const [isComparing, setIsComparing] = useState(false);
+  const [compareError, setCompareError] = useState<string | null>(null);
+
+  const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!silent) setState((s) => ({ ...s, loading: true, error: null }));
+    try {
+      const [audit, trend] = await Promise.all([fetchWeeklyAudit(), fetchWeeklyTrend(8)]);
+      if (!audit || !trend) {
+        setState({ audit: null, trend: null, unauthorized: true, loading: false, error: null });
+        return;
+      }
+      setState({ audit, trend, unauthorized: false, loading: false, error: null });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load audit";
+      setState({ audit: null, trend: null, unauthorized: false, loading: false, error: message });
+    }
+  }, []);
 
   useEffect(() => {
-    let mounted = true;
-
-    const load = async () => {
-      try {
-        const [audit, trend] = await Promise.all([
-          fetchWeeklyAudit(),
-          fetchWeeklyTrend(8),
-        ]);
-
-        if (!mounted) return;
-
-        if (!audit || !trend) {
-          setState({
-            audit: null,
-            trend: null,
-            unauthorized: true,
-            loading: false,
-            error: null,
-          });
-          return;
-        }
-
-        setState({ audit, trend, unauthorized: false, loading: false, error: null });
-      } catch (error) {
-        if (!mounted) return;
-        const message = error instanceof Error ? error.message : "Failed to load audit";
-        setState({
-          audit: null,
-          trend: null,
-          unauthorized: false,
-          loading: false,
-          error: message,
-        });
-      }
-    };
-
     void load();
+  }, [load]);
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  // Default compare selectors to two most-recent audits once trend loads
+  useEffect(() => {
+    if (!compareInitRef.current && state.trend && state.trend.items.length >= 2) {
+      compareInitRef.current = true;
+      setCompareFrom(state.trend.items[1].id);
+      setCompareTo(state.trend.items[0].id);
+    }
+  }, [state.trend]);
 
   const snapshotRows = useMemo(() => {
     if (!state.audit) return [];
@@ -265,7 +266,24 @@ export default function AuditPage() {
   );
 
   if (state.loading) {
-    return <div className="h-full p-4 text-sm text-muted-foreground">Loading audit...</div>;
+    return (
+      <div className="h-full space-y-6 p-4">
+        <div className="h-6 w-32 animate-pulse rounded-md bg-muted" />
+        <div className="rounded-md border border-border bg-card p-4">
+          <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+          <div className="mt-3 h-5 w-1/4 animate-pulse rounded bg-muted" />
+        </div>
+        <div className="h-6 w-24 animate-pulse rounded-md bg-muted" />
+        <div className="grid gap-3 md:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-md border border-border bg-card p-4">
+              <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+              <div className="mt-2 h-7 w-1/3 animate-pulse rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (state.unauthorized) {
@@ -281,6 +299,7 @@ export default function AuditPage() {
   }
 
   const isPreview = "preview" in state.audit && state.audit.preview;
+  const auditId: string | null = "id" in state.audit ? state.audit.id : null;
 
   // Delta lookup: keyed by weekStart raw string (fallback to ISO-converted key)
   const deltasByWeek = new Map<string, WeeklyAuditDelta>(
@@ -342,10 +361,80 @@ export default function AuditPage() {
       {/* This Week */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">This Week</h2>
-          <span className="text-xs text-muted-foreground">
-            weekStart {formatDate(state.audit.weekStart)} {isPreview ? "(preview)" : ""}
-          </span>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-medium">This Week</h2>
+            {"status" in state.audit && state.audit.status === "locked" && (
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                Locked
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              weekStart {formatDate(state.audit.weekStart)} {isPreview ? "(preview)" : ""}
+            </span>
+            {isPreview && (
+              <button
+                disabled={isCreating || isLocking}
+                onClick={async () => {
+                  setIsCreating(true);
+                  try {
+                    await createWeeklyAuditSnapshot();
+                    void postMetricEvent({ name: "audit.snapshot.created", meta: { weekStart: state.audit?.weekStart ?? null }, route: "/audit" });
+                    await load({ silent: true });
+                  } finally {
+                    setIsCreating(false);
+                  }
+                }}
+                className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+              >
+                {isCreating ? "Saving…" : "Create snapshot"}
+              </button>
+            )}
+            {auditId && state.audit.status !== "locked" && (
+              <button
+                disabled={isCreating || isLocking}
+                onClick={async () => {
+                  if (!auditId) return;
+                  setIsLocking(true);
+                  try {
+                    await lockWeeklyAudit(auditId);
+                    void postMetricEvent({ name: "audit.lock.requested", meta: { auditId }, route: "/audit" });
+                    await load({ silent: true });
+                  } finally {
+                    setIsLocking(false);
+                  }
+                }}
+                className="rounded-md border border-border px-3 py-1 text-xs text-muted-foreground disabled:opacity-50"
+              >
+                {isLocking ? "Locking…" : "Lock week"}
+              </button>
+            )}
+            {auditId && (
+              <Link
+                href={`/audit/${auditId}`}
+                className="rounded-md border border-border px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
+              >
+                Open inspector →
+              </Link>
+            )}
+            <button
+              disabled={isBackfilling || isCreating || isLocking}
+              onClick={async () => {
+                setIsBackfilling(true);
+                try {
+                  const result = await createWeeklyAuditBackfill(8);
+                  void postMetricEvent({ name: "audit.backfill.executed", meta: { weeks: 8, createdCount: result.createdCount, skippedExistingCount: result.skippedExistingCount, skippedLockedCount: result.skippedLockedCount }, route: "/audit" });
+                  await load({ silent: true });
+                } finally {
+                  setIsBackfilling(false);
+                }
+              }}
+              className="rounded-md border border-border px-3 py-1 text-xs text-muted-foreground disabled:opacity-50"
+            >
+              {isBackfilling ? "Backfilling…" : "Backfill 8w"}
+            </button>
+          </div>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <MetricCard
@@ -479,6 +568,207 @@ export default function AuditPage() {
           </table>
         </div>
       </section>
+
+      {/* Compare */}
+      {state.trend && state.trend.items.length >= 2 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-medium">Compare</h2>
+          <div className="rounded-md border border-border bg-card p-4 space-y-4">
+            {/* Selectors + button */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted-foreground">From</label>
+                <select
+                  value={compareFrom}
+                  onChange={(e) => {
+                    setCompareFrom(e.target.value);
+                    setCompareResult(null);
+                  }}
+                  className="rounded border border-border bg-background px-2 py-1 text-xs"
+                >
+                  {state.trend.items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {formatDate(item.weekStart)} ({item.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted-foreground">To</label>
+                <select
+                  value={compareTo}
+                  onChange={(e) => {
+                    setCompareTo(e.target.value);
+                    setCompareResult(null);
+                  }}
+                  className="rounded border border-border bg-background px-2 py-1 text-xs"
+                >
+                  {state.trend.items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {formatDate(item.weekStart)} ({item.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                disabled={isComparing || !compareFrom || !compareTo || compareFrom === compareTo}
+                onClick={async () => {
+                  if (!compareFrom || !compareTo) return;
+                  setIsComparing(true);
+                  setCompareError(null);
+                  try {
+                    const result = await fetchWeeklyAuditCompare(compareFrom, compareTo);
+                    if (!result) {
+                      setCompareError("Could not load comparison.");
+                    } else {
+                      setCompareResult(result);
+                      void postMetricEvent({ name: "audit.compare.executed", meta: { fromId: compareFrom, toId: compareTo }, route: "/audit" });
+                    }
+                  } catch (e) {
+                    setCompareError(e instanceof Error ? e.message : "Failed to compare");
+                  } finally {
+                    setIsComparing(false);
+                  }
+                }}
+                className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+              >
+                {isComparing ? "Comparing…" : "Compare"}
+              </button>
+            </div>
+
+            {compareError && <p className="text-xs text-destructive">{compareError}</p>}
+
+            {compareResult && (() => {
+              const { diff, summary } = compareResult;
+              const fromSnap = Array.isArray(compareResult.from.top3Snapshot)
+                ? (compareResult.from.top3Snapshot as Top3SnapshotItem[])
+                : [];
+              const toSnap = Array.isArray(compareResult.to.top3Snapshot)
+                ? (compareResult.to.top3Snapshot as Top3SnapshotItem[])
+                : [];
+              const snapById = new Map(
+                [...fromSnap, ...toSnap].map((s) => [s.id, s])
+              );
+              const metricRows: Array<{
+                label: string;
+                fromVal: number;
+                toVal: number;
+                delta: number;
+                fmt: (v: number) => string;
+                sentiment: "bad-when-positive" | "good-when-positive" | "neutral";
+              }> = [
+                { label: "Active References", fromVal: compareResult.from.activeReferenceCount, toVal: compareResult.to.activeReferenceCount, delta: diff.activeReferenceCountDelta, fmt: String, sentiment: "neutral" },
+                { label: "Open Contradictions", fromVal: compareResult.from.openContradictionCount, toVal: compareResult.to.openContradictionCount, delta: diff.openContradictionCountDelta, fmt: String, sentiment: "bad-when-positive" },
+                { label: "Total Contradictions", fromVal: compareResult.from.totalContradictionCount, toVal: compareResult.to.totalContradictionCount, delta: diff.totalContradictionCountDelta, fmt: String, sentiment: "neutral" },
+                { label: "Top3 Avg Weight", fromVal: compareResult.from.top3AvgComputedWeight, toVal: compareResult.to.top3AvgComputedWeight, delta: diff.top3AvgComputedWeightDelta, fmt: (v) => v.toFixed(2), sentiment: "neutral" },
+                { label: "Contradiction Density", fromVal: compareResult.from.contradictionDensity, toVal: compareResult.to.contradictionDensity, delta: diff.contradictionDensityDelta, fmt: (v) => v.toFixed(3), sentiment: "bad-when-positive" },
+                { label: "Stability Proxy", fromVal: compareResult.from.stabilityProxy, toVal: compareResult.to.stabilityProxy, delta: diff.stabilityProxyDelta, fmt: (v) => v.toFixed(3), sentiment: "good-when-positive" },
+                { label: "Total Avoidance", fromVal: compareResult.from.totalAvoidanceCount, toVal: compareResult.to.totalAvoidanceCount, delta: diff.totalAvoidanceDelta, fmt: String, sentiment: "bad-when-positive" },
+                { label: "Total Snooze", fromVal: compareResult.from.totalSnoozeCount, toVal: compareResult.to.totalSnoozeCount, delta: diff.totalSnoozeDelta, fmt: String, sentiment: "bad-when-positive" },
+              ];
+
+              return (
+                <div className="space-y-5">
+                  {/* Metric delta table */}
+                  <div>
+                    <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Metric Deltas
+                    </div>
+                    <div className="overflow-x-auto rounded-md border border-border">
+                      <table className="min-w-full text-xs">
+                        <thead className="bg-muted/40 text-muted-foreground">
+                          <tr>
+                            <th className="p-2 text-left">Metric</th>
+                            <th className="p-2 text-right">{formatDate(compareResult.from.weekStart)}</th>
+                            <th className="p-2 text-right">{formatDate(compareResult.to.weekStart)}</th>
+                            <th className="p-2 text-right">Δ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {metricRows.map(({ label, fromVal, toVal, delta, fmt, sentiment }) => {
+                            const deltaColor =
+                              delta === 0
+                                ? "text-muted-foreground"
+                                : sentiment === "neutral"
+                                  ? "text-foreground"
+                                  : sentiment === "bad-when-positive"
+                                    ? delta > 0
+                                      ? "text-destructive"
+                                      : "text-emerald-600"
+                                    : delta > 0
+                                      ? "text-emerald-600"
+                                      : "text-destructive";
+                            return (
+                              <tr key={label} className="border-t border-border">
+                                <td className="p-2 text-muted-foreground">{label}</td>
+                                <td className="p-2 text-right">{fmt(fromVal)}</td>
+                                <td className="p-2 text-right">{fmt(toVal)}</td>
+                                <td className={`p-2 text-right font-medium ${deltaColor}`}>
+                                  {delta === 0 ? "—" : delta > 0 ? `+${fmt(delta)}` : fmt(delta)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Top-3 movement */}
+                  {diff.top3Movement.some((m) => m.status !== "unchanged") && (
+                    <div>
+                      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Top-3 Movement
+                      </div>
+                      <ul className="space-y-1 text-xs">
+                        {diff.top3Movement
+                          .filter((m) => m.status !== "unchanged")
+                          .map((m) => {
+                            const snap = snapById.get(m.id);
+                            const label = snap ? `[${snap.type}] ${snap.title}` : m.id;
+                            return (
+                              <li key={m.id} className="flex flex-wrap items-center gap-1">
+                                <Link
+                                  href={`/contradictions/${m.id}`}
+                                  className="max-w-xs truncate text-foreground hover:underline"
+                                >
+                                  {label}
+                                </Link>
+                                {m.status === "entered" && (
+                                  <span className="shrink-0 text-emerald-600">entered (#{m.toRank})</span>
+                                )}
+                                {m.status === "exited" && (
+                                  <span className="shrink-0 text-destructive">exited (was #{m.fromRank})</span>
+                                )}
+                                {m.status === "moved" && (
+                                  <span className="shrink-0 text-muted-foreground">
+                                    moved #{m.fromRank} → #{m.toRank}
+                                  </span>
+                                )}
+                              </li>
+                            );
+                          })}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Summary */}
+                  <div>
+                    <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Summary
+                    </div>
+                    <ul className="space-y-0.5 text-xs text-muted-foreground">
+                      {summary.map((s) => (
+                        <li key={s}>· {s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

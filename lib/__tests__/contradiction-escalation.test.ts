@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  computeEscalationCooldown,
   computeEscalationLevel,
   computeRecommendedRung,
   shouldEscalate,
 } from "../contradiction-escalation";
+
+const COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 describe("computeEscalationLevel", () => {
   const now = new Date("2026-02-15T00:00:00.000Z");
@@ -48,6 +51,40 @@ describe("computeRecommendedRung", () => {
     expect(computeRecommendedRung(2)).toBe("rung3_evidence_pressure");
     expect(computeRecommendedRung(3)).toBe("rung4_forced_choice_framing");
     expect(computeRecommendedRung(4)).toBe("rung5_structured_probe_offer");
+  });
+});
+
+describe("computeEscalationCooldown", () => {
+  it("returns inactive with null fields when lastEscalatedAt is null", () => {
+    const result = computeEscalationCooldown(null, new Date("2026-02-15T00:00:00.000Z"));
+    expect(result.active).toBe(false);
+    expect(result.until).toBeNull();
+    expect(result.remainingMs).toBeNull();
+  });
+
+  it("returns active when now is before cooldown expiry", () => {
+    const lastEscalatedAt = new Date("2026-02-15T00:00:00.000Z");
+    const now = new Date("2026-02-15T12:00:00.000Z"); // 12 h later — still in window
+    const result = computeEscalationCooldown(lastEscalatedAt, now);
+    expect(result.active).toBe(true);
+    expect(result.remainingMs).toBeGreaterThan(0);
+    expect(result.until?.toISOString()).toBe("2026-02-16T00:00:00.000Z");
+  });
+
+  it("returns inactive when now equals cooldown expiry boundary", () => {
+    const lastEscalatedAt = new Date("2026-02-14T12:00:00.000Z");
+    const now = new Date(lastEscalatedAt.getTime() + COOLDOWN_MS); // exactly at boundary
+    const result = computeEscalationCooldown(lastEscalatedAt, now);
+    expect(result.active).toBe(false);
+    expect(result.remainingMs).toBe(0);
+  });
+
+  it("returns inactive and remainingMs=0 when now is past cooldown expiry", () => {
+    const lastEscalatedAt = new Date("2026-02-10T00:00:00.000Z");
+    const now = new Date("2026-02-15T00:00:00.000Z"); // 5 days later
+    const result = computeEscalationCooldown(lastEscalatedAt, now);
+    expect(result.active).toBe(false);
+    expect(result.remainingMs).toBe(0);
   });
 });
 

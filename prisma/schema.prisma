@@ -36,6 +36,7 @@ model Session {
   id                        String              @id @default(uuid())
   userId                    String
   label                     String?
+  origin                    String              @default("native")
   startedAt                 DateTime            @default(now())
   endedAt                   DateTime?
   createdAt                 DateTime            @default(now())
@@ -46,6 +47,7 @@ model Session {
 
   @@index([userId])
   @@index([userId, startedAt])
+  @@index([userId, origin])
 }
 
 model Message {
@@ -61,6 +63,7 @@ model Message {
   session                   Session             @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   referenceItemsFromMessage ReferenceItem[]     @relation("ReferenceItemSourceMessage")
   contradictionNodes        ContradictionNode[]
+  evidenceSpans             EvidenceSpan[]
 
   @@index([sessionId, createdAt])
   @@index([userId, createdAt])
@@ -82,10 +85,13 @@ model StripeEvent {
 }
 
 model WeeklyAudit {
-  id                      String   @id @default(cuid())
+  id                      String    @id @default(cuid())
   userId                  String
   weekStart               DateTime
-  generatedAt             DateTime @default(now())
+  generatedAt             DateTime  @default(now())
+  status                  String    @default("draft") // "draft" | "locked"
+  lockedAt                DateTime?
+  inputHash               String?
   activeReferenceCount    Int
   openContradictionCount  Int
   totalContradictionCount Int
@@ -99,6 +105,7 @@ model WeeklyAudit {
 
   @@unique([userId, weekStart])
   @@index([userId, generatedAt])
+  @@index([userId, status])
 }
 
 model ReferenceItem {
@@ -159,6 +166,8 @@ model ContradictionNode {
   @@index([userId, status, weight])
   @@index([userId, lastTouchedAt])
   @@index([userId, escalationLevel, weight])
+  @@index([userId, lastEscalatedAt])
+  @@index([userId, createdAt])
 }
 
 model ContradictionReferenceLink {
@@ -291,4 +300,97 @@ enum ImportUploadStatus {
   complete
   failed
   expired
+}
+
+// ── Internal Metrics ─────────────────────────────────────────────────────────
+
+model InternalMetricEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  sessionId String?
+  name      String
+  level     String   @default("info") // "info" | "warn" | "error"
+  value     Float?
+  meta      Json?
+  source    String   // "client" | "server"
+  route     String?
+  dedupeKey String?
+
+  @@index([userId, createdAt])
+  @@index([name])
+  @@index([userId, name])
+  @@index([dedupeKey])
+}
+
+// ── Derivation Layer ─────────────────────────────────────────────────────────
+
+model DerivationRun {
+  id                  String               @id @default(uuid())
+  userId              String
+  scope               String               // "import" | "native" | "manual"
+  processorVersion    String
+  inputMessageSetHash String
+  status              String               @default("created") // "created" | "completed" | "failed"
+  createdAt           DateTime             @default(now())
+  artifacts           DerivationArtifact[]
+
+  @@index([userId, createdAt])
+  @@index([scope])
+}
+
+model EvidenceSpan {
+  id          String   @id @default(uuid())
+  userId      String
+  messageId   String
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  charStart   Int
+  charEnd     Int
+  contentHash String
+  createdAt   DateTime @default(now())
+  artifactLinks ArtifactEvidenceLink[]
+
+  @@unique([messageId, charStart, charEnd, contentHash])
+  @@index([userId, messageId])
+}
+
+model DerivationArtifact {
+  id              String               @id @default(uuid())
+  userId          String
+  runId           String
+  run             DerivationRun        @relation(fields: [runId], references: [id], onDelete: Cascade)
+  type            String
+  status          String               @default("candidate") // "candidate" | "promoted" | "rejected"
+  payload         Json
+  confidenceScore Float?
+  temporalStart   DateTime?
+  temporalEnd     DateTime?
+  createdAt       DateTime             @default(now())
+  evidenceLinks   ArtifactEvidenceLink[]
+  promotionLinks  ArtifactPromotionLink[]
+
+  @@index([userId, type])
+  @@index([runId])
+}
+
+model ArtifactEvidenceLink {
+  artifactId String
+  spanId     String
+  role       String?
+  artifact   DerivationArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  span       EvidenceSpan       @relation(fields: [spanId], references: [id], onDelete: Cascade)
+
+  @@id([artifactId, spanId])
+}
+
+model ArtifactPromotionLink {
+  artifactId  String
+  entityType  String
+  entityId    String
+  createdAt   DateTime           @default(now())
+  artifact    DerivationArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
+  @@unique([entityType, entityId])
+  @@id([artifactId, entityType, entityId])
+  @@index([artifactId])
 }

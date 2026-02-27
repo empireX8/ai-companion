@@ -8,6 +8,7 @@ import {
   fetchReferences,
   performReferenceActionApi,
 } from "@/lib/nodes-api";
+import { ListSkeleton } from "@/components/skeletons/ListSkeleton";
 
 // ── Type filters ──────────────────────────────────────────────────────────────
 
@@ -160,8 +161,8 @@ export default function ReferencesPage() {
 
   if (loading) {
     return (
-      <div className="h-full p-4 text-sm text-muted-foreground">
-        Loading references...
+      <div className="h-full p-4">
+        <ListSkeleton rows={6} />
       </div>
     );
   }
@@ -343,7 +344,25 @@ export default function ReferencesPage() {
       )}
 
       {filtered.length === 0 ? (
-        <div className="text-sm text-muted-foreground">No references found.</div>
+        items.length === 0 ? (
+          <div className="py-10 text-center">
+            <p className="text-sm font-medium text-foreground">No references yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Import your ChatGPT history to extract references automatically, or start
+              chatting and Double will detect them over time.
+            </p>
+            <Link
+              href="/import"
+              className="mt-3 inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
+            >
+              Import data
+            </Link>
+          </div>
+        ) : (
+          <div className="py-6 text-center text-sm text-muted-foreground">
+            No references match this filter.
+          </div>
+        )
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {filtered.map((item) => {

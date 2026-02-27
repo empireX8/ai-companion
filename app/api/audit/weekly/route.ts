@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 import prismadb from "@/lib/prismadb";
-import { buildWeeklyAudit } from "@/lib/weekly-audit";
+import {
+  buildWeeklyAudit,
+  getWeekStart,
+  WeeklyAuditInvalidDataError,
+  WeeklyAuditLockedError,
+} from "@/lib/weekly-audit";
+import { serverLogMetric } from "@/lib/metrics-server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +20,13 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const latestAudit = await prismadb.weeklyAudit.findFirst({
-      where: { userId },
-      orderBy: { weekStart: "desc" },
+    const weekStart = getWeekStart(new Date());
+    const storedAudit = await prismadb.weeklyAudit.findUnique({
+      where: { userId_weekStart: { userId, weekStart } },
     });
 
-    if (latestAudit) {
-      return NextResponse.json(latestAudit, {
+    if (storedAudit) {
+      return NextResponse.json(storedAudit, {
         headers: {
           "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
         },
@@ -31,6 +37,7 @@ export async function GET() {
     return NextResponse.json(
       {
         ...preview,
+        status: "draft",
         preview: true,
       },
       {
@@ -46,14 +53,32 @@ export async function GET() {
 }
 
 export async function POST() {
+  let authedUserId = "";
   try {
     const { userId } = await auth();
 
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
+    authedUserId = userId;
+
+    // Fast lock check before expensive audit build.
+    const weekStart = getWeekStart(new Date());
+    const existing = await prismadb.weeklyAudit.findUnique({
+      where: { userId_weekStart: { userId, weekStart } },
+    });
+
+    if (existing?.status === "locked") {
+      // Idempotent: snapshot already exists as a locked record — return it.
+      return NextResponse.json(existing, {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      });
+    }
 
     const auditData = await buildWeeklyAudit(userId);
+
     const savedAudit = await prismadb.weeklyAudit.upsert({
       where: {
         userId_weekStart: {
@@ -79,6 +104,27 @@ export async function POST() {
 
     return NextResponse.json(savedAudit);
   } catch (error) {
+    if (error instanceof WeeklyAuditInvalidDataError) {
+      void serverLogMetric({
+        userId: authedUserId,
+        name: "invariant.violation",
+        level: "warn",
+        meta: { code: error.code, route: "/api/audit/weekly", message: error.message },
+        source: "server",
+        route: "/api/audit/weekly",
+      });
+      return NextResponse.json(
+        { error: { code: error.code, message: error.message } },
+        { status: 409 }
+      );
+    }
+    if (error instanceof WeeklyAuditLockedError) {
+      // Defensive: shouldn't reach here due to early check above.
+      return NextResponse.json(
+        { error: { code: error.code, message: error.message } },
+        { status: 409 }
+      );
+    }
     console.log("[WEEKLY_AUDIT_POST_ERROR]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }

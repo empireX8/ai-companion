@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/navbar"
 import { Sidebar } from "@/components/sidebar"
+import { UndoToastContainer } from "@/components/undo/UndoToastContainer"
 
 const RootGroupLayout = ({
   children,
@@ -19,6 +20,8 @@ const RootGroupLayout = ({
           {children}
         </main>
       </div>
+
+      <UndoToastContainer />
     </>
   )
 }

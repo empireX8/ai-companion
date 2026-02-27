@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { computeEscalationCooldown } from "@/lib/contradiction-escalation";
 import {
   type ContradictionFilter,
   type ContradictionListItem,
@@ -11,6 +12,9 @@ import {
   performContradictionAction,
 } from "@/lib/nodes-api";
 import { getSnoozedLabel } from "@/lib/contradiction-snooze-label";
+import { ListSkeleton } from "@/components/skeletons/ListSkeleton";
+import { postMetricEvent } from "@/lib/metrics-api";
+import { undoManager } from "@/lib/undo-manager";
 
 const filterOptions: Array<{ value: ContradictionFilter; label: string }> = [
   { value: "activeish", label: "Open+Explored+Snoozed" },
@@ -241,6 +245,24 @@ export default function ContradictionsPage() {
 
     try {
       await performContradictionAction(id, action, snoozedUntil);
+
+      // Metric + undo registration for reversible actions
+      if (action === "resolve" || action === "snooze" || action === "accept_tradeoff") {
+        void postMetricEvent({
+          name: `contradiction.${action}.executed`,
+          meta: { contradictionId: id },
+          route: "/contradictions",
+        });
+        undoManager.addUndoAction({
+          id,
+          name: `contradiction.${action}`,
+          expiresAt: Date.now() + 10_000,
+          revert: async () => {
+            await performContradictionAction(id, "reopen");
+            triggerReload();
+          },
+        });
+      }
     } catch (err) {
       // Revert optimistic update on failure
       setItems(prevItems);
@@ -374,8 +396,8 @@ export default function ContradictionsPage() {
 
   if (loading) {
     return (
-      <div className="h-full p-4 text-sm text-muted-foreground">
-        Loading contradictions...
+      <div className="h-full p-4">
+        <ListSkeleton rows={8} />
       </div>
     );
   }
@@ -535,11 +557,27 @@ export default function ContradictionsPage() {
       )}
 
       {items.length === 0 ? (
-        <div className="text-sm text-muted-foreground">
-          No contradictions for this filter.
-        </div>
+        filter === "activeish" ? (
+          <div className="py-10 text-center">
+            <p className="text-sm font-medium text-foreground">No contradictions yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Double will surface conflicts as you chat and log evidence.
+            </p>
+            <Link
+              href="/chat"
+              className="mt-3 inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
+            >
+              Go to chat
+            </Link>
+          </div>
+        ) : (
+          <div className="py-10 text-center">
+            <p className="text-sm font-medium text-foreground">No results</p>
+            <p className="mt-1 text-sm text-muted-foreground">Try a different filter.</p>
+          </div>
+        )
       ) : visibleItems.length === 0 ? (
-        <div className="text-sm text-muted-foreground">
+        <div className="py-6 text-center text-sm text-muted-foreground">
           No results match your search.
         </div>
       ) : (
@@ -599,6 +637,9 @@ export default function ContradictionsPage() {
                 item.status === "snoozed"
                   ? getSnoozedLabel(item.snoozedUntil)
                   : null;
+              const cooldownActive = computeEscalationCooldown(
+                item.lastEscalatedAt ? new Date(item.lastEscalatedAt) : null
+              ).active;
 
               return (
                 <article
@@ -645,6 +686,9 @@ export default function ContradictionsPage() {
                       </span>
                     )}{" "}
                     rung={item.recommendedRung ?? "n/a"}
+                    {cooldownActive && (
+                      <span className="ml-1 opacity-60">· cooldown</span>
+                    )}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     lastEvidence={formatDate(item.lastEvidenceAt)} |

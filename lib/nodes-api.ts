@@ -20,6 +20,7 @@ export type ContradictionListItem = {
   recommendedRung: string | null;
   lastEvidenceAt: string | null;
   lastTouchedAt: string;
+  lastEscalatedAt: string | null;
   snoozedUntil: string | null;
 };
 
@@ -37,6 +38,8 @@ export type ContradictionDetail = {
   lastEvidenceAt: string | null;
   evidenceCount: number;
   snoozedUntil: string | null;
+  cooldownActive: boolean;
+  cooldownUntil: string | null;
   evidence: Array<{
     id: string;
     createdAt: string;
@@ -95,14 +98,25 @@ export const buildContradictionUrls = (
   return [`/api/contradiction?status=${filter}`];
 };
 
+type ContradictionPage = {
+  items: ContradictionListItem[];
+  page: number;
+  limit: number;
+  hasMore: boolean;
+};
+
 export async function fetchContradictions(
   filter: ContradictionFilter,
+  opts: { page?: number; limit?: number } = {},
   fetchImpl: typeof fetch = fetch
 ): Promise<ContradictionListItem[] | null> {
   const urls = buildContradictionUrls(filter);
+  const page = opts.page ?? 1;
+  const limit = opts.limit ?? 20;
+
   const responses = await Promise.all(
     urls.map((url) =>
-      fetchImpl(url, {
+      fetchImpl(`${url}&page=${page}&limit=${limit}`, {
         method: "GET",
         cache: "no-store",
       })
@@ -119,11 +133,11 @@ export async function fetchContradictions(
 
   const payloads = (await Promise.all(
     responses.map(async (response) => response.json())
-  )) as ContradictionListItem[][];
+  )) as ContradictionPage[];
 
   const deduped = new Map<string, ContradictionListItem>();
   for (const payload of payloads) {
-    for (const item of payload) {
+    for (const item of payload.items) {
       deduped.set(item.id, item);
     }
   }

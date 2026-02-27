@@ -1,7 +1,15 @@
+import { createHash } from "crypto";
+
 import type { PrismaClient } from "@prisma/client";
 import JSZip from "jszip";
 
 import { detectContradictions } from "./contradiction-detection";
+import {
+  completeDerivationRun,
+  createDerivationArtifact,
+  createDerivationRun,
+  ensureEvidenceSpan,
+} from "./derivation-layer";
 import { detectReferenceIntentType, pickBestPreferenceMatch } from "./memory-governance";
 import prismadb from "./prismadb";
 
@@ -556,6 +564,7 @@ export async function importExtractedConversations({
           data: {
             userId,
             label: conversation.title ?? `Imported conversation ${conversationIndex + 1}`,
+            origin: "imported",
             ...(startedAt ? { startedAt } : {}),
           },
           select: { id: true },
@@ -592,15 +601,76 @@ export async function importExtractedConversations({
       sessionsCreated += 1;
       messagesCreated += created.importedMessageCount;
 
-      for (const importedMessage of created.userMessagesForDetection) {
+      // Derivation scaffolding: create a processing run for this conversation.
+      let derivationRunId: string | null = null;
+      if (created.userMessagesForDetection.length > 0) {
         try {
-          await extractReferenceFromImportedMessage({
+          const run = await createDerivationRun(
+            {
+              userId,
+              scope: "import",
+              processorVersion: "import-chatgpt@1",
+              messageIds: created.userMessagesForDetection.map((m) => m.id),
+            },
+            db
+          );
+          derivationRunId = run.id;
+        } catch {
+          // Derivation scaffolding failure — import continues without tracking.
+        }
+      }
+
+      for (const importedMessage of created.userMessagesForDetection) {
+        // Derivation scaffolding: record an evidence span for this message.
+        let spanId: string | null = null;
+        if (derivationRunId !== null) {
+          try {
+            const contentHash = createHash("sha256")
+              .update(importedMessage.content)
+              .digest("hex");
+            spanId = await ensureEvidenceSpan(
+              {
+                userId,
+                messageId: importedMessage.id,
+                charStart: 0,
+                charEnd: importedMessage.content.length,
+                contentHash,
+              },
+              db
+            );
+          } catch {
+            // scaffolding failure
+          }
+        }
+
+        try {
+          const refCreated = await extractReferenceFromImportedMessage({
             userId,
             message: importedMessage,
             sessionId: created.sessionId,
             db,
             refCache,
           });
+          // Derivation scaffolding: store reference candidate artifact.
+          if (refCreated && derivationRunId !== null) {
+            try {
+              await createDerivationArtifact(
+                {
+                  userId,
+                  runId: derivationRunId,
+                  type: "reference_candidate",
+                  payload: {
+                    messageId: importedMessage.id,
+                    content: importedMessage.content.slice(0, 500),
+                  },
+                  spanIds: spanId !== null ? [spanId] : [],
+                },
+                db
+              );
+            } catch {
+              // scaffolding failure
+            }
+          }
         } catch (error) {
           errors.push(
             `Conversation ${conversationIndex + 1} message ${importedMessage.id}: reference extraction failed (${toErrorMessage(error)})`
@@ -614,6 +684,32 @@ export async function importExtractedConversations({
           });
           if (detections.length === 0) {
             continue;
+          }
+
+          // Derivation scaffolding: store contradiction candidate artifacts.
+          if (derivationRunId !== null) {
+            for (const detection of detections.slice(0, 2)) {
+              try {
+                await createDerivationArtifact(
+                  {
+                    userId,
+                    runId: derivationRunId,
+                    type: "contradiction_candidate",
+                    payload: {
+                      messageId: importedMessage.id,
+                      title: detection.title,
+                      sideA: detection.sideA,
+                      sideB: detection.sideB,
+                      type: detection.type,
+                    },
+                    spanIds: spanId !== null ? [spanId] : [],
+                  },
+                  db
+                );
+              } catch {
+                // scaffolding failure
+              }
+            }
           }
 
           const now = new Date();
@@ -689,6 +785,15 @@ export async function importExtractedConversations({
               error
             )})`
           );
+        }
+      }
+
+      // Derivation scaffolding: mark run complete.
+      if (derivationRunId !== null) {
+        try {
+          await completeDerivationRun(derivationRunId, db);
+        } catch {
+          // scaffolding failure
         }
       }
     } catch (error) {

@@ -67,3 +67,18 @@ export function shouldEscalate(
 
   return now.getTime() - lastEscalatedAt.getTime() >= ESCALATION_COOLDOWN_MS;
 }
+
+export function computeEscalationCooldown(
+  lastEscalatedAt: Date | null,
+  now: Date = new Date()
+) {
+  if (!lastEscalatedAt) {
+    return { active: false, until: null, remainingMs: null };
+  }
+
+  const until = new Date(lastEscalatedAt.getTime() + ESCALATION_COOLDOWN_MS);
+  const remainingMs = until.getTime() - now.getTime();
+  const active = remainingMs > 0;
+
+  return { active, until, remainingMs: active ? remainingMs : 0 };
+}
