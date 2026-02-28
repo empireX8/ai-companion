@@ -369,7 +369,7 @@ export type SessionListItem = {
 
 /** Fetch the user's native (APP) sessions. Returns null on auth failure. */
 export async function listSessions(): Promise<SessionListItem[] | null> {
-  const res = await fetch("/api/session/list", { method: "GET" });
+  const res = await fetch("/api/session/list?origin=app", { method: "GET" });
   if (!res.ok) return null;
   return (await res.json()) as SessionListItem[];
 }

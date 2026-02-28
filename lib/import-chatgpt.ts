@@ -1,5 +1,3 @@
-import { createHash } from "crypto";
-
 import type { PrismaClient } from "@prisma/client";
 import JSZip from "jszip";
 
@@ -8,10 +6,9 @@ import {
   completeDerivationRun,
   createDerivationArtifact,
   createDerivationRun,
-  ensureEvidenceSpan,
 } from "./derivation-layer";
 import { detectReferenceIntentType, pickBestPreferenceMatch } from "./memory-governance";
-import { extractProfileClaims, upsertProfileClaims } from "./profile-derivation";
+import { processMessageForProfile } from "./profile-derivation";
 import prismadb from "./prismadb";
 
 type SupportedRole = "user" | "assistant";
@@ -653,39 +650,15 @@ export async function importExtractedConversations({
       }
 
       for (const importedMessage of created.userMessagesForDetection) {
-        // Derivation scaffolding: record an evidence span for this message.
-        let spanId: string | null = null;
-        if (derivationRunId !== null) {
-          try {
-            const contentHash = createHash("sha256")
-              .update(importedMessage.content)
-              .digest("hex");
-            spanId = await ensureEvidenceSpan(
-              {
-                userId,
-                messageId: importedMessage.id,
-                charStart: 0,
-                charEnd: importedMessage.content.length,
-                contentHash,
-              },
-              db
-            );
-          } catch {
-            // scaffolding failure
-          }
-        }
-
-        // Profile derivation: extract claims from this message.
-        if (spanId !== null) {
-          try {
-            const claims = extractProfileClaims(importedMessage.content);
-            if (claims.length > 0) {
-              await upsertProfileClaims({ userId, claims, spanId, db });
-            }
-          } catch {
-            // scaffolding failure
-          }
-        }
+        // Profile derivation: create EvidenceSpan + extract claims (runs independently of
+        // the DerivationRun — spans are created even when run scaffolding fails).
+        const profileResult = await processMessageForProfile({
+          userId,
+          messageId: importedMessage.id,
+          content: importedMessage.content,
+          db,
+        });
+        const spanId = profileResult?.spanId ?? null;
 
         try {
           const refCreated = await extractReferenceFromImportedMessage({

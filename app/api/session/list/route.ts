@@ -23,13 +23,17 @@ export async function GET(req: Request) {
       return new NextResponse("Invalid origin value", { status: 400 });
     }
 
-    // Build the where clause. Default to APP sessions only.
-    const originWhere =
-      originParam === "all"
-        ? undefined
-        : originParam === "imported"
-          ? { origin: "IMPORTED_ARCHIVE" as const }
-          : { origin: "APP" as const };
+    // Build the where clause. Explicit if-else — never accidentally return
+    // non-APP sessions when origin is missing or "app".
+    let originWhere: { origin?: "APP" | "IMPORTED_ARCHIVE" } = {};
+    if (originParam === "imported") {
+      originWhere = { origin: "IMPORTED_ARCHIVE" };
+    } else if (originParam === "all") {
+      originWhere = {};
+    } else {
+      // "app" or null → APP only (safe default)
+      originWhere = { origin: "APP" };
+    }
 
     const sessions = await prismadb.session.findMany({
       where: { userId, ...originWhere },

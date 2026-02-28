@@ -161,7 +161,7 @@ export default function ChatPage() {
     setIsLoadingSessions(true);
 
     try {
-      const response = await fetch("/api/session/list", { method: "GET" });
+      const response = await fetch("/api/session/list?origin=app", { method: "GET" });
       if (!response.ok) {
         throw new Error("Failed to load sessions");
       }
