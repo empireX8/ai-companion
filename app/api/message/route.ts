@@ -16,6 +16,7 @@ import prismadb from "@/lib/prismadb";
 import { getActiveReferenceMemory } from "@/lib/reference-memory";
 import { SessionMemoryManager } from "@/lib/session-memory";
 import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
+import { processMessageForProfile } from "@/lib/profile-derivation";
 
 type GovernedType = "preference" | "goal" | "constraint";
 
@@ -169,6 +170,15 @@ export async function POST(req: Request) {
 
     if (userMessage.role === "user") {
       await ensureWeeklyAuditForCurrentWeek(userId, new Date());
+    }
+
+    // Native derivation: EvidenceSpan + profile extraction (fire-and-forget).
+    if (normalizedContent.length >= 15) {
+      void processMessageForProfile({
+        userId,
+        messageId: userMessage.id,
+        content: normalizedContent,
+      });
     }
 
     if (userMessage.role === "user" && normalizedContent.length >= 15) {

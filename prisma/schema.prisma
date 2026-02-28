@@ -36,7 +36,10 @@ model Session {
   id                        String              @id @default(uuid())
   userId                    String
   label                     String?
-  origin                    String              @default("native")
+  origin                    SessionOrigin       @default(APP)
+  importedSource            String?
+  importedAt                DateTime?
+  importedExternalId        String?
   startedAt                 DateTime            @default(now())
   endedAt                   DateTime?
   createdAt                 DateTime            @default(now())
@@ -45,9 +48,10 @@ model Session {
   referenceItemsFromSession ReferenceItem[]     @relation("ReferenceItemSourceSession")
   contradictionNodes        ContradictionNode[]
 
+  @@unique([userId, importedExternalId])
   @@index([userId])
   @@index([userId, startedAt])
-  @@index([userId, origin])
+  @@index([userId, origin, createdAt])
 }
 
 model Message {
@@ -237,6 +241,11 @@ model ImportUploadChunk {
   @@index([sessionId, createdAt])
 }
 
+enum SessionOrigin {
+  APP
+  IMPORTED_ARCHIVE
+}
+
 enum Role {
   user
   assistant
@@ -340,18 +349,20 @@ model DerivationRun {
 }
 
 model EvidenceSpan {
-  id          String   @id @default(uuid())
-  userId      String
-  messageId   String
-  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  charStart   Int
-  charEnd     Int
-  contentHash String
-  createdAt   DateTime @default(now())
-  artifactLinks ArtifactEvidenceLink[]
+  id                  String   @id @default(uuid())
+  userId              String
+  messageId           String
+  message             Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  charStart           Int
+  charEnd             Int
+  contentHash         String
+  createdAt           DateTime @default(now())
+  artifactLinks       ArtifactEvidenceLink[]
+  profileArtifactLinks ProfileArtifactEvidenceLink[]
 
   @@unique([messageId, charStart, charEnd, contentHash])
   @@index([userId, messageId])
+  @@index([userId, createdAt])
 }
 
 model DerivationArtifact {
@@ -393,4 +404,48 @@ model ArtifactPromotionLink {
   @@unique([entityType, entityId])
   @@id([artifactId, entityType, entityId])
   @@index([artifactId])
+}
+
+// ── Profile Artifacts ─────────────────────────────────────────────────────────
+
+model ProfileArtifact {
+  id           String                      @id @default(uuid())
+  userId       String
+  type         ProfileArtifactType
+  claim        String
+  claimNorm    String                      // normalized for dedup
+  confidence   Float                       @default(0.5)
+  status       String                      @default("candidate") // "candidate" | "active" | "superseded"
+  firstSeenAt  DateTime                    @default(now())
+  lastSeenAt   DateTime                    @default(now())
+  tags         String[]
+  evidenceLinks ProfileArtifactEvidenceLink[]
+
+  @@unique([userId, type, claimNorm])
+  @@index([userId, type])
+  @@index([userId, status])
+  @@index([userId, lastSeenAt])
+}
+
+model ProfileArtifactEvidenceLink {
+  artifactId  String
+  spanId      String
+  artifact    ProfileArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  span        EvidenceSpan    @relation(fields: [spanId], references: [id], onDelete: Cascade)
+
+  @@id([artifactId, spanId])
+}
+
+enum ProfileArtifactType {
+  BELIEF
+  VALUE
+  GOAL
+  FEAR
+  IDENTITY
+  TRAIT
+  HABIT
+  TOPIC
+  RELATIONSHIP_PATTERN
+  EMOTIONAL_PATTERN
+  COGNITIVE_PATTERN
 }

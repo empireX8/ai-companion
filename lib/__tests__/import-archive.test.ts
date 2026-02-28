@@ -1,0 +1,253 @@
+import type { PrismaClient } from "@prisma/client";
+import { describe, expect, it, vi } from "vitest";
+
+import {
+  extractChatGptConversations,
+  importExtractedConversations,
+  type ExtractedConversation,
+} from "../import-chatgpt";
+
+// ── extractChatGptConversations — externalId capture ─────────────────────────
+
+describe("extractChatGptConversations — externalId", () => {
+  const withMessage = (extra: Record<string, unknown>) => [
+    {
+      ...extra,
+      mapping: {
+        a: {
+          message: {
+            author: { role: "user" },
+            create_time: 1730000000,
+            content: { parts: ["Hello"] },
+          },
+        },
+      },
+    },
+  ];
+
+  it("captures the conversation id as externalId", () => {
+    const { conversations } = extractChatGptConversations(
+      withMessage({ id: "conv-abc-123", title: "Test" })
+    );
+    expect(conversations[0]?.externalId).toBe("conv-abc-123");
+  });
+
+  it("sets externalId to null when conversation has no id field", () => {
+    const { conversations } = extractChatGptConversations(withMessage({ title: "No id" }));
+    expect(conversations[0]?.externalId).toBeNull();
+  });
+
+  it("sets externalId to null for blank/whitespace-only id", () => {
+    const { conversations } = extractChatGptConversations(
+      withMessage({ id: "   ", title: "Empty id" })
+    );
+    expect(conversations[0]?.externalId).toBeNull();
+  });
+});
+
+// ── importExtractedConversations — deduplication + metadata ──────────────────
+
+function baseConversation(overrides: Partial<ExtractedConversation> = {}): ExtractedConversation {
+  return {
+    title: "Test conversation",
+    externalId: "conv-ext-001",
+    messages: [
+      // Keep user message < MIN_DETECTION_LENGTH (15) so detectContradictions
+      // returns early without querying prismadb (makes test DB-independent).
+      { role: "user", content: "Hi archive", createdAt: null },
+      { role: "assistant", content: "Hi", createdAt: null },
+    ],
+    ...overrides,
+  };
+}
+
+type SessionRow = { id: string; userId: string; importedExternalId: string | null };
+
+/**
+ * Builds a minimal Prisma mock that supports the subset of methods called by
+ * importExtractedConversations. The `tx` object is wired to the same in-memory
+ * state so transaction callbacks behave realistically.
+ */
+function makeMockDb(opts: { existingExternalId?: string | null } = {}): {
+  db: PrismaClient;
+  sessionCreateSpy: ReturnType<typeof vi.fn>;
+} {
+  const sessions: SessionRow[] = [];
+  if (opts.existingExternalId != null) {
+    sessions.push({ id: "existing-session", userId: "user_1", importedExternalId: opts.existingExternalId });
+  }
+
+  const sessionCreateSpy = vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+    const id = `session-${sessions.length + 1}`;
+    sessions.push({
+      id,
+      userId: data.userId as string,
+      importedExternalId: (data.importedExternalId as string | undefined) ?? null,
+    });
+    return { id };
+  });
+
+  const sessionFindUnique = async ({
+    where,
+  }: {
+    where: { userId_importedExternalId: { userId: string; importedExternalId: string } };
+  }) => {
+    return (
+      sessions.find(
+        (s) =>
+          s.userId === where.userId_importedExternalId.userId &&
+          s.importedExternalId === where.userId_importedExternalId.importedExternalId
+      ) ?? null
+    );
+  };
+
+  const messageCreate = vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+    id: `msg-${Math.random().toString(16).slice(2)}`,
+    role: data.role,
+    content: data.content,
+  }));
+
+  const tx = {
+    session: { findUnique: sessionFindUnique, create: sessionCreateSpy },
+    message: { create: messageCreate },
+    contradictionNode: { findFirst: async () => null },
+    contradictionEvidence: { create: async () => ({}) },
+    referenceItem: {
+      findMany: async () => [],
+      create: async ({ data }: { data: Record<string, unknown> }) => data,
+    },
+  };
+
+  const db = {
+    $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(tx),
+    referenceItem: {
+      findMany: async () => [],
+      create: async ({ data }: { data: Record<string, unknown> }) => data,
+    },
+    derivationRun: { create: async () => ({ id: "run-1" }), update: async () => ({}) },
+    evidenceSpan: { findUnique: async () => null, create: async () => ({ id: "span-1" }) },
+    derivationArtifact: { create: async () => ({}) },
+    artifactEvidenceLink: { create: async () => ({}) },
+    profileArtifact: { findUnique: async () => null, create: async () => ({ id: "art-1" }), update: async () => ({}) },
+    profileArtifactEvidenceLink: { create: async () => ({}) },
+  } as unknown as PrismaClient;
+
+  return { db, sessionCreateSpy };
+}
+
+describe("importExtractedConversations — deduplication", () => {
+  it("creates a session when no duplicate exists", async () => {
+    const { db } = makeMockDb();
+    const result = await importExtractedConversations({
+      userId: "user_1",
+      conversations: [baseConversation()],
+      db,
+    });
+    expect(result.sessionsCreated).toBe(1);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it("skips silently when externalId was already imported", async () => {
+    const { db } = makeMockDb({ existingExternalId: "conv-ext-001" });
+    const result = await importExtractedConversations({
+      userId: "user_1",
+      conversations: [baseConversation()],
+      db,
+    });
+    expect(result.sessionsCreated).toBe(0);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it("imports a conversation with null externalId (no dedup check)", async () => {
+    const { db, sessionCreateSpy } = makeMockDb();
+    const result = await importExtractedConversations({
+      userId: "user_1",
+      conversations: [baseConversation({ externalId: null })],
+      db,
+    });
+    expect(result.sessionsCreated).toBe(1);
+    // importedExternalId should not be set on the session row
+    expect(sessionCreateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.not.objectContaining({ importedExternalId: expect.anything() }) })
+    );
+  });
+
+  it("deduplicates correctly when two conversations share the same externalId", async () => {
+    const { db } = makeMockDb();
+    // First import creates it; second call with same id is skipped
+    const first = await importExtractedConversations({
+      userId: "user_1",
+      conversations: [baseConversation({ externalId: "dup-id" })],
+      db,
+    });
+    const second = await importExtractedConversations({
+      userId: "user_1",
+      conversations: [baseConversation({ externalId: "dup-id" })],
+      db,
+    });
+    expect(first.sessionsCreated).toBe(1);
+    expect(second.sessionsCreated).toBe(0);
+  });
+});
+
+describe("importExtractedConversations — importedSource", () => {
+  it("defaults importedSource to chatgpt_export_json", async () => {
+    const { db, sessionCreateSpy } = makeMockDb();
+    await importExtractedConversations({
+      userId: "user_1",
+      conversations: [baseConversation()],
+      db,
+    });
+    expect(sessionCreateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ importedSource: "chatgpt_export_json" }),
+      })
+    );
+  });
+
+  it("passes custom importedSource through to session data", async () => {
+    const { db, sessionCreateSpy } = makeMockDb();
+    await importExtractedConversations({
+      userId: "user_1",
+      conversations: [baseConversation()],
+      importedSource: "chatgpt_export_zip",
+      db,
+    });
+    expect(sessionCreateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ importedSource: "chatgpt_export_zip" }),
+      })
+    );
+  });
+
+  it("sets origin to IMPORTED_ARCHIVE on the session", async () => {
+    const { db, sessionCreateSpy } = makeMockDb();
+    await importExtractedConversations({
+      userId: "user_1",
+      conversations: [baseConversation()],
+      db,
+    });
+    expect(sessionCreateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ origin: "IMPORTED_ARCHIVE" }),
+      })
+    );
+  });
+
+  it("sets importedAt to a recent Date on the session", async () => {
+    const { db, sessionCreateSpy } = makeMockDb();
+    const before = new Date();
+    await importExtractedConversations({
+      userId: "user_1",
+      conversations: [baseConversation()],
+      db,
+    });
+    const after = new Date();
+
+    const callData = (sessionCreateSpy.mock.calls[0] as [{ data: Record<string, unknown> }])[0].data;
+    const importedAt = callData.importedAt as Date;
+    expect(importedAt).toBeInstanceOf(Date);
+    expect(importedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
+    expect(importedAt.getTime()).toBeLessThanOrEqual(after.getTime());
+  });
+});

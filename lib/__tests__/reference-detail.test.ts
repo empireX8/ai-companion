@@ -17,6 +17,7 @@ type MockItem = {
   createdAt: Date;
   updatedAt: Date;
   supersedesId: string | null;
+  sourceMessageId: string | null;
 };
 
 function makeItem(overrides: Partial<MockItem> = {}): MockItem {
@@ -29,6 +30,7 @@ function makeItem(overrides: Partial<MockItem> = {}): MockItem {
     createdAt: new Date("2026-01-01"),
     updatedAt: new Date("2026-01-01"),
     supersedesId: null,
+    sourceMessageId: null,
     ...overrides,
   };
 }
@@ -44,6 +46,8 @@ function makeMockDb(opts: {
   items: Record<string, MockItem | null>;
   // Items where supersedesId = a given referenceId
   supersededByMap?: Record<string, MockItem>;
+  // Optional: span to return for a given messageId
+  spanByMessageId?: Record<string, { id: string } | null>;
 }) {
   const db = {
     referenceItem: {
@@ -59,6 +63,14 @@ function makeMockDb(opts: {
         }
 
         return null;
+      },
+    },
+    evidenceSpan: {
+      findFirst: async ({ where }: FindFirstArgs): Promise<{ id: string } | null> => {
+        const messageId =
+          typeof where.messageId === "string" ? where.messageId : null;
+        if (!messageId) return null;
+        return opts.spanByMessageId?.[messageId] ?? null;
       },
     },
   };
@@ -181,5 +193,53 @@ describe("getReferenceDetail", () => {
     const err = new ReferenceDetailNotFoundError();
     expect(err.status).toBe(404);
     expect(err.code).toBe("REFERENCE_NOT_FOUND");
+  });
+
+  it("returns spanId when an EvidenceSpan exists for the sourceMessageId", async () => {
+    const current = makeItem({ id: "ref_1", sourceMessageId: "msg_1" });
+    const db = makeMockDb({
+      items: { ref_1: current },
+      spanByMessageId: { msg_1: { id: "span_42" } },
+    });
+
+    const result = await getReferenceDetail({ userId: "u1", referenceId: "ref_1", db });
+
+    expect(result.current.spanId).toBe("span_42");
+  });
+
+  it("returns spanId null when no EvidenceSpan exists for the sourceMessageId", async () => {
+    const current = makeItem({ id: "ref_1", sourceMessageId: "msg_no_span" });
+    const db = makeMockDb({
+      items: { ref_1: current },
+      spanByMessageId: {},
+    });
+
+    const result = await getReferenceDetail({ userId: "u1", referenceId: "ref_1", db });
+
+    expect(result.current.spanId).toBeNull();
+  });
+
+  it("returns spanId null when sourceMessageId is null", async () => {
+    const current = makeItem({ id: "ref_1", sourceMessageId: null });
+    const db = makeMockDb({ items: { ref_1: current } });
+
+    const result = await getReferenceDetail({ userId: "u1", referenceId: "ref_1", db });
+
+    expect(result.current.spanId).toBeNull();
+  });
+
+  it("chain items (previousVersion, nextVersions) have spanId null", async () => {
+    const current = makeItem({ id: "ref_mid", status: "superseded", supersedesId: "ref_new" });
+    const older = makeItem({ id: "ref_old", status: "superseded", supersedesId: "ref_mid" });
+    const newer = makeItem({ id: "ref_new", status: "active" });
+    const db = makeMockDb({
+      items: { ref_mid: current, ref_new: newer },
+      supersededByMap: { ref_mid: older },
+    });
+
+    const result = await getReferenceDetail({ userId: "u1", referenceId: "ref_mid", db });
+
+    expect(result.previousVersion?.spanId).toBeNull();
+    expect(result.nextVersions[0]?.spanId).toBeNull();
   });
 });

@@ -16,17 +16,23 @@ export async function GET(req: Request) {
 
     if (
       originParam !== null &&
-      originParam !== "native" &&
-      originParam !== "imported"
+      originParam !== "app" &&
+      originParam !== "imported" &&
+      originParam !== "all"
     ) {
       return new NextResponse("Invalid origin value", { status: 400 });
     }
 
-    // Default to "native" — imported archive must be explicitly requested.
-    const origin = originParam ?? "native";
+    // Build the where clause. Default to APP sessions only.
+    const originWhere =
+      originParam === "all"
+        ? undefined
+        : originParam === "imported"
+          ? { origin: "IMPORTED_ARCHIVE" as const }
+          : { origin: "APP" as const };
 
     const sessions = await prismadb.session.findMany({
-      where: { userId, origin },
+      where: { userId, ...originWhere },
       orderBy: { startedAt: "desc" },
       take: 20,
       select: {
@@ -34,6 +40,9 @@ export async function GET(req: Request) {
         label: true,
         startedAt: true,
         endedAt: true,
+        origin: true,
+        importedSource: true,
+        importedAt: true,
       },
     });
 

@@ -14,7 +14,7 @@ export async function POST() {
     const session = await prismadb.session.create({
       data: {
         userId,
-        origin: "native",
+        origin: "APP",
       },
       select: {
         id: true,

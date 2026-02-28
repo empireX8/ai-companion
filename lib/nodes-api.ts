@@ -47,6 +47,7 @@ export type ContradictionDetail = {
     quote: string | null;
     sessionId: string | null;
     messageId: string | null;
+    spanId: string | null;
   }>;
 };
 
@@ -69,6 +70,8 @@ export type ReferenceDetailItem = {
   createdAt: string;
   updatedAt: string;
   supersedesId: string | null;
+  sourceMessageId: string | null;
+  spanId: string | null;
 };
 
 export type ReferenceDetail = {
@@ -353,4 +356,84 @@ export async function performReferenceActionApi(
   }
 
   return res.json();
+}
+
+// ── Session helpers ───────────────────────────────────────────────────────────
+
+export type SessionListItem = {
+  id: string;
+  label: string | null;
+  startedAt: string;
+  endedAt: string | null;
+};
+
+/** Fetch the user's native (APP) sessions. Returns null on auth failure. */
+export async function listSessions(): Promise<SessionListItem[] | null> {
+  const res = await fetch("/api/session/list", { method: "GET" });
+  if (!res.ok) return null;
+  return (await res.json()) as SessionListItem[];
+}
+
+// ── Evidence helpers ──────────────────────────────────────────────────────────
+
+export type EvidenceListItem = {
+  id: string;
+  createdAt: string;
+  excerpt: string;
+  sessionId: string | null;
+  sessionLabel: string | null;
+  origin: "APP" | "IMPORTED_ARCHIVE";
+  artifactCount: number;
+};
+
+export type EvidenceArtifact = {
+  id: string;
+  type: string;
+  claim: string;
+  confidence: number;
+  status: string;
+};
+
+export type EvidenceDetail = {
+  id: string;
+  createdAt: string;
+  content: string;
+  charStart: number;
+  charEnd: number;
+  messageId: string;
+  sessionId: string | null;
+  sessionLabel: string | null;
+  origin: "APP" | "IMPORTED_ARCHIVE";
+  artifacts: EvidenceArtifact[];
+};
+
+export type EvidenceListResponse = {
+  items: EvidenceListItem[];
+  nextCursor: string | null;
+};
+
+export async function fetchEvidenceList(opts: {
+  q?: string;
+  origin?: "app" | "imported" | "all";
+  hasArtifacts?: boolean;
+  limit?: number;
+  cursor?: string;
+} = {}): Promise<EvidenceListResponse | null> {
+  const params = new URLSearchParams();
+  if (opts.q) params.set("q", opts.q);
+  if (opts.origin) params.set("origin", opts.origin);
+  if (opts.hasArtifacts !== undefined) params.set("hasArtifacts", String(opts.hasArtifacts));
+  if (opts.limit) params.set("limit", String(opts.limit));
+  if (opts.cursor) params.set("cursor", opts.cursor);
+  const qs = params.toString();
+  const res = await fetch(`/api/evidence${qs ? `?${qs}` : ""}`, { method: "GET" });
+  if (!res.ok) return null;
+  return (await res.json()) as EvidenceListResponse;
+}
+
+export async function fetchEvidenceById(id: string): Promise<EvidenceDetail | null> {
+  const res = await fetch(`/api/evidence/${id}`, { method: "GET" });
+  if (res.status === 401 || res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to fetch evidence: ${res.status}`);
+  return (await res.json()) as EvidenceDetail;
 }

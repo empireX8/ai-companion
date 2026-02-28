@@ -21,18 +21,29 @@ export async function POST(req: Request) {
       sessionId,
     });
 
+    const sessionsCreated = (result as Record<string, unknown>).sessionsCreated ?? null;
     void serverLogMetric({
       userId,
       name: "import.upload.finalize",
       meta: {
         sessionId,
-        sessionsCreated: (result as Record<string, unknown>).sessionsCreated ?? null,
+        sessionsCreated,
         messagesCreated: (result as Record<string, unknown>).messagesCreated ?? null,
         contradictionsCreated: (result as Record<string, unknown>).contradictionsCreated ?? null,
       },
       source: "server",
       route: "/api/upload/finalize",
     });
+    if (typeof sessionsCreated === "number" && sessionsCreated > 0) {
+      void serverLogMetric({
+        userId,
+        name: "import.archive.created",
+        value: sessionsCreated,
+        meta: { uploadSessionId: sessionId },
+        source: "server",
+        route: "/api/upload/finalize",
+      });
+    }
 
     return NextResponse.json(result, { status: 202 });
   } catch (error) {

@@ -621,10 +621,20 @@ export default function ContradictionDetailPage() {
                 key={ev.id}
                 className="rounded-md border border-border bg-card px-4 py-3"
               >
-                <p className="text-xs text-muted-foreground">
-                  {formatDate(ev.createdAt)}
-                  <span className="ml-2 opacity-60">{evidenceOrigin(ev)}</span>
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(ev.createdAt)}
+                    <span className="ml-2 opacity-60">{evidenceOrigin(ev)}</span>
+                  </p>
+                  {ev.spanId && (
+                    <Link
+                      href={`/evidence/${ev.spanId}`}
+                      className="text-[10px] text-primary/70 hover:text-primary"
+                    >
+                      → span
+                    </Link>
+                  )}
+                </div>
                 {ev.quote ? (
                   <p className="mt-1 text-sm text-foreground">{ev.quote}</p>
                 ) : (

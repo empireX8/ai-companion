@@ -11,6 +11,7 @@ import {
   ensureEvidenceSpan,
 } from "./derivation-layer";
 import { detectReferenceIntentType, pickBestPreferenceMatch } from "./memory-governance";
+import { extractProfileClaims, upsertProfileClaims } from "./profile-derivation";
 import prismadb from "./prismadb";
 
 type SupportedRole = "user" | "assistant";
@@ -23,6 +24,7 @@ type ExtractedMessage = {
 
 export type ExtractedConversation = {
   title: string | null;
+  externalId: string | null;
   messages: ExtractedMessage[];
 };
 
@@ -230,6 +232,10 @@ const parseConversation = (
     typeof conversationRecord.title === "string" && conversationRecord.title.trim().length > 0
       ? conversationRecord.title.trim()
       : null;
+  const externalId =
+    typeof conversationRecord.id === "string" && conversationRecord.id.trim().length > 0
+      ? conversationRecord.id.trim()
+      : null;
 
   const fromMapping = parseConversationFromMapping(conversationRecord);
   const fromMessages = parseConversationFromMessagesArray(conversationRecord);
@@ -248,6 +254,7 @@ const parseConversation = (
   return {
     conversation: {
       title,
+      externalId,
       messages: filtered,
     },
   };
@@ -393,10 +400,12 @@ export function extractChatGptConversations(raw: unknown): {
 export async function ingestChatGptConversationsJson({
   userId,
   jsonBytes,
+  importedSource = "chatgpt_export_json",
   db = prismadb,
 }: {
   userId: string;
   jsonBytes: Buffer;
+  importedSource?: string;
   db?: PrismaClient;
 }): Promise<{
   sessionsCreated: number;
@@ -417,6 +426,7 @@ export async function ingestChatGptConversationsJson({
   const imported = await importExtractedConversations({
     userId,
     conversations: extracted.conversations,
+    importedSource,
     db,
   });
 
@@ -445,7 +455,7 @@ export async function importChatGptExport({
   db?: PrismaClient;
   maxExtractedBytes?: number;
   zipExtractor?: (zipBytes: Buffer, maxBytes: number) => Promise<Buffer>;
-  jsonImporter?: (params: { userId: string; jsonBytes: Buffer; db?: PrismaClient }) => Promise<{
+  jsonImporter?: (params: { userId: string; jsonBytes: Buffer; importedSource?: string; db?: PrismaClient }) => Promise<{
     sessionsCreated: number;
     messagesCreated: number;
     contradictionsCreated: number;
@@ -470,10 +480,10 @@ export async function importChatGptExport({
 
   if (isZip) {
     const jsonBytes = await zipExtractor(bytes, maxExtractedBytes);
-    return jsonImporter({ userId, jsonBytes, db });
+    return jsonImporter({ userId, jsonBytes, importedSource: "chatgpt_export_zip", db });
   }
 
-  return jsonImporter({ userId, jsonBytes: bytes, db });
+  return jsonImporter({ userId, jsonBytes: bytes, importedSource: "chatgpt_export_json", db });
 }
 
 export type GovernedReferenceType = "goal" | "preference" | "constraint";
@@ -538,10 +548,12 @@ export async function extractReferenceFromImportedMessage({
 export async function importExtractedConversations({
   userId,
   conversations,
+  importedSource = "chatgpt_export_json",
   db = prismadb,
 }: {
   userId: string;
   conversations: ExtractedConversation[];
+  importedSource?: string;
   db?: PrismaClient;
 }): Promise<{
   sessionsCreated: number;
@@ -560,11 +572,27 @@ export async function importExtractedConversations({
       const created = await db.$transaction(async (tx) => {
         const startedAt =
           conversation.messages.find((message) => message.createdAt)?.createdAt ?? undefined;
+
+        // Deduplication: skip if this external conversation was already imported.
+        if (conversation.externalId) {
+          const existing = await tx.session.findUnique({
+            where: { userId_importedExternalId: { userId, importedExternalId: conversation.externalId } },
+            select: { id: true },
+          });
+          if (existing) {
+            return null;
+          }
+        }
+
+        const importedAt = new Date();
         const session = await tx.session.create({
           data: {
             userId,
             label: conversation.title ?? `Imported conversation ${conversationIndex + 1}`,
-            origin: "imported",
+            origin: "IMPORTED_ARCHIVE",
+            importedSource,
+            importedAt,
+            ...(conversation.externalId ? { importedExternalId: conversation.externalId } : {}),
             ...(startedAt ? { startedAt } : {}),
           },
           select: { id: true },
@@ -598,6 +626,10 @@ export async function importExtractedConversations({
         };
       });
 
+      if (!created) {
+        // Duplicate — already imported under the same externalId; skip silently.
+        continue;
+      }
       sessionsCreated += 1;
       messagesCreated += created.importedMessageCount;
 
@@ -638,6 +670,18 @@ export async function importExtractedConversations({
               },
               db
             );
+          } catch {
+            // scaffolding failure
+          }
+        }
+
+        // Profile derivation: extract claims from this message.
+        if (spanId !== null) {
+          try {
+            const claims = extractProfileClaims(importedMessage.content);
+            if (claims.length > 0) {
+              await upsertProfileClaims({ userId, claims, spanId, db });
+            }
           } catch {
             // scaffolding failure
           }

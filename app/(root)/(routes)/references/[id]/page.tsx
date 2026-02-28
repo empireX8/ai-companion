@@ -282,6 +282,16 @@ export default function ReferenceDetailPage() {
       {/* Section 1 — Current reference */}
       <section className="rounded-md border border-border bg-card p-5">
         <p className="text-base leading-relaxed text-foreground">{current.statement}</p>
+        {current.spanId && (
+          <div className="mt-2">
+            <Link
+              href={`/evidence/${current.spanId}`}
+              className="text-xs text-primary/70 hover:text-primary"
+            >
+              → View source evidence span
+            </Link>
+          </div>
+        )}
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-3">
           {(
             [

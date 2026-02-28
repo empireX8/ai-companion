@@ -11,6 +11,7 @@ const DETAIL_SELECT = {
   createdAt: true,
   updatedAt: true,
   supersedesId: true,
+  sourceMessageId: true,
 } as const;
 
 export type ReferenceDetailItem = {
@@ -22,6 +23,9 @@ export type ReferenceDetailItem = {
   createdAt: Date;
   updatedAt: Date;
   supersedesId: string | null;
+  sourceMessageId: string | null;
+  /** First EvidenceSpan ID for the sourceMessage, if one exists. */
+  spanId: string | null;
 };
 
 export type ReferenceDetailResult = {
@@ -68,6 +72,17 @@ export async function getReferenceDetail({
     throw new ReferenceDetailNotFoundError();
   }
 
+  // Look up EvidenceSpan for the source message (citation backbone)
+  let spanId: string | null = null;
+  if (current.sourceMessageId) {
+    const span = await db.evidenceSpan.findFirst({
+      where: { messageId: current.sourceMessageId, userId },
+      select: { id: true },
+      orderBy: { createdAt: "asc" },
+    });
+    spanId = span?.id ?? null;
+  }
+
   // Older item that was superseded to produce the current one
   const previousVersion = await db.referenceItem.findFirst({
     where: { supersedesId: referenceId, userId },
@@ -82,8 +97,12 @@ export async function getReferenceDetail({
       where: { id: current.supersedesId, userId },
       select: DETAIL_SELECT,
     });
-    if (next) nextVersions.push(next);
+    if (next) nextVersions.push({ ...next, spanId: null });
   }
 
-  return { current, previousVersion: previousVersion ?? null, nextVersions };
+  return {
+    current: { ...current, spanId },
+    previousVersion: previousVersion ? { ...previousVersion, spanId: null } : null,
+    nextVersions,
+  };
 }

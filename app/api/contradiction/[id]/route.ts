@@ -93,9 +93,33 @@ export async function GET(
       return new NextResponse("Contradiction not found", { status: 404 });
     }
 
+    // Batch-look up EvidenceSpans for evidence items that have a messageId
+    const evidenceMessageIds = node.evidence
+      .map((ev) => ev.messageId)
+      .filter((mid): mid is string => Boolean(mid));
+
+    const spanByMessageId = new Map<string, string>();
+    if (evidenceMessageIds.length > 0) {
+      const spans = await prismadb.evidenceSpan.findMany({
+        where: { messageId: { in: evidenceMessageIds }, userId },
+        select: { id: true, messageId: true },
+      });
+      for (const span of spans) {
+        if (!spanByMessageId.has(span.messageId)) {
+          spanByMessageId.set(span.messageId, span.id);
+        }
+      }
+    }
+
+    const evidenceWithSpans = node.evidence.map((ev) => ({
+      ...ev,
+      spanId: ev.messageId ? (spanByMessageId.get(ev.messageId) ?? null) : null,
+    }));
+
     const cooldown = computeEscalationCooldown(node.lastEscalatedAt);
     return NextResponse.json({
       ...node,
+      evidence: evidenceWithSpans,
       cooldownActive: cooldown.active,
       cooldownUntil: cooldown.until?.toISOString() ?? null,
     });
