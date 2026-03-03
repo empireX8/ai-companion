@@ -3,6 +3,9 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
+import { DomainListSlot } from "@/components/layout/DomainListSlot";
+import { ImportHistoryPanel } from "./_components/ImportHistoryPanel";
+
 type ImportSummary = {
   sessionsCreated: number;
   messagesCreated: number;
@@ -296,7 +299,11 @@ export default function ImportPage() {
   };
 
   return (
-    <div className="h-full space-y-4 p-4">
+    <>
+      <DomainListSlot>
+        <ImportHistoryPanel />
+      </DomainListSlot>
+      <div className="h-full space-y-4 p-4">
       <h1 className="text-lg font-medium">Import Your ChatGPT History</h1>
       <p className="text-sm text-muted-foreground">
         Upload your ChatGPT export and let Double analyze your cognitive patterns,
@@ -468,5 +475,6 @@ export default function ImportPage() {
         </section>
       ) : null}
     </div>
+    </>
   );
 }

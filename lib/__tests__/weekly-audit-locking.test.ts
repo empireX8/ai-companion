@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  WeeklyAuditLockedError,
-  ensureWeeklyAuditForWeekStart,
-  getWeekStart,
-} from "../weekly-audit";
+import { ensureWeeklyAuditForWeekStart, getWeekStart } from "../weekly-audit";
 import {
   computeWeeklyAuditHash,
   type WeeklyAuditHashInput,
@@ -101,13 +97,14 @@ describe("computeWeeklyAuditHash", () => {
 // ── Status transition: only draft → locked ────────────────────────────────────
 
 describe("WeeklyAudit status transitions", () => {
-  it("only allows draft → locked (not locked → locked)", async () => {
+  it("ensure is a no-op for locked audits — resolves without creating", async () => {
+    const now = new Date("2026-02-18T12:00:00.000Z");
     const db = createBaseDb({
       findUniqueResult: { id: "audit_1", status: "locked" },
     });
-    await expect(
-      ensureWeeklyAuditForWeekStart("user-1", new Date("2026-02-18T12:00:00.000Z"), db)
-    ).rejects.toThrow(WeeklyAuditLockedError);
+    const result = await ensureWeeklyAuditForWeekStart("user-1", now, db);
+    expect(result).toMatchObject({ created: false, locked: true });
+    expect(db.weeklyAudit.create).not.toHaveBeenCalled();
   });
 
   it("allows normal create when audit is in draft status (no existing record)", async () => {
@@ -119,62 +116,66 @@ describe("WeeklyAudit status transitions", () => {
   });
 });
 
-// ── Cannot modify locked audit (via ensure) ───────────────────────────────────
+// ── ensure-path is read-only for locked audits ────────────────────────────────
 
 describe("ensureWeeklyAuditForWeekStart — locked guard", () => {
-  it("throws WeeklyAuditLockedError when existing audit is locked", async () => {
+  it("resolves with locked:true when existing audit is locked (does not throw)", async () => {
+    const now = new Date("2026-02-18T12:00:00.000Z");
     const db = createBaseDb({
       findUniqueResult: { id: "audit_locked", status: "locked" },
     });
 
-    await expect(
-      ensureWeeklyAuditForWeekStart("user-1", new Date("2026-02-18T12:00:00.000Z"), db)
-    ).rejects.toThrow(WeeklyAuditLockedError);
+    const result = await ensureWeeklyAuditForWeekStart("user-1", now, db);
+    expect(result).toMatchObject({ created: false, locked: true });
 
     // Must not attempt creation
     expect(db.weeklyAudit.create).not.toHaveBeenCalled();
   });
 
-  it("skips (returns created:false) when existing audit is draft", async () => {
+  it("skips (returns created:false, locked:false) when existing audit is draft", async () => {
     const now = new Date("2026-02-18T12:00:00.000Z");
     const db = createBaseDb({
       findUniqueResult: { id: "audit_draft", status: "draft" },
     });
 
     const result = await ensureWeeklyAuditForWeekStart("user-1", now, db);
-    expect(result).toEqual({ weekStart: getWeekStart(now), created: false });
+    expect(result).toEqual({ weekStart: getWeekStart(now), created: false, locked: false });
     expect(db.weeklyAudit.create).not.toHaveBeenCalled();
   });
 
-  it("error message includes the audit id", async () => {
+  it("return value carries locked:true so callers can distinguish locked from draft", async () => {
     const db = createBaseDb({
       findUniqueResult: { id: "audit_xyz", status: "locked" },
     });
 
-    const err = await ensureWeeklyAuditForWeekStart(
+    const result = await ensureWeeklyAuditForWeekStart(
       "user-1",
       new Date("2026-02-18T12:00:00.000Z"),
       db
-    ).catch((e: unknown) => e);
+    );
 
-    expect(err).toBeInstanceOf(WeeklyAuditLockedError);
-    expect((err as WeeklyAuditLockedError).message).toContain("audit_xyz");
+    expect(result.locked).toBe(true);
+    expect(result.created).toBe(false);
   });
 });
 
-// ── Backfill refuses locked audit ─────────────────────────────────────────────
+// ── Backfill detects locked audits via return value ───────────────────────────
 
-describe("backfill refuses locked audits", () => {
-  it("throws when backfill encounters a locked week", async () => {
-    // Simulates what backfill does: calls ensureWeeklyAuditForWeekStart,
-    // which should throw for a locked audit.
+describe("backfill detects locked audits", () => {
+  it("returns locked:true (not created, not thrown) for a locked week", async () => {
+    // Backfill now branches on ensured.locked instead of catching WeeklyAuditLockedError.
     const db = createBaseDb({
       findUniqueResult: { id: "week_locked", status: "locked" },
     });
 
-    await expect(
-      ensureWeeklyAuditForWeekStart("user-1", new Date("2026-02-10T00:00:00.000Z"), db)
-    ).rejects.toBeInstanceOf(WeeklyAuditLockedError);
+    const result = await ensureWeeklyAuditForWeekStart(
+      "user-1",
+      new Date("2026-02-10T00:00:00.000Z"),
+      db
+    );
+    expect(result.locked).toBe(true);
+    expect(result.created).toBe(false);
+    expect(db.weeklyAudit.create).not.toHaveBeenCalled();
   });
 });
 
@@ -221,28 +222,21 @@ describe("locked audit metric stability", () => {
   });
 });
 
-// ── Cannot lock twice ─────────────────────────────────────────────────────────
+// ── Cannot lock twice — ensure is always a no-op for locked audits ────────────
 
 describe("cannot lock twice", () => {
-  it("WeeklyAuditLockedError is thrown when attempting to modify a locked record via ensure", async () => {
+  it("ensure resolves without mutating for a locked record (called repeatedly)", async () => {
+    const now = new Date("2026-02-18T12:00:00.000Z");
     const db = createBaseDb({
       findUniqueResult: { id: "audit_already_locked", status: "locked" },
     });
 
-    const call1 = ensureWeeklyAuditForWeekStart(
-      "user-1",
-      new Date("2026-02-18T12:00:00.000Z"),
-      db
-    );
-    await expect(call1).rejects.toThrow(WeeklyAuditLockedError);
+    const result1 = await ensureWeeklyAuditForWeekStart("user-1", now, db);
+    expect(result1).toMatchObject({ created: false, locked: true });
 
-    // Second attempt with same locked audit still throws
-    const call2 = ensureWeeklyAuditForWeekStart(
-      "user-1",
-      new Date("2026-02-18T12:00:00.000Z"),
-      db
-    );
-    await expect(call2).rejects.toThrow(WeeklyAuditLockedError);
+    // Second call — same locked audit, still no-op
+    const result2 = await ensureWeeklyAuditForWeekStart("user-1", now, db);
+    expect(result2).toMatchObject({ created: false, locked: true });
 
     // Never attempted to create
     expect(db.weeklyAudit.create).not.toHaveBeenCalled();

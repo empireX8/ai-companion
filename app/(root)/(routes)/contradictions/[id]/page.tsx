@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { DomainListSlot } from "@/components/layout/DomainListSlot";
+import { ContradictionListPanel } from "../_components/ContradictionListPanel";
+
 import {
   type AddEvidencePayload,
   type ContradictionDetail,
@@ -344,6 +347,11 @@ export default function ContradictionDetailPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
+    <>
+      <DomainListSlot>
+        <ContradictionListPanel />
+      </DomainListSlot>
+
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       {/* Snooze modal */}
       {snoozeOpen && (
@@ -816,5 +824,6 @@ export default function ContradictionDetailPage() {
         </dl>
       </section>
     </div>
+    </>
   );
 }

@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
-import {
-  addWeeks,
-  ensureWeeklyAuditForWeekStart,
-  getWeekStart,
-  WeeklyAuditLockedError,
-} from "@/lib/weekly-audit";
+import { addWeeks, ensureWeeklyAuditForWeekStart, getWeekStart } from "@/lib/weekly-audit";
 
 export const dynamic = "force-dynamic";
 
@@ -40,17 +35,13 @@ export async function POST(req: Request) {
         const ensured = await ensureWeeklyAuditForWeekStart(userId, targetNow);
         if (ensured.created) {
           createdWeekStarts.push(weekStartIso);
+        } else if (ensured.locked) {
+          skippedLockedWeekStarts.push(weekStartIso);
         } else {
           skippedExistingWeekStarts.push(weekStartIso);
         }
       } catch (e) {
-        if (e instanceof WeeklyAuditLockedError) {
-          skippedLockedWeekStarts.push(weekStartIso);
-        } else {
-          errors.push(
-            `${weekStartIso}: ${e instanceof Error ? e.message : String(e)}`
-          );
-        }
+        errors.push(`${weekStartIso}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
 

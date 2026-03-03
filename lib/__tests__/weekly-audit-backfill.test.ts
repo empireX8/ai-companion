@@ -33,14 +33,25 @@ describe("addWeeks", () => {
 });
 
 describe("ensureWeeklyAuditForWeekStart", () => {
-  it("returns created:false when weekly audit exists", async () => {
+  it("returns created:false when weekly audit exists (draft)", async () => {
     const now = new Date("2026-02-18T12:00:00.000Z");
     const db = createBaseDb();
-    db.weeklyAudit.findUnique.mockResolvedValue({ id: "existing-audit" });
+    db.weeklyAudit.findUnique.mockResolvedValue({ id: "existing-audit", status: "draft" });
 
     const result = await ensureWeeklyAuditForWeekStart("user-1", now, db);
 
-    expect(result).toEqual({ weekStart: getWeekStart(now), created: false });
+    expect(result).toEqual({ weekStart: getWeekStart(now), created: false, locked: false });
+    expect(db.weeklyAudit.create).not.toHaveBeenCalled();
+  });
+
+  it("returns created:false locked:true when weekly audit is locked", async () => {
+    const now = new Date("2026-02-18T12:00:00.000Z");
+    const db = createBaseDb();
+    db.weeklyAudit.findUnique.mockResolvedValue({ id: "locked-audit", status: "locked" });
+
+    const result = await ensureWeeklyAuditForWeekStart("user-1", now, db);
+
+    expect(result).toEqual({ weekStart: getWeekStart(now), created: false, locked: true });
     expect(db.weeklyAudit.create).not.toHaveBeenCalled();
   });
 
@@ -52,7 +63,7 @@ describe("ensureWeeklyAuditForWeekStart", () => {
 
     const result = await ensureWeeklyAuditForWeekStart("user-1", now, db);
 
-    expect(result).toEqual({ weekStart: getWeekStart(now), created: true });
+    expect(result).toEqual({ weekStart: getWeekStart(now), created: true, locked: false });
     expect(db.weeklyAudit.create).toHaveBeenCalledTimes(1);
   });
 
@@ -64,6 +75,6 @@ describe("ensureWeeklyAuditForWeekStart", () => {
 
     const result = await ensureWeeklyAuditForWeekStart("user-1", now, db);
 
-    expect(result).toEqual({ weekStart: getWeekStart(now), created: false });
+    expect(result).toEqual({ weekStart: getWeekStart(now), created: false, locked: false });
   });
 });

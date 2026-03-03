@@ -432,11 +432,13 @@ export function MemoryPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-foreground">
-          MEMORY
-        </h2>
-        {onTogglePanel ? (
+      {/* Header shown only in mobile sheet context (onTogglePanel present).
+          On desktop the chat toolbar already provides the Memory column header. */}
+      {onTogglePanel && (
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/60 px-4">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-foreground">
+            MEMORY
+          </h2>
           <button
             type="button"
             onClick={onTogglePanel}
@@ -444,8 +446,8 @@ export function MemoryPanel({
           >
             Close
           </button>
-        ) : null}
-      </div>
+        </div>
+      )}
 
       <div className="flex-1 space-y-7 overflow-y-auto p-4">
         <section className="rounded-lg border border-border bg-card/40 p-3">

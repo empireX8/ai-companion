@@ -25,8 +25,8 @@ type WeeklyAuditEnsureDb = WeeklyAuditMetricsDb & {
   weeklyAudit: {
     findUnique: (args: {
       where: { userId_weekStart: { userId: string; weekStart: Date } };
-      select?: { id: true; status?: true };
-    }) => Promise<{ id: string; status?: string } | null>;
+      select?: { id: true; status: true };
+    }) => Promise<{ id: string; status: string } | null>;
     create: (args: { data: WeeklyAuditInput }) => Promise<{ id: string }>;
   };
 };
@@ -279,7 +279,7 @@ export async function ensureWeeklyAuditForWeekStart(
   userId: string,
   targetNow: Date,
   db: WeeklyAuditEnsureDb = prismadb
-): Promise<{ weekStart: Date; created: boolean }> {
+): Promise<{ weekStart: Date; created: boolean; locked: boolean }> {
   const weekStart = getWeekStart(targetNow);
   const existing = await db.weeklyAudit.findUnique({
     where: {
@@ -292,10 +292,10 @@ export async function ensureWeeklyAuditForWeekStart(
   });
 
   if (existing) {
-    if (existing.status === "locked") {
-      throw new WeeklyAuditLockedError(existing.id);
-    }
-    return { weekStart, created: false };
+    // Locked audits are immutable — ensure-path is read-only and must not throw.
+    // Only explicit mutation routes (backfill, recompute, lock) should reject locked audits.
+    const locked = existing.status === "locked";
+    return { weekStart, created: false, locked };
   }
 
   const auditData = await buildWeeklyAudit(userId, targetNow, db);
@@ -304,10 +304,10 @@ export async function ensureWeeklyAuditForWeekStart(
     await db.weeklyAudit.create({
       data: auditData,
     });
-    return { weekStart, created: true };
+    return { weekStart, created: true, locked: false };
   } catch (error) {
     if (isUniqueConstraintError(error)) {
-      return { weekStart, created: false };
+      return { weekStart, created: false, locked: false };
     }
 
     throw error;

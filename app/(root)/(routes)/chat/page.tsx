@@ -4,24 +4,23 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import Link from "next/link";
 import {
   Brain,
-  Clock3,
   ChevronLeft,
-  ChevronRight,
-  Layers,
-  Menu,
+  Clock3,
   MessageSquare,
   PanelLeft,
-  Plus,
   Sparkles,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
 import { MemoryPanel } from "./_components/memory-panel";
-import { NowTray } from "./_components/now-tray";
+import { SessionListPanel } from "./_components/SessionListPanel";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
 import { useProModal } from "@/hooks/use-pro-modal";
+import { DomainListSlot } from "@/components/layout/DomainListSlot";
+import { useDomainListPanel } from "@/components/layout/DomainListContext";
+import { ChatContextDrawer } from "@/components/chat/ChatContextDrawer";
 
 type ChatMessage = {
   id: string;
@@ -73,26 +72,6 @@ type PendingReferenceItem = {
   updatedAt: string;
 } | null;
 
-type TopContradiction = {
-  id: string;
-  title: string;
-  type: string;
-  status: string;
-  recommendedRung: string | null;
-  lastEvidenceAt: string | null;
-  sideA: string;
-  sideB: string;
-};
-
-type WeeklyAuditSummary = {
-  weekStart: string;
-  activeReferenceCount: number;
-  openContradictionCount: number;
-  contradictionDensity: number;
-  stabilityProxy: number;
-  preview?: boolean;
-};
-
 const SESSION_STORAGE_KEY = "double:lastSessionId";
 
 const shortenId = (id: string) => {
@@ -107,6 +86,7 @@ const createTempId = () =>
 
 export default function ChatPage() {
   const proModal = useProModal();
+  const { toggleCollapsed } = useDomainListPanel();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -139,16 +119,10 @@ export default function ChatPage() {
     useState<ReferenceConfidence>("medium");
   const [pendingCandidate, setPendingCandidate] = useState<PendingReferenceItem>(null);
 
-  const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
-  const [mobileNodesOpen, setMobileNodesOpen] = useState(false);
-  const [mobileNowOpen, setMobileNowOpen] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
   const [mobileMemoryOpen, setMobileMemoryOpen] = useState(false);
   const [mobileSessionsOpen, setMobileSessionsOpen] = useState(false);
-
-  const [topContradictions, setTopContradictions] = useState<TopContradiction[]>([]);
-  const [weeklyAudit, setWeeklyAudit] = useState<WeeklyAuditSummary | null>(null);
-  const [isLoadingNow, setIsLoadingNow] = useState(false);
 
   const [isUserScrolled, setIsUserScrolled] = useState(false);
   const messageScrollRef = useRef<HTMLDivElement>(null);
@@ -229,41 +203,6 @@ export default function ChatPage() {
     setPendingCandidate(data);
   }, []);
 
-  const fetchNowDashboard = useCallback(async () => {
-    setIsLoadingNow(true);
-
-    try {
-      const [contradictionsResponse, weeklyAuditResponse] = await Promise.all([
-        fetch("/api/contradiction?top=3&mode=read_only", {
-          method: "GET",
-          cache: "no-store",
-        }),
-        fetch("/api/audit/weekly", {
-          method: "GET",
-          cache: "no-store",
-        }),
-      ]);
-
-      if (contradictionsResponse.ok) {
-        const contradictionData = (await contradictionsResponse.json()) as TopContradiction[];
-        setTopContradictions(contradictionData);
-      } else {
-        setTopContradictions([]);
-      }
-
-      if (weeklyAuditResponse.ok) {
-        const auditData = (await weeklyAuditResponse.json()) as WeeklyAuditSummary;
-        setWeeklyAudit(auditData);
-      } else {
-        setWeeklyAudit(null);
-      }
-    } catch {
-      setTopContradictions([]);
-      setWeeklyAudit(null);
-    } finally {
-      setIsLoadingNow(false);
-    }
-  }, []);
 
   const setActiveSession = useCallback((nextSessionId: string) => {
     setSessionId(nextSessionId);
@@ -308,7 +247,6 @@ export default function ChatPage() {
         await fetchMessages(activeSessionId);
         await fetchSavedReferences();
         await fetchPendingCandidate(activeSessionId);
-        await fetchNowDashboard();
       } catch {
         if (!isMounted) {
           return;
@@ -333,7 +271,6 @@ export default function ChatPage() {
     fetchPendingCandidate,
     fetchSavedReferences,
     fetchSessions,
-    fetchNowDashboard,
     setActiveSession,
   ]);
 
@@ -414,17 +351,6 @@ export default function ChatPage() {
     scrollToBottom(false);
   }, [messages, scrollToBottom]);
 
-  useEffect(() => {
-    void fetchNowDashboard();
-    const intervalId = window.setInterval(() => {
-      void fetchNowDashboard();
-    }, 30000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [fetchNowDashboard]);
-
   const shortSessionId = useMemo(() => {
     if (!sessionId) {
       return "...";
@@ -432,11 +358,8 @@ export default function ChatPage() {
     return shortenId(sessionId);
   }, [sessionId]);
   const desktopGridColumns = useMemo(
-    () =>
-      `${leftCollapsed ? "3.5rem" : "18rem"} minmax(0, 1fr) ${
-        rightCollapsed ? "2.75rem" : "20rem"
-      }`,
-    [leftCollapsed, rightCollapsed]
+    () => `minmax(0, 1fr) ${rightCollapsed ? "2.75rem" : "20rem"}`,
+    [rightCollapsed]
   );
 
   const memorySourceSessionId = selectedSessionId ?? sessionId;
@@ -572,7 +495,6 @@ export default function ChatPage() {
 
         await fetchMessages(sessionId);
         await fetchPendingCandidate(sessionId);
-        await fetchNowDashboard();
         setContent("");
         setMobileMemoryOpen(false);
       } catch {
@@ -587,7 +509,7 @@ export default function ChatPage() {
         setIsSending(false);
       }
     },
-    [fetchMessages, fetchNowDashboard, fetchPendingCandidate, isSending, sessionId]
+    [fetchMessages, fetchPendingCandidate, isSending, sessionId]
   );
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -774,224 +696,32 @@ export default function ChatPage() {
     setIsUserScrolled(distanceToBottom > 40);
   };
 
-  const renderNowSummary = () => (
-    <div className="space-y-3">
-      <div className="rounded-md border border-border bg-background p-3">
-        <p className="font-display text-[10px] uppercase tracking-wider text-text-dim">This week</p>
-        {weeklyAudit ? (
-          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded border border-border p-2">
-              <p className="text-text-dim">Active refs</p>
-              <p className="font-semibold text-foreground">{weeklyAudit.activeReferenceCount}</p>
-            </div>
-            <div className="rounded border border-border p-2">
-              <p className="text-text-dim">Open tensions</p>
-              <p className="font-semibold text-foreground">{weeklyAudit.openContradictionCount}</p>
-            </div>
-            <div className="rounded border border-border p-2">
-              <p className="text-text-dim">Density</p>
-              <p className="font-semibold text-foreground">
-                {weeklyAudit.contradictionDensity.toFixed(2)}
-              </p>
-            </div>
-            <div className="rounded border border-border p-2">
-              <p className="text-text-dim">Stability</p>
-              <p className="font-semibold text-foreground">{weeklyAudit.stabilityProxy.toFixed(2)}</p>
-            </div>
-          </div>
-        ) : (
-          <p className="mt-2 text-xs text-muted-foreground">No weekly audit yet.</p>
-        )}
-        <Link
-          href="/audit"
-          className="mt-2 inline-flex text-xs text-primary transition-opacity hover:opacity-80"
-        >
-          Open full audit
-        </Link>
-      </div>
 
-      <div className="rounded-md border border-border bg-background p-3">
-        <p className="font-display text-[10px] uppercase tracking-wider text-text-dim">
-          Top contradictions
-        </p>
-        <NowTray
-          items={topContradictions}
-          onActionComplete={fetchNowDashboard}
-          onNavigate={saveScrollPosition}
-        />
-      </div>
-    </div>
-  );
-
-  const renderNodesTools = (collapsed: boolean) => (
-    <div className="flex h-full flex-col">
-      <div className="border-b border-border p-3">
-        {!collapsed ? (
-          <>
-            <p className="font-display text-xs font-semibold uppercase tracking-wider text-foreground">
-              Nodes and tools
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Pull context, then continue chat.</p>
-          </>
-        ) : (
-          <div className="flex justify-center">
-            <Layers className="h-4 w-4 text-muted-foreground" />
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-2">
-        {!collapsed ? (
-          <div className="space-y-2">
-            <div className="rounded-md border border-border bg-background p-3">
-              <p className="text-xs font-semibold text-foreground">Contradictions (Top 3)</p>
-              {isLoadingNow ? (
-                <p className="mt-1 text-xs text-muted-foreground">Loading...</p>
-              ) : topContradictions.length === 0 ? (
-                <p className="mt-1 text-xs text-muted-foreground">None yet.</p>
-              ) : (
-                <ul className="mt-2 space-y-2">
-                  {topContradictions.map((node) => (
-                    <li key={node.id} className="rounded border border-border p-2">
-                      <p className="line-clamp-1 text-xs text-text-dim">[{node.type}] {node.status}</p>
-                      <p className="line-clamp-2 text-sm text-foreground">{node.title}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Link
-                href="/contradictions"
-                className="mt-2 inline-flex text-xs text-primary transition-opacity hover:opacity-80"
-              >
-                Open contradiction list
-              </Link>
-            </div>
-
-            <div className="rounded-md border border-border bg-background p-3">
-              <p className="text-xs font-semibold text-foreground">References and memory</p>
-              <p className="mt-1 text-xs text-muted-foreground">Read-only node list.</p>
-              <Link
-                href="/references"
-                className="mt-2 inline-flex text-xs text-primary transition-opacity hover:opacity-80"
-              >
-                Open reference list
-              </Link>
-            </div>
-
-            <div className="rounded-md border border-border bg-background p-3">
-              <Link href="/audit" className="text-sm text-primary transition-opacity hover:opacity-80">
-                Weekly audit
-              </Link>
-              <p className="mt-1 text-xs text-muted-foreground">Facts-only weekly trend.</p>
-              <Link
-                href="/import"
-                className="mt-2 inline-flex text-xs text-primary transition-opacity hover:opacity-80"
-              >
-                Import chat export
-              </Link>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {!collapsed ? (
-        <div className="border-t border-border p-2">
-          <button
-            type="button"
-            onClick={() => setMobileSessionsOpen(true)}
-            className="w-full rounded-md border border-border px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Open sessions
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-
-  const renderSessionsList = () => (
-    <div className="flex h-full flex-col">
-      <div className="border-b border-border p-2">
-        <button
-          type="button"
-          onClick={() => void onCreateNewSession()}
-          disabled={isCreatingSession || isLoadingSession}
-          className="flex w-full items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4 shrink-0" />
-          <span>{isCreatingSession ? "Creating..." : "New session"}</span>
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-2">
-        {isLoadingSessions ? (
-          <p className="px-2 py-2 text-xs text-muted-foreground">Loading sessions...</p>
-        ) : sessions.length === 0 ? (
-          <p className="px-2 py-2 text-xs text-muted-foreground">No sessions yet.</p>
-        ) : (
-          <ul className="space-y-1">
-            {sessions.map((session) => {
-              const isActive = selectedSessionId === session.id;
-              return (
-                <li key={session.id}>
-                  <button
-                    type="button"
-                    onClick={() => void onSelectSession(session.id)}
-                    className={`flex w-full items-start gap-2.5 rounded-md px-3 py-2.5 text-left transition-colors ${
-                      isActive
-                        ? "bg-accent text-foreground"
-                        : "text-sidebar-foreground hover:bg-accent/50 hover:text-foreground"
-                    }`}
-                  >
-                    <MessageSquare
-                      className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
-                        isActive ? "text-primary" : "text-text-dim"
-                      }`}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium leading-tight">
-                        {session.label || shortenId(session.id)}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {new Date(session.startedAt).toLocaleString()}
-                      </p>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
+  const sessionListProps = {
+    sessions,
+    selectedSessionId,
+    isLoadingSessions,
+    isCreatingSession,
+    isLoadingSession,
+    onCreateNewSession: () => void onCreateNewSession(),
+    onSelectSession: (id: string) => void onSelectSession(id),
+  };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <header className="flex h-12 items-center justify-between border-b border-border/60 bg-background/80 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/70 md:hidden">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setMobileNodesOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <Link
-            href="/"
-            className="font-display text-xs font-semibold uppercase tracking-wider text-foreground transition-opacity hover:opacity-80"
-          >
-            Double
-          </Link>
-        </div>
+    <div className="flex h-full flex-col overflow-hidden">
+      <DomainListSlot>
+        <SessionListPanel {...sessionListProps} />
+      </DomainListSlot>
+
+      <header className="flex h-12 items-center justify-between border-b border-border/60 bg-background/80 px-4 backdrop-blur supports-backdrop-filter:bg-background/70 md:hidden">
+        <Link
+          href="/"
+          className="font-display text-xs font-semibold uppercase tracking-wider text-foreground transition-opacity hover:opacity-80"
+        >
+          Double
+        </Link>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setMobileNowOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
-          >
-            <Clock3 className="h-5 w-5" />
-          </button>
           <button
             type="button"
             onClick={() => setMobileMemoryOpen(true)}
@@ -1014,26 +744,6 @@ export default function ChatPage() {
         className="hidden h-12 border-b border-border/60 md:grid"
         style={{ gridTemplateColumns: desktopGridColumns }}
       >
-        <div className="flex items-center justify-between border-r border-border/60 bg-sidebar px-4">
-          <Link
-            href="/"
-            className="font-display text-xs font-semibold uppercase tracking-wider text-foreground transition-opacity hover:opacity-80"
-          >
-            Double
-          </Link>
-          <button
-            type="button"
-            onClick={() => setLeftCollapsed((v) => !v)}
-            className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            {leftCollapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </button>
-        </div>
-
         <div className="flex items-center justify-between bg-background px-4">
           <div className="flex min-w-0 items-center gap-2">
             <span className="font-display text-[10px] uppercase tracking-[0.2em] text-text-dim">
@@ -1059,7 +769,7 @@ export default function ChatPage() {
             </Button>
             <button
               type="button"
-              onClick={() => setMobileSessionsOpen(true)}
+              onClick={toggleCollapsed}
               className="hidden items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground lg:flex"
             >
               <MessageSquare className="h-3.5 w-3.5" />
@@ -1067,11 +777,11 @@ export default function ChatPage() {
             </button>
             <button
               type="button"
-              onClick={() => setMobileNowOpen(true)}
+              onClick={() => setContextOpen((v) => !v)}
               className="hidden items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground lg:flex"
             >
               <Clock3 className="h-3.5 w-3.5" />
-              Now
+              Context
             </button>
             <ModeToggle />
             {rightCollapsed ? <UserButton /> : null}
@@ -1115,13 +825,9 @@ export default function ChatPage() {
         className="flex min-h-0 flex-1 overflow-hidden md:grid"
         style={{ gridTemplateColumns: desktopGridColumns }}
       >
-        <aside
-          className="hidden min-h-0 border-r border-border/60 bg-sidebar md:flex md:flex-col"
-        >
-          {renderNodesTools(leftCollapsed)}
-        </aside>
-
         <section className="flex min-w-0 flex-1 min-h-0 flex-col bg-background">
+          {/* Context tuck-down panel — vertical animation, no horizontal shift */}
+          <ChatContextDrawer isOpen={contextOpen} onClose={() => setContextOpen(false)} />
           <div
             ref={messageScrollRef}
             onScroll={onMessageScroll}
@@ -1265,46 +971,6 @@ export default function ChatPage() {
         )}
       </div>
 
-      <Sheet open={mobileNodesOpen} onOpenChange={setMobileNodesOpen}>
-        <SheetContent side="left" className="w-72 border-r border-border bg-sidebar p-0 [&>button]:hidden">
-          <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between border-b border-border px-3 py-3">
-              <h2 className="font-display text-xs font-semibold uppercase tracking-wider text-foreground">
-                Nodes and tools
-              </h2>
-              <button
-                type="button"
-                onClick={() => setMobileNodesOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-            </div>
-            {renderNodesTools(false)}
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={mobileNowOpen} onOpenChange={setMobileNowOpen}>
-        <SheetContent side="top" className="h-[70vh] border-b border-border bg-sidebar p-0 [&>button]:hidden">
-          <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between border-b border-border px-3 py-3">
-              <h2 className="font-display text-xs font-semibold uppercase tracking-wider text-foreground">
-                Now
-              </h2>
-              <button
-                type="button"
-                onClick={() => setMobileNowOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <ChevronLeft className="h-4 w-4 rotate-90" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3">{renderNowSummary()}</div>
-          </div>
-        </SheetContent>
-      </Sheet>
-
       <Sheet open={mobileMemoryOpen} onOpenChange={setMobileMemoryOpen}>
         <SheetContent side="right" className="w-88 border-l border-border bg-sidebar p-0 [&>button]:hidden">
           <MemoryPanel
@@ -1362,7 +1028,7 @@ export default function ChatPage() {
                 <ChevronLeft className="h-4 w-4 -rotate-90" />
               </button>
             </div>
-            {renderSessionsList()}
+            <SessionListPanel {...sessionListProps} />
           </div>
         </SheetContent>
       </Sheet>

@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { DomainListSlot } from "@/components/layout/DomainListSlot";
+import { ReferenceListPanel } from "../_components/ReferenceListPanel";
+
 import {
   type ReferenceDetail,
   type ReferenceDetailItem,
@@ -159,6 +162,11 @@ export default function ReferenceDetailPage() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
+    <>
+      <DomainListSlot>
+        <ReferenceListPanel />
+      </DomainListSlot>
+
     <div className="mx-auto max-w-2xl space-y-6 p-6">
       {/* Supersede modal */}
       {supersedeModal.open && (
@@ -399,6 +407,7 @@ export default function ReferenceDetailPage() {
         </section>
       )}
     </div>
+    </>
   );
 }
 

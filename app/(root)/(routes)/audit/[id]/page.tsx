@@ -11,6 +11,8 @@ import {
   type ExplainPayload,
   type WeeklyAudit,
 } from "@/lib/audit-api";
+import { DomainListSlot } from "@/components/layout/DomainListSlot";
+import { AuditListPanel } from "../_components/AuditListPanel";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -239,47 +241,45 @@ export default function AuditDetailPage() {
   };
 
   return (
-    <div className="h-full space-y-6 p-4">
-      {/* Back link */}
-      <Link href="/audit" className="text-xs text-muted-foreground hover:underline">
-        ← Audit overview
-      </Link>
-
-      {/* Header */}
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">
-              Week of {formatDate(audit.weekStart)}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              {isLocked ? (
-                <>
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                    Locked
-                  </span>
-                  {lockedAt && <span>locked {lockedAt}</span>}
-                </>
-              ) : (
-                <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
-                  Draft
-                </span>
-              )}
+    <>
+      <DomainListSlot>
+        <AuditListPanel />
+      </DomainListSlot>
+      <div className="flex h-full flex-col overflow-hidden">
+      {/* Slim header bar — h-12, standard metrics */}
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/60 px-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/audit" className="shrink-0 text-xs text-muted-foreground hover:underline">
+            ← Audit
+          </Link>
+          <span className="truncate text-sm font-medium text-foreground">
+            Week of {formatDate(audit.weekStart)}
+          </span>
+          {isLocked ? (
+            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              Locked
+            </span>
+          ) : (
+            <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+              Draft
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {audit.inputHash && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="font-mono">{audit.inputHash.slice(0, 12)}…</span>
+              <button
+                onClick={() => void handleCopyHash()}
+                className="rounded px-1.5 py-0.5 text-xs hover:bg-muted"
+              >
+                {copied ? "copied!" : "copy"}
+              </button>
             </div>
-            {audit.inputHash && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-mono">
-                  hash: {audit.inputHash.slice(0, 16)}…
-                </span>
-                <button
-                  onClick={() => void handleCopyHash()}
-                  className="rounded px-1.5 py-0.5 text-xs hover:bg-muted"
-                >
-                  {copied ? "copied!" : "copy"}
-                </button>
-              </div>
-            )}
-          </div>
+          )}
+          {isLocked && lockedAt && (
+            <span className="text-xs text-muted-foreground">{lockedAt}</span>
+          )}
           {!isLocked && (
             <button
               disabled={isLocking}
@@ -298,7 +298,10 @@ export default function AuditDetailPage() {
             </button>
           )}
         </div>
-      </section>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
 
       {/* Core metrics */}
       <section className="space-y-3">
@@ -393,6 +396,8 @@ export default function AuditDetailPage() {
           </div>
         </section>
       )}
+      </div>{/* end scrollable body */}
     </div>
+    </>
   );
 }

@@ -26,11 +26,23 @@ const createBaseDb = () => ({
 });
 
 describe("ensureWeeklyAuditForCurrentWeek", () => {
-  it("does not create when weekly audit already exists", async () => {
+  it("does not create when weekly audit already exists (draft)", async () => {
     const db = createBaseDb();
-    db.weeklyAudit.findUnique.mockResolvedValue({ id: "existing-audit" });
+    db.weeklyAudit.findUnique.mockResolvedValue({ id: "existing-audit", status: "draft" });
 
     await ensureWeeklyAuditForCurrentWeek("user-1", new Date("2026-02-18T12:00:00.000Z"), db);
+
+    expect(db.weeklyAudit.create).not.toHaveBeenCalled();
+    expect(db.referenceItem.count).not.toHaveBeenCalled();
+  });
+
+  it("does not throw and does not create when weekly audit is locked", async () => {
+    const db = createBaseDb();
+    db.weeklyAudit.findUnique.mockResolvedValue({ id: "locked-audit", status: "locked" });
+
+    await expect(
+      ensureWeeklyAuditForCurrentWeek("user-1", new Date("2026-02-18T12:00:00.000Z"), db)
+    ).resolves.toBeUndefined();
 
     expect(db.weeklyAudit.create).not.toHaveBeenCalled();
     expect(db.referenceItem.count).not.toHaveBeenCalled();
