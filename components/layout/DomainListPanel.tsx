@@ -1,31 +1,62 @@
 "use client";
 
+import { ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useDomainListPanel } from "./DomainListContext";
 
 export function DomainListPanel() {
   const { panelRef, isCollapsed, toggleCollapsed } = useDomainListPanel();
 
   return (
-    // Outer flex-row: [panel content | divider handle]
-    // The handle stays visible even when the panel collapses to w-0.
-    <div className="hidden md:flex shrink-0">
-      {/* Panel */}
+    // Wrapper is the hover zone and positioning context for the toggle button.
+    // It must NOT have overflow-hidden so the button can bleed onto the divider line.
+    <div className="group/panel relative hidden md:flex shrink-0">
       <aside
-        className={`flex flex-col bg-sidebar overflow-hidden transition-[width] duration-200 ${
-          isCollapsed ? "w-0" : "w-64"
-        }`}
+        className={cn(
+          "flex flex-col bg-sidebar border-r border-border/40",
+          "overflow-hidden transition-[width] duration-200",
+          isCollapsed ? "w-14" : "w-64"
+        )}
       >
-        <div ref={panelRef} className="flex h-full flex-col overflow-y-auto w-64" />
+        {/* Stub rail — visible only when collapsed */}
+        {isCollapsed && (
+          <div className="flex flex-col items-center gap-1 py-3">
+            <div className="flex h-9 w-9 items-center justify-center text-muted-foreground/30">
+              <MessageSquare className="h-4 w-4" />
+            </div>
+          </div>
+        )}
+
+        {/* Portal mount — always in DOM so DomainListSlot can portal into it.
+            Hidden via display:none when collapsed so the stub rail shows instead. */}
+        <div
+          ref={panelRef}
+          className={cn(
+            "flex h-full w-64 flex-col overflow-y-auto",
+            isCollapsed && "hidden"
+          )}
+        />
       </aside>
 
-      {/* Divider handle — always 8 px wide, acts as the collapse/expand trigger */}
+      {/* Toggle button — floats on the border line, appears on panel hover */}
       <button
         type="button"
         onClick={toggleCollapsed}
-        title={isCollapsed ? "Expand sessions panel" : "Collapse sessions panel"}
-        className="group flex w-2 shrink-0 cursor-col-resize flex-col items-center justify-center border-r border-border/60 bg-sidebar transition-colors hover:border-border"
+        title={isCollapsed ? "Expand panel" : "Collapse panel"}
+        className={cn(
+          "absolute right-0 top-1/2 z-20 -translate-y-1/2 translate-x-1/2",
+          "flex h-6 w-6 items-center justify-center rounded-full",
+          "border border-border bg-background text-muted-foreground shadow-sm",
+          "opacity-0 transition-opacity duration-150 group-hover/panel:opacity-100 hover:opacity-100",
+          "hover:bg-muted hover:text-foreground"
+        )}
       >
-        <div className="h-8 w-0.5 rounded bg-border/60 group-hover:bg-border transition-colors" />
+        <ChevronLeft
+          className={cn(
+            "h-3.5 w-3.5 transition-transform duration-200",
+            isCollapsed && "rotate-180"
+          )}
+        />
       </button>
     </div>
   );

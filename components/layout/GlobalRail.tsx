@@ -9,8 +9,7 @@ import {
   Split,
   BookOpenText,
   Upload,
-  PanelLeft,
-  PanelLeftClose,
+  ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGlobalRail } from "./GlobalRailContext";
@@ -29,66 +28,77 @@ export function GlobalRail() {
   const { isRailCollapsed, toggleRailCollapsed } = useGlobalRail();
 
   return (
-    // Width transitions between w-14 (56 px) collapsed and w-56 (224 px) expanded.
-    // Must stay in sync with GlobalRailWrapper's md:ml-* classes.
-    <nav
+    // Wrapper owns the fixed position, width transition, and hover group.
+    // No overflow-hidden here so the border toggle button can bleed right.
+    <div
       className={cn(
-        "fixed top-0 bottom-0 left-0 z-40 hidden flex-col bg-secondary py-3 text-primary md:flex",
-        "overflow-hidden transition-[width] duration-200 ease-in-out",
+        "group/rail fixed top-0 bottom-0 left-0 z-40 hidden md:flex",
+        "transition-[width] duration-200 ease-in-out",
         isRailCollapsed ? "w-14" : "w-56"
       )}
     >
-      {/* Collapse / expand toggle — always at the top */}
+      {/* Nav fills the wrapper; overflow-hidden clips content during animation */}
+      <nav className="flex h-full w-full flex-col overflow-hidden border-r border-border/40 bg-secondary py-3 text-primary">
+        {/* Logo */}
+        <div className={cn("flex items-center mx-2 mb-2 py-2.5", isRailCollapsed ? "justify-center" : "px-3")}>
+          {isRailCollapsed ? (
+            <span className="text-sm font-bold text-foreground">M</span>
+          ) : (
+            <span className="text-sm font-semibold tracking-tight text-foreground">Mind Lab</span>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="mx-2 mb-2 h-px bg-border/40" />
+
+        {/* Nav links */}
+        <div className="flex flex-1 flex-col gap-0.5">
+          {routes.map((route) => {
+            const active =
+              pathname === route.href || pathname.startsWith(route.href + "/");
+            const Icon = route.icon;
+            return (
+              <Link
+                key={route.href}
+                href={route.href}
+                title={isRailCollapsed ? route.label : undefined}
+                className={cn(
+                  "flex items-center rounded-lg mx-2 transition-colors",
+                  isRailCollapsed ? "justify-center py-2.5" : "gap-3 px-3 py-2.5",
+                  "hover:bg-panel-hover hover:text-foreground",
+                  active ? "bg-panel-active text-primary" : "text-muted-foreground"
+                )}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+                {!isRailCollapsed && (
+                  <span className="truncate text-sm font-medium">{route.label}</span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Floating border toggle — appears on rail hover, sits on the border-r line */}
       <button
         type="button"
         onClick={toggleRailCollapsed}
-        aria-label={isRailCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        title={isRailCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         className={cn(
-          "flex items-center rounded-lg mx-2 mb-2 py-2.5 text-muted-foreground",
-          "transition-colors hover:bg-primary/10 hover:text-primary",
-          isRailCollapsed ? "justify-center" : "gap-3 px-3"
+          "absolute right-0 top-1/2 z-50 -translate-y-1/2 translate-x-1/2",
+          "flex h-6 w-6 items-center justify-center rounded-full",
+          "border border-border bg-background text-muted-foreground shadow-sm",
+          "opacity-0 transition-opacity duration-150 group-hover/rail:opacity-100 hover:opacity-100",
+          "hover:bg-muted hover:text-foreground"
         )}
       >
-        {isRailCollapsed ? (
-          <PanelLeft className="h-5 w-5 shrink-0" />
-        ) : (
-          <>
-            <PanelLeftClose className="h-5 w-5 shrink-0" />
-            <span className="truncate text-sm font-medium">Collapse</span>
-          </>
-        )}
+        <ChevronLeft
+          className={cn(
+            "h-3.5 w-3.5 transition-transform duration-200",
+            isRailCollapsed && "rotate-180"
+          )}
+        />
       </button>
-
-      {/* Divider */}
-      <div className="mx-2 mb-2 h-px bg-border/40" />
-
-      {/* Nav links */}
-      <div className="flex flex-1 flex-col gap-0.5">
-        {routes.map((route) => {
-          const active =
-            pathname === route.href || pathname.startsWith(route.href + "/");
-          const Icon = route.icon;
-          return (
-            <Link
-              key={route.href}
-              href={route.href}
-              // Show tooltip only when collapsed (label not visible)
-              title={isRailCollapsed ? route.label : undefined}
-              className={cn(
-                "flex items-center rounded-lg mx-2 transition-colors",
-                isRailCollapsed ? "justify-center py-2.5" : "gap-3 px-3 py-2.5",
-                "hover:bg-primary/10 hover:text-primary",
-                active && "bg-primary/10 text-primary"
-              )}
-            >
-              <Icon className="h-5 w-5 shrink-0" />
-              {!isRailCollapsed && (
-                <span className="truncate text-sm font-medium">{route.label}</span>
-              )}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+    </div>
   );
 }

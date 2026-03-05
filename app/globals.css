@@ -53,6 +53,14 @@ body,
   --color-surface-elevated: hsl(var(--surface-elevated));
   --color-text-dim: hsl(var(--text-dim));
   --color-text-subtle: hsl(var(--text-subtle));
+
+  /* Panel semantic tokens */
+  --color-panel-bg: var(--panel-bg);
+  --color-panel-bg-elev: var(--panel-bg-elev);
+  --color-panel-border: var(--panel-border);
+  --color-panel-hover: var(--panel-hover);
+  --color-panel-active: var(--panel-active);
+  --color-toolbar-bg: var(--toolbar-bg);
   --color-accent-teal: hsl(var(--accent-teal));
   --color-accent-teal-dim: hsl(var(--accent-teal-dim));
   --color-memory-manual: hsl(var(--memory-manual));
@@ -105,9 +113,10 @@ body,
   --surface-elevated: 220 16% 12%;
   --text-dim: 220 10% 38%;
   --text-subtle: 220 10% 55%;
-  --accent-teal: 178 45% 36%;
+  --accent-teal: 178 72% 44%;
+  --accent-teal-bright: 178 80% 60%;
   --accent-teal-dim: 174 20% 25%;
-  --memory-manual: 210 40% 52%;
+  --memory-manual: 178 80% 68%;
   --memory-governed: var(--accent-teal);
   --memory-pending: 38 75% 55%;
   --memory-historical: 220 10% 28%;
@@ -126,6 +135,14 @@ body,
 
   --font-display: 'IBM Plex Mono', monospace;
   --font-body: 'IBM Plex Sans', sans-serif;
+
+  /* Panel semantic tokens — aliases for consistent Docker-style surfaces */
+  --panel-bg: var(--sidebar);
+  --panel-bg-elev: hsl(var(--surface-elevated));
+  --panel-border: var(--border);
+  --panel-hover: hsl(220 14% 20%);
+  --panel-active: hsl(220 14% 24%);
+  --toolbar-bg: var(--background);
 }
 
 .dark {
@@ -155,6 +172,14 @@ body,
   --sidebar-accent-foreground: hsl(220 10% 82%);
   --sidebar-border: hsl(220 14% 14%);
   --sidebar-ring: hsl(174 30% 42%);
+
+  /* Panel semantic tokens */
+  --panel-bg: var(--sidebar);
+  --panel-bg-elev: hsl(220 16% 12%);
+  --panel-border: var(--border);
+  --panel-hover: hsl(220 14% 20%);
+  --panel-active: hsl(220 14% 24%);
+  --toolbar-bg: var(--background);
 }
 
 @layer base {
@@ -197,9 +222,42 @@ body,
   }
 }
 
+@keyframes dot-pop {
+  0%, 100% {
+    transform: translateY(0) scale(0.75);
+    opacity: 0.4;
+    box-shadow: none;
+  }
+  45% {
+    transform: translateY(-5px) scale(1.15);
+    opacity: 1;
+    box-shadow: 0 0 8px hsl(var(--accent-teal-bright) / 0.7), 0 0 18px hsl(var(--accent-teal-bright) / 0.3);
+  }
+  60% {
+    transform: translateY(-3px) scale(1.05);
+    opacity: 0.9;
+  }
+}
+
 @layer utilities {
   .font-display {
     font-family: var(--font-display);
+  }
+
+  .animate-dot-pop {
+    animation: dot-pop 1.1s ease-in-out infinite;
+  }
+
+  .shadow-glow {
+    box-shadow:
+      0 0 8px hsl(var(--accent-teal-bright) / 0.18),
+      0 0 20px hsl(var(--accent-teal-bright) / 0.07);
+  }
+
+  .shadow-glow-sm {
+    box-shadow:
+      0 0 6px hsl(var(--accent-teal-bright) / 0.2),
+      0 0 12px hsl(var(--accent-teal-bright) / 0.08);
   }
 
   .font-body {

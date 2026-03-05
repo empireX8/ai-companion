@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { MoreHorizontal, Search, SlidersHorizontal, Zap } from "lucide-react";
 
 import { computeEscalationCooldown } from "@/lib/contradiction-escalation";
 import {
@@ -16,12 +17,12 @@ import { ListSkeleton } from "@/components/skeletons/ListSkeleton";
 import { postMetricEvent } from "@/lib/metrics-api";
 import { undoManager } from "@/lib/undo-manager";
 
-const filterOptions: Array<{ value: ContradictionFilter; label: string }> = [
-  { value: "activeish", label: "Open+Explored+Snoozed" },
-  { value: "open", label: "Open" },
-  { value: "explored", label: "Explored" },
-  { value: "snoozed", label: "Snoozed" },
-  { value: "terminal", label: "Resolved+Archived+Trade-off" },
+const filterOptions: Array<{ value: ContradictionFilter; label: string; short: string }> = [
+  { value: "activeish", label: "Open+Explored+Snoozed", short: "All" },
+  { value: "open", label: "Open", short: "Open" },
+  { value: "explored", label: "Explored", short: "Explored" },
+  { value: "snoozed", label: "Snoozed", short: "Snoozed" },
+  { value: "terminal", label: "Resolved+Archived+Trade-off", short: "Terminal" },
 ];
 
 const FILTER_STATUSES: Record<ContradictionFilter, readonly string[]> = {
@@ -85,7 +86,11 @@ const formatDate = (value: string | null) => {
   if (!value) return "n/a";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "n/a";
-  return parsed.toISOString().slice(0, 10);
+  const now = new Date();
+  if (parsed.getFullYear() === now.getFullYear()) {
+    return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 };
 
 function addDays(n: number): string {
@@ -96,6 +101,24 @@ function addDays(n: number): string {
 }
 
 const INDEFINITE_SNOOZE_ISO = "2099-12-31T23:59:59.000Z";
+
+const STATUS_STYLES: Record<string, string> = {
+  open: "bg-primary/15 text-primary",
+  explored: "bg-blue-500/15 text-blue-400",
+  snoozed: "bg-amber-500/15 text-amber-400",
+  resolved: "bg-emerald-500/15 text-emerald-400",
+  accepted_tradeoff: "bg-purple-500/15 text-purple-400",
+  archived_tension: "bg-muted text-muted-foreground",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  open: "Open",
+  explored: "Explored",
+  snoozed: "Snoozed",
+  resolved: "Resolved",
+  accepted_tradeoff: "Trade-off",
+  archived_tension: "Archived",
+};
 
 function getMinDateForInput(): string {
   const d = new Date();
@@ -147,6 +170,9 @@ export function ContradictionListPanel() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
+
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
     setFilter(parsedInitial);
@@ -447,12 +473,12 @@ export function ContradictionListPanel() {
         </div>
       )}
 
-      {/* Filter + search controls */}
-      <div className="shrink-0 space-y-1.5 border-b border-border/60 px-3 py-2">
+      {/* Status filter dropdown */}
+      <div className="shrink-0 px-3 pt-3 pb-2">
         <select
-          className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs"
           value={filter}
           onChange={(e) => onFilterChange(e.target.value as ContradictionFilter)}
+          className="w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
         >
           {filterOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -460,36 +486,86 @@ export function ContradictionListPanel() {
             </option>
           ))}
         </select>
-        <input
-          type="search"
-          placeholder="Search…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs"
-        />
-        <div className="flex gap-1">
-          <select
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="flex-1 rounded-md border border-border bg-background px-1 py-1 text-xs"
+      </div>
+
+      {/* Section header */}
+      <div className="flex shrink-0 items-center justify-between border-t border-border/40 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <Zap className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs font-semibold text-muted-foreground">Contradictions</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setSearchOpen((v) => !v)}
+            className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+              searchOpen ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+            aria-label="Search"
           >
-            <option value="weight">Weight</option>
-            <option value="lastTouched">Last touched</option>
-          </select>
-          <select
-            value={escalationFilter}
-            onChange={(e) => setEscalationFilter(e.target.value as EscalationFilter)}
-            className="flex-1 rounded-md border border-border bg-background px-1 py-1 text-xs"
+            <Search className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterOpen((v) => !v)}
+            className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+              filterOpen ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+            aria-label="Sort and filter"
           >
-            <option value="all">All levels</option>
-            <option value="0">L0</option>
-            <option value="1">L1</option>
-            <option value="2">L2</option>
-            <option value="3">L3</option>
-            <option value="4">L4</option>
-          </select>
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="More options"
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
+
+      {/* Expandable search */}
+      {searchOpen && (
+        <div className="shrink-0 border-t border-border/40 px-3 py-2">
+          <input
+            type="search"
+            placeholder="Search contradictions…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            autoFocus
+            className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+        </div>
+      )}
+
+      {/* Expandable sort/escalation controls */}
+      {filterOpen && (
+        <div className="shrink-0 border-t border-border/40 px-3 py-2">
+          <div className="flex gap-1.5">
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              className="flex-1 rounded-md border border-border bg-background px-1.5 py-1 text-xs"
+            >
+              <option value="weight">By weight</option>
+              <option value="lastTouched">By activity</option>
+            </select>
+            <select
+              value={escalationFilter}
+              onChange={(e) => setEscalationFilter(e.target.value as EscalationFilter)}
+              className="flex-1 rounded-md border border-border bg-background px-1.5 py-1 text-xs"
+            >
+              <option value="all">All levels</option>
+              <option value="0">L0</option>
+              <option value="1">L1</option>
+              <option value="2">L2</option>
+              <option value="3">L3</option>
+              <option value="4">L4</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Error banners */}
       {(actionError || batchError) && (
@@ -591,11 +667,11 @@ export function ContradictionListPanel() {
               return (
                 <li
                   key={item.id}
-                  className={`p-2 transition-opacity ${
+                  className={`px-3 py-2.5 transition-colors ${
                     isLoading || batchLoading ? "pointer-events-none opacity-50" : ""
-                  } ${isActive ? "bg-accent/60" : ""}`}
+                  } ${isActive ? "bg-primary/10" : "hover:bg-accent/40"}`}
                 >
-                  <div className="flex items-start gap-1.5">
+                  <div className="flex items-start gap-2">
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -604,40 +680,40 @@ export function ContradictionListPanel() {
                       aria-label={`Select ${item.title}`}
                     />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-1">
+                      <div className="flex items-start justify-between gap-2">
                         <Link
                           href={`/contradictions/${item.id}`}
-                          className={`truncate text-xs font-medium leading-snug hover:underline ${
-                            isActive ? "text-foreground" : "text-foreground"
-                          }`}
+                          className="truncate text-xs font-semibold leading-snug text-foreground hover:text-primary"
                         >
                           {item.title}
                         </Link>
                         <button
                           type="button"
                           onClick={() => setExpandedId(expanded ? null : item.id)}
-                          className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+                          className="shrink-0 rounded border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted"
                         >
                           {expanded ? "−" : "+"}
                         </button>
                       </div>
 
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">
-                        <span className="font-medium">{item.status}</span>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${STATUS_STYLES[item.status] ?? "bg-muted text-muted-foreground"}`}>
+                          {STATUS_LABELS[item.status] ?? item.status.replace(/_/g, " ")}
+                        </span>
                         {snoozedLabel && (
-                          <span className="ml-1 text-amber-600 dark:text-amber-400">
-                            — {snoozedLabel}
-                          </span>
+                          <span className="text-[11px] text-amber-400">{snoozedLabel}</span>
                         )}
-                        {cooldownActive && <span className="ml-1 opacity-60">· cd</span>}
-                        {" · "}rung={item.recommendedRung ?? "n/a"}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        ev={formatDate(item.lastEvidenceAt)}
+                        {cooldownActive && <span className="text-[11px] text-muted-foreground/60">cooldown</span>}
+                        {item.recommendedRung != null && (
+                          <span className="text-[11px] text-muted-foreground">rung {item.recommendedRung}</span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground/60">
+                        Evidence: {formatDate(item.lastEvidenceAt)}
                       </p>
 
                       {expanded && (
-                        <div className="mt-1.5 space-y-1 text-[10px] text-foreground">
+                        <div className="mt-2 space-y-1.5 text-xs text-foreground">
                           <div>
                             <span className="uppercase tracking-wide text-text-dim">A </span>
                             {truncate(item.sideA)}
@@ -655,7 +731,7 @@ export function ContradictionListPanel() {
                           <button
                             type="button"
                             onClick={() => void handleAction(item.id, "reopen")}
-                            className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+                            className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                           >
                             Reopen
                           </button>
@@ -664,28 +740,28 @@ export function ContradictionListPanel() {
                             <button
                               type="button"
                               onClick={() => void handleAction(item.id, "unsnooze")}
-                              className="rounded border border-primary px-1.5 py-0.5 text-[10px] text-primary hover:bg-muted"
+                              className="rounded border border-primary px-2 py-1 text-xs text-primary hover:bg-primary/10"
                             >
                               Unsnooze
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleAction(item.id, "resolve")}
-                              className="rounded border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted"
+                              className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                             >
                               Resolve
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleAction(item.id, "accept_tradeoff")}
-                              className="rounded border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted"
+                              className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                             >
                               Trade-off
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleAction(item.id, "archive_tension")}
-                              className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+                              className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                             >
                               Archive
                             </button>
@@ -695,28 +771,28 @@ export function ContradictionListPanel() {
                             <button
                               type="button"
                               onClick={() => openSnoozeModal(item.id)}
-                              className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+                              className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                             >
                               Snooze
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleAction(item.id, "resolve")}
-                              className="rounded border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted"
+                              className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                             >
                               Resolve
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleAction(item.id, "accept_tradeoff")}
-                              className="rounded border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted"
+                              className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                             >
                               Trade-off
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleAction(item.id, "archive_tension")}
-                              className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+                              className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                             >
                               Archive
                             </button>

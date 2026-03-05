@@ -5,8 +5,9 @@ import {
   ChevronRight,
   Clock3,
   History,
+  X,
 } from "lucide-react";
-import { FormEvent, ReactNode, useMemo } from "react";
+import { FormEvent, ReactNode, useMemo, useState } from "react";
 
 type ReferenceType =
   | "rule"
@@ -197,6 +198,16 @@ export function MemoryPanel({
   const subtleActionClass =
     "rounded-md bg-transparent px-2 py-1 text-[11px] text-text-dim transition-colors hover:text-foreground disabled:opacity-50";
 
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const { manual, governed, historical } = useMemo(() => {
     const active = savedReferences.filter((item) => (item.status ?? "active") === "active");
     const hasSourceMetadata = savedReferences.some((item) =>
@@ -252,179 +263,183 @@ export function MemoryPanel({
           subtitle={subtitle}
         />
 
-        <ul className="space-y-3">
-          {items.map((item) => (
-            <li
-              key={item.id}
-              className={`relative rounded-xl bg-(--memory-card-bg) p-4 shadow-[inset_0_0_0_1px_var(--memory-card-border)] before:absolute before:top-3 before:bottom-3 before:left-0 before:w-0.75 before:rounded-full before:content-[''] ${accentClass}`}
-            >
-              <p className="text-sm leading-snug text-foreground">{item.statement}</p>
-              <div className="mt-2 flex items-center gap-2 text-[11px] text-text-dim">
-                <Clock3 className="h-3 w-3 text-text-dim" />
-                <span>{formatRelativeTime(item.createdAt)}</span>
-                <span>•</span>
-                <span className="capitalize">{item.type}</span>
-                <span>•</span>
-                <span className="capitalize">{item.confidence}</span>
-              </div>
-
-              <div className="mt-2 flex flex-wrap gap-2">
+        <ul className="space-y-1.5">
+          {items.map((item) => {
+            const isExpanded =
+              expandedIds.has(item.id) ||
+              editingReferenceId === item.id ||
+              supersedingReferenceId === item.id;
+            return (
+              <li
+                key={item.id}
+                className={`relative overflow-hidden rounded-xl bg-(--memory-card-bg) shadow-[inset_0_0_0_1px_var(--memory-card-border)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-0.75 before:content-[''] ${accentClass}`}
+              >
+                {/* Clickable header — always visible */}
                 <button
                   type="button"
-                  onClick={() => onStartEditReference(item)}
-                  disabled={
-                    !!updatingReferenceId ||
-                    !!deactivatingReferenceId ||
-                    !!supersedingReferenceId
-                  }
-                  className={subtleActionClass}
+                  onClick={() => toggleExpanded(item.id)}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
                 >
-                  {editingReferenceId === item.id ? "Editing" : "Edit"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onStartSupersedeReference(item)}
-                  disabled={
-                    !!updatingReferenceId ||
-                    !!deactivatingReferenceId ||
-                    !!editingReferenceId
-                  }
-                  className={subtleActionClass}
-                >
-                  {supersedingReferenceId === item.id ? "Replacing" : "Supersede"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void onDeactivateReference(item.id)}
-                  disabled={
-                    updatingReferenceId === item.id ||
-                    deactivatingReferenceId === item.id ||
-                    supersedingReferenceId === item.id
-                  }
-                  className={subtleActionClass}
-                >
-                  {deactivatingReferenceId === item.id ? "Deactivating..." : "Deactivate"}
-                </button>
-              </div>
-
-              {editingReferenceId === item.id ? (
-                <div className="mt-2 space-y-2">
-                  <input
-                    type="text"
-                    value={editStatement}
-                    onChange={(event) => setEditStatement(event.target.value)}
-                    className="w-full rounded border border-border bg-background px-2 py-1 text-xs"
-                    disabled={updatingReferenceId === item.id}
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <select
-                      value={editType}
-                      onChange={(event) => setEditType(event.target.value as ReferenceType)}
-                      className="rounded border border-border bg-background px-2 py-1 text-xs"
-                      disabled={updatingReferenceId === item.id}
-                    >
-                      {REFERENCE_TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={editConfidence}
-                      onChange={(event) =>
-                        setEditConfidence(event.target.value as ReferenceConfidence)
-                      }
-                      className="rounded border border-border bg-background px-2 py-1 text-xs"
-                      disabled={updatingReferenceId === item.id}
-                    >
-                      {REFERENCE_CONFIDENCE.map((confidence) => (
-                        <option key={confidence} value={confidence}>
-                          {confidence}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => void onUpdateReference(item.id)}
-                      disabled={
-                        updatingReferenceId === item.id || editStatement.trim().length === 0
-                      }
-                      className={subtleActionClass}
-                    >
-                      {updatingReferenceId === item.id ? "Updating..." : "Update"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onCancelEdit}
-                      disabled={updatingReferenceId === item.id}
-                      className={subtleActionClass}
-                    >
-                      Cancel
-                    </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide bg-border/60 text-text-subtle">
+                        {item.type}
+                      </span>
+                      <span className="text-[10px] text-text-dim capitalize">{item.confidence}</span>
+                    </div>
+                    <p className={`text-xs leading-snug text-foreground ${isExpanded ? "" : "line-clamp-1"}`}>
+                      {item.statement}
+                    </p>
+                    {!isExpanded && (
+                      <p className="mt-1 text-[10px] text-text-dim">{formatRelativeTime(item.createdAt)}</p>
+                    )}
                   </div>
-                </div>
-              ) : null}
-
-              {supersedingReferenceId === item.id ? (
-                <div className="mt-2 space-y-2">
-                  <input
-                    type="text"
-                    value={replaceStatement}
-                    onChange={(event) => setReplaceStatement(event.target.value)}
-                    placeholder="Replace with..."
-                    className="w-full rounded border border-border bg-background px-2 py-1 text-xs"
-                    disabled={updatingReferenceId === item.id}
+                  <ChevronRight
+                    className={`h-3 w-3 shrink-0 text-text-dim transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
                   />
-                  <div className="flex flex-wrap gap-2">
-                    <select
-                      value={replaceType}
-                      onChange={(event) => setReplaceType(event.target.value as ReferenceType)}
-                      className="rounded border border-border bg-background px-2 py-1 text-xs"
-                      disabled={updatingReferenceId === item.id}
-                    >
-                      {REFERENCE_TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={replaceConfidence}
-                      onChange={(event) =>
-                        setReplaceConfidence(event.target.value as ReferenceConfidence)
-                      }
-                      className="rounded border border-border bg-background px-2 py-1 text-xs"
-                      disabled={updatingReferenceId === item.id}
-                    >
-                      {REFERENCE_CONFIDENCE.map((confidence) => (
-                        <option key={confidence} value={confidence}>
-                          {confidence}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => void onSupersedeReference(item.id)}
-                      disabled={
-                        updatingReferenceId === item.id || replaceStatement.trim().length === 0
-                      }
-                      className={subtleActionClass}
-                    >
-                      {updatingReferenceId === item.id ? "Replacing..." : "Replace"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onCancelSupersede}
-                      disabled={updatingReferenceId === item.id}
-                      className={subtleActionClass}
-                    >
-                      Cancel
-                    </button>
+                </button>
+
+                {/* Expandable body */}
+                {isExpanded && (
+                  <div className="border-t border-border/30 px-3 py-2.5">
+                    <p className="mb-2 text-xs leading-relaxed text-foreground">{item.statement}</p>
+                    <p className="mb-2 text-[10px] text-text-dim">{formatRelativeTime(item.createdAt)}</p>
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onStartEditReference(item)}
+                        disabled={!!updatingReferenceId || !!deactivatingReferenceId || !!supersedingReferenceId}
+                        className={subtleActionClass}
+                      >
+                        {editingReferenceId === item.id ? "Editing" : "Edit"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onStartSupersedeReference(item)}
+                        disabled={!!updatingReferenceId || !!deactivatingReferenceId || !!editingReferenceId}
+                        className={subtleActionClass}
+                      >
+                        {supersedingReferenceId === item.id ? "Replacing" : "Supersede"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void onDeactivateReference(item.id)}
+                        disabled={
+                          updatingReferenceId === item.id ||
+                          deactivatingReferenceId === item.id ||
+                          supersedingReferenceId === item.id
+                        }
+                        className={subtleActionClass}
+                      >
+                        {deactivatingReferenceId === item.id ? "Deactivating..." : "Deactivate"}
+                      </button>
+                    </div>
+
+                    {editingReferenceId === item.id ? (
+                      <div className="mt-2 space-y-2">
+                        <input
+                          type="text"
+                          value={editStatement}
+                          onChange={(event) => setEditStatement(event.target.value)}
+                          className="w-full rounded border border-border bg-background px-2 py-1 text-xs"
+                          disabled={updatingReferenceId === item.id}
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <select
+                            value={editType}
+                            onChange={(event) => setEditType(event.target.value as ReferenceType)}
+                            className="rounded border border-border bg-background px-2 py-1 text-xs"
+                            disabled={updatingReferenceId === item.id}
+                          >
+                            {REFERENCE_TYPES.map((type) => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={editConfidence}
+                            onChange={(event) => setEditConfidence(event.target.value as ReferenceConfidence)}
+                            className="rounded border border-border bg-background px-2 py-1 text-xs"
+                            disabled={updatingReferenceId === item.id}
+                          >
+                            {REFERENCE_CONFIDENCE.map((confidence) => (
+                              <option key={confidence} value={confidence}>{confidence}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => void onUpdateReference(item.id)}
+                            disabled={updatingReferenceId === item.id || editStatement.trim().length === 0}
+                            className={subtleActionClass}
+                          >
+                            {updatingReferenceId === item.id ? "Updating..." : "Update"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={onCancelEdit}
+                            disabled={updatingReferenceId === item.id}
+                            className={subtleActionClass}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {supersedingReferenceId === item.id ? (
+                      <div className="mt-2 space-y-2">
+                        <input
+                          type="text"
+                          value={replaceStatement}
+                          onChange={(event) => setReplaceStatement(event.target.value)}
+                          placeholder="Replace with..."
+                          className="w-full rounded border border-border bg-background px-2 py-1 text-xs"
+                          disabled={updatingReferenceId === item.id}
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <select
+                            value={replaceType}
+                            onChange={(event) => setReplaceType(event.target.value as ReferenceType)}
+                            className="rounded border border-border bg-background px-2 py-1 text-xs"
+                            disabled={updatingReferenceId === item.id}
+                          >
+                            {REFERENCE_TYPES.map((type) => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={replaceConfidence}
+                            onChange={(event) => setReplaceConfidence(event.target.value as ReferenceConfidence)}
+                            className="rounded border border-border bg-background px-2 py-1 text-xs"
+                            disabled={updatingReferenceId === item.id}
+                          >
+                            {REFERENCE_CONFIDENCE.map((confidence) => (
+                              <option key={confidence} value={confidence}>{confidence}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => void onSupersedeReference(item.id)}
+                            disabled={updatingReferenceId === item.id || replaceStatement.trim().length === 0}
+                            className={subtleActionClass}
+                          >
+                            {updatingReferenceId === item.id ? "Replacing..." : "Replace"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={onCancelSupersede}
+                            disabled={updatingReferenceId === item.id}
+                            className={subtleActionClass}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                </div>
-              ) : null}
-            </li>
-          ))}
+                )}
+              </li>
+            );
+          })}
         </ul>
       </section>
     );
@@ -432,22 +447,22 @@ export function MemoryPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header shown only in mobile sheet context (onTogglePanel present).
-          On desktop the chat toolbar already provides the Memory column header. */}
-      {onTogglePanel && (
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/60 px-4">
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-foreground">
-            MEMORY
-          </h2>
+      {/* Panel header — always shown; onTogglePanel wires the close button */}
+      <div className="flex h-12 shrink-0 items-center justify-between px-4">
+        <span className="text-[10px] font-medium uppercase tracking-widest text-text-dim">
+          Memory
+        </span>
+        {onTogglePanel && (
           <button
             type="button"
             onClick={onTogglePanel}
-            className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Close memory panel"
           >
-            Close
+            <X className="h-3.5 w-3.5" />
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="flex-1 space-y-7 overflow-y-auto p-4">
         <section className="rounded-lg border border-border bg-card/40 p-3">

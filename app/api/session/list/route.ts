@@ -47,10 +47,21 @@ export async function GET(req: Request) {
         origin: true,
         importedSource: true,
         importedAt: true,
+        messages: {
+          where: { role: "user" },
+          orderBy: { createdAt: "asc" },
+          take: 1,
+          select: { content: true },
+        },
       },
     });
 
-    return NextResponse.json(sessions);
+    const result = sessions.map(({ messages, ...s }) => ({
+      ...s,
+      preview: messages[0]?.content ?? null,
+    }));
+
+    return NextResponse.json(result);
   } catch (error) {
     console.log("[SESSION_LIST_GET_ERROR]", error);
     return new NextResponse("Internal Error", { status: 500 });

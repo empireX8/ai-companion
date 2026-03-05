@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { PanelBar } from "@/components/ui/PanelBar";
 import { useInspector } from "./InspectorContext";
 import { ChatInspectorPanel } from "./panels/ChatInspectorPanel";
 import { ContradictionsInspectorPanel } from "./panels/ContradictionsInspectorPanel";
@@ -75,17 +76,19 @@ export function MemoryInspectorDrawer() {
         )}
       >
         {/* Header */}
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/60 px-4">
-          <span className="text-sm font-medium text-foreground">{label}</span>
-          <button
-            type="button"
-            onClick={close}
-            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Close inspector"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        <PanelBar
+          left={<span className="text-sm font-medium text-foreground">{label}</span>}
+          right={
+            <button
+              type="button"
+              onClick={close}
+              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Close inspector"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          }
+        />
 
         {/* Body — panel mounts only when open, unmounts on close (fresh data each open) */}
         <div className="flex-1 overflow-y-auto">

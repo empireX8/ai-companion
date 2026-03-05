@@ -175,9 +175,9 @@ export function ChatContextDrawer({
     <div
       className={cn(
         // Overflow-hidden clips the content; max-h drives the open/close animation.
-        "overflow-hidden border-b border-border bg-background",
+        "overflow-hidden bg-background",
         "transition-[max-height] duration-200 ease-in-out",
-        isOpen ? "max-h-96 pointer-events-auto" : "max-h-0 pointer-events-none"
+        isOpen ? "max-h-96 pointer-events-auto border-b border-border" : "max-h-0 pointer-events-none"
       )}
     >
       {/* Header — always in DOM so the border-b transition looks clean */}

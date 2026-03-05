@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BookOpen, MoreHorizontal, Search, SlidersHorizontal } from "lucide-react";
 
 import {
   type ReferenceListItem,
@@ -33,10 +34,40 @@ const statusOptions: Array<{ value: StatusFilter; label: string }> = [
   { value: "inactive", label: "Inactive" },
 ];
 
+const TYPE_STYLES: Record<string, string> = {
+  goal: "bg-blue-500/15 text-blue-400",
+  constraint: "bg-primary/15 text-primary",
+  preference: "bg-purple-500/15 text-purple-400",
+  pattern: "bg-amber-500/15 text-amber-400",
+};
+
+const STATUS_STYLES: Record<string, string> = {
+  active: "bg-emerald-500/15 text-emerald-400",
+  candidate: "bg-amber-500/15 text-amber-400",
+  inactive: "bg-muted text-muted-foreground",
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  goal: "Goal",
+  constraint: "Constraint",
+  preference: "Preference",
+  pattern: "Pattern",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  candidate: "Candidate",
+  inactive: "Inactive",
+};
+
 const formatDate = (value: string) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "n/a";
-  return parsed.toISOString().slice(0, 10);
+  const now = new Date();
+  if (parsed.getFullYear() === now.getFullYear()) {
+    return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 };
 
 const truncate = (value: string, max = 100) =>
@@ -74,6 +105,9 @@ export function ReferenceListPanel() {
     itemId: string;
     value: ConfidenceLevel;
   } | null>(null);
+
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -261,36 +295,82 @@ export function ReferenceListPanel() {
         </div>
       )}
 
-      {/* Filter + search controls */}
-      <div className="shrink-0 space-y-1.5 border-b border-border/60 px-3 py-2">
-        <div className="flex gap-1">
-          <select
-            className="flex-1 rounded-md border border-border bg-background px-1 py-1 text-xs"
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-          >
-            {typeOptions.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <select
-            className="flex-1 rounded-md border border-border bg-background px-1 py-1 text-xs"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          >
-            {statusOptions.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+      {/* Section header */}
+      <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs font-semibold text-muted-foreground">References</span>
         </div>
-        <input
-          type="search"
-          placeholder="Search statements…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs"
-        />
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setSearchOpen((v) => !v)}
+            className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+              searchOpen ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+            aria-label="Search"
+          >
+            <Search className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterOpen((v) => !v)}
+            className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+              filterOpen ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+            aria-label="Filter"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="More options"
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
+
+      {/* Expandable search */}
+      {searchOpen && (
+        <div className="shrink-0 border-b border-border/40 px-3 py-2">
+          <input
+            type="search"
+            placeholder="Search references…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            autoFocus
+            className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+        </div>
+      )}
+
+      {/* Expandable filter controls */}
+      {filterOpen && (
+        <div className="shrink-0 border-b border-border/40 px-3 py-2">
+          <div className="flex gap-1.5">
+            <select
+              className="flex-1 rounded-md border border-border bg-background px-1.5 py-1 text-xs"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
+            >
+              {typeOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <select
+              className="flex-1 rounded-md border border-border bg-background px-1.5 py-1 text-xs"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            >
+              {statusOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Error banner */}
       {actionError && (
@@ -334,29 +414,23 @@ export function ReferenceListPanel() {
             return (
               <li
                 key={item.id}
-                className={`p-2 ${busy ? "opacity-60" : ""} ${isActive ? "bg-accent/60" : ""}`}
+                className={`px-3 py-2.5 transition-colors ${busy ? "opacity-60" : ""} ${isActive ? "bg-primary/10" : "hover:bg-accent/40"}`}
               >
                 <Link
                   href={`/references/${item.id}`}
-                  className="block text-xs font-medium leading-snug text-foreground hover:underline"
+                  className="block text-xs font-semibold leading-snug text-foreground hover:text-primary"
                 >
                   {truncate(item.statement)}
                 </Link>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
-                  {item.type} ·{" "}
-                  <span
-                    className={
-                      item.status === "candidate"
-                        ? "text-amber-600 dark:text-amber-400"
-                        : item.status === "inactive"
-                          ? "opacity-50"
-                          : ""
-                    }
-                  >
-                    {item.status}
-                  </span>{" "}
-                  · {formatDate(item.updatedAt)}
-                </p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${TYPE_STYLES[item.type] ?? "bg-muted text-muted-foreground"}`}>
+                    {TYPE_LABELS[item.type] ?? item.type}
+                  </span>
+                  <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${STATUS_STYLES[item.status] ?? "bg-muted text-muted-foreground"}`}>
+                    {STATUS_LABELS[item.status] ?? item.status}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground/60">{formatDate(item.updatedAt)}</span>
+                </div>
 
                 {/* Candidate actions */}
                 {item.status === "candidate" && (
@@ -365,7 +439,7 @@ export function ReferenceListPanel() {
                       type="button"
                       disabled={busy}
                       onClick={() => void runAction(item.id, "promote_candidate")}
-                      className="rounded border border-primary px-1.5 py-0.5 text-[10px] text-primary hover:bg-muted disabled:opacity-40"
+                      className="rounded border border-primary px-2 py-1 text-xs text-primary hover:bg-primary/10 disabled:opacity-40"
                     >
                       Promote
                     </button>
@@ -373,7 +447,7 @@ export function ReferenceListPanel() {
                       type="button"
                       disabled={busy}
                       onClick={() => void runAction(item.id, "deactivate")}
-                      className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted disabled:opacity-40"
+                      className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40"
                     >
                       Deactivate
                     </button>
@@ -391,7 +465,7 @@ export function ReferenceListPanel() {
                         setSupersedeStatement("");
                         setSupersedeConfidence("");
                       }}
-                      className="rounded border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted disabled:opacity-40"
+                      className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40"
                     >
                       Supersede
                     </button>
@@ -401,7 +475,7 @@ export function ReferenceListPanel() {
                       onClick={() =>
                         setConfidenceEdit({ itemId: item.id, value: item.confidence as ConfidenceLevel })
                       }
-                      className="rounded border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted disabled:opacity-40"
+                      className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40"
                     >
                       Confidence
                     </button>
@@ -409,7 +483,7 @@ export function ReferenceListPanel() {
                       type="button"
                       disabled={busy}
                       onClick={() => void runAction(item.id, "deactivate")}
-                      className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted disabled:opacity-40"
+                      className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40"
                     >
                       Deactivate
                     </button>

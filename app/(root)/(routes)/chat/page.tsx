@@ -3,22 +3,22 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  ArrowUp,
   Brain,
   ChevronLeft,
   Clock3,
-  MessageSquare,
   PanelLeft,
-  Sparkles,
+  Copy,
+  MessageSquare,
+  Paperclip,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
 import { MemoryPanel } from "./_components/memory-panel";
 import { SessionListPanel } from "./_components/SessionListPanel";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { ModeToggle } from "@/components/mode-toggle";
-import { useProModal } from "@/hooks/use-pro-modal";
 import { DomainListSlot } from "@/components/layout/DomainListSlot";
+import { TopBarSlot } from "@/components/layout/TopBarSlot";
 import { useDomainListPanel } from "@/components/layout/DomainListContext";
 import { ChatContextDrawer } from "@/components/chat/ChatContextDrawer";
 
@@ -32,6 +32,7 @@ type ChatMessage = {
 type ChatSession = {
   id: string;
   label: string | null;
+  preview: string | null;
   startedAt: string;
   endedAt: string | null;
 };
@@ -74,10 +75,6 @@ type PendingReferenceItem = {
 
 const SESSION_STORAGE_KEY = "double:lastSessionId";
 
-const shortenId = (id: string) => {
-  if (id.length <= 12) return id;
-  return `${id.slice(0, 6)}...${id.slice(-4)}`;
-};
 
 const createTempId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -85,8 +82,7 @@ const createTempId = () =>
     : `temp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 export default function ChatPage() {
-  const proModal = useProModal();
-  const { toggleCollapsed } = useDomainListPanel();
+  const { toggleCollapsed: toggleSessionsPanel } = useDomainListPanel();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -119,13 +115,14 @@ export default function ChatPage() {
     useState<ReferenceConfidence>("medium");
   const [pendingCandidate, setPendingCandidate] = useState<PendingReferenceItem>(null);
 
-  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(true);
   const [contextOpen, setContextOpen] = useState(false);
   const [mobileMemoryOpen, setMobileMemoryOpen] = useState(false);
   const [mobileSessionsOpen, setMobileSessionsOpen] = useState(false);
 
   const [isUserScrolled, setIsUserScrolled] = useState(false);
   const messageScrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   // Tracks which sessionId has already had its scroll position restored this mount
   const didRestoreRef = useRef<string | null>(null);
 
@@ -211,19 +208,9 @@ export default function ChatPage() {
   }, []);
 
   const scrollToBottom = useCallback((force = false) => {
+    if (!force && isUserScrolled) return;
     const el = messageScrollRef.current;
-    if (!el) {
-      return;
-    }
-
-    if (!force && isUserScrolled) {
-      return;
-    }
-
-    el.scrollTo({
-      top: el.scrollHeight,
-      behavior: "smooth",
-    });
+    if (el) el.scrollTop = el.scrollHeight;
   }, [isUserScrolled]);
 
   useEffect(() => {
@@ -351,12 +338,6 @@ export default function ChatPage() {
     scrollToBottom(false);
   }, [messages, scrollToBottom]);
 
-  const shortSessionId = useMemo(() => {
-    if (!sessionId) {
-      return "...";
-    }
-    return shortenId(sessionId);
-  }, [sessionId]);
   const desktopGridColumns = useMemo(
     () => `minmax(0, 1fr) ${rightCollapsed ? "2.75rem" : "20rem"}`,
     [rightCollapsed]
@@ -421,6 +402,10 @@ export default function ChatPage() {
 
       setIsSending(true);
       setError(null);
+      setIsUserScrolled(false);
+
+      // Capture whether this is the first message before we update state
+      const isFirstMessage = messages.length === 0;
 
       try {
         const userTempId = createTempId();
@@ -497,6 +482,17 @@ export default function ChatPage() {
         await fetchPendingCandidate(sessionId);
         setContent("");
         setMobileMemoryOpen(false);
+
+        // After first exchange completes, generate a title in the background
+        if (isFirstMessage) {
+          void fetch("/api/session/title", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId }),
+          }).then((r) => {
+            if (r.ok) void fetchSessions();
+          });
+        }
       } catch {
         setError("Failed to send message.");
         try {
@@ -509,7 +505,7 @@ export default function ChatPage() {
         setIsSending(false);
       }
     },
-    [fetchMessages, fetchPendingCandidate, isSending, sessionId]
+    [fetchMessages, fetchPendingCandidate, fetchSessions, isSending, messages.length, sessionId]
   );
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -713,6 +709,44 @@ export default function ChatPage() {
         <SessionListPanel {...sessionListProps} />
       </DomainListSlot>
 
+      <TopBarSlot>
+        <button
+          type="button"
+          onClick={toggleSessionsPanel}
+          title="Toggle sessions"
+          aria-label="Toggle sessions"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <MessageSquare className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setRightCollapsed((v) => !v)}
+          title="Toggle memory"
+          aria-label="Toggle memory"
+          className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
+            !rightCollapsed
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          <PanelLeft className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setContextOpen((v) => !v)}
+          title="Toggle context"
+          aria-label="Toggle context"
+          className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
+            contextOpen
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          <Clock3 className="h-4 w-4" />
+        </button>
+      </TopBarSlot>
+
       <header className="flex h-12 items-center justify-between border-b border-border/60 bg-background/80 px-4 backdrop-blur supports-backdrop-filter:bg-background/70 md:hidden">
         <Link
           href="/"
@@ -739,87 +773,6 @@ export default function ChatPage() {
           <UserButton />
         </div>
       </header>
-
-      <div
-        className="hidden h-12 border-b border-border/60 md:grid"
-        style={{ gridTemplateColumns: desktopGridColumns }}
-      >
-        <div className="flex items-center justify-between bg-background px-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="font-display text-[10px] uppercase tracking-[0.2em] text-text-dim">
-              Session
-            </span>
-            <span className="truncate font-mono text-sm text-foreground">{shortSessionId}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {rightCollapsed ? (
-              <button
-                type="button"
-                onClick={() => setRightCollapsed(false)}
-                className="hidden items-center gap-2 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground lg:flex"
-              >
-                <PanelLeft className="h-3.5 w-3.5" />
-                Memory
-              </button>
-            ) : null}
-            <Button size="sm" variant="premium" onClick={proModal.onOpen} className="h-8 px-2 text-xs">
-              Upgrade
-              <Sparkles className="ml-1 h-3.5 w-3.5 fill-white text-white" />
-            </Button>
-            <button
-              type="button"
-              onClick={toggleCollapsed}
-              className="hidden items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground lg:flex"
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-              Sessions
-            </button>
-            <button
-              type="button"
-              onClick={() => setContextOpen((v) => !v)}
-              className="hidden items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground lg:flex"
-            >
-              <Clock3 className="h-3.5 w-3.5" />
-              Context
-            </button>
-            <ModeToggle />
-            {rightCollapsed ? <UserButton /> : null}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between border-l border-border/60 bg-sidebar px-4">
-          {rightCollapsed ? (
-            <button
-              type="button"
-              onClick={() => setRightCollapsed(false)}
-              className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              aria-label="Open memory"
-            >
-              <Brain className="h-4 w-4 text-primary" />
-            </button>
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <Brain className="h-4 w-4 text-primary" />
-                <span className="font-display text-xs font-semibold uppercase tracking-wider text-foreground">
-                  Memory
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRightCollapsed(true)}
-                  className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Close
-                </button>
-                <UserButton />
-              </div>
-            </>
-          )}
-        </div>
-      </div>
 
       <div
         className="flex min-h-0 flex-1 overflow-hidden md:grid"
@@ -866,19 +819,53 @@ export default function ChatPage() {
               ) : messages.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No messages yet.</p>
               ) : (
-                <ul className="space-y-3">
-                  {messages.map((message) => (
-                    <li key={message.id} className="rounded border border-border bg-card p-3">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                        {message.role}
-                      </p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
-                        {message.content}
-                      </p>
-                    </li>
-                  ))}
+                <ul className="space-y-8">
+                  {messages.map((message) => {
+                    const isUser = message.role === "user";
+                    return (
+                      <li
+                        key={message.id}
+                        className={`group flex flex-col ${isUser ? "items-end" : "items-start"}`}
+                      >
+                        {!isUser && (
+                          <div className="mb-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1 shadow-glow-sm">
+                            <Brain className="h-3 w-3 text-primary-foreground" />
+                            <span className="text-xs font-semibold text-primary-foreground">
+                              Companion
+                            </span>
+                          </div>
+                        )}
+                        <div className={isUser ? "max-w-[75%] rounded-3xl bg-primary px-4 py-2.5 shadow-glow" : "max-w-[90%]"}>
+                          {!isUser && isSending && !message.content ? (
+                            <div className="flex items-center gap-2 px-1 py-2">
+                              {[0, 1, 2].map((i) => (
+                                <span
+                                  key={i}
+                                  className="h-2.5 w-2.5 rounded-full bg-primary animate-dot-pop"
+                                  style={{ animationDelay: `${i * 0.22}s` }}
+                                />
+                              ))}
+                            </div>
+                          ) : (
+                            <p className={`whitespace-pre-wrap text-sm leading-relaxed ${isUser ? "text-primary-foreground" : "text-foreground"}`}>
+                              {message.content}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void navigator.clipboard.writeText(message.content)}
+                          title="Copy"
+                          className="mt-1.5 flex h-5 w-5 items-center justify-center text-muted-foreground/50 opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:text-muted-foreground"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
+              <div ref={bottomRef} />
             </div>
           </div>
 
@@ -897,22 +884,23 @@ export default function ChatPage() {
             </div>
           ) : null}
 
-          <form onSubmit={onSubmit} className="shrink-0 border-t border-border/60 bg-background px-4 py-3">
-            <div className="mx-auto flex w-full max-w-3xl gap-2">
+          <form onSubmit={onSubmit} className="shrink-0 border-t border-border/60 bg-background px-4 py-4">
+            <div className="mx-auto flex w-full max-w-3xl items-center gap-3 rounded-xl border border-primary/40 bg-card/50 px-4 py-2.5 transition-[border-color,box-shadow] duration-150 focus-within:border-primary/60 focus-within:shadow-glow">
+              <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground/30" aria-hidden />
               <input
                 type="text"
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
-                placeholder="Type a message"
-                className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                placeholder="Type a message…"
+                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 outline-none"
                 disabled={!sessionId || isSending || isCreatingSession}
               />
               <button
                 type="submit"
                 disabled={!sessionId || isSending || isCreatingSession || content.trim().length === 0}
-                className="rounded-md border border-border px-4 py-2 text-sm disabled:opacity-50"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-glow-sm transition-all disabled:opacity-25 enabled:hover:opacity-90"
               >
-                {isSending ? "Sending..." : "Send"}
+                <ArrowUp className="h-3.5 w-3.5" />
               </button>
             </div>
           </form>
@@ -922,7 +910,7 @@ export default function ChatPage() {
           <button
             type="button"
             onClick={() => setRightCollapsed(false)}
-            className="hidden min-h-0 h-full shrink-0 flex-col items-center justify-start border-l border-border/60 bg-sidebar pt-4 transition-colors hover:bg-accent md:flex"
+            className="hidden min-h-0 h-full shrink-0 flex-col items-center justify-start border-l border-border/40 bg-sidebar pt-4 transition-colors hover:bg-accent md:flex"
           >
             <Brain className="h-4 w-4 text-muted-foreground" />
             <span className="mt-3 font-display text-[9px] uppercase tracking-widest text-text-dim [writing-mode:vertical-rl]">
@@ -930,7 +918,7 @@ export default function ChatPage() {
             </span>
           </button>
         ) : (
-          <aside className="hidden min-h-0 shrink-0 flex-col border-l border-border/60 bg-sidebar md:flex">
+          <aside className="hidden min-h-0 shrink-0 flex-col border-l border-border/40 bg-sidebar md:flex">
             <MemoryPanel
               savedReferences={savedReferences}
               pendingCandidate={pendingCandidate}
@@ -966,6 +954,7 @@ export default function ChatPage() {
               replaceConfidence={replaceConfidence}
               setReplaceConfidence={setReplaceConfidence}
               onCancelSupersede={() => setSupersedingReferenceId(null)}
+              onTogglePanel={() => setRightCollapsed(true)}
             />
           </aside>
         )}
