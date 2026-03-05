@@ -10,19 +10,6 @@ import {
   fetchEvidenceList,
 } from "@/lib/nodes-api";
 
-const ARTIFACT_TYPE_LABELS: Record<string, string> = {
-  BELIEF: "Belief",
-  VALUE: "Value",
-  GOAL: "Goal",
-  FEAR: "Fear",
-  IDENTITY: "Identity",
-  TRAIT: "Trait",
-  HABIT: "Habit",
-  TOPIC: "Topic",
-  RELATIONSHIP_PATTERN: "Relationship",
-  EMOTIONAL_PATTERN: "Emotional",
-  COGNITIVE_PATTERN: "Cognitive",
-};
 
 type OriginFilter = "all" | "app" | "imported";
 type ArtifactFilter = "all" | "has" | "none";

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
+import { ChevronLeft, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDomainListPanel } from "./DomainListContext";
 

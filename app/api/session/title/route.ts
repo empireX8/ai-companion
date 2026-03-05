@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     const { text } = await generateText({
       model: openai("gpt-4o-mini"),
       prompt: `Given this conversation, write a short title (4-7 words, no punctuation, no quotes) that captures what it's about:\n\n${transcript}\n\nTitle:`,
-      maxTokens: 20,
+      maxOutputTokens: 20,
       temperature: 0.3,
     });
 
