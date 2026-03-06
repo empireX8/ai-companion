@@ -38,9 +38,12 @@ export function GlobalRail() {
       )}
     >
       {/* Nav fills the wrapper; overflow-hidden clips content during animation */}
-      <nav className="flex h-full w-full flex-col overflow-hidden border-r border-border/40 bg-secondary py-3 text-primary">
-        {/* Logo */}
-        <div className={cn("flex items-center mx-2 mb-2 py-2.5", isRailCollapsed ? "justify-center" : "px-3")}>
+      <nav className="flex h-full w-full flex-col overflow-hidden border-r border-border/40 bg-secondary text-primary">
+        {/* Logo — h-12 matches ContentTopBar so the border-b forms one continuous line */}
+        <div className={cn(
+          "flex h-12 shrink-0 items-center border-b border-border/40",
+          isRailCollapsed ? "justify-center px-4" : "px-4"
+        )}>
           {isRailCollapsed ? (
             <span className="text-sm font-bold text-foreground">M</span>
           ) : (
@@ -48,11 +51,8 @@ export function GlobalRail() {
           )}
         </div>
 
-        {/* Divider */}
-        <div className="mx-2 mb-2 h-px bg-border/40" />
-
         {/* Nav links */}
-        <div className="flex flex-1 flex-col gap-0.5">
+        <div className="flex flex-1 flex-col gap-0.5 pt-2">
           {routes.map((route) => {
             const active =
               pathname === route.href || pathname.startsWith(route.href + "/");

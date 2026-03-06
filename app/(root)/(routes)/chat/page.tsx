@@ -1,16 +1,22 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
+  BookmarkPlus,
   Brain,
   ChevronLeft,
   Clock3,
   PanelLeft,
   Copy,
+  Globe,
+  TextQuote,
+  Link2,
   MessageSquare,
-  Paperclip,
+  RefreshCw,
+  Square,
+  Trash2,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
@@ -81,6 +87,35 @@ const createTempId = () =>
     ? crypto.randomUUID()
     : `temp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+const URL_REGEX = /https?:\/\/[^\s<>"]+|www\.[^\s<>"]+/g;
+
+function linkifyText(text: string) {
+  const parts: Array<string | React.ReactElement> = [];
+  let last = 0;
+  let key = 0;
+  let match: RegExpExecArray | null;
+  URL_REGEX.lastIndex = 0;
+  while ((match = URL_REGEX.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    const raw = match[0];
+    const href = raw.startsWith("www.") ? `https://${raw}` : raw;
+    parts.push(
+      <a
+        key={key++}
+        href={href}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="underline-offset-2 opacity-80 hover:underline hover:opacity-100"
+      >
+        {raw}
+      </a>
+    );
+    last = match.index + raw.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 export default function ChatPage() {
   const { toggleCollapsed: toggleSessionsPanel } = useDomainListPanel();
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -93,7 +128,26 @@ export default function ChatPage() {
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
 
-  const [isSending, setIsSending] = useState(false);
+  type SendState = "idle" | "thinking" | "streaming" | "error";
+  const [sendState, setSendState] = useState<SendState>("idle");
+  const isSending = sendState !== "idle";
+  const abortRef = useRef<AbortController | null>(null);
+  const lastPayloadRef = useRef<string | null>(null);
+  const failedAssistantIdRef = useRef<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkInput, setLinkInput] = useState("");
+  const composerInputRef = useRef<HTMLInputElement>(null);
+
+  type CaptureMode = "memory" | "ref" | "evidence";
+  const [openCapture, setOpenCapture] = useState<{ id: string; mode: CaptureMode } | null>(null);
+  const [captureText, setCaptureText] = useState("");
+  const [captureUrl, setCaptureUrl] = useState("");
+  const [captureTitle, setCaptureTitle] = useState("");
+  const [captureType, setCaptureType] = useState("preference");
+  const [captureLoading, setCaptureLoading] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
+  const [captureSuccess, setCaptureSuccess] = useState<Set<string>>(new Set());
 
   const [referenceStatement, setReferenceStatement] = useState("");
   const [referenceType, setReferenceType] = useState<ReferenceType>("preference");
@@ -393,23 +447,148 @@ export default function ChatPage() {
     }
   };
 
+  const cancelSend = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setSendState("idle");
+  }, []);
+
+  const copyMessage = useCallback((id: string, text: string) => {
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((prev) => (prev === id ? null : prev)), 800);
+    });
+  }, []);
+
+  const deleteMessage = useCallback((id: string) => {
+    // If deleting the streaming assistant placeholder, cancel first
+    if (isSending) cancelSend();
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+  }, [cancelSend, isSending]);
+
+  const insertLink = useCallback(() => {
+    const url = linkInput.trim();
+    if (!url || (!url.startsWith("http") && !url.startsWith("www."))) return;
+    const normalised = url.startsWith("www.") ? `https://${url}` : url;
+    const el = composerInputRef.current;
+    if (el) {
+      const start = el.selectionStart ?? content.length;
+      const end = el.selectionEnd ?? content.length;
+      const next = content.slice(0, start) + normalised + content.slice(end);
+      setContent(next);
+    } else {
+      setContent((prev) => (prev ? `${prev} ${normalised}` : normalised));
+    }
+    setLinkInput("");
+    setLinkOpen(false);
+  }, [content, linkInput]);
+
+  const openCapturePanel = useCallback(
+    (messageId: string, mode: CaptureMode, msgContent: string) => {
+      if (openCapture?.id === messageId && openCapture.mode === mode) {
+        setOpenCapture(null);
+        return;
+      }
+      setCaptureError(null);
+      if (mode === "memory" || mode === "evidence") {
+        // Pre-fill with selection if any, else full content
+        const sel = typeof window !== "undefined" ? window.getSelection()?.toString().trim() : "";
+        setCaptureText(sel && msgContent.includes(sel) ? sel : msgContent);
+      } else {
+        setCaptureText("");
+      }
+      if (mode === "ref") {
+        URL_REGEX.lastIndex = 0;
+        const m = URL_REGEX.exec(msgContent);
+        const found = m ? (m[0].startsWith("www.") ? `https://${m[0]}` : m[0]) : "";
+        setCaptureUrl(found);
+        setCaptureTitle("");
+      }
+      setOpenCapture({ id: messageId, mode });
+    },
+    [openCapture]
+  );
+
+  const submitCapture = useCallback(
+    async (message: ChatMessage) => {
+      if (!openCapture) return;
+      setCaptureLoading(true);
+      setCaptureError(null);
+      try {
+        if (openCapture.mode === "memory") {
+          const r = await fetch("/api/reference", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              statement: captureText,
+              type: captureType,
+              confidence: "medium",
+              sourceSessionId: sessionId ?? undefined,
+              sourceMessageId: message.id.startsWith("temp-") ? undefined : message.id,
+            }),
+          });
+          if (!r.ok) throw new Error(await r.text());
+          void fetchSavedReferences();
+        } else if (openCapture.mode === "ref") {
+          const url = captureUrl.startsWith("www.") ? `https://${captureUrl}` : captureUrl;
+          if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            throw new Error("Please enter a valid URL starting with http(s)://");
+          }
+          const r = await fetch("/api/reference/from-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              url,
+              title: captureTitle || undefined,
+              sourceSessionId: sessionId ?? undefined,
+              sourceMessageId: message.id.startsWith("temp-") ? undefined : message.id,
+            }),
+          });
+          if (!r.ok) throw new Error(await r.text());
+        } else if (openCapture.mode === "evidence") {
+          if (message.id.startsWith("temp-")) throw new Error("Message not yet saved — try again after it finishes");
+          const r = await fetch("/api/evidence/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messageId: message.id, quote: captureText }),
+          });
+          if (!r.ok) throw new Error(await r.text());
+        }
+        setCaptureSuccess((prev) => new Set(prev).add(`${openCapture.id}:${openCapture.mode}`));
+        setOpenCapture(null);
+      } catch (e) {
+        setCaptureError(e instanceof Error ? e.message : "Failed to save");
+      } finally {
+        setCaptureLoading(false);
+      }
+    },
+    [openCapture, captureText, captureUrl, captureTitle, captureType, sessionId, fetchSavedReferences]
+  );
+
   const sendMessage = useCallback(
     async (rawContent: string) => {
       const trimmed = rawContent.trim();
-      if (!trimmed || !sessionId || isSending) {
+      if (!trimmed || !sessionId || sendState !== "idle") {
         return;
       }
 
-      setIsSending(true);
+      lastPayloadRef.current = trimmed;
+      const abort = new AbortController();
+      abortRef.current = abort;
+
+      setSendState("thinking");
       setError(null);
+      failedAssistantIdRef.current = null;
       setIsUserScrolled(false);
 
       // Capture whether this is the first message before we update state
       const isFirstMessage = messages.length === 0;
 
+      // Hoist temp IDs so they're accessible in catch
+      const userTempId = createTempId();
+      const assistantTempId = createTempId();
+
       try {
-        const userTempId = createTempId();
-        const assistantTempId = createTempId();
         const now = new Date().toISOString();
 
         setMessages((current) => [
@@ -430,10 +609,9 @@ export default function ChatPage() {
 
         const response = await fetch("/api/message", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sessionId, content: trimmed }),
+          signal: abort.signal,
         });
 
         if (!response.ok) {
@@ -447,24 +625,31 @@ export default function ChatPage() {
           throw new Error("No response stream");
         }
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
+        let firstChunk = true;
+        try {
+          while (true) {
+            if (abort.signal.aborted) break;
+            const { done, value } = await reader.read();
+            if (done || abort.signal.aborted) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          if (!chunk) {
-            continue;
-          }
+            const chunk = decoder.decode(value, { stream: true });
+            if (!chunk) continue;
 
-          setMessages((current) =>
-            current.map((message) =>
-              message.id === assistantTempId
-                ? { ...message, content: message.content + chunk }
-                : message
-            )
-          );
+            if (firstChunk) {
+              setSendState("streaming");
+              firstChunk = false;
+            }
+
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === assistantTempId
+                  ? { ...message, content: message.content + chunk }
+                  : message
+              )
+            );
+          }
+        } catch (readErr) {
+          if (!(readErr instanceof Error && readErr.name === "AbortError")) throw readErr;
         }
 
         const remaining = decoder.decode();
@@ -478,6 +663,12 @@ export default function ChatPage() {
           );
         }
 
+        if (abort.signal.aborted) {
+          setSendState("idle");
+          return;
+        }
+        failedAssistantIdRef.current = null;
+        setSendState("idle");
         await fetchMessages(sessionId);
         await fetchPendingCandidate(sessionId);
         setContent("");
@@ -493,7 +684,14 @@ export default function ChatPage() {
             if (r.ok) void fetchSessions();
           });
         }
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          // User cancelled — leave streamed content, return to idle
+          setSendState("idle");
+          return;
+        }
+        failedAssistantIdRef.current = assistantTempId;
+        setSendState("error");
         setError("Failed to send message.");
         try {
           await fetchMessages(sessionId);
@@ -502,10 +700,10 @@ export default function ChatPage() {
           // Keep original send error if resync also fails.
         }
       } finally {
-        setIsSending(false);
+        abortRef.current = null;
       }
     },
-    [fetchMessages, fetchPendingCandidate, fetchSessions, isSending, messages.length, sessionId]
+    [fetchMessages, fetchPendingCandidate, fetchSessions, messages.length, sendState, sessionId]
   );
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -836,7 +1034,7 @@ export default function ChatPage() {
                           </div>
                         )}
                         <div className={isUser ? "max-w-[75%] rounded-3xl bg-primary px-4 py-2.5 shadow-glow" : "max-w-[90%]"}>
-                          {!isUser && isSending && !message.content ? (
+                          {!isUser && sendState === "thinking" && !message.content ? (
                             <div className="flex items-center gap-2 px-1 py-2">
                               {[0, 1, 2].map((i) => (
                                 <span
@@ -848,18 +1046,127 @@ export default function ChatPage() {
                             </div>
                           ) : (
                             <p className={`whitespace-pre-wrap text-sm leading-relaxed ${isUser ? "text-primary-foreground" : "text-foreground"}`}>
-                              {message.content}
+                              {linkifyText(message.content)}
                             </p>
                           )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => void navigator.clipboard.writeText(message.content)}
-                          title="Copy"
-                          className="mt-1.5 flex h-5 w-5 items-center justify-center text-muted-foreground/50 opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:text-muted-foreground"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </button>
+                        {/* Hover action bar */}
+                        <div className={`mt-1 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 ${isUser ? "justify-end" : "justify-start"}`}>
+                          {message.content && (
+                            <button
+                              type="button"
+                              onClick={() => copyMessage(message.id, message.content)}
+                              title="Copy"
+                              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+                            >
+                              {copiedId === message.id
+                                ? <span className="text-[10px] font-medium text-primary">✓</span>
+                                : <Copy className="h-3 w-3" />}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => deleteMessage(message.id)}
+                            title="Delete"
+                            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:bg-accent hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                          {!isUser && sendState === "error" && failedAssistantIdRef.current === message.id && lastPayloadRef.current && (
+                            <button
+                              type="button"
+                              onClick={() => void sendMessage(lastPayloadRef.current!)}
+                              title="Retry"
+                              className="flex h-6 items-center gap-1 rounded px-1.5 text-[10px] text-muted-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                              Retry
+                            </button>
+                          )}
+                          {/* Capture buttons — assistant messages only */}
+                          {!isUser && message.content && (
+                            <>
+                              {(["memory", "ref", "evidence"] as CaptureMode[]).map((mode) => {
+                                const successKey = `${message.id}:${mode}`;
+                                const saved = captureSuccess.has(successKey);
+                                const active = openCapture?.id === message.id && openCapture.mode === mode;
+                                const Icon = mode === "memory" ? BookmarkPlus : mode === "ref" ? Globe : TextQuote;
+                                const label = mode === "memory" ? "Save to memory" : mode === "ref" ? "Save reference" : "Save evidence";
+                                return (
+                                  <button
+                                    key={mode}
+                                    type="button"
+                                    onClick={() => openCapturePanel(message.id, mode, message.content)}
+                                    title={label}
+                                    className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+                                      active ? "bg-muted text-foreground" :
+                                      saved ? "text-primary/70" :
+                                      "text-muted-foreground/50 hover:bg-accent hover:text-foreground"
+                                    }`}
+                                  >
+                                    {saved && !active ? <span className="text-[10px] font-medium text-primary">✓</span> : <Icon className="h-3 w-3" />}
+                                  </button>
+                                );
+                              })}
+                            </>
+                          )}
+                        </div>
+                        {/* Inline capture panel */}
+                        {openCapture?.id === message.id && (
+                          <div className="mt-2 w-full max-w-[90%] rounded-lg border border-border bg-card p-3 text-xs">
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="font-semibold text-muted-foreground">
+                                {openCapture.mode === "memory" ? "Save to memory" : openCapture.mode === "ref" ? "Save reference" : "Save evidence"}
+                              </span>
+                              <button type="button" onClick={() => setOpenCapture(null)} className="text-muted-foreground/60 hover:text-foreground">✕</button>
+                            </div>
+                            {(openCapture.mode === "memory" || openCapture.mode === "evidence") && (
+                              <textarea
+                                value={captureText}
+                                onChange={(e) => setCaptureText(e.target.value)}
+                                rows={3}
+                                className="mb-2 w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+                              />
+                            )}
+                            {openCapture.mode === "memory" && (
+                              <select
+                                value={captureType}
+                                onChange={(e) => setCaptureType(e.target.value)}
+                                className="mb-2 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none"
+                              >
+                                {["preference", "goal", "constraint", "pattern", "rule", "assumption", "hypothesis"].map((t) => (
+                                  <option key={t} value={t}>{t}</option>
+                                ))}
+                              </select>
+                            )}
+                            {openCapture.mode === "ref" && (
+                              <div className="mb-2 space-y-1.5">
+                                <input
+                                  type="url"
+                                  value={captureUrl}
+                                  onChange={(e) => setCaptureUrl(e.target.value)}
+                                  placeholder="https://…"
+                                  className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+                                />
+                                <input
+                                  value={captureTitle}
+                                  onChange={(e) => setCaptureTitle(e.target.value)}
+                                  placeholder="Title (optional)"
+                                  className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+                                />
+                              </div>
+                            )}
+                            {captureError && <p className="mb-2 text-destructive">{captureError}</p>}
+                            <button
+                              type="button"
+                              onClick={() => void submitCapture(message)}
+                              disabled={captureLoading}
+                              className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-opacity disabled:opacity-50 hover:opacity-90"
+                            >
+                              {captureLoading ? "Saving…" : "Save"}
+                            </button>
+                          </div>
+                        )}
                       </li>
                     );
                   })}
@@ -885,9 +1192,55 @@ export default function ChatPage() {
           ) : null}
 
           <form onSubmit={onSubmit} className="shrink-0 border-t border-border/60 bg-background px-4 py-4">
+            {/* Status row */}
+            <div className="mx-auto mb-1.5 flex w-full max-w-3xl items-center justify-between px-1">
+              <span className="text-[11px] text-muted-foreground/60">
+                {sendState === "thinking" ? "Thinking…" : sendState === "streaming" ? "Streaming…" : ""}
+              </span>
+            </div>
+            {/* Link input row */}
+            {linkOpen && (
+              <div className="mx-auto mb-2 flex w-full max-w-3xl items-center gap-2 rounded-lg border border-border bg-card/50 px-3 py-1.5">
+                <Link2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                <input
+                  type="text"
+                  value={linkInput}
+                  onChange={(e) => setLinkInput(e.target.value)}
+                  placeholder="https://…"
+                  autoFocus
+                  className="flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/50"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); insertLink(); }
+                    if (e.key === "Escape") { setLinkOpen(false); setLinkInput(""); }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={insertLink}
+                  className="text-xs font-medium text-primary hover:opacity-80"
+                >
+                  Insert
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setLinkOpen(false); setLinkInput(""); }}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
             <div className="mx-auto flex w-full max-w-3xl items-center gap-3 rounded-xl border border-primary/40 bg-card/50 px-4 py-2.5 transition-[border-color,box-shadow] duration-150 focus-within:border-primary/60 focus-within:shadow-glow">
-              <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground/30" aria-hidden />
+              <button
+                type="button"
+                onClick={() => setLinkOpen((v) => !v)}
+                title="Insert link"
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors ${linkOpen ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
+              >
+                <Link2 className="h-4 w-4" />
+              </button>
               <input
+                ref={composerInputRef}
                 type="text"
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
@@ -895,13 +1248,24 @@ export default function ChatPage() {
                 className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 outline-none"
                 disabled={!sessionId || isSending || isCreatingSession}
               />
-              <button
-                type="submit"
-                disabled={!sessionId || isSending || isCreatingSession || content.trim().length === 0}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-glow-sm transition-all disabled:opacity-25 enabled:hover:opacity-90"
-              >
-                <ArrowUp className="h-3.5 w-3.5" />
-              </button>
+              {isSending ? (
+                <button
+                  type="button"
+                  onClick={cancelSend}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-accent"
+                  aria-label="Cancel"
+                >
+                  <Square className="h-3 w-3 fill-current" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!sessionId || isCreatingSession || content.trim().length === 0}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-glow-sm transition-all disabled:opacity-25 enabled:hover:opacity-90"
+                >
+                  <ArrowUp className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           </form>
         </section>
