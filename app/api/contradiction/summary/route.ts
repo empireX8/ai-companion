@@ -19,6 +19,7 @@ export async function GET() {
   for (const row of rows) c[row.status] = row._count._all;
 
   return NextResponse.json({
+    candidate: c["candidate"] ?? 0,
     open: c["open"] ?? 0,
     explored: c["explored"] ?? 0,
     snoozed: c["snoozed"] ?? 0,

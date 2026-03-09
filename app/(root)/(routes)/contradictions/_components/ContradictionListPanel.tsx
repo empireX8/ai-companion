@@ -202,7 +202,7 @@ export function ContradictionListPanel() {
       } catch (err) {
         if (!mounted) return;
         const message =
-          err instanceof Error ? err.message : "Failed to load contradictions";
+          err instanceof Error ? err.message : "Failed to load tensions";
         setError(message);
       } finally {
         if (mounted) setLoading(false);
@@ -492,7 +492,7 @@ export function ContradictionListPanel() {
       <div className="flex shrink-0 items-center justify-between border-t border-border/40 px-3 py-2">
         <div className="flex items-center gap-2">
           <Zap className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-xs font-semibold text-muted-foreground">Contradictions</span>
+          <span className="text-xs font-semibold text-muted-foreground">Tensions</span>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -530,7 +530,7 @@ export function ContradictionListPanel() {
         <div className="shrink-0 border-t border-border/40 px-3 py-2">
           <input
             type="search"
-            placeholder="Search contradictions…"
+            placeholder="Search tensions…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
@@ -580,17 +580,17 @@ export function ContradictionListPanel() {
           <ListSkeleton rows={6} />
         </div>
       ) : unauthorized ? (
-        <p className="flex-1 p-3 text-xs text-muted-foreground">Sign in to view contradictions.</p>
+        <p className="flex-1 p-3 text-xs text-muted-foreground">Sign in to view tensions.</p>
       ) : error ? (
         <p className="flex-1 p-3 text-xs text-destructive">{error}</p>
       ) : items.length === 0 ? (
         <div className="flex-1 p-4 text-center">
           <p className="text-xs font-medium text-foreground">
-            {filter === "activeish" ? "No contradictions yet" : "No results"}
+            {filter === "activeish" ? "No tensions yet" : "No results"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {filter === "activeish"
-              ? "Double will surface conflicts as you chat."
+              ? "Tensions will surface as you chat."
               : "Try a different filter."}
           </p>
           {filter === "activeish" && (
@@ -705,7 +705,7 @@ export function ContradictionListPanel() {
                         )}
                         {cooldownActive && <span className="text-[11px] text-muted-foreground/60">cooldown</span>}
                         {item.recommendedRung != null && (
-                          <span className="text-[11px] text-muted-foreground">rung {item.recommendedRung}</span>
+                          <span className="text-[11px] text-muted-foreground">Level {item.recommendedRung}</span>
                         )}
                       </div>
                       <p className="mt-1 text-[11px] text-muted-foreground/60">

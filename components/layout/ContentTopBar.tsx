@@ -11,10 +11,10 @@ import { useTopBarSlot } from "./TopBarSlotContext";
 
 const SECTION_LABELS: Array<[string, string]> = [
   ["/chat", "Chat"],
-  ["/contradictions", "Contradictions"],
-  ["/references", "References"],
+  ["/contradictions", "Tensions"],
+  ["/references", "Memories"],
   ["/import", "Import"],
-  ["/audit", "Audit"],
+  ["/audit", "Review"],
   ["/settings", "Settings"],
   ["/metrics", "Metrics"],
 ];

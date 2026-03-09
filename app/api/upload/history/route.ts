@@ -30,11 +30,28 @@ export async function GET(req: Request) {
     },
   });
 
+  const [candidateMemories, candidateTensions, weeklyAuditCount] = await Promise.all([
+    prismadb.referenceItem.count({
+      where: { userId, status: "candidate" },
+    }),
+    prismadb.contradictionNode.count({
+      where: { userId, status: "candidate" },
+    }),
+    prismadb.weeklyAudit.count({
+      where: { userId },
+    }),
+  ]);
+
   return NextResponse.json({
     items: sessions.map((s) => ({
       ...s,
       createdAt: s.createdAt.toISOString(),
       finishedAt: s.finishedAt?.toISOString() ?? null,
     })),
+    aggregates: {
+      candidateMemories,
+      candidateTensions,
+      weeklyAuditCount,
+    },
   });
 }

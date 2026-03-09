@@ -21,11 +21,11 @@ export const Sidebar = () => {
   const routes = [
     { icon: LayoutDashboard, label: "Home", href: "/" },
     { icon: Plus, label: "Create", href: "/chat" },
-    { icon: Split, label: "Contradictions", href: "/contradictions" },
-    { icon: BookOpenText, label: "References", href: "/references" },
+    { icon: Split, label: "Tensions", href: "/contradictions" },
+    { icon: BookOpenText, label: "Memories", href: "/references" },
     { icon: Upload, label: "Import", href: "/import" },
     { icon: Database, label: "Evidence", href: "/evidence" },
-    { icon: ChartNoAxesColumn, label: "Audit", href: "/audit" },
+    { icon: ChartNoAxesColumn, label: "Review", href: "/audit" },
     { icon: Activity, label: "Metrics", href: "/metrics" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];

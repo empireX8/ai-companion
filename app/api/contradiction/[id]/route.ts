@@ -315,3 +315,45 @@ export async function PATCH(
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams?.id;
+    if (!id) {
+      return new NextResponse("Contradiction id is required", { status: 400 });
+    }
+
+    const node = await prismadb.contradictionNode.findFirst({
+      where: { id, userId },
+      select: { id: true, status: true },
+    });
+
+    if (!node) {
+      return new NextResponse("Contradiction not found", { status: 404 });
+    }
+
+    if (node.status !== "candidate") {
+      return new NextResponse("Only candidate tensions can be dismissed", { status: 409 });
+    }
+
+    await prismadb.$transaction(async (tx) => {
+      await tx.contradictionEvidence.deleteMany({ where: { nodeId: id } });
+      await tx.contradictionNode.delete({ where: { id } });
+    });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    console.log("[CONTRADICTION_DELETE_ERROR]", error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}

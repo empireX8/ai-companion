@@ -51,12 +51,21 @@ export async function GET(req: Request) {
         sourceSessionId: true,
         sourceMessageId: true,
         supersedesId: true,
+        supersedes: { select: { statement: true } },
         createdAt: true,
         updatedAt: true,
       },
     });
 
-    return NextResponse.json(pendingCandidate, {
+    const result = pendingCandidate
+      ? {
+          ...pendingCandidate,
+          supersedesStatement: pendingCandidate.supersedes?.statement ?? null,
+          supersedes: undefined,
+        }
+      : null;
+
+    return NextResponse.json(result, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
       },

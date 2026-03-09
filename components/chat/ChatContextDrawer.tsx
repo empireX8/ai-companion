@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +11,7 @@ type TopContradiction = {
   id: string;
   title: string;
   status: string;
-  escalationRung: number;
+  escalationLevel: number;
 };
 
 type ReferenceSummary = {
@@ -51,12 +52,35 @@ function Skeleton() {
   );
 }
 
+/** Maps a numeric escalation level to a human-readable phrase. */
+function escalationPhrase(level: number): string {
+  if (level <= 1) return "Gentle";
+  if (level <= 3) return "Exploring";
+  return "Direct";
+}
+
+/** Maps a stability proxy float to a human-readable label. */
+function stabilityLabel(s: number): string {
+  if (s >= 0.75) return "Stable";
+  if (s >= 0.5) return "Stressed";
+  return "Critical";
+}
+
+/** Color class for the stability label. */
+function stabilityColor(s: number): string {
+  if (s >= 0.75) return "text-emerald-500";
+  if (s >= 0.5) return "text-amber-500";
+  return "text-destructive";
+}
+
 // ── Body (lazy-mounted, GET-only) ─────────────────────────────────────────────
 
 function DrawerBody() {
   const [contradictions, setContradictions] = useState<TopContradiction[]>([]);
   const [refSummary, setRefSummary] = useState<ReferenceSummary | null>(null);
   const [audit, setAudit] = useState<AuditSnapshot | null>(null);
+  const [hasCandidateTensions, setHasCandidateTensions] = useState(false);
+  const [forecastCount, setForecastCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -64,10 +88,12 @@ function DrawerBody() {
 
     void (async () => {
       try {
-        const [cRes, rRes, aRes] = await Promise.all([
+        const [cRes, rRes, aRes, ctRes, fRes] = await Promise.all([
           fetch("/api/contradiction?top=3&mode=read_only", { cache: "no-store" }),
           fetch("/api/reference/summary", { cache: "no-store" }),
           fetch("/api/audit/weekly", { cache: "no-store" }),
+          fetch("/api/contradiction?status=candidate&page=1&limit=1", { cache: "no-store" }),
+          fetch("/api/projection/list", { cache: "no-store" }),
         ]);
         if (cancelled) return;
 
@@ -83,6 +109,14 @@ function DrawerBody() {
           const data = (await aRes.json()) as AuditSnapshot;
           if (!cancelled) setAudit(data);
         }
+        if (ctRes.ok) {
+          const data = (await ctRes.json()) as { items: unknown[] };
+          if (!cancelled) setHasCandidateTensions(data.items.length > 0);
+        }
+        if (fRes.ok) {
+          const data = (await fRes.json()) as unknown[];
+          if (!cancelled) setForecastCount(data.length);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -95,57 +129,136 @@ function DrawerBody() {
 
   if (loading) return <Skeleton />;
 
+  const hasCandidateMemories = (refSummary?.candidate ?? 0) > 0;
+  const hasPendingCandidates = hasCandidateTensions || hasCandidateMemories;
+
   return (
     <div className="divide-y divide-border/60 text-xs">
+      {/* Surfaced tensions */}
       <div className="p-3">
-        <SectionHeader>Surfaced contradictions</SectionHeader>
+        <SectionHeader>Surfaced tensions</SectionHeader>
+        <p className="mb-1.5 text-[11px] text-muted-foreground/70">
+          Unresolved conflicts currently shaping this conversation.
+        </p>
         {contradictions.length === 0 ? (
-          <p className="text-muted-foreground">None surfaced.</p>
+          <p className="text-muted-foreground">No tensions are surfaced right now.</p>
         ) : (
           <ul className="space-y-1.5">
             {contradictions.map((c) => (
               <li key={c.id} className="flex items-center justify-between gap-2">
-                <span className="truncate text-foreground">{c.title}</span>
-                <span className="shrink-0 text-[10px] text-muted-foreground">
-                  rung {c.escalationRung}
+                <Link
+                  href={`/contradictions/${c.id}`}
+                  className="truncate text-foreground underline-offset-2 hover:text-primary hover:underline"
+                >
+                  {c.title}
+                </Link>
+                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  {escalationPhrase(c.escalationLevel)}
                 </span>
               </li>
             ))}
           </ul>
-        )}
+      )}
       </div>
 
-      {refSummary && (
+      {/* Context */}
+      <div className="p-3">
+        <SectionHeader>Context</SectionHeader>
+        <p className="mb-1.5 text-[11px] text-muted-foreground/70">
+          Confirmed context available to the assistant.
+        </p>
+        <ul className="space-y-1">
+          <li className="text-muted-foreground">
+            {(refSummary?.active ?? 0) > 0 ? (
+              <span>
+                Using{" "}
+                <span className="font-medium text-foreground">{refSummary!.active}</span>{" "}
+                confirmed{" "}
+                {refSummary!.active === 1 ? "memory" : "memories"}
+              </span>
+            ) : (
+              "No confirmed memories yet"
+            )}
+          </li>
+          <li className="text-muted-foreground">
+            {forecastCount > 0 ? (
+              <span>
+                <span className="font-medium text-foreground">{forecastCount}</span>{" "}
+                active{" "}
+                {forecastCount === 1 ? "forecast" : "forecasts"}
+              </span>
+            ) : (
+              "No active forecasts"
+            )}
+          </li>
+        </ul>
+        <div className="mt-2 space-y-1">
+          {(refSummary?.active ?? 0) > 0 && (
+            <Link
+              href="/references"
+              className="block text-primary underline-offset-2 hover:underline"
+            >
+              View memories →
+            </Link>
+          )}
+          {forecastCount > 0 && (
+            <Link
+              href="/projections"
+              className="block text-primary underline-offset-2 hover:underline"
+            >
+              View forecasts →
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Pending candidate review — only shown when candidates exist */}
+      {hasPendingCandidates && (
         <div className="p-3">
-          <SectionHeader>References</SectionHeader>
+          <SectionHeader>Pending review</SectionHeader>
           <div className="space-y-1">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Active</span>
-              <span className="font-medium text-emerald-600">{refSummary.active}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Candidate</span>
-              <span className="font-medium">{refSummary.candidate}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total</span>
-              <span className="font-medium">{refSummary.total}</span>
-            </div>
+            {hasCandidateTensions && (
+              <Link
+                href="/contradictions/candidates"
+                className="block text-primary underline-offset-2 hover:underline"
+              >
+                Review candidate tensions →
+              </Link>
+            )}
+            {hasCandidateMemories && (
+              <Link
+                href="/references/candidates"
+                className="block text-primary underline-offset-2 hover:underline"
+              >
+                Review candidate memories →
+              </Link>
+            )}
           </div>
         </div>
       )}
 
+      {/* This week */}
       {audit && (
         <div className="p-3">
           <SectionHeader>
             {audit.preview ? "This week (preview)" : "This week"}
           </SectionHeader>
+          <p className="mb-1.5 text-[11px] text-muted-foreground/70">
+            Quick review snapshot for this week.
+          </p>
           <div className="grid grid-cols-2 gap-1">
+            {/* Stability — human label with color */}
+            <div className="rounded border border-border px-2 py-1">
+              <div className="text-[10px] text-muted-foreground">Stability</div>
+              <div className={cn("font-medium", stabilityColor(audit.stabilityProxy))}>
+                {stabilityLabel(audit.stabilityProxy)}
+              </div>
+            </div>
+            {/* Remaining tiles — unchanged */}
             {[
-              { label: "Stability", value: audit.stabilityProxy.toFixed(3) },
-              { label: "Density", value: audit.contradictionDensity.toFixed(3) },
-              { label: "Open", value: String(audit.openContradictionCount) },
-              { label: "Active refs", value: String(audit.activeReferenceCount) },
+              { label: "Tension density", value: audit.contradictionDensity.toFixed(3) },
+              { label: "Open tensions", value: String(audit.openContradictionCount) },
+              { label: "Active memories", value: String(audit.activeReferenceCount) },
             ].map(({ label, value }) => (
               <div key={label} className="rounded border border-border px-2 py-1">
                 <div className="text-[10px] text-muted-foreground">{label}</div>
@@ -153,6 +266,12 @@ function DrawerBody() {
               </div>
             ))}
           </div>
+          <Link
+            href="/audit"
+            className="mt-2 block text-primary underline-offset-2 hover:underline"
+          >
+            View review →
+          </Link>
         </div>
       )}
     </div>

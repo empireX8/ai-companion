@@ -285,7 +285,6 @@ export function MemoryPanel({
                       <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide bg-border/60 text-text-subtle">
                         {item.type}
                       </span>
-                      <span className="text-[10px] text-text-dim capitalize">{item.confidence}</span>
                     </div>
                     <p className={`text-xs leading-snug text-foreground ${isExpanded ? "" : "line-clamp-1"}`}>
                       {item.statement}
@@ -319,7 +318,7 @@ export function MemoryPanel({
                         disabled={!!updatingReferenceId || !!deactivatingReferenceId || !!editingReferenceId}
                         className={subtleActionClass}
                       >
-                        {supersedingReferenceId === item.id ? "Replacing" : "Supersede"}
+                        {supersedingReferenceId === item.id ? "Replacing" : "Replace"}
                       </button>
                       <button
                         type="button"
@@ -331,7 +330,7 @@ export function MemoryPanel({
                         }
                         className={subtleActionClass}
                       >
-                        {deactivatingReferenceId === item.id ? "Deactivating..." : "Deactivate"}
+                        {deactivatingReferenceId === item.id ? "Removing..." : "Remove"}
                       </button>
                     </div>
 
@@ -520,22 +519,22 @@ export function MemoryPanel({
         </section>
 
         {renderSection(
-          "Manual",
+          "Added by you",
           manual,
           <CheckCircle2 className="h-3.5 w-3.5" />,
           "text-memory-manual",
           "before:bg-memory-manual/40",
-          "Explicitly set",
-          "No manual entries"
+          "Saved manually",
+          "No manual memories"
         )}
         {renderSection(
-          "Governed",
+          "Detected from chat",
           governed,
           <Brain className="h-3.5 w-3.5" />,
           "text-memory-governed",
           "before:bg-memory-governed/40",
           "Derived from conversation",
-          "No governed entries"
+          "No detected memories"
         )}
 
         <section className="space-y-3">
@@ -567,7 +566,7 @@ export function MemoryPanel({
 
         {historical.length > 0
           ? renderSection(
-              "Historical",
+              "No longer active",
               historical,
               <History className="h-3.5 w-3.5" />,
               "text-memory-historical",

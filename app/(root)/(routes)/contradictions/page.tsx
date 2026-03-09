@@ -12,7 +12,7 @@ export default function ContradictionsPage() {
 
       <div className="flex h-full items-center justify-center">
         <p className="text-sm text-muted-foreground">
-          Select a contradiction from the list to view details.
+          Select a tension from the list to view details.
         </p>
       </div>
     </>

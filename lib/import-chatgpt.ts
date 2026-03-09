@@ -532,7 +532,7 @@ export async function extractReferenceFromImportedMessage({
       type,
       statement,
       confidence: "low",
-      status: "active",
+      status: "candidate",
       sourceSessionId: sessionId,
       sourceMessageId: message.id,
     },
@@ -737,7 +737,7 @@ export async function importExtractedConversations({
                   where: {
                     id: detection.existingNodeId,
                     userId,
-                    status: { in: ["open", "explored"] },
+                    status: { in: ["candidate", "open", "explored"] },
                   },
                   select: { id: true },
                 });
@@ -773,7 +773,7 @@ export async function importExtractedConversations({
                   sideB: detection.sideB,
                   type: detection.type,
                   confidence: detection.confidence,
-                  status: "open",
+                  status: "candidate",
                   sourceSessionId: created.sessionId,
                   sourceMessageId: importedMessage.id,
                   evidenceCount: 1,

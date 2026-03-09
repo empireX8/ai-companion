@@ -48,6 +48,7 @@ export const patchContradictionSchema = z.object({
       "accept_tradeoff",
       "archive_tension",
       "reopen",
+      "confirm_candidate",
     ])
     .optional(),
   status: z.enum(CONTRADICTION_STATUS).optional(),

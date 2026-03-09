@@ -39,6 +39,16 @@ const ACTION_NEXT_STATUS: Record<string, string> = {
   reopen: "open",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  open: "Open",
+  explored: "Explored",
+  snoozed: "Snoozed",
+  resolved: "Resolved",
+  accepted_tradeoff: "Trade-off accepted",
+  archived_tension: "Archived",
+  candidate: "Candidate",
+};
+
 const INDEFINITE_SNOOZE_ISO = "2099-12-31T23:59:59.000Z";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -316,7 +326,7 @@ export default function ContradictionDetailPage() {
   if (unauthorized) {
     return (
       <div className="p-6 text-sm text-muted-foreground">
-        Sign in to view this contradiction.
+        Sign in to view this tension.
       </div>
     );
   }
@@ -325,7 +335,7 @@ export default function ContradictionDetailPage() {
     return (
       <div className="p-6">
         <p className="text-sm text-destructive">
-          {fetchError ?? "Contradiction not found."}
+          {fetchError ?? "Tension not found."}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           It may have been deleted or you may not have access.
@@ -334,7 +344,7 @@ export default function ContradictionDetailPage() {
           href="/contradictions"
           className="mt-3 inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
         >
-          Back to contradictions
+          Back to tensions
         </Link>
       </div>
     );
@@ -441,7 +451,7 @@ export default function ContradictionDetailPage() {
           href="/contradictions"
           className="text-xs text-muted-foreground hover:text-foreground"
         >
-          All contradictions
+          All tensions
         </Link>
       </div>
 
@@ -450,14 +460,13 @@ export default function ContradictionDetailPage() {
         <h1 className="text-xl font-semibold text-foreground">{detail.title}</h1>
         <p className="mt-1 text-xs text-muted-foreground">
           [{detail.type}]{" "}
-          <span className="font-medium">{detail.status}</span>
+          <span className="font-medium">{STATUS_LABELS[detail.status] ?? detail.status}</span>
           {snoozedLabel && (
             <span className="ml-1 text-amber-600 dark:text-amber-400">
               — {snoozedLabel}
             </span>
           )}{" "}
-          rung={detail.recommendedRung ?? "n/a"} escalation=
-          {detail.escalationLevel}
+          Level {detail.recommendedRung ?? "n/a"} · Stage {detail.escalationLevel}
         </p>
         {detail.cooldownActive && (
           <div className="mt-1">
@@ -656,10 +665,10 @@ export default function ContradictionDetailPage() {
         )}
       </section>
 
-      {/* Linked references */}
+      {/* Linked memories */}
       <section>
         <h2 className="mb-3 text-sm font-medium text-foreground">
-          Linked references ({linkedRefsLoading ? "…" : linkedRefs.length})
+          Linked memories ({linkedRefsLoading ? "…" : linkedRefs.length})
         </h2>
 
         {linkError && (
@@ -671,7 +680,7 @@ export default function ContradictionDetailPage() {
         {linkedRefsLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : linkedRefs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No linked references.</p>
+          <p className="text-sm text-muted-foreground">No linked memories.</p>
         ) : (
           <div className="space-y-2">
             {linkedRefs.map((ref) => {
@@ -737,14 +746,14 @@ export default function ContradictionDetailPage() {
             onClick={() => void openLinkSearch()}
             className="mt-3 text-xs text-primary hover:opacity-80"
           >
-            + Link a reference
+            + Link a memory
           </button>
         ) : (
           <div className="mt-3 space-y-2">
             <div className="flex items-center gap-2">
               <input
                 type="search"
-                placeholder="Search references…"
+                placeholder="Search memories…"
                 value={linkSearch}
                 onChange={(e) => setLinkSearch(e.target.value)}
                 autoFocus
@@ -760,7 +769,7 @@ export default function ContradictionDetailPage() {
             </div>
 
             {allRefsLoading ? (
-              <p className="text-xs text-muted-foreground">Loading references…</p>
+              <p className="text-xs text-muted-foreground">Loading memories…</p>
             ) : !linkSearch.trim() ? (
               <p className="text-xs text-muted-foreground">Type to search.</p>
             ) : searchResults.length === 0 ? (

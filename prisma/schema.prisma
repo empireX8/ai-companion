@@ -260,6 +260,7 @@ enum ReferenceType {
   assumption
   hypothesis
   rule
+  source
 }
 
 enum ReferenceConfidence {
@@ -273,6 +274,7 @@ enum ReferenceStatus {
   active
   superseded
   inactive
+  dismissed
 }
 
 enum ContradictionType {
@@ -285,6 +287,7 @@ enum ContradictionType {
 }
 
 enum ContradictionStatus {
+  candidate
   open
   snoozed
   explored
@@ -434,6 +437,39 @@ model ProfileArtifactEvidenceLink {
   span        EvidenceSpan    @relation(fields: [spanId], references: [id], onDelete: Cascade)
 
   @@id([artifactId, spanId])
+}
+
+// ── Projection Nodes ──────────────────────────────────────────────────────────
+
+enum ProjectionStatus {
+  active
+  archived
+  resolved
+}
+
+enum ResolutionVerdict {
+  correct
+  incorrect
+  mixed
+}
+
+model Projection {
+  id                String             @id @default(cuid())
+  userId            String
+  premise           String
+  drivers           String[]
+  outcomes          String[]
+  confidence        Float              @default(0.5)
+  status            ProjectionStatus   @default(active)
+  resolutionVerdict ResolutionVerdict?
+  resolutionNote    String?
+  resolvedAt        DateTime?
+  sourceSessionId   String?
+  sourceMessageId   String?
+  createdAt         DateTime           @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, status])
 }
 
 enum ProfileArtifactType {

@@ -134,6 +134,38 @@ export async function performReferenceAction({
         return { newItem, oldItem };
       });
     }
+
+    case "confirm_governance": {
+      // Promote governance candidate → active; mark the item it supersedes → superseded.
+      const candidateFull = await db.referenceItem.findFirst({
+        where: { id: referenceId, userId },
+        select: { supersedesId: true },
+      });
+
+      return db.$transaction(async (tx) => {
+        if (candidateFull?.supersedesId) {
+          await tx.referenceItem.update({
+            where: { id: candidateFull.supersedesId },
+            data: { status: "superseded", supersedesId: referenceId },
+          });
+        }
+        const item = await tx.referenceItem.update({
+          where: { id: referenceId },
+          data: { status: "active" },
+          select: ITEM_SELECT,
+        });
+        return { item };
+      });
+    }
+
+    case "dismiss_governance": {
+      const item = await db.referenceItem.update({
+        where: { id: referenceId },
+        data: { status: "dismissed" },
+        select: ITEM_SELECT,
+      });
+      return { item };
+    }
   }
 }
 

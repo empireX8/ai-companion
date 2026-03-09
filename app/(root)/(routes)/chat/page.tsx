@@ -14,10 +14,15 @@ import {
   TextQuote,
   Link2,
   MessageSquare,
+  Mic,
+  Paperclip,
   RefreshCw,
   Square,
   Trash2,
+  TrendingUp,
+  X,
 } from "lucide-react";
+import { CHAT_EVENTS } from "@/components/command/chatEvents";
 import { UserButton } from "@clerk/nextjs";
 
 import { MemoryPanel } from "./_components/memory-panel";
@@ -75,6 +80,7 @@ type PendingReferenceItem = {
   sourceSessionId: string | null;
   sourceMessageId: string | null;
   supersedesId: string | null;
+  supersedesStatement?: string | null;
   createdAt: string;
   updatedAt: string;
 } | null;
@@ -116,6 +122,54 @@ function linkifyText(text: string) {
   return parts;
 }
 
+// ── Model switcher ───────────────────────────────────────────────────────────
+const ALLOWED_MODELS = ["gpt-4o-mini", "gpt-4o"] as const;
+type AllowedModel = (typeof ALLOWED_MODELS)[number];
+const MODEL_KEY = "double:model";
+
+// ── Response mode ─────────────────────────────────────────────────────────────
+type ResponseMode = "standard" | "deep";
+const RESPONSE_MODES: ResponseMode[] = ["standard", "deep"];
+const RESPONSE_MODE_KEY = "double:response-mode";
+
+// ── Voice recognition ────────────────────────────────────────────────────────
+type VoiceRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((ev: { resultIndex: number; results: { length: number; [i: number]: { isFinal: boolean; [i: number]: { transcript: string } } } }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start(): void;
+  stop(): void;
+};
+type VoiceRecognitionCtor = { new(): VoiceRecognitionLike };
+function getSpeechRecognition(): VoiceRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as { SpeechRecognition?: VoiceRecognitionCtor; webkitSpeechRecognition?: VoiceRecognitionCtor };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+// ── Response cache (sessionStorage, 5-min TTL) ───────────────────────────────
+const CACHE_TTL = 5 * 60 * 1000;
+function buildCacheKey(payload: string): string {
+  let h = 5381;
+  for (let i = 0; i < payload.length; i++) h = ((h * 33) ^ payload.charCodeAt(i)) >>> 0;
+  return `double:cache:${h.toString(36)}`;
+}
+function cacheGet(key: string): string | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const { text, ts } = JSON.parse(raw) as { text: string; ts: number };
+    if (Date.now() - ts > CACHE_TTL) { sessionStorage.removeItem(key); return null; }
+    return text;
+  } catch { return null; }
+}
+function cacheSet(key: string, text: string): void {
+  try { sessionStorage.setItem(key, JSON.stringify({ text, ts: Date.now() })); } catch { /* quota */ }
+}
+
 export default function ChatPage() {
   const { toggleCollapsed: toggleSessionsPanel } = useDomainListPanel();
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -137,9 +191,11 @@ export default function ChatPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkInput, setLinkInput] = useState("");
-  const composerInputRef = useRef<HTMLInputElement>(null);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
 
-  type CaptureMode = "memory" | "ref" | "evidence";
+  type CaptureMode = "memory" | "ref" | "evidence" | "projection";
   const [openCapture, setOpenCapture] = useState<{ id: string; mode: CaptureMode } | null>(null);
   const [captureText, setCaptureText] = useState("");
   const [captureUrl, setCaptureUrl] = useState("");
@@ -148,6 +204,36 @@ export default function ChatPage() {
   const [captureLoading, setCaptureLoading] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [captureSuccess, setCaptureSuccess] = useState<Set<string>>(new Set());
+  const [captureSuccessMsg, setCaptureSuccessMsg] = useState<{ id: string; mode: CaptureMode } | null>(null);
+  const [projPremise, setProjPremise] = useState("");
+  const [projDrivers, setProjDrivers] = useState("");
+  const [projOutcomes, setProjOutcomes] = useState("");
+  const [projConfidence, setProjConfidence] = useState(0.5);
+  // D-05: evidence tension picker
+  const [evidenceTensions, setEvidenceTensions] = useState<Array<{id: string; title: string; sideA: string; sideB: string}>>([]);
+  const [evidenceTensionId, setEvidenceTensionId] = useState<string>("");
+  const [evidenceTensionsLoading, setEvidenceTensionsLoading] = useState(false);
+  // D-14: governance card action state
+  const [governanceBusy, setGovernanceBusy] = useState(false);
+
+  // Model switcher
+  const [selectedModel, setSelectedModel] = useState<AllowedModel>(() => {
+    if (typeof window === "undefined") return "gpt-4o-mini";
+    const stored = localStorage.getItem(MODEL_KEY);
+    return (ALLOWED_MODELS as readonly string[]).includes(stored ?? "")
+      ? (stored as AllowedModel)
+      : "gpt-4o-mini";
+  });
+
+  // Response mode — stable SSR default, hydrated from localStorage after mount
+  const [selectedResponseMode, setSelectedResponseMode] = useState<ResponseMode>("standard");
+
+  // Voice input
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const recognitionRef = useRef<VoiceRecognitionLike | null>(null);
+  const voiceBaseTextRef = useRef<string>("");
+  const voiceFinalTranscriptRef = useRef<string>("");
 
   const [referenceStatement, setReferenceStatement] = useState("");
   const [referenceType, setReferenceType] = useState<ReferenceType>("preference");
@@ -372,6 +458,29 @@ export default function ChatPage() {
     return () => window.removeEventListener("beforeunload", saveScrollPosition);
   }, [saveScrollPosition]);
 
+  // Detect voice support once on mount
+  useEffect(() => {
+    setVoiceSupported(getSpeechRecognition() !== null);
+  }, []);
+
+  // Hydrate response mode from localStorage after mount
+  useEffect(() => {
+    const stored = localStorage.getItem(RESPONSE_MODE_KEY);
+    if ((RESPONSE_MODES as string[]).includes(stored ?? "")) {
+      setSelectedResponseMode(stored as ResponseMode);
+    }
+  }, []);
+
+  // Persist response mode changes
+  useEffect(() => {
+    localStorage.setItem(RESPONSE_MODE_KEY, selectedResponseMode);
+  }, [selectedResponseMode]);
+
+  // Stop recognition on unmount
+  useEffect(() => {
+    return () => { recognitionRef.current?.stop(); };
+  }, []);
+
   // Restore scroll once per session after messages have loaded
   useEffect(() => {
     if (!sessionId || messages.length === 0) return;
@@ -447,11 +556,90 @@ export default function ChatPage() {
     }
   };
 
+  // Stable ref — avoids listing onCreateNewSession as an effect dep (it changes every render)
+  const onCreateNewSessionRef = useRef(onCreateNewSession);
+  onCreateNewSessionRef.current = onCreateNewSession;
+
+  // Listen for command-palette chat actions
+  useEffect(() => {
+    const handlers: [string, () => void][] = [
+      [CHAT_EVENTS.NEW_SESSION, () => void onCreateNewSessionRef.current()],
+      [CHAT_EVENTS.FOCUS_COMPOSER, () => composerInputRef.current?.focus()],
+      [CHAT_EVENTS.TOGGLE_MEMORY, () => setRightCollapsed((v) => !v)],
+      [CHAT_EVENTS.TOGGLE_SESSIONS, () => toggleSessionsPanel()],
+      [CHAT_EVENTS.TOGGLE_CONTEXT, () => setContextOpen((v) => !v)],
+    ];
+    for (const [evt, fn] of handlers) window.addEventListener(evt, fn as EventListener);
+    return () => { for (const [evt, fn] of handlers) window.removeEventListener(evt, fn as EventListener); };
+  }, [toggleSessionsPanel]);
+
   const cancelSend = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
     setSendState("idle");
   }, []);
+
+  const resizeTextarea = useCallback(() => {
+    const el = composerInputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  // Resize when content changes (covers voice-driven updates)
+  useEffect(() => {
+    resizeTextarea();
+  }, [content, resizeTextarea]);
+
+  const toggleVoice = useCallback(() => {
+    if (voiceListening) {
+      recognitionRef.current?.stop();
+      // onend will finalize content and clear listening state
+      return;
+    }
+    const SpeechRec = getSpeechRecognition();
+    if (!SpeechRec) return;
+    const rec = new SpeechRec();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-US";
+
+    // Snapshot what's in the composer at mic-start
+    voiceBaseTextRef.current = content;
+    voiceFinalTranscriptRef.current = "";
+
+    rec.onresult = (ev) => {
+      let newFinal = "";
+      let newInterim = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const result = ev.results[i];
+        const text = result[0].transcript;
+        if (result.isFinal) {
+          newFinal += text;
+        } else {
+          newInterim += text;
+        }
+      }
+      if (newFinal) {
+        voiceFinalTranscriptRef.current += (voiceFinalTranscriptRef.current ? " " : "") + newFinal.trim();
+      }
+      const base = voiceBaseTextRef.current;
+      const finalPart = voiceFinalTranscriptRef.current;
+      const interimPart = newInterim.trim();
+      let next = base;
+      if (finalPart) next += (next ? " " : "") + finalPart;
+      if (interimPart) next += (next ? " " : "") + interimPart;
+      setContent(next);
+    };
+    rec.onend = () => {
+      // Commit — keep whatever is currently in content (final + interim merged)
+      setVoiceListening(false);
+    };
+    rec.onerror = () => setVoiceListening(false);
+    recognitionRef.current = rec;
+    rec.start();
+    setVoiceListening(true);
+  }, [voiceListening, content]);
 
   const copyMessage = useCallback((id: string, text: string) => {
     void navigator.clipboard.writeText(text).then(() => {
@@ -497,12 +685,36 @@ export default function ChatPage() {
       } else {
         setCaptureText("");
       }
+      if (mode === "evidence") {
+        setEvidenceTensionId("");
+        setEvidenceTensionsLoading(true);
+        void Promise.all([
+          fetch("/api/contradiction?status=open&page=1&limit=20", { cache: "no-store" }),
+          fetch("/api/contradiction?status=explored&page=1&limit=20", { cache: "no-store" }),
+        ]).then(async ([r1, r2]) => {
+          const pages = await Promise.all([r1.ok ? r1.json() : { items: [] }, r2.ok ? r2.json() : { items: [] }]);
+          const seen = new Set<string>();
+          const merged: Array<{id: string; title: string; sideA: string; sideB: string}> = [];
+          for (const page of pages as Array<{ items: Array<{id: string; title: string; sideA: string; sideB: string}> }>) {
+            for (const t of page.items ?? []) {
+              if (!seen.has(t.id)) { seen.add(t.id); merged.push(t); }
+            }
+          }
+          setEvidenceTensions(merged);
+        }).catch(() => setEvidenceTensions([])).finally(() => setEvidenceTensionsLoading(false));
+      }
       if (mode === "ref") {
         URL_REGEX.lastIndex = 0;
         const m = URL_REGEX.exec(msgContent);
         const found = m ? (m[0].startsWith("www.") ? `https://${m[0]}` : m[0]) : "";
         setCaptureUrl(found);
         setCaptureTitle("");
+      }
+      if (mode === "projection") {
+        setProjPremise(msgContent.slice(0, 300).trim());
+        setProjDrivers("");
+        setProjOutcomes("");
+        setProjConfidence(0.5);
       }
       setOpenCapture({ id: messageId, mode });
     },
@@ -547,14 +759,37 @@ export default function ChatPage() {
           if (!r.ok) throw new Error(await r.text());
         } else if (openCapture.mode === "evidence") {
           if (message.id.startsWith("temp-")) throw new Error("Message not yet saved — try again after it finishes");
-          const r = await fetch("/api/evidence/create", {
+          if (!evidenceTensionId) throw new Error("Select a tension to attach this evidence to");
+          const r = await fetch(`/api/contradiction/${evidenceTensionId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              addEvidence: [{ messageId: message.id, quote: captureText }],
+            }),
+          });
+          if (!r.ok) throw new Error(await r.text());
+        } else if (openCapture.mode === "projection") {
+          if (!projPremise.trim()) throw new Error("Premise is required");
+          const r = await fetch("/api/projection/create", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messageId: message.id, quote: captureText }),
+            body: JSON.stringify({
+              premise: projPremise.trim(),
+              drivers: projDrivers.split("\n").map((d) => d.trim()).filter(Boolean),
+              outcomes: projOutcomes.split("\n").map((o) => o.trim()).filter(Boolean),
+              confidence: projConfidence,
+              source: {
+                kind: "chat",
+                sessionId: sessionId ?? undefined,
+                messageId: message.id.startsWith("temp-") ? undefined : message.id,
+              },
+            }),
           });
           if (!r.ok) throw new Error(await r.text());
         }
         setCaptureSuccess((prev) => new Set(prev).add(`${openCapture.id}:${openCapture.mode}`));
+        setCaptureSuccessMsg({ id: openCapture.id, mode: openCapture.mode });
+        setTimeout(() => setCaptureSuccessMsg(null), 2500);
         setOpenCapture(null);
       } catch (e) {
         setCaptureError(e instanceof Error ? e.message : "Failed to save");
@@ -562,7 +797,7 @@ export default function ChatPage() {
         setCaptureLoading(false);
       }
     },
-    [openCapture, captureText, captureUrl, captureTitle, captureType, sessionId, fetchSavedReferences]
+    [openCapture, captureText, captureUrl, captureTitle, captureType, projPremise, projDrivers, projOutcomes, projConfidence, sessionId, fetchSavedReferences]
   );
 
   const sendMessage = useCallback(
@@ -572,7 +807,36 @@ export default function ChatPage() {
         return;
       }
 
+      const t0 = performance.now();
+      const reqId = Math.random().toString(36).slice(2, 9);
+      console.debug(`[CHAT_TIMING_CLIENT][${reqId}] submit_click mode=${selectedResponseMode}`, 0);
+
       lastPayloadRef.current = trimmed;
+
+      // Check response cache (client-side, sessionStorage, 5-min TTL)
+      // Key covers full conversation context so the same text at different points in the
+      // session won't collide.
+      const cachePayload = JSON.stringify({
+        model: selectedModel,
+        messages: [
+          ...messages.map((m) => ({ role: m.role, content: m.content })),
+          { role: "user", content: trimmed },
+        ],
+      });
+      const ck = buildCacheKey(cachePayload);
+      const cached = cacheGet(ck);
+      if (cached) {
+        const now = new Date().toISOString();
+        setMessages((current) => [
+          ...current,
+          { id: createTempId(), role: "user", content: trimmed, createdAt: now },
+          { id: createTempId(), role: "assistant", content: cached, createdAt: now },
+        ]);
+        setContent("");
+        setIsUserScrolled(false);
+        return;
+      }
+
       const abort = new AbortController();
       abortRef.current = abort;
 
@@ -607,12 +871,14 @@ export default function ChatPage() {
           },
         ]);
 
+        console.debug(`[CHAT_TIMING_CLIENT][${reqId}] fetch_start`, +(performance.now() - t0).toFixed(1));
         const response = await fetch("/api/message", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId, content: trimmed }),
+          headers: { "Content-Type": "application/json", "x-request-id": reqId },
+          body: JSON.stringify({ sessionId, content: trimmed, model: selectedModel, responseMode: selectedResponseMode }),
           signal: abort.signal,
         });
+        console.debug(`[CHAT_TIMING_CLIENT][${reqId}] headers_received`, +(performance.now() - t0).toFixed(1));
 
         if (!response.ok) {
           throw new Error("Failed to send message");
@@ -626,6 +892,7 @@ export default function ChatPage() {
         }
 
         let firstChunk = true;
+        let accumulated = "";
         try {
           while (true) {
             if (abort.signal.aborted) break;
@@ -636,10 +903,12 @@ export default function ChatPage() {
             if (!chunk) continue;
 
             if (firstChunk) {
+              console.debug(`[CHAT_TIMING_CLIENT][${reqId}] first_chunk`, +(performance.now() - t0).toFixed(1));
               setSendState("streaming");
               firstChunk = false;
             }
 
+            accumulated += chunk;
             setMessages((current) =>
               current.map((message) =>
                 message.id === assistantTempId
@@ -654,6 +923,7 @@ export default function ChatPage() {
 
         const remaining = decoder.decode();
         if (remaining) {
+          accumulated += remaining;
           setMessages((current) =>
             current.map((message) =>
               message.id === assistantTempId
@@ -667,6 +937,9 @@ export default function ChatPage() {
           setSendState("idle");
           return;
         }
+        console.debug(`[CHAT_TIMING_CLIENT][${reqId}] stream_complete`, +(performance.now() - t0).toFixed(1));
+        // Write successful response to cache
+        if (accumulated) cacheSet(ck, accumulated);
         failedAssistantIdRef.current = null;
         setSendState("idle");
         await fetchMessages(sessionId);
@@ -703,7 +976,7 @@ export default function ChatPage() {
         abortRef.current = null;
       }
     },
-    [fetchMessages, fetchPendingCandidate, fetchSessions, messages.length, sendState, sessionId]
+    [fetchMessages, fetchPendingCandidate, fetchSessions, messages, selectedModel, selectedResponseMode, sendState, sessionId]
   );
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -824,10 +1097,10 @@ export default function ChatPage() {
         setSupersedingReferenceId(null);
       }
 
-      setReferenceStatus("Deactivated.");
+      setReferenceStatus("Removed.");
       await fetchSavedReferences();
     } catch {
-      setReferenceStatus("Failed to deactivate.");
+      setReferenceStatus("Failed to remove.");
     } finally {
       setDeactivatingReferenceId(null);
     }
@@ -950,7 +1223,7 @@ export default function ChatPage() {
           href="/"
           className="font-display text-xs font-semibold uppercase tracking-wider text-foreground transition-opacity hover:opacity-80"
         >
-          Double
+          Mind Lab
         </Link>
 
         <div className="flex items-center gap-2">
@@ -986,36 +1259,102 @@ export default function ChatPage() {
           >
             <div className="mx-auto w-full max-w-3xl py-4">
               {pendingCandidate ? (
-                <div className="mb-3 rounded-md border border-memory-pending/40 bg-memory-pending/10 p-3 text-sm">
-                  <p className="font-semibold">Pending memory update</p>
-                  <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
-                    {pendingCandidate.statement}
+                <div className="mb-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Memory update candidate</p>
+                  <p className="mt-1 text-xs text-foreground">
+                    Update <span className="font-medium">{pendingCandidate.type}</span> to:
                   </p>
+                  <p className="mt-0.5 text-xs italic text-muted-foreground">
+                    &ldquo;{pendingCandidate.statement}&rdquo;
+                  </p>
+                  {pendingCandidate.supersedesId && (
+                    <p className="mt-1 text-[11px] text-amber-500/80">
+                      Would replace:{" "}
+                      <span className="italic">
+                        {pendingCandidate.supersedesStatement ?? "an existing memory"}
+                      </span>
+                    </p>
+                  )}
                   <div className="mt-2 flex gap-2">
                     <button
                       type="button"
-                      onClick={() => void sendMessage("yes")}
-                      disabled={isSending || isCreatingSession || !sessionId}
-                      className="rounded-md border border-border bg-background px-3 py-1 text-xs disabled:opacity-50"
+                      disabled={governanceBusy}
+                      onClick={async () => {
+                        setGovernanceBusy(true);
+                        try {
+                          await fetch(`/api/reference/${pendingCandidate.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "confirm_governance" }),
+                          });
+                          setPendingCandidate(null);
+                        } catch { /* silent */ } finally { setGovernanceBusy(false); }
+                      }}
+                      className="rounded border border-border bg-background px-2.5 py-1 text-xs hover:bg-accent disabled:opacity-50"
                     >
-                      Yes
+                      Confirm
                     </button>
                     <button
                       type="button"
-                      onClick={() => void sendMessage("no")}
-                      disabled={isSending || isCreatingSession || !sessionId}
-                      className="rounded-md border border-border bg-background px-3 py-1 text-xs disabled:opacity-50"
+                      disabled={governanceBusy}
+                      onClick={async () => {
+                        setGovernanceBusy(true);
+                        try {
+                          await fetch(`/api/reference/${pendingCandidate.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "dismiss_governance" }),
+                          });
+                          setPendingCandidate(null);
+                        } catch { /* silent */ } finally { setGovernanceBusy(false); }
+                      }}
+                      className="rounded px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent disabled:opacity-50"
                     >
-                      No
+                      Dismiss
                     </button>
                   </div>
                 </div>
               ) : null}
 
               {isLoadingSession ? (
-                <p className="text-sm text-muted-foreground">Loading session...</p>
+                <p className="text-sm text-muted-foreground">Loading session…</p>
+              ) : error && messages.length === 0 ? (
+                <p className="text-sm text-destructive">{error}</p>
               ) : messages.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No messages yet.</p>
+                <div className="flex flex-col items-center py-16 text-center">
+                  <p className="text-sm font-medium text-foreground">Start a conversation</p>
+                  <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+                    The assistant remembers confirmed memories across sessions and tracks unresolved tensions over time.
+                  </p>
+                  <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                    Suggestions stay as candidates until you confirm them — nothing is saved without your approval.
+                  </p>
+                  <div className="mt-5 flex flex-col items-center gap-2">
+                    {[
+                      "Help me think through a decision I'm stuck on",
+                      "Remember this constraint for future chats",
+                      "What tensions might be shaping this problem?",
+                    ].map((starter) => (
+                      <button
+                        key={starter}
+                        type="button"
+                        onClick={() => {
+                          setContent(starter);
+                          composerInputRef.current?.focus();
+                        }}
+                        className="rounded-full border border-border/60 px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+                      >
+                        {starter}
+                      </button>
+                    ))}
+                  </div>
+                  <Link
+                    href="/help"
+                    className="mt-4 text-xs text-primary underline-offset-2 hover:underline"
+                  >
+                    Learn how it works →
+                  </Link>
+                </div>
               ) : (
                 <ul className="space-y-8">
                   {messages.map((message) => {
@@ -1086,12 +1425,12 @@ export default function ChatPage() {
                           {/* Capture buttons — assistant messages only */}
                           {!isUser && message.content && (
                             <>
-                              {(["memory", "ref", "evidence"] as CaptureMode[]).map((mode) => {
+                              {(["memory", "ref", "evidence", "projection"] as CaptureMode[]).map((mode) => {
                                 const successKey = `${message.id}:${mode}`;
                                 const saved = captureSuccess.has(successKey);
                                 const active = openCapture?.id === message.id && openCapture.mode === mode;
-                                const Icon = mode === "memory" ? BookmarkPlus : mode === "ref" ? Globe : TextQuote;
-                                const label = mode === "memory" ? "Save to memory" : mode === "ref" ? "Save reference" : "Save evidence";
+                                const Icon = mode === "memory" ? BookmarkPlus : mode === "ref" ? Globe : mode === "projection" ? TrendingUp : TextQuote;
+                                const label = mode === "memory" ? "Save to memory" : mode === "ref" ? "Save source" : mode === "projection" ? "Save forecast" : "Save evidence";
                                 return (
                                   <button
                                     key={mode}
@@ -1108,6 +1447,14 @@ export default function ChatPage() {
                                   </button>
                                 );
                               })}
+                              {captureSuccessMsg?.id === message.id && (
+                                <span className="ml-1 text-[10px] font-medium text-primary">
+                                  {captureSuccessMsg.mode === "memory" ? "Saved to memory" :
+                                   captureSuccessMsg.mode === "ref" ? "Saved as source" :
+                                   captureSuccessMsg.mode === "evidence" ? "Source saved" :
+                                   "Saved as forecast"}
+                                </span>
+                              )}
                             </>
                           )}
                         </div>
@@ -1116,7 +1463,7 @@ export default function ChatPage() {
                           <div className="mt-2 w-full max-w-[90%] rounded-lg border border-border bg-card p-3 text-xs">
                             <div className="mb-2 flex items-center justify-between">
                               <span className="font-semibold text-muted-foreground">
-                                {openCapture.mode === "memory" ? "Save to memory" : openCapture.mode === "ref" ? "Save reference" : "Save evidence"}
+                                {openCapture.mode === "memory" ? "Save to memory" : openCapture.mode === "ref" ? "Save source" : openCapture.mode === "projection" ? "Save forecast" : "Save evidence"}
                               </span>
                               <button type="button" onClick={() => setOpenCapture(null)} className="text-muted-foreground/60 hover:text-foreground">✕</button>
                             </div>
@@ -1127,6 +1474,68 @@ export default function ChatPage() {
                                 rows={3}
                                 className="mb-2 w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
                               />
+                            )}
+                            {openCapture.mode === "evidence" && (
+                              <div className="mb-2">
+                                <p className="mb-1 text-[11px] text-muted-foreground">Attach to tension</p>
+                                {evidenceTensionsLoading ? (
+                                  <p className="text-[11px] text-muted-foreground">Loading tensions…</p>
+                                ) : evidenceTensions.length === 0 ? (
+                                  <p className="text-[11px] text-muted-foreground">No active tensions available. Confirm a candidate tension first.</p>
+                                ) : (
+                                  <select
+                                    value={evidenceTensionId}
+                                    onChange={(e) => setEvidenceTensionId(e.target.value)}
+                                    className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+                                  >
+                                    <option value="">— select a tension —</option>
+                                    {evidenceTensions.map((t) => (
+                                      <option key={t.id} value={t.id}>{t.title}</option>
+                                    ))}
+                                  </select>
+                                )}
+                              </div>
+                            )}
+                            {openCapture.mode === "projection" && (
+                              <div className="mb-2 space-y-1.5">
+                                <label className="block text-[11px] text-muted-foreground">Premise</label>
+                                <textarea
+                                  value={projPremise}
+                                  onChange={(e) => setProjPremise(e.target.value)}
+                                  rows={2}
+                                  placeholder="The condition that must remain true…"
+                                  className="w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+                                />
+                                <label className="block text-[11px] text-muted-foreground">Drivers (one per line)</label>
+                                <textarea
+                                  value={projDrivers}
+                                  onChange={(e) => setProjDrivers(e.target.value)}
+                                  rows={2}
+                                  placeholder="Factor A&#10;Factor B"
+                                  className="w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+                                />
+                                <label className="block text-[11px] text-muted-foreground">Predicted outcomes (one per line)</label>
+                                <textarea
+                                  value={projOutcomes}
+                                  onChange={(e) => setProjOutcomes(e.target.value)}
+                                  rows={2}
+                                  placeholder="Outcome A&#10;Outcome B"
+                                  className="w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+                                />
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[11px] text-muted-foreground">Confidence</label>
+                                  <span className="text-[11px] font-medium text-foreground">{Math.round(projConfidence * 100)}%</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min={0}
+                                  max={1}
+                                  step={0.01}
+                                  value={projConfidence}
+                                  onChange={(e) => setProjConfidence(parseFloat(e.target.value))}
+                                  className="w-full accent-primary"
+                                />
+                              </div>
                             )}
                             {openCapture.mode === "memory" && (
                               <select
@@ -1195,10 +1604,55 @@ export default function ChatPage() {
             {/* Status row */}
             <div className="mx-auto mb-1.5 flex w-full max-w-3xl items-center justify-between px-1">
               <span className="text-[11px] text-muted-foreground/60">
-                {sendState === "thinking" ? "Thinking…" : sendState === "streaming" ? "Streaming…" : ""}
+                {sendState === "thinking"
+                  ? "Thinking…"
+                  : sendState === "streaming"
+                  ? "Responding…"
+                  : ""}
               </span>
+              <div className="flex items-center gap-2">
+                {/* Response mode segmented control */}
+                <div
+                  className="flex rounded border border-border/40 overflow-hidden"
+                  title="Standard: faster, lighter responses. Deep: broader context, more deliberate reasoning."
+                >
+                  {RESPONSE_MODES.map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      disabled={isSending}
+                      onClick={() => {
+                        setSelectedResponseMode(mode);
+                      }}
+                      title={mode === "standard" ? "Standard: faster, lighter responses" : "Deep: broader context, more deliberate reasoning"}
+                      className={`px-2 py-0.5 text-[11px] transition-colors disabled:opacity-40 ${
+                        selectedResponseMode === mode
+                          ? "bg-primary/15 text-foreground"
+                          : "text-muted-foreground/60 hover:text-muted-foreground"
+                      }`}
+                    >
+                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                {/* Model switcher */}
+                <select
+                  value={selectedModel}
+                  onChange={(e) => {
+                    const m = e.target.value as AllowedModel;
+                    setSelectedModel(m);
+                    localStorage.setItem(MODEL_KEY, m);
+                  }}
+                  disabled={isSending}
+                  className="rounded border border-border/40 bg-transparent px-1.5 py-0.5 text-[11px] text-muted-foreground/60 focus:outline-none disabled:opacity-40"
+                >
+                  {ALLOWED_MODELS.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            {/* Link input row */}
+            {/* URL input row (secondary) */}
             {linkOpen && (
               <div className="mx-auto mb-2 flex w-full max-w-3xl items-center gap-2 rounded-lg border border-border bg-card/50 px-3 py-1.5">
                 <Link2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
@@ -1230,22 +1684,86 @@ export default function ChatPage() {
                 </button>
               </div>
             )}
+            {/* File chips */}
+            {attachedFiles.length > 0 && (
+              <div className="mx-auto mb-2 flex w-full max-w-3xl flex-wrap gap-1.5">
+                {attachedFiles.map((f, i) => (
+                  <span key={i} className="flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground">
+                    {f.name}
+                    <button
+                      type="button"
+                      onClick={() => setAttachedFiles((prev) => prev.filter((_, j) => j !== i))}
+                      className="ml-0.5 opacity-60 hover:opacity-100"
+                      aria-label={`Remove ${f.name}`}
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                ))}
+                <span className="self-center text-[10px] text-muted-foreground/60">
+                  Attached files are not included in the message yet.
+                </span>
+              </div>
+            )}
+            {/* Hidden file picker */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,.pdf,.doc,.docx,.txt,.md"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                if (files.length) setAttachedFiles((prev) => [...prev, ...files]);
+                e.target.value = "";
+              }}
+            />
             <div className="mx-auto flex w-full max-w-3xl items-center gap-3 rounded-xl border border-primary/40 bg-card/50 px-4 py-2.5 transition-[border-color,box-shadow] duration-150 focus-within:border-primary/60 focus-within:shadow-glow">
               <button
                 type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach file"
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-muted-foreground/40 hover:text-muted-foreground"
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
                 onClick={() => setLinkOpen((v) => !v)}
-                title="Insert link"
+                title="Insert URL"
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors ${linkOpen ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
               >
                 <Link2 className="h-4 w-4" />
               </button>
-              <input
+              <button
+                type="button"
+                onClick={toggleVoice}
+                disabled={!voiceSupported}
+                title={voiceListening ? "Stop listening" : "Voice input"}
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors ${
+                  voiceListening
+                    ? "animate-pulse text-primary"
+                    : "text-muted-foreground/40 hover:text-muted-foreground"
+                } disabled:opacity-25`}
+              >
+                <Mic className="h-4 w-4" />
+              </button>
+              <textarea
                 ref={composerInputRef}
-                type="text"
+                rows={1}
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!isSending && sessionId && !isCreatingSession && content.trim()) {
+                      void sendMessage(content);
+                    }
+                  }
+                }}
                 placeholder="Type a message…"
-                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 outline-none"
+                className="flex-1 resize-none overflow-y-auto bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 outline-none max-h-40"
+                style={{ height: "auto" }}
                 disabled={!sessionId || isSending || isCreatingSession}
               />
               {isSending ? (

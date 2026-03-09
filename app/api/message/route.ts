@@ -5,18 +5,17 @@ import { openai } from "@ai-sdk/openai";
 
 import {
   detectReferenceIntentType,
-  isAffirmative,
-  isNegative,
   pickBestPreferenceMatch,
+  scoreTokenOverlap,
   shouldPromptForMemoryUpdate,
 } from "@/lib/memory-governance";
 import { detectContradictions } from "@/lib/contradiction-detection";
 import { getTop3WithOptionalSurfacing } from "@/lib/contradiction-surface";
 import prismadb from "@/lib/prismadb";
-import { getActiveReferenceMemory } from "@/lib/reference-memory";
+import { getRelevantForecasts } from "@/lib/forecast-memory";
+import { getRelevantReferenceMemory } from "@/lib/reference-memory";
 import { SessionMemoryManager } from "@/lib/session-memory";
 import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
-import { processMessageForProfile } from "@/lib/profile-derivation";
 
 type GovernedType = "preference" | "goal" | "constraint";
 
@@ -57,15 +56,36 @@ const buildTopContradictionsBlock = (
 };
 
 export async function POST(req: Request) {
+  const tServer = Date.now();
+  const reqId = req.headers.get("x-request-id") ?? "?";
+  const tag = `[CHAT_TIMING_SERVER][${reqId}]`;
+  console.debug(tag, "request_received", 0);
   try {
     const { userId } = await auth();
+    console.debug(tag, "auth_complete", Date.now() - tServer);
 
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
     const body = await req.json();
-    const { sessionId, content } = body ?? {};
+    const { sessionId, content, model: requestedModel, debugFastPath, responseMode: requestedResponseMode } = body ?? {};
+
+    const ALLOWED_RESPONSE_MODES = ["standard", "deep"] as const;
+    type ResponseMode = (typeof ALLOWED_RESPONSE_MODES)[number];
+    const responseMode: ResponseMode =
+      typeof requestedResponseMode === "string" &&
+      (ALLOWED_RESPONSE_MODES as readonly string[]).includes(requestedResponseMode)
+        ? (requestedResponseMode as ResponseMode)
+        : "standard";
+
+    const ALLOWED_MODELS = ["gpt-4o-mini", "gpt-4o"] as const;
+    type AllowedModel = (typeof ALLOWED_MODELS)[number];
+    const selectedModel: AllowedModel =
+      typeof requestedModel === "string" &&
+      (ALLOWED_MODELS as readonly string[]).includes(requestedModel)
+        ? (requestedModel as AllowedModel)
+        : "gpt-4o-mini";
 
     if (!sessionId || typeof sessionId !== "string") {
       return new NextResponse("Session id is required", { status: 400 });
@@ -84,37 +104,27 @@ export async function POST(req: Request) {
       return new NextResponse("Content is required", { status: 400 });
     }
 
+    console.debug(tag, "session_lookup_start", Date.now() - tServer);
     const session = await prismadb.session.findFirst({
       where: { id: sessionId, userId },
       select: { id: true },
     });
+    console.debug(tag, "session_lookup_done", Date.now() - tServer);
 
     if (!session) {
       return new NextResponse("Session not found", { status: 404 });
     }
 
-    const modelName = "gpt-4o-mini";
+    const modelName = selectedModel;
+    console.debug(tag, `model: ${modelName} mode: ${responseMode}`);
     const memoryKey = {
       userId,
       sessionId: session.id,
       modelName,
     };
+    console.debug(tag, "memory_manager_init_start", Date.now() - tServer);
     const memory = await SessionMemoryManager.getInstance();
-    const createTextStreamResponse = (text: string) => {
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(encoder.encode(text));
-          controller.close();
-        },
-      });
-
-      return new Response(stream, {
-        headers: {
-          "Content-Type": "text/plain; charset=utf-8",
-        },
-      });
-    };
+    console.debug(tag, "memory_manager_init_done", Date.now() - tServer);
     const persistAssistantReply = async (text: string) => {
       const finalText = text.trim();
       if (!finalText) {
@@ -139,6 +149,7 @@ export async function POST(req: Request) {
       });
     };
 
+    console.debug(tag, "user_message_create_start", Date.now() - tServer);
     const userMessage = await prismadb.message.create({
       data: {
         userId,
@@ -147,191 +158,171 @@ export async function POST(req: Request) {
         content: normalizedContent,
       },
     });
-    await memory.appendToTranscript(memoryKey, `Human: ${normalizedContent}`);
-    await memory.upsertVector(memoryKey, {
-      id: userMessage.id,
-      role: "user",
-      content: normalizedContent,
-      createdAt: userMessage.createdAt,
-    });
-    if (isMarkedUserMemory) {
-      await memory.appendToTranscript(memoryKey, `Human: ${normalizedContent}`, "user");
-      await memory.upsertVector(
-        memoryKey,
-        {
+    console.debug(tag, "user_message_create_done", Date.now() - tServer);
+
+    // ── debugFastPath: skip all enrichment, stream immediately ──────────────
+    if (debugFastPath === true) {
+      console.debug(tag, "FAST_PATH_ACTIVE — skipping all enrichment");
+      const baseSystem =
+        "You are Mind Lab. Be clear, concise, and helpful. Ask one focused question when missing info.";
+      let firstChunkFp = false;
+      const resultFp = streamText({
+        model: openai(modelName),
+        system: baseSystem,
+        messages: [{ role: "user", content: normalizedContent }],
+        onChunk: () => {
+          if (!firstChunkFp) {
+            firstChunkFp = true;
+            console.debug(tag, "FAST_PATH first_chunk", Date.now() - tServer);
+          }
+        },
+        onFinish: async ({ text }) => {
+          console.debug(tag, "FAST_PATH response_complete", Date.now() - tServer);
+          const finalText = text.trim();
+          if (finalText) await persistAssistantReply(finalText);
+        },
+      });
+      return resultFp.toTextStreamResponse();
+    }
+
+    // ── Fire-and-forget: heavy work that does NOT affect the assistant reply ──
+    // Memory writes, audit, profile derivation, and contradiction detection all
+    // run in the background so the main stream can start immediately.
+    void (async () => {
+      try {
+        await memory.appendToTranscript(memoryKey, `Human: ${normalizedContent}`);
+        await memory.upsertVector(memoryKey, {
           id: userMessage.id,
           role: "user",
           content: normalizedContent,
           createdAt: userMessage.createdAt,
-        },
-        "user"
-      );
-    }
-
-    if (userMessage.role === "user") {
-      await ensureWeeklyAuditForCurrentWeek(userId, new Date());
-    }
-
-    // Native derivation: EvidenceSpan + profile extraction (fire-and-forget).
-    if (normalizedContent.length >= 15) {
-      void processMessageForProfile({
-        userId,
-        messageId: userMessage.id,
-        content: normalizedContent,
-      });
-    }
-
-    if (userMessage.role === "user" && normalizedContent.length >= 15) {
-      const detections = await detectContradictions({
-        userId,
-        messageContent: normalizedContent,
-      });
-
-      if (detections.length) {
-        const now = new Date();
-        await prismadb.$transaction(async (tx) => {
-          for (const detection of detections.slice(0, 2)) {
-            if (detection.existingNodeId) {
-              const existingNode = await tx.contradictionNode.findFirst({
-                where: {
-                  id: detection.existingNodeId,
-                  userId,
-                  status: { in: ["open", "explored"] },
-                },
-                select: { id: true },
-              });
-
-              if (!existingNode) {
-                continue;
-              }
-
-              await tx.contradictionEvidence.create({
-                data: {
-                  nodeId: existingNode.id,
-                  sessionId: session.id,
-                  messageId: userMessage.id,
-                  quote: normalizedContent,
-                },
-              });
-
-              await tx.contradictionNode.update({
-                where: { id: existingNode.id },
-                data: {
-                  evidenceCount: { increment: 1 },
-                  lastEvidenceAt: now,
-                  lastTouchedAt: now,
-                },
-              });
-
-              continue;
-            }
-
-            const createdNode = await tx.contradictionNode.create({
-              data: {
-                userId,
-                title: detection.title,
-                sideA: detection.sideA,
-                sideB: detection.sideB,
-                type: detection.type,
-                confidence: detection.confidence,
-                status: "open",
-                sourceSessionId: session.id,
-                sourceMessageId: userMessage.id,
-                evidenceCount: 1,
-                lastEvidenceAt: now,
-                recommendedRung: "rung1_gentle_mirror",
-                escalationLevel: 0,
-              },
-              select: { id: true },
-            });
-
-            await tx.contradictionEvidence.create({
-              data: {
-                nodeId: createdNode.id,
-                sessionId: session.id,
-                messageId: userMessage.id,
-                quote: normalizedContent,
-              },
-            });
-          }
         });
-      }
-    }
-
-    const pendingCandidate = await prismadb.referenceItem.findFirst({
-      where: {
-        userId,
-        status: "candidate",
-        sourceSessionId: session.id,
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-      select: {
-        id: true,
-        type: true,
-        statement: true,
-        supersedesId: true,
-      },
-    });
-
-    if (pendingCandidate && isAffirmative(normalizedContent)) {
-      await prismadb.$transaction(async (tx) => {
-        if (pendingCandidate.supersedesId) {
-          await tx.referenceItem.update({
-            where: { id: pendingCandidate.supersedesId },
-            data: {
-              status: "superseded",
-              supersedesId: pendingCandidate.id,
+        if (isMarkedUserMemory) {
+          await memory.appendToTranscript(memoryKey, `Human: ${normalizedContent}`, "user");
+          await memory.upsertVector(
+            memoryKey,
+            {
+              id: userMessage.id,
+              role: "user",
+              content: normalizedContent,
+              createdAt: userMessage.createdAt,
             },
-          });
+            "user"
+          );
         }
 
-        await tx.referenceItem.update({
-          where: { id: pendingCandidate.id },
-          data: {
-            status: "active",
-          },
-        });
-      });
+        await ensureWeeklyAuditForCurrentWeek(userId, new Date());
 
-      const confirmationText = `Done — I updated your saved ${pendingCandidate.type} to: "${pendingCandidate.statement}".`;
-      try {
-        await persistAssistantReply(confirmationText);
-      } catch (error) {
-        console.log("[MESSAGE_CONFIRM_APPLY_PERSIST_ERROR]", error);
+        // Contradiction detection (LLM call) — moved off critical path
+        console.debug(tag, "contradiction_detection_start (async)", Date.now() - tServer);
+        if (normalizedContent.length >= 15) {
+          const detections = await detectContradictions({
+            userId,
+            messageContent: normalizedContent,
+          });
+
+          if (detections.length) {
+            const now = new Date();
+            await prismadb.$transaction(async (tx) => {
+              for (const detection of detections.slice(0, 2)) {
+                if (detection.existingNodeId) {
+                  const existingNode = await tx.contradictionNode.findFirst({
+                    where: {
+                      id: detection.existingNodeId,
+                      userId,
+                      status: { in: ["candidate", "open", "explored"] },
+                    },
+                    select: { id: true },
+                  });
+
+                  if (!existingNode) {
+                    continue;
+                  }
+
+                  await tx.contradictionEvidence.create({
+                    data: {
+                      nodeId: existingNode.id,
+                      sessionId: session.id,
+                      messageId: userMessage.id,
+                      quote: normalizedContent,
+                    },
+                  });
+
+                  await tx.contradictionNode.update({
+                    where: { id: existingNode.id },
+                    data: {
+                      evidenceCount: { increment: 1 },
+                      lastEvidenceAt: now,
+                      lastTouchedAt: now,
+                    },
+                  });
+
+                  continue;
+                }
+
+                const createdNode = await tx.contradictionNode.create({
+                  data: {
+                    userId,
+                    title: detection.title,
+                    sideA: detection.sideA,
+                    sideB: detection.sideB,
+                    type: detection.type,
+                    confidence: detection.confidence,
+                    status: "candidate",
+                    sourceSessionId: session.id,
+                    sourceMessageId: userMessage.id,
+                    evidenceCount: 1,
+                    lastEvidenceAt: now,
+                    recommendedRung: "rung1_gentle_mirror",
+                    escalationLevel: 0,
+                  },
+                  select: { id: true },
+                });
+
+                await tx.contradictionEvidence.create({
+                  data: {
+                    nodeId: createdNode.id,
+                    sessionId: session.id,
+                    messageId: userMessage.id,
+                    quote: normalizedContent,
+                  },
+                });
+              }
+            });
+          }
+        }
+      } catch (bgErr) {
+        console.error(`[MESSAGE_BG_ERROR][${reqId}]`, bgErr);
       }
+    })();
 
-      return createTextStreamResponse(confirmationText);
-    }
+    // Retrieval parameters vary by mode:
+    // standard — lighter context (faster, lower token cost)
+    // deep — broader context (more history, more vector hits, more references)
+    const transcriptLimitSession = responseMode === "deep" ? 16_000 : 8_000;
+    const transcriptLimitUser    = responseMode === "deep" ? 8_000  : 4_000;
+    const vectorTopK             = responseMode === "deep" ? 12     : 6;
+    const historyTake            = responseMode === "deep" ? 60     : 30;
 
-    if (pendingCandidate && isNegative(normalizedContent)) {
-      await prismadb.referenceItem.update({
-        where: { id: pendingCandidate.id },
-        data: {
-          status: "superseded",
-        },
-      });
+    // Injection caps — final count of items that enter the system prompt.
+    const MAX_INJECTED_MEMORIES_STANDARD  = 6;
+    const MAX_INJECTED_MEMORIES_DEEP      = 12;
+    const MAX_INJECTED_TENSIONS_STANDARD  = 2;
+    const MAX_INJECTED_TENSIONS_DEEP      = 4;
+    const MAX_INJECTED_FORECASTS_STANDARD = 2;
+    const MAX_INJECTED_FORECASTS_DEEP     = 4;
+    const maxMemories  = responseMode === "deep" ? MAX_INJECTED_MEMORIES_DEEP      : MAX_INJECTED_MEMORIES_STANDARD;
+    const maxTensions  = responseMode === "deep" ? MAX_INJECTED_TENSIONS_DEEP      : MAX_INJECTED_TENSIONS_STANDARD;
+    const maxForecasts = responseMode === "deep" ? MAX_INJECTED_FORECASTS_DEEP     : MAX_INJECTED_FORECASTS_STANDARD;
 
-      const discardText = `Got it — I won't change your saved ${pendingCandidate.type}.`;
-      try {
-        await persistAssistantReply(discardText);
-      } catch (error) {
-        console.log("[MESSAGE_CONFIRM_DISCARD_PERSIST_ERROR]", error);
-      }
-
-      return createTextStreamResponse(discardText);
-    }
-
-    const sessionTranscript = await memory.readTranscript(memoryKey);
-    const userTranscript = await memory.readTranscript(memoryKey, 4_000, "user");
-    const sessionRelevant = await memory.queryRelevant(
-      memoryKey,
-      normalizedContent,
-      6,
-      "session"
-    );
-    const userRelevant = await memory.queryRelevant(memoryKey, normalizedContent, 6, "user");
+    console.debug(tag, "memory_reads_start", Date.now() - tServer);
+    const [sessionTranscript, userTranscript, sessionRelevant, userRelevant] = await Promise.all([
+      memory.readTranscript(memoryKey, transcriptLimitSession),
+      memory.readTranscript(memoryKey, transcriptLimitUser, "user"),
+      memory.queryRelevant(memoryKey, normalizedContent, vectorTopK, "session"),
+      memory.queryRelevant(memoryKey, normalizedContent, vectorTopK, "user"),
+    ]);
+    console.debug(tag, "memory_reads_done", Date.now() - tServer);
     const referenceIntentType = detectReferenceIntentType(normalizedContent);
     const governedType: GovernedType | null =
       referenceIntentType === "preference" ||
@@ -370,6 +361,7 @@ export async function POST(req: Request) {
           : activeItems.length > 0;
 
       if (hasConflictingActiveItem && governedOldItem) {
+        // Conflicting path: detected update to an existing active memory → create candidate
         const existingCandidate = await prismadb.referenceItem.findFirst({
           where: {
             userId,
@@ -379,18 +371,13 @@ export async function POST(req: Request) {
             supersedesId: governedOldItem.id,
             statement: normalizedContent,
           },
-          select: {
-            id: true,
-          },
+          select: { id: true },
         });
 
         if (existingCandidate) {
           await prismadb.referenceItem.update({
             where: { id: existingCandidate.id },
-            data: {
-              status: "candidate",
-              sourceMessageId: userMessage.id,
-            },
+            data: { status: "candidate", sourceMessageId: userMessage.id },
           });
         } else {
           await prismadb.referenceItem.create({
@@ -406,64 +393,70 @@ export async function POST(req: Request) {
             },
           });
         }
-
-        const confirmationQuestion = `Do you want me to update your saved ${governedType} from '${toSingleLine(
-          governedOldItem.statement
-        )}' to '${toSingleLine(normalizedContent)}'?`;
-        try {
-          await persistAssistantReply(confirmationQuestion);
-        } catch (error) {
-          console.log("[MESSAGE_CONFIRM_QUESTION_PERSIST_ERROR]", error);
-        }
-
-        return createTextStreamResponse(confirmationQuestion);
-      }
-
-      const existingActive = await prismadb.referenceItem.findFirst({
-        where: {
-          userId,
-          status: "active",
-          type: governedType,
-          statement: normalizedContent,
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      if (!existingActive) {
-        await prismadb.referenceItem.create({
-          data: {
-            userId,
-            type: governedType,
-            statement: normalizedContent,
-            confidence: "medium",
-            status: "active",
-            sourceSessionId: session.id,
-            sourceMessageId: userMessage.id,
-          },
+      } else {
+        // Non-conflicting path: brand-new memory type → candidate (never promoted silently)
+        const existingActive = await prismadb.referenceItem.findFirst({
+          where: { userId, status: "active", type: governedType, statement: normalizedContent },
+          select: { id: true },
         });
+        const existingCandidate = await prismadb.referenceItem.findFirst({
+          where: { userId, status: "candidate", type: governedType, statement: normalizedContent, sourceSessionId: session.id },
+          select: { id: true },
+        });
+
+        if (!existingActive && !existingCandidate) {
+          await prismadb.referenceItem.create({
+            data: {
+              userId,
+              type: governedType,
+              statement: normalizedContent,
+              confidence: "medium",
+              status: "candidate",
+              sourceSessionId: session.id,
+              sourceMessageId: userMessage.id,
+            },
+          });
+        }
       }
 
-      const savedText = `Saved — I stored that as a ${governedType}.`;
-      try {
-        await persistAssistantReply(savedText);
-      } catch (error) {
-        console.log("[MESSAGE_GOVERNANCE_SAVE_PERSIST_ERROR]", error);
-      }
-
-      return createTextStreamResponse(savedText);
+      // No early return — candidate surfaces non-blockingly; LLM continues below.
     }
 
-    const [referenceMemory, topContradictions] = await Promise.all([
-      getActiveReferenceMemory(userId),
+    console.debug(tag, "reference_and_contradictions_start", Date.now() - tServer);
+    const [refMemResult, topContradictions, forecastResult] = await Promise.all([
+      getRelevantReferenceMemory(userId, normalizedContent, maxMemories),
       getTop3WithOptionalSurfacing({
         userId,
         mode: "recorded",
       }),
+      getRelevantForecasts(userId, normalizedContent, maxForecasts),
     ]);
-    const topContradictionsBlock = buildTopContradictionsBlock(topContradictions.items);
+    console.debug(tag, "reference_and_contradictions_done", Date.now() - tServer);
 
+    // Relevance-gate tensions: filter by token overlap, then cap.
+    const tensionRetrieved = topContradictions.items.length;
+    const relevantTensions = topContradictions.items.filter((item) => {
+      const tensionText = `${item.title}\n${item.sideA}\n${item.sideB}`;
+      return scoreTokenOverlap(tensionText, normalizedContent) >= 1;
+    });
+    const injectedTensions = relevantTensions.slice(0, maxTensions);
+
+    console.debug(
+      tag,
+      `[CHAT_CONTEXT] memories: retrieved=${refMemResult.retrieved} relevant=${refMemResult.relevant} injected=${refMemResult.injected} fallback=${refMemResult.usedFallback}`
+    );
+    console.debug(
+      tag,
+      `[CHAT_CONTEXT] tensions: retrieved=${tensionRetrieved} relevant=${relevantTensions.length} injected=${injectedTensions.length}`
+    );
+    console.debug(
+      tag,
+      `[CHAT_CONTEXT] forecasts: retrieved=${forecastResult.retrieved} relevant=${forecastResult.relevant} injected=${forecastResult.injected}`
+    );
+
+    const topContradictionsBlock = buildTopContradictionsBlock(injectedTensions);
+
+    console.debug(tag, "fallback_messages_start", Date.now() - tServer);
     const fallbackMessages = await prismadb.message.findMany({
       where: {
         userId,
@@ -472,13 +465,14 @@ export async function POST(req: Request) {
       orderBy: {
         createdAt: "desc",
       },
-      take: 30,
+      take: historyTake,
       select: {
         role: true,
         content: true,
       },
     });
 
+    console.debug(tag, "fallback_messages_done", Date.now() - tServer);
     const fallbackTranscript = fallbackMessages
       .reverse()
       .map((message) => {
@@ -489,7 +483,7 @@ export async function POST(req: Request) {
 
     const effectiveSessionTranscript = sessionTranscript || fallbackTranscript;
     const baseSystem = [
-      "You are Double V1. Be clear, concise, and helpful. Do not mention internal implementation. Ask one focused question when missing info.",
+      "You are Mind Lab. Be clear, concise, and helpful. Do not mention internal implementation. Ask one focused question when missing info.",
       "If the user asks where you learned something that appears in Long-term memory, respond: You told me earlier, and I saved it as a <type>.",
       "Do not mention databases, code, prompts, or retrieval.",
       "If the user asks where you learned something that is not in Long-term memory and not in the recent transcript, say you are not sure and ask for clarification.",
@@ -502,7 +496,8 @@ export async function POST(req: Request) {
     const systemPrompt = [
       baseSystem,
       governancePrompt,
-      referenceMemory ? `Long-term memory:\n${referenceMemory}` : "",
+      refMemResult.text ? `Long-term memory:\n${refMemResult.text}` : "",
+      forecastResult.text ? `${forecastResult.text}` : "",
       topContradictionsBlock,
       retrievedUserMemory ? `Relevant memory:\n${retrievedUserMemory}` : "",
       sessionMemoryBlock ? `Recent transcript:\n${sessionMemoryBlock}` : "",
@@ -510,11 +505,28 @@ export async function POST(req: Request) {
       .filter(Boolean)
       .join("\n\n");
 
+    console.debug(
+      tag, "context_payload",
+      `systemPrompt=${systemPrompt.length}chars`,
+      `hasRefMemory=${!!refMemResult.text}`,
+      `hasTopContradictions=${injectedTensions.length > 0}`,
+      `hasSessionTranscript=${!!sessionTranscript}`,
+      `hasUserMemory=${!!userRelevant}`
+    );
+    console.debug(tag, `model_call_start mode=${responseMode}`, Date.now() - tServer);
+    let firstChunkLogged = false;
     const result = streamText({
       model: openai(modelName),
       system: systemPrompt,
       messages: [{ role: "user", content: normalizedContent }],
+      onChunk: () => {
+        if (!firstChunkLogged) {
+          firstChunkLogged = true;
+          console.debug(tag, "first_chunk", Date.now() - tServer);
+        }
+      },
       onFinish: async ({ text }) => {
+        console.debug(tag, "response_complete", Date.now() - tServer);
         const finalText = text.trim();
         if (!finalText) {
           return;

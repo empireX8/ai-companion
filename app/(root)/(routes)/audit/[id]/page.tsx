@@ -73,7 +73,7 @@ function Top3Card({ item, rank }: { item: SnapshotItem; rank: number }) {
       </div>
       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
         <span>status: {item.status}</span>
-        <span>rung: {item.recommendedRung ?? "n/a"}</span>
+        <span>Level: {item.recommendedRung ?? "n/a"}</span>
         <span>lastEvidence: {formatDate(item.lastEvidenceAt)}</span>
       </div>
       {expanded ? (
@@ -191,9 +191,9 @@ export default function AuditDetailPage() {
     return (
       <div className="h-full p-4">
         <Link href="/audit" className="text-xs text-muted-foreground hover:underline">
-          ← Audit overview
+          ← Review
         </Link>
-        <div className="mt-6 text-sm text-muted-foreground">Audit snapshot not found.</div>
+        <div className="mt-6 text-sm text-muted-foreground">Review snapshot not found.</div>
       </div>
     );
   }
@@ -202,9 +202,9 @@ export default function AuditDetailPage() {
     return (
       <div className="h-full p-4">
         <Link href="/audit" className="text-xs text-muted-foreground hover:underline">
-          ← Audit overview
+          ← Review
         </Link>
-        <div className="mt-6 text-sm text-muted-foreground">Sign in to view audit.</div>
+        <div className="mt-6 text-sm text-muted-foreground">Sign in to view review.</div>
       </div>
     );
   }
@@ -213,10 +213,10 @@ export default function AuditDetailPage() {
     return (
       <div className="h-full p-4">
         <Link href="/audit" className="text-xs text-muted-foreground hover:underline">
-          ← Audit overview
+          ← Review
         </Link>
         <div className="mt-6 text-sm text-destructive">
-          {state.error ?? "Failed to load audit."}
+          {state.error ?? "Failed to load review."}
         </div>
       </div>
     );
@@ -250,7 +250,7 @@ export default function AuditDetailPage() {
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/60 px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/audit" className="shrink-0 text-xs text-muted-foreground hover:underline">
-            ← Audit
+            ← Review
           </Link>
           <span className="truncate text-sm font-medium text-foreground">
             Week of {formatDate(audit.weekStart)}
@@ -308,22 +308,22 @@ export default function AuditDetailPage() {
         <h2 className="text-lg font-medium">Core Metrics</h2>
         <div className="grid gap-3 md:grid-cols-3">
           <MetricRow label="Active References" value={audit.activeReferenceCount} />
-          <MetricRow label="Open Contradictions" value={audit.openContradictionCount} />
-          <MetricRow label="Total Contradictions" value={audit.totalContradictionCount} />
+          <MetricRow label="Open Tensions" value={audit.openContradictionCount} />
+          <MetricRow label="Total Tensions" value={audit.totalContradictionCount} />
           <MetricRow
             label="Top3 Avg Weight"
             value={audit.top3AvgComputedWeight.toFixed(2)}
           />
           <MetricRow
-            label="Contradiction Density"
+            label="Tension Density"
             value={audit.contradictionDensity.toFixed(3)}
           />
           <MetricRow
-            label="Stability Proxy"
+            label="Stability"
             value={audit.stabilityProxy.toFixed(3)}
           />
           <MetricRow label="Total Avoidance" value={audit.totalAvoidanceCount} />
-          <MetricRow label="Total Snooze" value={audit.totalSnoozeCount} />
+          <MetricRow label="Total Snoozed" value={audit.totalSnoozeCount} />
         </div>
       </section>
 
@@ -344,7 +344,7 @@ export default function AuditDetailPage() {
       {/* Explain panel */}
       {explain && (
         <section className="space-y-3">
-          <h2 className="text-lg font-medium">Explain</h2>
+          <h2 className="text-lg font-medium">Analysis</h2>
           <div className="rounded-md border border-border bg-card p-4 text-sm">
             <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
               <div className="text-muted-foreground">

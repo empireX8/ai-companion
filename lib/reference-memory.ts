@@ -1,4 +1,5 @@
 import prismadb from "@/lib/prismadb";
+import { scoreTokenOverlap } from "./memory-governance";
 
 type ReferenceType =
   | "constraint"
@@ -75,11 +76,124 @@ const hasLikeDislikeConflict = (statements: string[]) => {
   return false;
 };
 
+// Minimum token-overlap score for a memory to be considered relevant to the current turn.
+const RELEVANCE_THRESHOLD = 1;
+
+// Confidence ranking for tie-breaking.
+const CONFIDENCE_RANK: Record<string, number> = { high: 2, medium: 1, low: 0 };
+
+export type ReferenceMemoryResult = {
+  text: string;
+  retrieved: number;
+  relevant: number;
+  injected: number;
+  usedFallback: boolean;
+};
+
+/**
+ * Fetch active non-source memories, score each against the current turn's query using
+ * lightweight token overlap, and return the top `maxItems` relevant ones.
+ *
+ * If nothing passes the relevance threshold, falls back to the most-recent `min(maxItems, 3)`
+ * active items rather than injecting nothing or injecting everything.
+ */
+export async function getRelevantReferenceMemory(
+  userId: string,
+  query: string,
+  maxItems: number
+): Promise<ReferenceMemoryResult> {
+  const rows = await prismadb.referenceItem.findMany({
+    where: {
+      userId,
+      status: "active",
+      type: { not: "source" },
+    },
+    orderBy: [{ confidence: "desc" }, { updatedAt: "desc" }],
+    take: 50,
+    select: {
+      type: true,
+      statement: true,
+      confidence: true,
+      createdAt: true,
+      updatedAt: true,
+      sourceSessionId: true,
+      sourceMessageId: true,
+    },
+  });
+
+  const retrieved = rows.length;
+  if (retrieved === 0) {
+    return { text: "", retrieved: 0, relevant: 0, injected: 0, usedFallback: false };
+  }
+
+  const typedRows = rows as MemoryRow[];
+
+  const scored = typedRows.map((item) => ({
+    item,
+    score: scoreTokenOverlap(item.statement, query),
+  }));
+
+  const passing = scored.filter((s) => s.score >= RELEVANCE_THRESHOLD);
+  const relevant = passing.length;
+
+  let usedFallback = false;
+  let selected: MemoryRow[];
+
+  if (passing.length > 0) {
+    passing.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return (CONFIDENCE_RANK[b.item.confidence] ?? 0) - (CONFIDENCE_RANK[a.item.confidence] ?? 0);
+    });
+    selected = passing.slice(0, maxItems).map((s) => s.item);
+  } else {
+    // Conservative fallback: most-recent items already sorted by DB query.
+    usedFallback = true;
+    selected = typedRows.slice(0, Math.min(maxItems, 3));
+  }
+
+  const injected = selected.length;
+  if (injected === 0) {
+    return { text: "", retrieved, relevant, injected: 0, usedFallback };
+  }
+
+  const lines: string[] = [
+    "User-stated memory (treat as true unless contradicted by the user later):",
+  ];
+
+  for (const type of TYPE_ORDER) {
+    const group = selected.filter((item) => item.type === type);
+    if (group.length === 0) continue;
+
+    const seenStatements = new Set<string>();
+    const dedupedGroup = group.filter((item) => {
+      if (seenStatements.has(item.statement)) return false;
+      seenStatements.add(item.statement);
+      return true;
+    });
+
+    lines.push(`${GROUP_LABELS[type]}:`);
+    const statements = dedupedGroup.map((item) => item.statement);
+    if (
+      CONFLICT_CHECK_TYPES.has(type) &&
+      (hasLikeDislikeConflict(statements) || hasAlwaysNeverConflict(statements))
+    ) {
+      lines.push("(If these conflict, ask the user which is current.)");
+    }
+
+    for (const item of dedupedGroup) {
+      lines.push(`- (${item.confidence}) ${item.statement}`);
+    }
+  }
+
+  return { text: lines.join("\n"), retrieved, relevant, injected, usedFallback };
+}
+
 export async function getActiveReferenceMemory(userId: string): Promise<string> {
   const items = await prismadb.referenceItem.findMany({
     where: {
       userId,
       status: "active",
+      type: { not: "source" },
     },
     orderBy: [{ confidence: "desc" }, { updatedAt: "desc" }],
     take: 50,

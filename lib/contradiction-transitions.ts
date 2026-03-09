@@ -9,7 +9,8 @@ export type ContradictionAction =
   | "resolve"
   | "accept_tradeoff"
   | "archive_tension"
-  | "reopen";
+  | "reopen"
+  | "confirm_candidate";
 
 export class ContradictionTransitionError extends Error {
   status: number;
@@ -61,6 +62,16 @@ export function applyContradictionAction(
       );
     }
 
+    return { nextStatus: "open", touches: {} };
+  }
+
+  if (action === "confirm_candidate") {
+    if (currentStatus !== "candidate") {
+      throw new ContradictionTransitionError(
+        "CONFIRM_CANDIDATE_REQUIRES_CANDIDATE_STATUS",
+        "CONFIRM_CANDIDATE_REQUIRES_CANDIDATE_STATUS"
+      );
+    }
     return { nextStatus: "open", touches: {} };
   }
 

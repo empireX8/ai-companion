@@ -12,7 +12,7 @@ export default function ReferencesPage() {
 
       <div className="flex h-full items-center justify-center">
         <p className="text-sm text-muted-foreground">
-          Select a reference from the list to view details.
+          Select a memory from the list to view details.
         </p>
       </div>
     </>

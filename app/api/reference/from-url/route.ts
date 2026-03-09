@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     const item = await prismadb.referenceItem.create({
       data: {
         userId,
-        type: "pattern",
+        type: "source",
         confidence: "medium",
         status: "active",
         statement,

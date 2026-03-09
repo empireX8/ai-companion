@@ -243,10 +243,29 @@ export async function GET(req: Request) {
         select: CONTRADICTION_WITH_EVIDENCE,
       });
 
+      // Batch-fetch session origins for items that have a sourceSessionId.
+      const cSessionIds = [
+        ...new Set(
+          nodes.map((n) => n.sourceSessionId).filter((id): id is string => id !== null)
+        ),
+      ];
+      const cSessionOrigins: Record<string, string> = {};
+      if (cSessionIds.length > 0) {
+        const sessions = await prismadb.session.findMany({
+          where: { id: { in: cSessionIds } },
+          select: { id: true, origin: true },
+        });
+        for (const s of sessions) cSessionOrigins[s.id] = s.origin;
+      }
+      const itemsWithOrigin = nodes.map((n) => ({
+        ...n,
+        sessionOrigin: n.sourceSessionId ? (cSessionOrigins[n.sourceSessionId] ?? null) : null,
+      }));
+
       // Paginated envelope — consumed exclusively via fetchContradictions() in lib/nodes-api.ts.
       // Do NOT call this path directly; unwrap payload.items on the client side.
       return NextResponse.json(
-        { items: nodes, page, limit, hasMore: nodes.length === limit },
+        { items: itemsWithOrigin, page, limit, hasMore: nodes.length === limit },
         {
           headers: {
             "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",

@@ -104,7 +104,7 @@ export function NowTray({
 
   if (items.length === 0) {
     return (
-      <p className="mt-2 text-xs text-muted-foreground">No active contradictions.</p>
+      <p className="mt-2 text-xs text-muted-foreground">No active tensions.</p>
     );
   }
 

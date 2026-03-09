@@ -34,6 +34,13 @@ const formatDate = (value: string) => {
 const truncate = (text: string, max = 80) =>
   text.length > max ? `${text.slice(0, max)}…` : text;
 
+const STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  candidate: "Candidate",
+  inactive: "Removed",
+  superseded: "Replaced",
+};
+
 // ── Supersede modal state shape ───────────────────────────────────────────────
 
 type SupersedeModal = { open: true; currentStatement: string } | { open: false };
@@ -130,7 +137,7 @@ export default function ReferenceDetailPage() {
   if (unauthorized) {
     return (
       <div className="p-6 text-sm text-muted-foreground">
-        Sign in to view this reference.
+        Sign in to view this memory.
       </div>
     );
   }
@@ -139,7 +146,7 @@ export default function ReferenceDetailPage() {
     return (
       <div className="p-6">
         <p className="text-sm text-destructive">
-          {fetchError ?? "Reference not found."}
+          {fetchError ?? "Memory not found."}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           It may have been deleted or you may not have access.
@@ -148,7 +155,7 @@ export default function ReferenceDetailPage() {
           href="/references"
           className="mt-3 inline-block rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
         >
-          Back to references
+          Back to memories
         </Link>
       </div>
     );
@@ -182,7 +189,7 @@ export default function ReferenceDetailPage() {
             className="w-96 rounded-lg border border-border bg-card p-5 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-1 text-sm font-medium">Supersede reference</h3>
+            <h3 className="mb-1 text-sm font-medium">Replace memory</h3>
             <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">
               Current: {supersedeModal.currentStatement}
             </p>
@@ -218,7 +225,7 @@ export default function ReferenceDetailPage() {
                 onClick={() => void handleSupersede()}
                 className="flex-1 rounded bg-primary px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-40"
               >
-                Confirm supersede
+                Confirm replace
               </button>
               <button
                 type="button"
@@ -284,7 +291,7 @@ export default function ReferenceDetailPage() {
         href="/references"
         className="inline-block text-xs text-muted-foreground hover:text-foreground"
       >
-        ← Back to references
+        ← Back to memories
       </Link>
 
       {/* Section 1 — Current reference */}
@@ -307,7 +314,7 @@ export default function ReferenceDetailPage() {
               ["Confidence", current.confidence],
               [
                 "Status",
-                current.status,
+                STATUS_LABELS[current.status] ?? current.status,
                 current.status === "candidate"
                   ? "text-amber-600 dark:text-amber-400"
                   : current.status === "inactive" || current.status === "superseded"
@@ -329,17 +336,17 @@ export default function ReferenceDetailPage() {
       {/* Section 2 — Supersession context */}
       {(previousVersion || nextVersions.length > 0) && (
         <section className="space-y-3">
-          <h2 className="text-sm font-medium text-foreground">Supersession</h2>
+          <h2 className="text-sm font-medium text-foreground">Version history</h2>
 
           {previousVersion && (
             <ChainCard
-              label="Superseded from"
+              label="Replaces"
               item={previousVersion}
             />
           )}
 
           {nextVersions.map((nv) => (
-            <ChainCard key={nv.id} label="Superseded by" item={nv} />
+            <ChainCard key={nv.id} label="Replaced by" item={nv} />
           ))}
         </section>
       )}
@@ -362,14 +369,14 @@ export default function ReferenceDetailPage() {
                   onClick={() => void runAction("promote_candidate")}
                   className="rounded border border-primary px-3 py-1.5 text-xs text-primary hover:bg-muted"
                 >
-                  Promote
+                  Confirm
                 </button>
                 <button
                   type="button"
                   onClick={() => void runAction("deactivate")}
                   className="rounded border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
                 >
-                  Deactivate
+                  Remove
                 </button>
               </>
             )}
@@ -383,7 +390,7 @@ export default function ReferenceDetailPage() {
                   }
                   className="rounded border border-border px-3 py-1.5 text-xs text-foreground hover:bg-muted"
                 >
-                  Supersede
+                  Replace
                 </button>
                 <button
                   type="button"
@@ -399,7 +406,7 @@ export default function ReferenceDetailPage() {
                   onClick={() => void runAction("deactivate")}
                   className="rounded border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
                 >
-                  Deactivate
+                  Remove
                 </button>
               </>
             )}
@@ -432,7 +439,7 @@ function ChainCard({
         {truncate(item.statement)}
       </Link>
       <p className="mt-1 text-xs text-muted-foreground">
-        {item.confidence} · {item.status}
+        {item.confidence} · {STATUS_LABELS[item.status] ?? item.status}
       </p>
     </div>
   );

@@ -31,7 +31,7 @@ const statusOptions: Array<{ value: StatusFilter; label: string }> = [
   { value: "all", label: "All statuses" },
   { value: "active", label: "Active" },
   { value: "candidate", label: "Candidate" },
-  { value: "inactive", label: "Inactive" },
+  { value: "inactive", label: "Removed" },
 ];
 
 const TYPE_STYLES: Record<string, string> = {
@@ -57,7 +57,8 @@ const TYPE_LABELS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   active: "Active",
   candidate: "Candidate",
-  inactive: "Inactive",
+  inactive: "Removed",
+  superseded: "Replaced",
 };
 
 const formatDate = (value: string) => {
@@ -122,7 +123,7 @@ export function ReferenceListPanel() {
       setUnauthorized(false);
       setItems(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load references");
+      setError(err instanceof Error ? err.message : "Failed to load memories");
     } finally {
       setLoading(false);
     }
@@ -200,7 +201,7 @@ export function ReferenceListPanel() {
             className="w-96 rounded-lg border border-border bg-card p-5 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-1 text-sm font-medium">Supersede reference</h3>
+            <h3 className="mb-1 text-sm font-medium">Replace memory</h3>
             <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">
               Current: {supersedeModal.currentStatement}
             </p>
@@ -234,7 +235,7 @@ export function ReferenceListPanel() {
                 onClick={() => void handleSupersede()}
                 className="flex-1 rounded bg-primary px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-40"
               >
-                Confirm supersede
+                Confirm replace
               </button>
               <button
                 type="button"
@@ -299,7 +300,7 @@ export function ReferenceListPanel() {
       <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-2">
         <div className="flex items-center gap-2">
           <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-xs font-semibold text-muted-foreground">References</span>
+          <span className="text-xs font-semibold text-muted-foreground">Memories</span>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -337,7 +338,7 @@ export function ReferenceListPanel() {
         <div className="shrink-0 border-b border-border/40 px-3 py-2">
           <input
             type="search"
-            placeholder="Search references…"
+            placeholder="Search memories…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
@@ -385,12 +386,12 @@ export function ReferenceListPanel() {
           <ListSkeleton rows={6} />
         </div>
       ) : unauthorized ? (
-        <p className="flex-1 p-3 text-xs text-muted-foreground">Sign in to view references.</p>
+        <p className="flex-1 p-3 text-xs text-muted-foreground">Sign in to view memories.</p>
       ) : error ? (
         <p className="flex-1 p-3 text-xs text-destructive">{error}</p>
       ) : items.length === 0 ? (
         <div className="flex-1 p-4 text-center">
-          <p className="text-xs font-medium text-foreground">No references yet</p>
+          <p className="text-xs font-medium text-foreground">No memories yet</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Import your ChatGPT history or start chatting.
           </p>
@@ -403,7 +404,7 @@ export function ReferenceListPanel() {
         </div>
       ) : filtered.length === 0 ? (
         <p className="flex-1 p-3 text-center text-xs text-muted-foreground">
-          No references match this filter.
+          No memories match this filter.
         </p>
       ) : (
         <ul className="flex-1 divide-y divide-border/60 overflow-y-auto">
@@ -441,7 +442,7 @@ export function ReferenceListPanel() {
                       onClick={() => void runAction(item.id, "promote_candidate")}
                       className="rounded border border-primary px-2 py-1 text-xs text-primary hover:bg-primary/10 disabled:opacity-40"
                     >
-                      Promote
+                      Confirm
                     </button>
                     <button
                       type="button"
@@ -449,7 +450,7 @@ export function ReferenceListPanel() {
                       onClick={() => void runAction(item.id, "deactivate")}
                       className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40"
                     >
-                      Deactivate
+                      Remove
                     </button>
                   </div>
                 )}
@@ -467,7 +468,7 @@ export function ReferenceListPanel() {
                       }}
                       className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40"
                     >
-                      Supersede
+                      Replace
                     </button>
                     <button
                       type="button"
@@ -485,7 +486,7 @@ export function ReferenceListPanel() {
                       onClick={() => void runAction(item.id, "deactivate")}
                       className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40"
                     >
-                      Deactivate
+                      Remove
                     </button>
                   </div>
                 )}

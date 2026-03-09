@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { DomainListSlot } from "@/components/layout/DomainListSlot";
@@ -11,6 +11,37 @@ type ImportSummary = {
   messagesCreated: number;
   contradictionsCreated: number;
   errors: string[];
+};
+
+type UploadStatus =
+  | "pending"
+  | "uploading"
+  | "uploaded"
+  | "processing"
+  | "complete"
+  | "failed"
+  | "expired";
+
+type UploadHistoryItem = {
+  id: string;
+  filename: string;
+  status: UploadStatus;
+  createdAt: string;
+  finishedAt: string | null;
+  sessionsCreated: number;
+  messagesCreated: number;
+  contradictionsCreated: number;
+  error: string | null;
+};
+
+type UploadHistoryAggregates = {
+  candidateMemories: number;
+  candidateTensions: number;
+};
+
+type UploadHistoryResponse = {
+  items: UploadHistoryItem[];
+  aggregates?: UploadHistoryAggregates;
 };
 
 type UploadStatusResponse = {
@@ -54,6 +85,18 @@ function clearSessionIdFromStorage() {
   }
 }
 
+function formatCompletedAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 async function sha256Hex(blob: Blob): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
   return Array.from(new Uint8Array(digest))
@@ -80,6 +123,24 @@ export default function ImportPage() {
   });
   const [result, setResult] = useState<ImportSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [historyItems, setHistoryItems] = useState<UploadHistoryItem[]>([]);
+  const [historyAggregates, setHistoryAggregates] = useState<UploadHistoryAggregates | null>(null);
+
+  const loadImportHistory = useCallback(async () => {
+    try {
+      const res = await fetch("/api/upload/history?limit=20", { cache: "no-store" });
+      if (!res.ok) return;
+      const payload = (await res.json()) as UploadHistoryResponse;
+      setHistoryItems(payload.items ?? []);
+      setHistoryAggregates(payload.aggregates ?? null);
+    } catch {
+      // best-effort for persistent summary
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadImportHistory();
+  }, [loadImportHistory]);
 
   const fileSizeMb = file ? (file.size / (1024 * 1024)).toFixed(2) : null;
 
@@ -134,6 +195,7 @@ export default function ImportPage() {
         );
         setStatusText("Complete");
         clearSessionIdFromStorage();
+        await loadImportHistory();
         return;
       }
 
@@ -298,6 +360,26 @@ export default function ImportPage() {
     await runImport();
   };
 
+  const latestCompletedImport =
+    historyItems.find((item) => item.status === "complete") ?? null;
+  const summary = result
+    ? {
+        sessionsCreated: result.sessionsCreated,
+        messagesCreated: result.messagesCreated,
+        contradictionsCreated: result.contradictionsCreated,
+      }
+    : latestCompletedImport
+      ? {
+          sessionsCreated: latestCompletedImport.sessionsCreated,
+          messagesCreated: latestCompletedImport.messagesCreated,
+          contradictionsCreated: latestCompletedImport.contradictionsCreated,
+        }
+      : null;
+  const completedAt =
+    latestCompletedImport?.finishedAt ?? latestCompletedImport?.createdAt ?? null;
+  const candidateMemories = historyAggregates?.candidateMemories;
+  const candidateTensions = historyAggregates?.candidateTensions;
+
   return (
     <>
       <DomainListSlot>
@@ -306,17 +388,17 @@ export default function ImportPage() {
       <div className="h-full space-y-4 p-4">
       <h1 className="text-lg font-medium">Import Your ChatGPT History</h1>
       <p className="text-sm text-muted-foreground">
-        Upload your ChatGPT export and let Double analyze your cognitive patterns,
-        contradictions, goals, and constraints instantly.
+        Upload your ChatGPT export to bring in your conversation history and let Mind Lab
+        surface memories, tensions, and patterns automatically.
       </p>
       <section className="space-y-2 text-sm">
-        <p className="font-medium">Double will:</p>
-        <p>• Ingest your conversations</p>
-        <p>• Detect contradictions and unresolved tensions</p>
-        <p>• Extract long-term goals, constraints, and preferences</p>
-        <p>• Build your cognitive profile automatically</p>
+        <p className="font-medium">What happens during import:</p>
+        <p>• Your conversations are ingested</p>
+        <p>• Tensions and unresolved conflicts are detected</p>
+        <p>• Long-term goals, constraints, and preferences are extracted</p>
+        <p>• Candidate memories and tensions are queued for your review</p>
         <p className="text-muted-foreground">
-          This gives you immediate structured insight — no manual setup required.
+          Nothing is confirmed until you review it — no changes happen without your approval.
         </p>
       </section>
 
@@ -394,73 +476,96 @@ export default function ImportPage() {
       <section className="space-y-2 rounded-md border border-border bg-card p-4 text-sm">
         <p className="font-medium">When you upload a file:</p>
         <p>1. The archive is securely stored.</p>
-        <p>2. Double processes it incrementally in the background.</p>
-        <p>3. Sessions and messages are recreated inside Double.</p>
-        <p>4. Contradictions, patterns, and references are detected automatically.</p>
+        <p>2. It is processed incrementally in the background.</p>
+        <p>3. Sessions and messages are recreated inside Mind Lab.</p>
+        <p>4. Tensions, patterns, and memories are detected automatically.</p>
         <p>5. You receive a structured summary when processing completes.</p>
         <p className="text-muted-foreground">You can leave this page — processing continues safely.</p>
       </section>
 
       <section className="space-y-2 rounded-md border border-border bg-card p-4 text-sm">
         <h2 className="font-medium">How Your Data Is Handled</h2>
-        <p>Double stores:</p>
-        <p>• Derived insights (sessions, contradictions, references, goals)</p>
+        <p>Mind Lab stores:</p>
+        <p>• Derived insights (sessions, tensions, memories, goals)</p>
         <p>• Structured summaries built from your conversations</p>
         <p>Raw export archives are:</p>
-        <p>• Retained temporarily (default: 30 days)</p>
-        <p>• Automatically deleted after that period unless you upgrade</p>
+        <p>• Retained temporarily for reprocessing purposes</p>
+        <p>• Automatically deleted after a short retention period</p>
         <p>You can always request deletion of imported data.</p>
-      </section>
-
-      <section className="space-y-2 rounded-md border border-border bg-card p-4 text-sm">
-        <p className="font-medium">Free tier:</p>
-        <p>• Full import</p>
-        <p>• Permanent structured insights</p>
-        <p>• Temporary raw archive retention</p>
-        <p className="font-medium">Paid tier (future expansion copy — keep subtle):</p>
-        <p>• Extended raw archive retention</p>
-        <p>• Reprocessing capability</p>
-        <p>• Advanced archive search</p>
-        <p>• Expanded storage limits</p>
       </section>
 
       {loading ? (
         <section className="space-y-2 rounded-md border border-border bg-card p-4 text-sm">
           <h2 className="font-medium">Processing your archive…</h2>
           <p>This may take a few minutes for large exports.</p>
-          <p>Double is:</p>
+          <p>Mind Lab is:</p>
           <p>• Reconstructing sessions</p>
           <p>• Extracting long-term signals</p>
-          <p>• Detecting contradictions</p>
-          <p>• Building your cognitive profile</p>
-          <p>You’ll see a summary when it finishes.</p>
+          <p>• Detecting tensions</p>
+          <p>• Identifying candidate memories</p>
+          <p>You will see a summary when it finishes.</p>
         </section>
       ) : null}
 
       {error ? <p className="text-sm text-destructive">{failureText}</p> : null}
 
-      {result ? (
+      {summary ? (
         <section className="space-y-3 rounded-md border border-border bg-card p-4 text-sm">
-          <h2 className="font-medium">Import Complete</h2>
+          <h2 className="font-medium">{result ? "Import Complete" : "Latest import"}</h2>
+          <p className="text-muted-foreground">
+            {result
+              ? "Most recent completed import:"
+              : "This is your most recent completed import. Follow-up actions below are separate from upload."}
+            {completedAt ? ` ${formatCompletedAt(completedAt)}` : result ? " just now" : ""}
+          </p>
+
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-            <div className="rounded border border-border p-2">Sessions Created: {result.sessionsCreated}</div>
-            <div className="rounded border border-border p-2">Messages Imported: {result.messagesCreated}</div>
+            <div className="rounded border border-border p-2">Sessions Imported: {summary.sessionsCreated}</div>
+            <div className="rounded border border-border p-2">Messages Imported: {summary.messagesCreated}</div>
             <div className="rounded border border-border p-2">
-              Contradictions Detected: {result.contradictionsCreated}
+              Tensions Detected: {summary.contradictionsCreated}
             </div>
           </div>
-          <p>Your cognitive structure is now live.</p>
-          <Link href="/chat" className="block underline">
-            → View Sessions
-          </Link>
-          <Link href="/contradictions" className="block underline">
-            → Review Contradictions
-          </Link>
-          <Link href="/audit" className="block underline">
-            → Open Weekly Audit
-          </Link>
 
-          {result.errors.length > 0 ? (
+          {(typeof candidateMemories === "number" || typeof candidateTensions === "number") ? (
+            <div className="space-y-2 rounded border border-border p-3">
+              <p className="font-medium text-foreground">Next steps</p>
+              {typeof candidateTensions === "number" && candidateTensions > 0 ? (
+                <Link href="/contradictions/candidates" className="block text-primary underline underline-offset-2">
+                  → Review candidate tensions
+                </Link>
+              ) : null}
+              {typeof candidateMemories === "number" && candidateMemories > 0 ? (
+                <Link href="/references/candidates" className="block text-primary underline underline-offset-2">
+                  → Review candidate memories
+                </Link>
+              ) : null}
+              {typeof candidateMemories === "number" &&
+              typeof candidateTensions === "number" &&
+              candidateMemories === 0 &&
+              candidateTensions === 0 ? (
+                <p className="text-muted-foreground">No candidate items are waiting for review right now.</p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <p className="pt-1 font-medium text-foreground">Explore</p>
+          <Link href="/chat" className="block underline underline-offset-2">
+            → View imported sessions / chat
+          </Link>
+          {summary.contradictionsCreated > 0 ? (
+            <Link href="/contradictions" className="block underline underline-offset-2">
+              → View tensions
+            </Link>
+          ) : null}
+          <p className="pt-2 text-muted-foreground/70">
+            Not sure what candidates, memories, or tensions mean?{" "}
+            <Link href="/help" className="text-primary underline-offset-2 hover:underline">
+              Read how it works →
+            </Link>
+          </p>
+
+          {result?.errors.length ? (
             <div>
               <p className="font-medium">Errors</p>
               <ul className="mt-1 list-disc space-y-1 pl-5">

@@ -22,6 +22,8 @@ export type ContradictionListItem = {
   lastTouchedAt: string;
   lastEscalatedAt: string | null;
   snoozedUntil: string | null;
+  sourceSessionId?: string | null;
+  sessionOrigin?: "APP" | "IMPORTED_ARCHIVE" | null;
 };
 
 export type ContradictionDetail = {
@@ -59,6 +61,10 @@ export type ReferenceListItem = {
   status: string;
   createdAt: string;
   updatedAt: string;
+  sourceSessionId?: string | null;
+  sessionOrigin?: "APP" | "IMPORTED_ARCHIVE" | null;
+  supersedesId?: string | null;
+  supersedesStatement?: string | null;
 };
 
 export type ReferenceDetailItem = {

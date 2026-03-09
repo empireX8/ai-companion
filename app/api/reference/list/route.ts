@@ -30,10 +30,37 @@ export async function GET() {
         status: true,
         createdAt: true,
         updatedAt: true,
+        sourceSessionId: true,
+        supersedesId: true,
+        supersedes: { select: { statement: true } },
       },
     });
 
-    return NextResponse.json(items, {
+    // Batch-fetch session origins for items that have a sourceSessionId.
+    const sessionIds = [
+      ...new Set(
+        items.map((i) => i.sourceSessionId).filter((id): id is string => id !== null)
+      ),
+    ];
+    const sessionOrigins: Record<string, string> = {};
+    if (sessionIds.length > 0) {
+      const sessions = await prismadb.session.findMany({
+        where: { id: { in: sessionIds } },
+        select: { id: true, origin: true },
+      });
+      for (const s of sessions) sessionOrigins[s.id] = s.origin;
+    }
+
+    const enriched = items.map((item) => ({
+      ...item,
+      sessionOrigin: item.sourceSessionId
+        ? (sessionOrigins[item.sourceSessionId] ?? null)
+        : null,
+      supersedesStatement: item.supersedes?.statement ?? null,
+      supersedes: undefined,
+    }));
+
+    return NextResponse.json(enriched, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
       },

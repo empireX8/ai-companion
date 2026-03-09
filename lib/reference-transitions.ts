@@ -2,7 +2,9 @@ export type ReferenceAction =
   | "promote_candidate"
   | "supersede"
   | "deactivate"
-  | "update_confidence";
+  | "update_confidence"
+  | "confirm_governance"
+  | "dismiss_governance";
 
 export class ReferenceTransitionError extends Error {
   status = 422;
@@ -25,6 +27,8 @@ export class ReferenceTransitionError extends Error {
  * supersede          → requires active
  * deactivate         → requires active or candidate
  * update_confidence  → requires any status except superseded
+ * confirm_governance → requires candidate (promotes candidate → active, supersedes old item)
+ * dismiss_governance → requires candidate (sets candidate → superseded)
  */
 export function validateReferenceTransition(
   currentStatus: string,
@@ -63,6 +67,16 @@ export function validateReferenceTransition(
         throw new ReferenceTransitionError(
           "INVALID_STATUS_FOR_ACTION",
           `update_confidence is not allowed for status=superseded`
+        );
+      }
+      break;
+
+    case "confirm_governance":
+    case "dismiss_governance":
+      if (currentStatus !== "candidate") {
+        throw new ReferenceTransitionError(
+          "INVALID_STATUS_FOR_ACTION",
+          `${action} requires status=candidate, got status=${currentStatus}`
         );
       }
       break;
