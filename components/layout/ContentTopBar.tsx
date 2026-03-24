@@ -23,7 +23,7 @@ function getSectionLabel(pathname: string): string {
   for (const [prefix, label] of SECTION_LABELS) {
     if (pathname === prefix || pathname.startsWith(prefix + "/")) return label;
   }
-  return "Mind Lab";
+  return "MindLab";
 }
 
 export function ContentTopBar() {

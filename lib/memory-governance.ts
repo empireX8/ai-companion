@@ -123,7 +123,12 @@ export const detectReferenceIntentType = (content: string): ReferenceIntentType 
     return "rule";
   }
 
-  if (/\bgoal\b|\bplan\b|\bwant to\b|\btrying to\b/i.test(content)) {
+  // Goal: requires first-person ownership — "my goal", "I want to", "I'm trying to", etc.
+  if (
+    /\bmy\s+(?:goal|objective|aim|purpose)\b|\bi\s+(?:want|need|intend|plan|aim|hope)\s+to\b|\bi(?:'m|\s+am)\s+trying\s+to\b|\bi(?:'d|\s+would)\s+like\s+to\b/i.test(
+      content
+    )
+  ) {
     return "goal";
   }
 
@@ -135,7 +140,12 @@ export const detectReferenceIntentType = (content: string): ReferenceIntentType 
     return "preference";
   }
 
-  if (/\bconstraint\b|\bmust\b|\bcannot\b|\bcan't\b|\bnever\b|\balways\b/i.test(content)) {
+  // Constraint: requires first-person — "I must", "I cannot", "I will never", "my rule", etc.
+  if (
+    /\bi\s+(?:must|cannot|can't|will\s+never|can\s+never)\b|\bi\s+(?:always|never)\s+\w|\bmy\s+(?:rule|constraint|limit)\b/i.test(
+      content
+    )
+  ) {
     return "constraint";
   }
 
@@ -144,6 +154,25 @@ export const detectReferenceIntentType = (content: string): ReferenceIntentType 
 
 export const shouldPromptForMemoryUpdate = (content: string) => {
   return GOVERNANCE_TRIGGER_PATTERNS.some((pattern) => pattern.test(content));
+};
+
+/**
+ * Write-path quality gate — returns true only if the message is worth
+ * storing as a memory candidate. Applied before any ReferenceItem write.
+ *
+ * Rejects: too short, too few words, questions, messages that don't start
+ * with a first-person or declarative signal.
+ */
+export const isWriteableMemoryStatement = (content: string): boolean => {
+  const t = content.trim();
+  if (t.length < 25) return false;
+  const wordCount = (t.match(/\b\w{2,}\b/g) ?? []).length;
+  if (wordCount < 5) return false;
+  // Questions are not memory statements
+  if (t.endsWith("?")) return false;
+  // Must start with a first-person signal
+  if (!/^(?:i\b|my\b|i'|i'm\b|i've\b|i'll\b|i'd\b)/i.test(t)) return false;
+  return true;
 };
 
 export const isAffirmative = (content: string) => {

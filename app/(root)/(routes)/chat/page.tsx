@@ -11,7 +11,6 @@ import {
   PanelLeft,
   Copy,
   Globe,
-  TextQuote,
   Link2,
   MessageSquare,
   Mic,
@@ -19,7 +18,6 @@ import {
   RefreshCw,
   Square,
   Trash2,
-  TrendingUp,
   X,
 } from "lucide-react";
 import { CHAT_EVENTS } from "@/components/command/chatEvents";
@@ -32,6 +30,7 @@ import { DomainListSlot } from "@/components/layout/DomainListSlot";
 import { TopBarSlot } from "@/components/layout/TopBarSlot";
 import { useDomainListPanel } from "@/components/layout/DomainListContext";
 import { ChatContextDrawer } from "@/components/chat/ChatContextDrawer";
+import { resolveChatBootstrapSession } from "@/lib/chat-session-bootstrap";
 
 type ChatMessage = {
   id: string;
@@ -59,7 +58,7 @@ type ReferenceType =
 
 type ReferenceConfidence = "low" | "medium" | "high";
 
-type ReferenceItem = {
+type SavedMemory = {
   id: string;
   type: ReferenceType;
   confidence: ReferenceConfidence;
@@ -72,7 +71,7 @@ type ReferenceItem = {
   supersedesId?: string | null;
 };
 
-type PendingReferenceItem = {
+type PendingMemory = {
   id: string;
   type: ReferenceType;
   confidence: ReferenceConfidence;
@@ -195,7 +194,7 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
 
-  type CaptureMode = "memory" | "ref" | "evidence" | "projection";
+  type CaptureMode = "memory" | "ref";
   const [openCapture, setOpenCapture] = useState<{ id: string; mode: CaptureMode } | null>(null);
   const [captureText, setCaptureText] = useState("");
   const [captureUrl, setCaptureUrl] = useState("");
@@ -205,14 +204,6 @@ export default function ChatPage() {
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [captureSuccess, setCaptureSuccess] = useState<Set<string>>(new Set());
   const [captureSuccessMsg, setCaptureSuccessMsg] = useState<{ id: string; mode: CaptureMode } | null>(null);
-  const [projPremise, setProjPremise] = useState("");
-  const [projDrivers, setProjDrivers] = useState("");
-  const [projOutcomes, setProjOutcomes] = useState("");
-  const [projConfidence, setProjConfidence] = useState(0.5);
-  // D-05: evidence tension picker
-  const [evidenceTensions, setEvidenceTensions] = useState<Array<{id: string; title: string; sideA: string; sideB: string}>>([]);
-  const [evidenceTensionId, setEvidenceTensionId] = useState<string>("");
-  const [evidenceTensionsLoading, setEvidenceTensionsLoading] = useState(false);
   // D-14: governance card action state
   const [governanceBusy, setGovernanceBusy] = useState(false);
 
@@ -239,7 +230,7 @@ export default function ChatPage() {
   const [referenceType, setReferenceType] = useState<ReferenceType>("preference");
   const [referenceConfidence, setReferenceConfidence] =
     useState<ReferenceConfidence>("medium");
-  const [savedReferences, setSavedReferences] = useState<ReferenceItem[]>([]);
+  const [savedReferences, setSavedReferences] = useState<SavedMemory[]>([]);
   const [isSavingReference, setIsSavingReference] = useState(false);
   const [referenceStatus, setReferenceStatus] = useState<string | null>(null);
   const [updatingReferenceId, setUpdatingReferenceId] = useState<string | null>(null);
@@ -253,7 +244,7 @@ export default function ChatPage() {
   const [replaceType, setReplaceType] = useState<ReferenceType>("preference");
   const [replaceConfidence, setReplaceConfidence] =
     useState<ReferenceConfidence>("medium");
-  const [pendingCandidate, setPendingCandidate] = useState<PendingReferenceItem>(null);
+  const [pendingCandidate, setPendingCandidate] = useState<PendingMemory>(null);
 
   const [rightCollapsed, setRightCollapsed] = useState(true);
   const [contextOpen, setContextOpen] = useState(false);
@@ -268,24 +259,32 @@ export default function ChatPage() {
 
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSessions = useCallback(async () => {
-    setIsLoadingSessions(true);
-
+  const loadSessions = useCallback(async () => {
     try {
       const response = await fetch("/api/session/list?origin=app", { method: "GET" });
       if (!response.ok) {
         throw new Error("Failed to load sessions");
       }
 
-      const data = (await response.json()) as ChatSession[];
-      setSessions(data);
-    } finally {
-      setIsLoadingSessions(false);
+      return (await response.json()) as ChatSession[];
+    } catch (error) {
+      throw error;
     }
   }, []);
 
+  const fetchSessions = useCallback(async () => {
+    setIsLoadingSessions(true);
 
-  const fetchMessages = useCallback(async (activeSessionId: string) => {
+    try {
+      const data = await loadSessions();
+      setSessions(data);
+      return data;
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [loadSessions]);
+
+  const loadMessages = useCallback(async (activeSessionId: string) => {
     const response = await fetch(
       `/api/message/list?sessionId=${encodeURIComponent(activeSessionId)}`,
       { method: "GET" }
@@ -295,9 +294,14 @@ export default function ChatPage() {
       throw new Error("Failed to load messages");
     }
 
-    const data = (await response.json()) as ChatMessage[];
-    setMessages(data);
+    return (await response.json()) as ChatMessage[];
   }, []);
+
+  const fetchMessages = useCallback(async (activeSessionId: string) => {
+    const data = await loadMessages(activeSessionId);
+    setMessages(data);
+    return data;
+  }, [loadMessages]);
 
   const createSession = useCallback(async () => {
     const response = await fetch("/api/session", { method: "POST" });
@@ -309,7 +313,7 @@ export default function ChatPage() {
     return data.sessionId;
   }, []);
 
-  const fetchSavedReferences = useCallback(async () => {
+  const loadSavedReferences = useCallback(async () => {
     const response = await fetch("/api/reference/list", {
       method: "GET",
       cache: "no-store",
@@ -319,11 +323,16 @@ export default function ChatPage() {
       throw new Error("Failed to load saved memory");
     }
 
-    const data = (await response.json()) as ReferenceItem[];
-    setSavedReferences(data);
+    return (await response.json()) as SavedMemory[];
   }, []);
 
-  const fetchPendingCandidate = useCallback(async (activeSessionId: string) => {
+  const fetchSavedReferences = useCallback(async () => {
+    const data = await loadSavedReferences();
+    setSavedReferences(data);
+    return data;
+  }, [loadSavedReferences]);
+
+  const loadPendingCandidate = useCallback(async (activeSessionId: string) => {
     const response = await fetch(
       `/api/reference/pending?sessionId=${encodeURIComponent(activeSessionId)}`,
       {
@@ -336,15 +345,25 @@ export default function ChatPage() {
       throw new Error("Failed to load pending memory update");
     }
 
-    const data = (await response.json()) as PendingReferenceItem;
-    setPendingCandidate(data);
+    return (await response.json()) as PendingMemory;
   }, []);
 
+  const fetchPendingCandidate = useCallback(async (activeSessionId: string) => {
+    const data = await loadPendingCandidate(activeSessionId);
+    setPendingCandidate(data);
+    return data;
+  }, [loadPendingCandidate]);
 
   const setActiveSession = useCallback((nextSessionId: string) => {
     setSessionId(nextSessionId);
     setSelectedSessionId(nextSessionId);
     window.localStorage.setItem(SESSION_STORAGE_KEY, nextSessionId);
+  }, []);
+
+  const clearStoredSessionSelection = useCallback(() => {
+    setSessionId(null);
+    setSelectedSessionId(null);
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
   }, []);
 
   const scrollToBottom = useCallback((force = false) => {
@@ -358,22 +377,35 @@ export default function ChatPage() {
 
     const initialize = async () => {
       try {
-        const storedSessionId = window.localStorage.getItem(SESSION_STORAGE_KEY);
-
-        let activeSessionId = storedSessionId;
-        if (!activeSessionId) {
-          activeSessionId = await createSession();
-        }
+        const resolution = await resolveChatBootstrapSession({
+          storedSessionId: window.localStorage.getItem(SESSION_STORAGE_KEY),
+          fetchSessions: loadSessions,
+          createSession,
+        });
 
         if (!isMounted) {
           return;
         }
 
-        setActiveSession(activeSessionId);
-        await fetchSessions();
-        await fetchMessages(activeSessionId);
-        await fetchSavedReferences();
-        await fetchPendingCandidate(activeSessionId);
+        if (resolution.clearedStaleSelection) {
+          clearStoredSessionSelection();
+        }
+
+        const [messagesData, savedReferencesData, pendingCandidateData] = await Promise.all([
+          loadMessages(resolution.activeSessionId),
+          loadSavedReferences(),
+          loadPendingCandidate(resolution.activeSessionId),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setSessions(resolution.sessions);
+        setMessages(messagesData);
+        setSavedReferences(savedReferencesData);
+        setPendingCandidate(pendingCandidateData);
+        setActiveSession(resolution.activeSessionId);
       } catch {
         if (!isMounted) {
           return;
@@ -393,11 +425,12 @@ export default function ChatPage() {
       isMounted = false;
     };
   }, [
+    clearStoredSessionSelection,
     createSession,
-    fetchMessages,
-    fetchPendingCandidate,
-    fetchSavedReferences,
-    fetchSessions,
+    loadMessages,
+    loadPendingCandidate,
+    loadSavedReferences,
+    loadSessions,
     setActiveSession,
   ]);
 
@@ -422,7 +455,7 @@ export default function ChatPage() {
           return;
         }
 
-        const data = (await response.json()) as PendingReferenceItem;
+        const data = (await response.json()) as PendingMemory;
         if (isMounted) {
           setPendingCandidate(data);
         }
@@ -678,30 +711,12 @@ export default function ChatPage() {
         return;
       }
       setCaptureError(null);
-      if (mode === "memory" || mode === "evidence") {
+      if (mode === "memory") {
         // Pre-fill with selection if any, else full content
         const sel = typeof window !== "undefined" ? window.getSelection()?.toString().trim() : "";
         setCaptureText(sel && msgContent.includes(sel) ? sel : msgContent);
       } else {
         setCaptureText("");
-      }
-      if (mode === "evidence") {
-        setEvidenceTensionId("");
-        setEvidenceTensionsLoading(true);
-        void Promise.all([
-          fetch("/api/contradiction?status=open&page=1&limit=20", { cache: "no-store" }),
-          fetch("/api/contradiction?status=explored&page=1&limit=20", { cache: "no-store" }),
-        ]).then(async ([r1, r2]) => {
-          const pages = await Promise.all([r1.ok ? r1.json() : { items: [] }, r2.ok ? r2.json() : { items: [] }]);
-          const seen = new Set<string>();
-          const merged: Array<{id: string; title: string; sideA: string; sideB: string}> = [];
-          for (const page of pages as Array<{ items: Array<{id: string; title: string; sideA: string; sideB: string}> }>) {
-            for (const t of page.items ?? []) {
-              if (!seen.has(t.id)) { seen.add(t.id); merged.push(t); }
-            }
-          }
-          setEvidenceTensions(merged);
-        }).catch(() => setEvidenceTensions([])).finally(() => setEvidenceTensionsLoading(false));
       }
       if (mode === "ref") {
         URL_REGEX.lastIndex = 0;
@@ -709,12 +724,6 @@ export default function ChatPage() {
         const found = m ? (m[0].startsWith("www.") ? `https://${m[0]}` : m[0]) : "";
         setCaptureUrl(found);
         setCaptureTitle("");
-      }
-      if (mode === "projection") {
-        setProjPremise(msgContent.slice(0, 300).trim());
-        setProjDrivers("");
-        setProjOutcomes("");
-        setProjConfidence(0.5);
       }
       setOpenCapture({ id: messageId, mode });
     },
@@ -757,35 +766,6 @@ export default function ChatPage() {
             }),
           });
           if (!r.ok) throw new Error(await r.text());
-        } else if (openCapture.mode === "evidence") {
-          if (message.id.startsWith("temp-")) throw new Error("Message not yet saved — try again after it finishes");
-          if (!evidenceTensionId) throw new Error("Select a tension to attach this evidence to");
-          const r = await fetch(`/api/contradiction/${evidenceTensionId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              addEvidence: [{ messageId: message.id, quote: captureText }],
-            }),
-          });
-          if (!r.ok) throw new Error(await r.text());
-        } else if (openCapture.mode === "projection") {
-          if (!projPremise.trim()) throw new Error("Premise is required");
-          const r = await fetch("/api/projection/create", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              premise: projPremise.trim(),
-              drivers: projDrivers.split("\n").map((d) => d.trim()).filter(Boolean),
-              outcomes: projOutcomes.split("\n").map((o) => o.trim()).filter(Boolean),
-              confidence: projConfidence,
-              source: {
-                kind: "chat",
-                sessionId: sessionId ?? undefined,
-                messageId: message.id.startsWith("temp-") ? undefined : message.id,
-              },
-            }),
-          });
-          if (!r.ok) throw new Error(await r.text());
         }
         setCaptureSuccess((prev) => new Set(prev).add(`${openCapture.id}:${openCapture.mode}`));
         setCaptureSuccessMsg({ id: openCapture.id, mode: openCapture.mode });
@@ -797,7 +777,7 @@ export default function ChatPage() {
         setCaptureLoading(false);
       }
     },
-    [openCapture, captureText, captureUrl, captureTitle, captureType, projPremise, projDrivers, projOutcomes, projConfidence, sessionId, fetchSavedReferences]
+    [openCapture, captureText, captureUrl, captureTitle, captureType, sessionId, fetchSavedReferences]
   );
 
   const sendMessage = useCallback(
@@ -1023,7 +1003,7 @@ export default function ChatPage() {
     }
   };
 
-  const onStartEditReference = (item: ReferenceItem) => {
+  const onStartEditReference = (item: SavedMemory) => {
     setEditingReferenceId(item.id);
     setEditStatement(item.statement);
     setEditType(item.type);
@@ -1106,7 +1086,7 @@ export default function ChatPage() {
     }
   };
 
-  const onStartSupersedeReference = (item: ReferenceItem) => {
+  const onStartSupersedeReference = (item: SavedMemory) => {
     setSupersedingReferenceId(item.id);
     setReplaceStatement("");
     setReplaceType(item.type);
@@ -1223,7 +1203,7 @@ export default function ChatPage() {
           href="/"
           className="font-display text-xs font-semibold uppercase tracking-wider text-foreground transition-opacity hover:opacity-80"
         >
-          Mind Lab
+          MindLab
         </Link>
 
         <div className="flex items-center gap-2">
@@ -1323,9 +1303,6 @@ export default function ChatPage() {
               ) : messages.length === 0 ? (
                 <div className="flex flex-col items-center py-16 text-center">
                   <p className="text-sm font-medium text-foreground">Start a conversation</p>
-                  <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                    The assistant remembers confirmed memories across sessions and tracks unresolved tensions over time.
-                  </p>
                   <p className="mt-1 max-w-sm text-sm text-muted-foreground">
                     Suggestions stay as candidates until you confirm them — nothing is saved without your approval.
                   </p>
@@ -1333,7 +1310,6 @@ export default function ChatPage() {
                     {[
                       "Help me think through a decision I'm stuck on",
                       "Remember this constraint for future chats",
-                      "What tensions might be shaping this problem?",
                     ].map((starter) => (
                       <button
                         key={starter}
@@ -1425,12 +1401,12 @@ export default function ChatPage() {
                           {/* Capture buttons — assistant messages only */}
                           {!isUser && message.content && (
                             <>
-                              {(["memory", "ref", "evidence", "projection"] as CaptureMode[]).map((mode) => {
+                              {(["memory", "ref"] as CaptureMode[]).map((mode) => {
                                 const successKey = `${message.id}:${mode}`;
                                 const saved = captureSuccess.has(successKey);
                                 const active = openCapture?.id === message.id && openCapture.mode === mode;
-                                const Icon = mode === "memory" ? BookmarkPlus : mode === "ref" ? Globe : mode === "projection" ? TrendingUp : TextQuote;
-                                const label = mode === "memory" ? "Save to memory" : mode === "ref" ? "Save source" : mode === "projection" ? "Save forecast" : "Save evidence";
+                                const Icon = mode === "memory" ? BookmarkPlus : Globe;
+                                const label = mode === "memory" ? "Save to memory" : "Save source";
                                 return (
                                   <button
                                     key={mode}
@@ -1449,10 +1425,7 @@ export default function ChatPage() {
                               })}
                               {captureSuccessMsg?.id === message.id && (
                                 <span className="ml-1 text-[10px] font-medium text-primary">
-                                  {captureSuccessMsg.mode === "memory" ? "Saved to memory" :
-                                   captureSuccessMsg.mode === "ref" ? "Saved as source" :
-                                   captureSuccessMsg.mode === "evidence" ? "Source saved" :
-                                   "Saved as forecast"}
+                                  {captureSuccessMsg.mode === "memory" ? "Saved to memory" : "Saved as source"}
                                 </span>
                               )}
                             </>
@@ -1463,79 +1436,17 @@ export default function ChatPage() {
                           <div className="mt-2 w-full max-w-[90%] rounded-lg border border-border bg-card p-3 text-xs">
                             <div className="mb-2 flex items-center justify-between">
                               <span className="font-semibold text-muted-foreground">
-                                {openCapture.mode === "memory" ? "Save to memory" : openCapture.mode === "ref" ? "Save source" : openCapture.mode === "projection" ? "Save forecast" : "Save evidence"}
+                                {openCapture.mode === "memory" ? "Save to memory" : "Save source"}
                               </span>
                               <button type="button" onClick={() => setOpenCapture(null)} className="text-muted-foreground/60 hover:text-foreground">✕</button>
                             </div>
-                            {(openCapture.mode === "memory" || openCapture.mode === "evidence") && (
+                            {openCapture.mode === "memory" && (
                               <textarea
                                 value={captureText}
                                 onChange={(e) => setCaptureText(e.target.value)}
                                 rows={3}
                                 className="mb-2 w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
                               />
-                            )}
-                            {openCapture.mode === "evidence" && (
-                              <div className="mb-2">
-                                <p className="mb-1 text-[11px] text-muted-foreground">Attach to tension</p>
-                                {evidenceTensionsLoading ? (
-                                  <p className="text-[11px] text-muted-foreground">Loading tensions…</p>
-                                ) : evidenceTensions.length === 0 ? (
-                                  <p className="text-[11px] text-muted-foreground">No active tensions available. Confirm a candidate tension first.</p>
-                                ) : (
-                                  <select
-                                    value={evidenceTensionId}
-                                    onChange={(e) => setEvidenceTensionId(e.target.value)}
-                                    className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
-                                  >
-                                    <option value="">— select a tension —</option>
-                                    {evidenceTensions.map((t) => (
-                                      <option key={t.id} value={t.id}>{t.title}</option>
-                                    ))}
-                                  </select>
-                                )}
-                              </div>
-                            )}
-                            {openCapture.mode === "projection" && (
-                              <div className="mb-2 space-y-1.5">
-                                <label className="block text-[11px] text-muted-foreground">Premise</label>
-                                <textarea
-                                  value={projPremise}
-                                  onChange={(e) => setProjPremise(e.target.value)}
-                                  rows={2}
-                                  placeholder="The condition that must remain true…"
-                                  className="w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
-                                />
-                                <label className="block text-[11px] text-muted-foreground">Drivers (one per line)</label>
-                                <textarea
-                                  value={projDrivers}
-                                  onChange={(e) => setProjDrivers(e.target.value)}
-                                  rows={2}
-                                  placeholder="Factor A&#10;Factor B"
-                                  className="w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
-                                />
-                                <label className="block text-[11px] text-muted-foreground">Predicted outcomes (one per line)</label>
-                                <textarea
-                                  value={projOutcomes}
-                                  onChange={(e) => setProjOutcomes(e.target.value)}
-                                  rows={2}
-                                  placeholder="Outcome A&#10;Outcome B"
-                                  className="w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
-                                />
-                                <div className="flex items-center justify-between">
-                                  <label className="text-[11px] text-muted-foreground">Confidence</label>
-                                  <span className="text-[11px] font-medium text-foreground">{Math.round(projConfidence * 100)}%</span>
-                                </div>
-                                <input
-                                  type="range"
-                                  min={0}
-                                  max={1}
-                                  step={0.01}
-                                  value={projConfidence}
-                                  onChange={(e) => setProjConfidence(parseFloat(e.target.value))}
-                                  className="w-full accent-primary"
-                                />
-                              </div>
                             )}
                             {openCapture.mode === "memory" && (
                               <select

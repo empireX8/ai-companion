@@ -1,7 +1,0 @@
-import type { PrismaConfig } from "prisma";
-
-const config: PrismaConfig = {
-  seed: "ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' prisma/seed.ts",
-};
-
-export default config;

@@ -1,15 +1,10 @@
-import { DomainListSlot } from "@/components/layout/DomainListSlot";
-import { ProjectionListPanel } from "./_components/ProjectionListPanel";
+import { redirect } from "next/navigation";
 
+/**
+ * /projections — forecast feature removed from V1.
+ * Redirect all direct URL hits to /patterns so existing bookmarks
+ * land somewhere meaningful.
+ */
 export default function ProjectionsPage() {
-  return (
-    <>
-      <DomainListSlot>
-        <ProjectionListPanel />
-      </DomainListSlot>
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-muted-foreground">Select a forecast to view details.</p>
-      </div>
-    </>
-  );
+  redirect("/patterns");
 }

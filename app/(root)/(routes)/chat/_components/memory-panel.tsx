@@ -20,7 +20,7 @@ type ReferenceType =
 
 type ReferenceConfidence = "low" | "medium" | "high";
 
-type ReferenceItem = {
+type SavedMemory = {
   id: string;
   type: ReferenceType;
   confidence: ReferenceConfidence;
@@ -33,7 +33,7 @@ type ReferenceItem = {
   supersedesId?: string | null;
 };
 
-type PendingReferenceItem = {
+type PendingMemory = {
   id: string;
   type: ReferenceType;
   confidence: ReferenceConfidence;
@@ -84,8 +84,8 @@ const formatRelativeTime = (timestamp: string) => {
 };
 
 export type MemoryPanelProps = {
-  savedReferences: ReferenceItem[];
-  pendingCandidate: PendingReferenceItem;
+  savedReferences: SavedMemory[];
+  pendingCandidate: PendingMemory;
 
   referenceStatement: string;
   setReferenceStatement: (v: string) => void;
@@ -102,8 +102,8 @@ export type MemoryPanelProps = {
   supersedingReferenceId: string | null;
   editingReferenceId: string | null;
 
-  onStartEditReference: (item: ReferenceItem) => void;
-  onStartSupersedeReference: (item: ReferenceItem) => void;
+  onStartEditReference: (item: SavedMemory) => void;
+  onStartSupersedeReference: (item: SavedMemory) => void;
   onDeactivateReference: (id: string) => Promise<void>;
   onUpdateReference: (id: string) => Promise<void>;
   onSupersedeReference: (id: string) => Promise<void>;
@@ -231,7 +231,7 @@ export function MemoryPanel({
 
   const renderSection = (
     title: string,
-    items: ReferenceItem[],
+    items: SavedMemory[],
     icon: ReactNode,
     iconClass: string,
     accentClass: string,

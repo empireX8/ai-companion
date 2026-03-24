@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "generatedAt": "2026-03-18T21:38:41.790Z",
+  "sourceReportPath": "/Users/user/ai-companion/eval/patterns/reports/latest.json",
+  "selectedThreshold": 0.75,
+  "targetFailureRate": 0.25,
+  "coverageFloor": 0.4,
+  "eligibleClaims": 9,
+  "fallbackUsed": true,
+  "selectionReason": "fallback_least_bad_no_threshold_meets_target_0.25",
+  "calibrationGateStatus": {
+    "thresholdSelected": true,
+    "coverageFloorPassed": true,
+    "failureTargetRespected": true,
+    "dataSufficient": true
+  }
+}

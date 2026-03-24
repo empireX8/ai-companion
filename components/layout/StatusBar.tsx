@@ -14,7 +14,7 @@ export function StatusBar() {
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-[10px] text-muted-foreground/50">Mind Lab v0.1</span>
+        <span className="text-[10px] text-muted-foreground/50">MindLab v0.1</span>
       </div>
     </div>
   );

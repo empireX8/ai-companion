@@ -28,17 +28,12 @@ export function CommandPalette() {
 
   const commands = useMemo<Command[]>(
     () => [
-      // Navigation
+      // Navigation — V1 visible routes only
       { id: "nav-chat", label: "Chat", group: "navigation", action: () => router.push("/chat") },
-      { id: "nav-contradictions", label: "Tensions", group: "navigation", action: () => router.push("/contradictions") },
-      { id: "nav-projections", label: "Forecasts", group: "navigation", action: () => router.push("/projections") },
-      { id: "nav-references", label: "Memories", group: "navigation", action: () => router.push("/references") },
-      { id: "nav-evidence", label: "Evidence", group: "navigation", action: () => router.push("/evidence") },
-      { id: "nav-audit", label: "Review", group: "navigation", action: () => router.push("/audit") },
+      { id: "nav-patterns", label: "Patterns", group: "navigation", action: () => router.push("/patterns") },
+      { id: "nav-history", label: "History", group: "navigation", action: () => router.push("/history") },
+      { id: "nav-context", label: "Context", group: "navigation", action: () => router.push("/context") },
       { id: "nav-import", label: "Import", group: "navigation", action: () => router.push("/import") },
-      { id: "nav-candidate-tensions", label: "Review candidate tensions", group: "navigation", action: () => router.push("/contradictions/candidates") },
-      { id: "nav-candidate-memories", label: "Review candidate memories", group: "navigation", action: () => router.push("/references/candidates") },
-      { id: "nav-help", label: "Help", group: "navigation", action: () => router.push("/help") },
       { id: "nav-settings", label: "Settings", group: "navigation", action: () => router.push("/settings") },
       // Chat actions
       { id: "chat-new-session", label: "New session", group: "chat", action: () => dispatchChatEvent(CHAT_EVENTS.NEW_SESSION) },

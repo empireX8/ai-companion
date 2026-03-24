@@ -24,6 +24,12 @@ type ProcessImportParams = {
   sessionId: string;
   db?: PrismaClient;
   storage?: ChunkStorage;
+  /**
+   * Optional hook called after import completes successfully (status="complete").
+   * Receives the userId so callers can trigger downstream processing (e.g.
+   * pattern detection). Errors in this hook are logged but do not fail the import.
+   */
+  onImportComplete?: (userId: string) => void | Promise<void>;
 };
 
 const toErrorMessage = (error: unknown) =>
@@ -182,6 +188,7 @@ export async function processChatImportSession({
   sessionId,
   db = prismadb,
   storage = getChunkStorage(),
+  onImportComplete,
 }: ProcessImportParams): Promise<void> {
   const session = await db.importUploadSession.findUnique({
     where: { id: sessionId },
@@ -300,6 +307,14 @@ export async function processChatImportSession({
       await db.importUploadSession.update({
         where: { id: session.id },
         data: { resultErrors: [...parseErrors, `reconcile: failed (${msg})`] },
+      });
+    }
+
+    // P3-03: fire the post-import hook (e.g. pattern detection) non-blocking.
+    // Import is already marked complete — hook failure must not affect that status.
+    if (onImportComplete) {
+      void Promise.resolve(onImportComplete(session.userId)).catch((hookError) => {
+        console.error("[IMPORT_COMPLETE_HOOK_ERROR]", session.id, hookError);
       });
     }
 

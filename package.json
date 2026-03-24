@@ -12,11 +12,14 @@
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
     "db:seed": "ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' prisma/seed.ts",
+    "eval:patterns": "ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' scripts/eval-patterns.ts",
     "db:local": "docker start companion-db 2>/dev/null || docker run -d --name companion-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=companion -p 5432:5432 postgres:16-alpine && echo 'Waiting for Postgres...' && sleep 3 && echo 'companion-db is ready.'",
     "db:stop": "docker stop companion-db && echo 'companion-db stopped.'",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset --force",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "check:trust": "bash scripts/check-trust-language.sh",
+    "check:legacy": "bash scripts/check-legacy-surfaces.sh"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.8",

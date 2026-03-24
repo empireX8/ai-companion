@@ -388,15 +388,15 @@ export default function ImportPage() {
       <div className="h-full space-y-4 p-4">
       <h1 className="text-lg font-medium">Import Your ChatGPT History</h1>
       <p className="text-sm text-muted-foreground">
-        Upload your ChatGPT export to bring in your conversation history and let Mind Lab
-        surface memories, tensions, and patterns automatically.
+        Upload your ChatGPT export to bring in your conversation history and let MindLab
+        surface memories and patterns automatically.
       </p>
       <section className="space-y-2 text-sm">
         <p className="font-medium">What happens during import:</p>
         <p>• Your conversations are ingested</p>
-        <p>• Tensions and unresolved conflicts are detected</p>
+        <p>• Recurring patterns and themes are detected</p>
         <p>• Long-term goals, constraints, and preferences are extracted</p>
-        <p>• Candidate memories and tensions are queued for your review</p>
+        <p>• Candidate memories are queued for your review</p>
         <p className="text-muted-foreground">
           Nothing is confirmed until you review it — no changes happen without your approval.
         </p>
@@ -477,16 +477,16 @@ export default function ImportPage() {
         <p className="font-medium">When you upload a file:</p>
         <p>1. The archive is securely stored.</p>
         <p>2. It is processed incrementally in the background.</p>
-        <p>3. Sessions and messages are recreated inside Mind Lab.</p>
-        <p>4. Tensions, patterns, and memories are detected automatically.</p>
+        <p>3. Sessions and messages are recreated inside MindLab.</p>
+        <p>4. Patterns and memories are detected automatically.</p>
         <p>5. You receive a structured summary when processing completes.</p>
         <p className="text-muted-foreground">You can leave this page — processing continues safely.</p>
       </section>
 
       <section className="space-y-2 rounded-md border border-border bg-card p-4 text-sm">
         <h2 className="font-medium">How Your Data Is Handled</h2>
-        <p>Mind Lab stores:</p>
-        <p>• Derived insights (sessions, tensions, memories, goals)</p>
+        <p>MindLab stores:</p>
+        <p>• Derived insights (sessions, memories, patterns, goals)</p>
         <p>• Structured summaries built from your conversations</p>
         <p>Raw export archives are:</p>
         <p>• Retained temporarily for reprocessing purposes</p>
@@ -498,10 +498,10 @@ export default function ImportPage() {
         <section className="space-y-2 rounded-md border border-border bg-card p-4 text-sm">
           <h2 className="font-medium">Processing your archive…</h2>
           <p>This may take a few minutes for large exports.</p>
-          <p>Mind Lab is:</p>
+          <p>MindLab is:</p>
           <p>• Reconstructing sessions</p>
           <p>• Extracting long-term signals</p>
-          <p>• Detecting tensions</p>
+          <p>• Detecting patterns</p>
           <p>• Identifying candidate memories</p>
           <p>You will see a summary when it finishes.</p>
         </section>

@@ -75,6 +75,15 @@ export function assertAllowedType(scope: string, type: string): void {
   }
 }
 
+// ── Batch metadata ────────────────────────────────────────────────────────────
+
+export type DerivationBatchMeta = {
+  messageCount?: number;
+  sessionCount?: number;
+  windowStart?: Date;
+  windowEnd?: Date;
+};
+
 // ── Run lifecycle ─────────────────────────────────────────────────────────────
 
 export async function createDerivationRun(
@@ -83,11 +92,13 @@ export async function createDerivationRun(
     scope,
     processorVersion,
     messageIds,
+    batchMeta,
   }: {
     userId: string;
     scope: string;
     processorVersion: string;
     messageIds: string[];
+    batchMeta?: DerivationBatchMeta;
   },
   db: PrismaClient = prismadb
 ) {
@@ -100,7 +111,30 @@ export async function createDerivationRun(
       processorVersion,
       inputMessageSetHash,
       status: "created",
+      messageCount: batchMeta?.messageCount ?? null,
+      sessionCount: batchMeta?.sessionCount ?? null,
+      windowStart: batchMeta?.windowStart ?? null,
+      windowEnd: batchMeta?.windowEnd ?? null,
     },
+  });
+}
+
+export async function startDerivationRun(
+  runId: string,
+  db: PrismaClient = prismadb
+) {
+  const run = await db.derivationRun.findFirst({ where: { id: runId } });
+  if (!run) {
+    throw new DerivationError(`DerivationRun not found: ${runId}`);
+  }
+  if (run.status !== "created") {
+    throw new DerivationError(
+      `DerivationRun ${runId} cannot be started from status "${run.status}".`
+    );
+  }
+  return db.derivationRun.update({
+    where: { id: runId },
+    data: { status: "running" },
   });
 }
 

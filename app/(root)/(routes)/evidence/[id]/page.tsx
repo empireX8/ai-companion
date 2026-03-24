@@ -133,9 +133,6 @@ export default function EvidenceDetailPage() {
                         >
                           {artifact.status}
                         </span>
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          confidence {Math.round(artifact.confidence * 100)}%
-                        </span>
                       </div>
                       <p className="text-sm">{artifact.claim}</p>
                     </div>

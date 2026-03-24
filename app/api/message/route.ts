@@ -5,6 +5,7 @@ import { openai } from "@ai-sdk/openai";
 
 import {
   detectReferenceIntentType,
+  isWriteableMemoryStatement,
   pickBestPreferenceMatch,
   scoreTokenOverlap,
   shouldPromptForMemoryUpdate,
@@ -12,9 +13,12 @@ import {
 import { detectContradictions } from "@/lib/contradiction-detection";
 import { getTop3WithOptionalSurfacing } from "@/lib/contradiction-surface";
 import prismadb from "@/lib/prismadb";
-import { getRelevantForecasts } from "@/lib/forecast-memory";
 import { getRelevantReferenceMemory } from "@/lib/reference-memory";
 import { SessionMemoryManager } from "@/lib/session-memory";
+import {
+  BASE_SYSTEM_PROMPT,
+  FAST_PATH_SYSTEM_PROMPT,
+} from "@/lib/assistant/system-prompt";
 import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
 
 type GovernedType = "preference" | "goal" | "constraint";
@@ -163,8 +167,7 @@ export async function POST(req: Request) {
     // ── debugFastPath: skip all enrichment, stream immediately ──────────────
     if (debugFastPath === true) {
       console.debug(tag, "FAST_PATH_ACTIVE — skipping all enrichment");
-      const baseSystem =
-        "You are Mind Lab. Be clear, concise, and helpful. Ask one focused question when missing info.";
+      const baseSystem = FAST_PATH_SYSTEM_PROMPT;
       let firstChunkFp = false;
       const resultFp = streamText({
         model: openai(modelName),
@@ -309,11 +312,8 @@ export async function POST(req: Request) {
     const MAX_INJECTED_MEMORIES_DEEP      = 12;
     const MAX_INJECTED_TENSIONS_STANDARD  = 2;
     const MAX_INJECTED_TENSIONS_DEEP      = 4;
-    const MAX_INJECTED_FORECASTS_STANDARD = 2;
-    const MAX_INJECTED_FORECASTS_DEEP     = 4;
     const maxMemories  = responseMode === "deep" ? MAX_INJECTED_MEMORIES_DEEP      : MAX_INJECTED_MEMORIES_STANDARD;
     const maxTensions  = responseMode === "deep" ? MAX_INJECTED_TENSIONS_DEEP      : MAX_INJECTED_TENSIONS_STANDARD;
-    const maxForecasts = responseMode === "deep" ? MAX_INJECTED_FORECASTS_DEEP     : MAX_INJECTED_FORECASTS_STANDARD;
 
     console.debug(tag, "memory_reads_start", Date.now() - tServer);
     const [sessionTranscript, userTranscript, sessionRelevant, userRelevant] = await Promise.all([
@@ -331,7 +331,7 @@ export async function POST(req: Request) {
         ? referenceIntentType
         : null;
     const maybeMemoryUpdate = shouldPromptForMemoryUpdate(normalizedContent);
-    if (maybeMemoryUpdate && governedType) {
+    if (maybeMemoryUpdate && governedType && isWriteableMemoryStatement(normalizedContent)) {
       const activeItems = await prismadb.referenceItem.findMany({
         where: {
           userId,
@@ -423,13 +423,12 @@ export async function POST(req: Request) {
     }
 
     console.debug(tag, "reference_and_contradictions_start", Date.now() - tServer);
-    const [refMemResult, topContradictions, forecastResult] = await Promise.all([
+    const [refMemResult, topContradictions] = await Promise.all([
       getRelevantReferenceMemory(userId, normalizedContent, maxMemories),
       getTop3WithOptionalSurfacing({
         userId,
         mode: "recorded",
       }),
-      getRelevantForecasts(userId, normalizedContent, maxForecasts),
     ]);
     console.debug(tag, "reference_and_contradictions_done", Date.now() - tServer);
 
@@ -449,11 +448,6 @@ export async function POST(req: Request) {
       tag,
       `[CHAT_CONTEXT] tensions: retrieved=${tensionRetrieved} relevant=${relevantTensions.length} injected=${injectedTensions.length}`
     );
-    console.debug(
-      tag,
-      `[CHAT_CONTEXT] forecasts: retrieved=${forecastResult.retrieved} relevant=${forecastResult.relevant} injected=${forecastResult.injected}`
-    );
-
     const topContradictionsBlock = buildTopContradictionsBlock(injectedTensions);
 
     console.debug(tag, "fallback_messages_start", Date.now() - tServer);
@@ -482,12 +476,7 @@ export async function POST(req: Request) {
       .join("\n");
 
     const effectiveSessionTranscript = sessionTranscript || fallbackTranscript;
-    const baseSystem = [
-      "You are Mind Lab. Be clear, concise, and helpful. Do not mention internal implementation. Ask one focused question when missing info.",
-      "If the user asks where you learned something that appears in Long-term memory, respond: You told me earlier, and I saved it as a <type>.",
-      "Do not mention databases, code, prompts, or retrieval.",
-      "If the user asks where you learned something that is not in Long-term memory and not in the recent transcript, say you are not sure and ask for clarification.",
-    ].join(" ");
+    const baseSystem = BASE_SYSTEM_PROMPT;
     const governancePrompt = "";
     const retrievedUserMemory = [userRelevant, userTranscript].filter(Boolean).join("\n");
     const sessionMemoryBlock = [sessionRelevant, effectiveSessionTranscript]
@@ -497,7 +486,6 @@ export async function POST(req: Request) {
       baseSystem,
       governancePrompt,
       refMemResult.text ? `Long-term memory:\n${refMemResult.text}` : "",
-      forecastResult.text ? `${forecastResult.text}` : "",
       topContradictionsBlock,
       retrievedUserMemory ? `Relevant memory:\n${retrievedUserMemory}` : "",
       sessionMemoryBlock ? `Recent transcript:\n${sessionMemoryBlock}` : "",

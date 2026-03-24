@@ -1,0 +1,532 @@
+{
+  "version": 1,
+  "generatedAt": "2026-03-18T21:38:41.790Z",
+  "sourceReportPath": "/Users/user/ai-companion/eval/patterns/reports/latest.json",
+  "groupedDatasetPath": "/Users/user/ai-companion/eval/patterns/adjudication-groups.jsonl",
+  "items": [
+    {
+      "groupId": "mixed-bundle",
+      "priority": "high",
+      "reviewReasons": [
+        "NO_SAFE_VISIBLE_SUMMARY",
+        "FAITHFULNESS_PARSE_FAILURE",
+        "LLM_HEURISTIC_DISAGREEMENT",
+        "LLM_OVERREACH"
+      ],
+      "emittedFamilies": [
+        "trigger_condition",
+        "recovery_stabilizer"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "recovery_stabilizer",
+          "summary": null,
+          "score": null,
+          "triggered": null
+        },
+        {
+          "family": "trigger_condition",
+          "summary": "When pressure rises, you default to pleasing or appeasing.",
+          "score": 1,
+          "triggered": false
+        }
+      ],
+      "faithfulness": {
+        "present": true,
+        "statuses": [
+          {
+            "family": "trigger_condition",
+            "faithful": null,
+            "parseStatus": "malformed_json",
+            "score": null
+          }
+        ],
+        "hasLowFaithfulness": false,
+        "hasParseFailure": true
+      },
+      "llmDisagreement": {
+        "present": true,
+        "families": [
+          "trigger_condition"
+        ],
+        "overreach": true
+      },
+      "weakSupport": false,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "TC + IC + RS all meet thresholds in one history — all three should be detected"
+    },
+    {
+      "groupId": "tc-people-pleasing",
+      "priority": "high",
+      "reviewReasons": [
+        "FAITHFULNESS_PARSE_FAILURE",
+        "LLM_HEURISTIC_DISAGREEMENT",
+        "LLM_OVERREACH"
+      ],
+      "emittedFamilies": [
+        "trigger_condition"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "trigger_condition",
+          "summary": "When pressure rises, you default to pleasing or appeasing.",
+          "score": 0.7433333333333333,
+          "triggered": false
+        }
+      ],
+      "faithfulness": {
+        "present": true,
+        "statuses": [
+          {
+            "family": "trigger_condition",
+            "faithful": null,
+            "parseStatus": "malformed_json",
+            "score": null
+          }
+        ],
+        "hasLowFaithfulness": false,
+        "hasParseFailure": true
+      },
+      "llmDisagreement": {
+        "present": true,
+        "families": [
+          "trigger_condition"
+        ],
+        "overreach": true
+      },
+      "weakSupport": false,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "TC true positive — people-pleasing/appeasing response shape; should emit TC and generate pleasing visible summary"
+    },
+    {
+      "groupId": "rl-group-multisession",
+      "priority": "high",
+      "reviewReasons": [
+        "FAITHFULNESS_PARSE_FAILURE"
+      ],
+      "emittedFamilies": [
+        "repetitive_loop"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "repetitive_loop",
+          "summary": "You describe returning to the same loop even when you see it happening.",
+          "score": 0.7433333333333333,
+          "triggered": false
+        }
+      ],
+      "faithfulness": {
+        "present": true,
+        "statuses": [
+          {
+            "family": "repetitive_loop",
+            "faithful": null,
+            "parseStatus": "schema_invalid",
+            "score": null
+          }
+        ],
+        "hasLowFaithfulness": false,
+        "hasParseFailure": true
+      },
+      "llmDisagreement": {
+        "present": false,
+        "families": [],
+        "overreach": false
+      },
+      "weakSupport": false,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "RL markers across 2 distinct sessions → real RL detector fires"
+    },
+    {
+      "groupId": "rs-momentum",
+      "priority": "high",
+      "reviewReasons": [
+        "FAITHFULNESS_PARSE_FAILURE"
+      ],
+      "emittedFamilies": [
+        "recovery_stabilizer"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "recovery_stabilizer",
+          "summary": "You describe improvement when momentum becomes visible.",
+          "score": 0.8133333333333332,
+          "triggered": false
+        }
+      ],
+      "faithfulness": {
+        "present": true,
+        "statuses": [
+          {
+            "family": "recovery_stabilizer",
+            "faithful": null,
+            "parseStatus": "schema_invalid",
+            "score": null
+          }
+        ],
+        "hasLowFaithfulness": false,
+        "hasParseFailure": true
+      },
+      "llmDisagreement": {
+        "present": false,
+        "families": [],
+        "overreach": false
+      },
+      "weakSupport": false,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "RS true positive — momentum/progress shape; should emit RS and generate momentum visible summary"
+    },
+    {
+      "groupId": "ic-group-threshold",
+      "priority": "high",
+      "reviewReasons": [
+        "NO_SAFE_VISIBLE_SUMMARY",
+        "LOW_FAITHFULNESS",
+        "LLM_HEURISTIC_DISAGREEMENT"
+      ],
+      "emittedFamilies": [
+        "inner_critic"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "inner_critic",
+          "summary": null,
+          "score": null,
+          "triggered": null
+        }
+      ],
+      "faithfulness": {
+        "present": true,
+        "statuses": [
+          {
+            "family": "inner_critic",
+            "faithful": false,
+            "parseStatus": "parsed",
+            "score": 0.21
+          }
+        ],
+        "hasLowFaithfulness": true,
+        "hasParseFailure": false
+      },
+      "llmDisagreement": {
+        "present": true,
+        "families": [
+          "inner_critic"
+        ],
+        "overreach": false
+      },
+      "weakSupport": false,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "IC threshold met: 3 behavioral IC messages → IC claim expected"
+    },
+    {
+      "groupId": "rs-pressure",
+      "priority": "high",
+      "reviewReasons": [
+        "LOW_FAITHFULNESS"
+      ],
+      "emittedFamilies": [
+        "recovery_stabilizer"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "recovery_stabilizer",
+          "summary": "You describe improvement when you stay steady under pressure.",
+          "score": 0.7433333333333333,
+          "triggered": false
+        }
+      ],
+      "faithfulness": {
+        "present": true,
+        "statuses": [
+          {
+            "family": "recovery_stabilizer",
+            "faithful": false,
+            "parseStatus": "parsed",
+            "score": 0.15
+          }
+        ],
+        "hasLowFaithfulness": true,
+        "hasParseFailure": false
+      },
+      "llmDisagreement": {
+        "present": false,
+        "families": [],
+        "overreach": false
+      },
+      "weakSupport": false,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "RS true positive — steady-under-pressure/de-escalation shape; should emit RS and generate pressure visible summary"
+    },
+    {
+      "groupId": "ic-tc-overlap",
+      "priority": "high",
+      "reviewReasons": [
+        "NO_SAFE_VISIBLE_SUMMARY",
+        "LLM_HEURISTIC_DISAGREEMENT",
+        "LLM_OVERREACH"
+      ],
+      "emittedFamilies": [
+        "trigger_condition",
+        "inner_critic"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "inner_critic",
+          "summary": null,
+          "score": null,
+          "triggered": null
+        },
+        {
+          "family": "trigger_condition",
+          "summary": null,
+          "score": null,
+          "triggered": null
+        }
+      ],
+      "faithfulness": {
+        "present": false,
+        "statuses": [],
+        "hasLowFaithfulness": false,
+        "hasParseFailure": false
+      },
+      "llmDisagreement": {
+        "present": true,
+        "families": [
+          "trigger_condition",
+          "inner_critic"
+        ],
+        "overreach": true
+      },
+      "weakSupport": false,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "Messages carry both IC and TC markers — both families should be detected"
+    },
+    {
+      "groupId": "tc-no-summary",
+      "priority": "high",
+      "reviewReasons": [
+        "NO_SAFE_VISIBLE_SUMMARY",
+        "LLM_HEURISTIC_DISAGREEMENT",
+        "LLM_OVERREACH"
+      ],
+      "emittedFamilies": [
+        "trigger_condition"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "trigger_condition",
+          "summary": null,
+          "score": null,
+          "triggered": null
+        }
+      ],
+      "faithfulness": {
+        "present": false,
+        "statuses": [],
+        "hasLowFaithfulness": false,
+        "hasParseFailure": false
+      },
+      "llmDisagreement": {
+        "present": true,
+        "families": [
+          "trigger_condition"
+        ],
+        "overreach": true
+      },
+      "weakSupport": false,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "TC true positive — emits TC but no visible summary because marker language does not match any recurring summary signal"
+    },
+    {
+      "groupId": "tc-avoidance",
+      "priority": "high",
+      "reviewReasons": [
+        "LLM_HEURISTIC_DISAGREEMENT",
+        "LLM_OVERREACH"
+      ],
+      "emittedFamilies": [
+        "trigger_condition"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "trigger_condition",
+          "summary": "Pressure often pushes you toward avoidance.",
+          "score": 0.8133333333333332,
+          "triggered": false
+        }
+      ],
+      "faithfulness": {
+        "present": false,
+        "statuses": [],
+        "hasLowFaithfulness": false,
+        "hasParseFailure": false
+      },
+      "llmDisagreement": {
+        "present": true,
+        "families": [
+          "trigger_condition"
+        ],
+        "overreach": true
+      },
+      "weakSupport": false,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "TC true positive — avoidance/procrastination response shape; should emit TC and generate avoidance visible summary"
+    },
+    {
+      "groupId": "tc-group-threshold",
+      "priority": "high",
+      "reviewReasons": [
+        "LLM_HEURISTIC_DISAGREEMENT",
+        "LLM_OVERREACH"
+      ],
+      "emittedFamilies": [
+        "trigger_condition"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "trigger_condition",
+          "summary": "When pressure rises, you shut down or go quiet.",
+          "score": 0.7433333333333333,
+          "triggered": false
+        }
+      ],
+      "faithfulness": {
+        "present": false,
+        "statuses": [],
+        "hasLowFaithfulness": false,
+        "hasParseFailure": false
+      },
+      "llmDisagreement": {
+        "present": true,
+        "families": [
+          "trigger_condition"
+        ],
+        "overreach": true
+      },
+      "weakSupport": false,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "TC threshold met: 3 behavioral TC messages across 2 sessions → TC claim expected"
+    },
+    {
+      "groupId": "rs-follow-through",
+      "priority": "medium",
+      "reviewReasons": [
+        "SURFACED_WITH_WEAK_SUPPORT"
+      ],
+      "emittedFamilies": [
+        "recovery_stabilizer"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "recovery_stabilizer",
+          "summary": "Progress appears when you follow through consistently.",
+          "score": 0.6733333333333333,
+          "triggered": false
+        }
+      ],
+      "faithfulness": {
+        "present": false,
+        "statuses": [],
+        "hasLowFaithfulness": false,
+        "hasParseFailure": false
+      },
+      "llmDisagreement": {
+        "present": false,
+        "families": [],
+        "overreach": false
+      },
+      "weakSupport": true,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "RS true positive — follow-through/consistency shape; should emit RS and generate follow-through visible summary"
+    },
+    {
+      "groupId": "ic-incapability",
+      "priority": "low",
+      "reviewReasons": [
+        "LOW_FAITHFULNESS"
+      ],
+      "emittedFamilies": [],
+      "visibleSummaryCandidates": [],
+      "faithfulness": {
+        "present": true,
+        "statuses": [
+          {
+            "family": "inner_critic",
+            "faithful": false,
+            "parseStatus": "parsed",
+            "score": 0.18
+          }
+        ],
+        "hasLowFaithfulness": true,
+        "hasParseFailure": false
+      },
+      "llmDisagreement": {
+        "present": false,
+        "families": [],
+        "overreach": false
+      },
+      "weakSupport": false,
+      "quoteSafe": false,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "IC true positive — incapability/self-dismissal shape; should emit IC and generate incapability visible summary"
+    },
+    {
+      "groupId": "rs-group-threshold",
+      "priority": "low",
+      "reviewReasons": [
+        "NO_SAFE_VISIBLE_SUMMARY"
+      ],
+      "emittedFamilies": [
+        "recovery_stabilizer"
+      ],
+      "visibleSummaryCandidates": [
+        {
+          "family": "recovery_stabilizer",
+          "summary": null,
+          "score": null,
+          "triggered": null
+        }
+      ],
+      "faithfulness": {
+        "present": false,
+        "statuses": [],
+        "hasLowFaithfulness": false,
+        "hasParseFailure": false
+      },
+      "llmDisagreement": {
+        "present": false,
+        "families": [],
+        "overreach": false
+      },
+      "weakSupport": false,
+      "quoteSafe": true,
+      "expectedAbstain": false,
+      "expectedQuoteSafe": true,
+      "sourceDescription": "RS threshold met: 2 behavioral RS messages → RS claim expected"
+    }
+  ]
+}

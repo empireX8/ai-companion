@@ -1,0 +1,43 @@
+{
+  "inspectableResults": [],
+  "summary": {
+    "replayedClaims": 0,
+    "completeSupportBundles": 0,
+    "incompleteSupportBundles": 0,
+    "divergentClaims": 0,
+    "cleanMatchClaims": 0,
+    "cleanMatchPartialHistoricalStateClaims": 0,
+    "incompleteSupportBundleClaims": 0,
+    "summaryDriftClaims": 0,
+    "surfaceStateDriftClaims": 0,
+    "supportBundleDriftClaims": 0,
+    "multiDriftClaims": 0,
+    "summaryMismatchClaims": 0,
+    "surfacedMismatchClaims": 0,
+    "evidenceCountMismatchClaims": 0,
+    "thresholdMismatchClaims": 0,
+    "displaySafeMismatchClaims": 0,
+    "rationaleBundleMismatchClaims": 0,
+    "policyArtifactThresholdClaims": 0,
+    "constantFallbackThresholdClaims": 0,
+    "contradictionDriftClaims": 0,
+    "replaySurfacedClaims": 0,
+    "replaySuppressedClaims": 0,
+    "missingSummaryTextClaims": 0,
+    "missingEvidenceClaims": 0,
+    "missingReplayableQuotesClaims": 0,
+    "missingThresholdClaims": 0,
+    "missingRationaleBundleClaims": 0,
+    "missingDisplaySafeClaims": 0,
+    "divergenceReasonCounts": {
+      "summary_mismatch": 0,
+      "surfaced_mismatch": 0,
+      "evidence_count_mismatch": 0,
+      "threshold_mismatch": 0,
+      "display_safe_mismatch": 0,
+      "rationale_bundle_mismatch": 0,
+      "support_bundle_incomplete": 0
+    }
+  },
+  "results": []
+}

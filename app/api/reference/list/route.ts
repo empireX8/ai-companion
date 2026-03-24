@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import type { ReferenceStatus } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { userId } = await auth();
 
@@ -13,15 +14,25 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const statusParam = searchParams.get("status");
+    const limitParam = searchParams.get("limit");
+    const limit = limitParam
+      ? Math.min(Math.max(1, parseInt(limitParam, 10) || 100), 200)
+      : 100;
+    const statusFilter = (
+      statusParam ? [statusParam] : ["active", "candidate", "inactive"]
+    ) as ReferenceStatus[];
+
     const items = await prismadb.referenceItem.findMany({
       where: {
         userId,
-        status: { in: ["active", "candidate", "inactive"] },
+        status: { in: statusFilter },
       },
       orderBy: {
         updatedAt: "desc",
       },
-      take: 100,
+      take: limit,
       select: {
         id: true,
         type: true,

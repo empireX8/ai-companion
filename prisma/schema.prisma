@@ -343,7 +343,12 @@ model DerivationRun {
   scope               String               // "import" | "native" | "manual"
   processorVersion    String
   inputMessageSetHash String
-  status              String               @default("created") // "created" | "completed" | "failed"
+  status              String               @default("created") // "created" | "running" | "completed" | "failed"
+  // Batch orchestration metadata (populated by pattern batch orchestrator)
+  messageCount        Int?
+  sessionCount        Int?
+  windowStart         DateTime?
+  windowEnd           DateTime?
   createdAt           DateTime             @default(now())
   artifacts           DerivationArtifact[]
 
@@ -484,4 +489,90 @@ enum ProfileArtifactType {
   RELATIONSHIP_PATTERN
   EMOTIONAL_PATTERN
   COGNITIVE_PATTERN
+}
+
+// ── Pattern Claims ────────────────────────────────────────────────────────────
+// V1 core surface. LOCKED enums — changes require schema migration + build gate
+// update in lib/__tests__/pattern-build-gates.test.ts.
+
+enum PatternType {
+  trigger_condition
+  inner_critic
+  repetitive_loop
+  contradiction_drift
+  recovery_stabilizer
+}
+
+enum PatternClaimStatus {
+  candidate
+  active
+  paused
+  dismissed
+}
+
+enum StrengthLevel {
+  tentative
+  developing
+  established
+}
+
+model PatternClaim {
+  id                String               @id @default(cuid())
+  userId            String
+  patternType       PatternType
+  strengthLevel     StrengthLevel        @default(tentative)
+  status            PatternClaimStatus   @default(candidate)
+  summary           String
+  summaryNorm       String               // normalized for dedup, via normalizeSummary()
+  sourceRunId       String?
+  // P2.5-07 — set true when a not_helpful action outcome is recorded;
+  // consumed + cleared by batchRefreshClaimsForUser on next refresh pass.
+  needsReevaluation Boolean              @default(false)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  evidence          PatternClaimEvidence[]
+  actions           PatternClaimAction[]
+
+  @@unique([userId, patternType, summaryNorm])
+  @@index([userId, status])
+  @@index([userId, patternType])
+  @@index([userId, createdAt])
+  @@index([userId, needsReevaluation])
+}
+
+// ── Pattern Claim Actions ─────────────────────────────────────────────────────
+// Claim-attached lightweight micro-experiments. No due dates, no reminders,
+// no streaks. One active action per claim at a time (enforced by query logic).
+
+model PatternClaimAction {
+  id             String       @id @default(cuid())
+  claimId        String
+  userId         String
+  prompt         String
+  status         String       @default("pending") // pending | in_progress | completed | skipped | abandoned
+  outcomeSignal  String?      // helpful | not_helpful | unclear
+  reflectionNote String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  completedAt    DateTime?
+  claim          PatternClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@index([userId, status])
+  @@index([userId, createdAt])
+}
+
+// Mirrors ContradictionEvidence — reuse shape, not a third evidence concept.
+// Fields: claimId (≙ nodeId), source, sessionId, messageId, quote, createdAt
+model PatternClaimEvidence {
+  id        String       @id @default(cuid())
+  claimId   String
+  claim     PatternClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  source    String       @default("derivation") // "derivation" | "user_input"
+  sessionId String?
+  messageId String?
+  quote     String?
+  createdAt DateTime     @default(now())
+
+  @@index([claimId])
 }

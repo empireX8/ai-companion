@@ -1,0 +1,2779 @@
+{
+  "generatedAt": "2026-03-18T21:38:41.790Z",
+  "datasets": {
+    "messageLevelPath": "/Users/user/ai-companion/eval/patterns/adjudication-set.jsonl",
+    "groupedLevelPath": "/Users/user/ai-companion/eval/patterns/adjudication-groups.jsonl",
+    "groupedReviewedOverlayPath": "/Users/user/ai-companion/eval/patterns/adjudication-groups.reviewed.jsonl",
+    "llmLfShadowPath": "/Users/user/ai-companion/eval/patterns/llm-lf-shadow-set.jsonl",
+    "faithfulnessShadowPath": "/Users/user/ai-companion/eval/patterns/faithfulness-shadow-set.jsonl",
+    "faithfulnessReviewedOverlayPath": "/Users/user/ai-companion/eval/patterns/faithfulness-shadow-reviewed.jsonl",
+    "reportPath": "/Users/user/ai-companion/eval/patterns/reports/latest.json"
+  },
+  "totalExamples": 85,
+  "sourceBreakdown": {
+    "live_user": 64,
+    "imported_user": 6,
+    "synthetic_edge_case": 15
+  },
+  "labelBreakdown": {
+    "behavioral": 51,
+    "non_behavioral": 34,
+    "by_family": {
+      "trigger_condition": 14,
+      "inner_critic": 15,
+      "repetitive_loop": 11,
+      "recovery_stabilizer": 11,
+      "none": 34
+    },
+    "should_abstain": 34
+  },
+  "behavioral": {
+    "precision": 1,
+    "recall": 0.7843137254901961,
+    "f1": 0.8791208791208792,
+    "predictedBehavioral": 40,
+    "truePositives": 40,
+    "falsePositives": 0,
+    "falseNegatives": 11
+  },
+  "families": [
+    {
+      "family": "trigger_condition",
+      "precision": 0.9166666666666666,
+      "recall": 0.7857142857142857,
+      "support": 14,
+      "predicted": 12
+    },
+    {
+      "family": "inner_critic",
+      "precision": 1,
+      "recall": 0.5333333333333333,
+      "support": 15,
+      "predicted": 8
+    },
+    {
+      "family": "repetitive_loop",
+      "precision": 0.6666666666666666,
+      "recall": 0.5454545454545454,
+      "support": 11,
+      "predicted": 9
+    },
+    {
+      "family": "recovery_stabilizer",
+      "precision": 0.8888888888888888,
+      "recall": 0.7272727272727273,
+      "support": 11,
+      "predicted": 9
+    }
+  ],
+  "rlSessionGate": {
+    "rlLabeledCount": 11,
+    "sessionCount": 2,
+    "detectorFired": true,
+    "singleSessionGateBlocks": true
+  },
+  "quote": {
+    "predictedSafe": 38,
+    "precision": 0.8947368421052632,
+    "recall": 0.7727272727272727,
+    "abstentionOnShouldAbstain": 1
+  },
+  "abstention": {
+    "shouldAbstainCount": 34,
+    "correctlyAbstained": 34,
+    "rate": 1
+  },
+  "quoteFpByCategory": {
+    "raw_self_attack": 0,
+    "too_long": 0,
+    "vague_or_generic": 0,
+    "assistant_directed": 0,
+    "structured_or_pasted": 0,
+    "borderline_first_person": 2,
+    "topic_or_question": 0,
+    "other": 2
+  },
+  "falsePredictions": {
+    "behavioralFP": [],
+    "familyFP": [
+      {
+        "entry": {
+          "id": "ic-003",
+          "text": "I always end up ruining things when they start to go well",
+          "source": "live_user",
+          "behavioral_label": "behavioral",
+          "family_label": "inner_critic",
+          "quote_label": "suitable",
+          "should_abstain": false
+        },
+        "prediction": {
+          "behavioral": true,
+          "families": {
+            "trigger_condition": true,
+            "inner_critic": false,
+            "repetitive_loop": false,
+            "recovery_stabilizer": false
+          },
+          "quoteSafe": true
+        },
+        "behavioralCorrect": true,
+        "familySignalCorrect": false,
+        "quoteCorrect": true,
+        "abstainedCorrectly": null
+      },
+      {
+        "entry": {
+          "id": "ic-006",
+          "text": "I hate myself for doing this again after I promised I'd stop",
+          "source": "live_user",
+          "behavioral_label": "behavioral",
+          "family_label": "inner_critic",
+          "quote_label": "unsuitable",
+          "should_abstain": false,
+          "quote_fp_category": "raw_self_attack",
+          "notes": "hate myself — too raw for display quote"
+        },
+        "prediction": {
+          "behavioral": true,
+          "families": {
+            "trigger_condition": false,
+            "inner_critic": true,
+            "repetitive_loop": true,
+            "recovery_stabilizer": false
+          },
+          "quoteSafe": false
+        },
+        "behavioralCorrect": true,
+        "familySignalCorrect": true,
+        "quoteCorrect": true,
+        "abstainedCorrectly": null
+      },
+      {
+        "entry": {
+          "id": "edge-006",
+          "text": "I can't seem to stop doing the same thing over and over no matter how many times I try to change my behavior and approach to things in my daily life and relationships",
+          "source": "synthetic_edge_case",
+          "behavioral_label": "behavioral",
+          "family_label": "inner_critic",
+          "quote_label": "unsuitable",
+          "should_abstain": false,
+          "notes": "over MAX_QUOTE_LENGTH so quote is unsuitable; IC + RL markers present; IC fires first"
+        },
+        "prediction": {
+          "behavioral": true,
+          "families": {
+            "trigger_condition": false,
+            "inner_critic": false,
+            "repetitive_loop": true,
+            "recovery_stabilizer": false
+          },
+          "quoteSafe": true
+        },
+        "behavioralCorrect": true,
+        "familySignalCorrect": false,
+        "quoteCorrect": false,
+        "abstainedCorrectly": null
+      },
+      {
+        "entry": {
+          "id": "edge-013",
+          "text": "I know I do this but I can't figure out why I keep repeating the cycle",
+          "source": "synthetic_edge_case",
+          "behavioral_label": "behavioral",
+          "family_label": "inner_critic",
+          "quote_label": "suitable",
+          "should_abstain": false,
+          "notes": "can't + keep repeating; IC fires first over RL"
+        },
+        "prediction": {
+          "behavioral": true,
+          "families": {
+            "trigger_condition": false,
+            "inner_critic": false,
+            "repetitive_loop": true,
+            "recovery_stabilizer": false
+          },
+          "quoteSafe": true
+        },
+        "behavioralCorrect": true,
+        "familySignalCorrect": false,
+        "quoteCorrect": true,
+        "abstainedCorrectly": null
+      },
+      {
+        "entry": {
+          "id": "edge-003",
+          "text": "I feel like I've been going backwards lately instead of making progress",
+          "source": "synthetic_edge_case",
+          "behavioral_label": "behavioral",
+          "family_label": "repetitive_loop",
+          "quote_label": "suitable",
+          "should_abstain": false,
+          "notes": "I'm stuck + going backwards → RL family"
+        },
+        "prediction": {
+          "behavioral": true,
+          "families": {
+            "trigger_condition": false,
+            "inner_critic": false,
+            "repetitive_loop": false,
+            "recovery_stabilizer": true
+          },
+          "quoteSafe": true
+        },
+        "behavioralCorrect": true,
+        "familySignalCorrect": false,
+        "quoteCorrect": true,
+        "abstainedCorrectly": null
+      }
+    ],
+    "quoteFP": [
+      {
+        "entry": {
+          "id": "ic-010",
+          "text": "Not my strong suit — I've never been good at asking for help",
+          "source": "live_user",
+          "behavioral_label": "behavioral",
+          "family_label": "inner_critic",
+          "quote_label": "unsuitable",
+          "should_abstain": false,
+          "quote_fp_category": "borderline_first_person",
+          "notes": "starts with Not, not I — unsuitable for display quote"
+        },
+        "prediction": {
+          "behavioral": true,
+          "families": {
+            "trigger_condition": false,
+            "inner_critic": true,
+            "repetitive_loop": false,
+            "recovery_stabilizer": false
+          },
+          "quoteSafe": true
+        },
+        "behavioralCorrect": true,
+        "familySignalCorrect": true,
+        "quoteCorrect": false,
+        "abstainedCorrectly": null
+      },
+      {
+        "entry": {
+          "id": "rl-002",
+          "text": "Here I am again, same pattern repeating",
+          "source": "live_user",
+          "behavioral_label": "behavioral",
+          "family_label": "repetitive_loop",
+          "quote_label": "unsuitable",
+          "should_abstain": false,
+          "notes": "not I-starting, vague without behavioral language signal"
+        },
+        "prediction": {
+          "behavioral": true,
+          "families": {
+            "trigger_condition": false,
+            "inner_critic": false,
+            "repetitive_loop": true,
+            "recovery_stabilizer": false
+          },
+          "quoteSafe": true
+        },
+        "behavioralCorrect": true,
+        "familySignalCorrect": true,
+        "quoteCorrect": false,
+        "abstainedCorrectly": null
+      },
+      {
+        "entry": {
+          "id": "edge-006",
+          "text": "I can't seem to stop doing the same thing over and over no matter how many times I try to change my behavior and approach to things in my daily life and relationships",
+          "source": "synthetic_edge_case",
+          "behavioral_label": "behavioral",
+          "family_label": "inner_critic",
+          "quote_label": "unsuitable",
+          "should_abstain": false,
+          "notes": "over MAX_QUOTE_LENGTH so quote is unsuitable; IC + RL markers present; IC fires first"
+        },
+        "prediction": {
+          "behavioral": true,
+          "families": {
+            "trigger_condition": false,
+            "inner_critic": false,
+            "repetitive_loop": true,
+            "recovery_stabilizer": false
+          },
+          "quoteSafe": true
+        },
+        "behavioralCorrect": true,
+        "familySignalCorrect": false,
+        "quoteCorrect": false,
+        "abstainedCorrectly": null
+      },
+      {
+        "entry": {
+          "id": "edge-012",
+          "text": "My default is to go silent when I feel overwhelmed rather than ask for support",
+          "source": "synthetic_edge_case",
+          "behavioral_label": "behavioral",
+          "family_label": "trigger_condition",
+          "quote_label": "unsuitable",
+          "should_abstain": false,
+          "notes": "my default is → TC marker; starts with My not I, first-person ownership borderline"
+        },
+        "prediction": {
+          "behavioral": true,
+          "families": {
+            "trigger_condition": true,
+            "inner_critic": false,
+            "repetitive_loop": false,
+            "recovery_stabilizer": false
+          },
+          "quoteSafe": true
+        },
+        "behavioralCorrect": true,
+        "familySignalCorrect": true,
+        "quoteCorrect": false,
+        "abstainedCorrectly": null
+      }
+    ]
+  },
+  "totalGroups": 22,
+  "groupedMetrics": {
+    "groupsEvaluated": 22,
+    "behavioralExpected": 19,
+    "behavioralPredicted": 19,
+    "behavioralCorrect": 22,
+    "exactFamilyMatches": 17,
+    "abstentionTotal": 5,
+    "abstentionCorrect": 5,
+    "abstentionRate": 1,
+    "quoteSafePredicted": 13,
+    "quoteSafeExpected": 15,
+    "quotePrecision": 1,
+    "quoteRecall": 0.8666666666666667,
+    "quotePresenceCorrect": 20,
+    "quotePresenceTotal": 22,
+    "familyEmission": {
+      "trigger_condition": {
+        "expected": 6,
+        "emitted": 6,
+        "truePositive": 6,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "precision": 1,
+        "recall": 1
+      },
+      "inner_critic": {
+        "expected": 7,
+        "emitted": 2,
+        "truePositive": 2,
+        "falsePositive": 0,
+        "falseNegative": 5,
+        "precision": 1,
+        "recall": 0.2857142857142857
+      },
+      "repetitive_loop": {
+        "expected": 2,
+        "emitted": 2,
+        "truePositive": 2,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "precision": 1,
+        "recall": 1
+      },
+      "recovery_stabilizer": {
+        "expected": 5,
+        "emitted": 5,
+        "truePositive": 5,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "precision": 1,
+        "recall": 1
+      }
+    },
+    "falsePositiveBundles": [],
+    "falseNegativeBundles": [
+      {
+        "group": {
+          "id": "mixed-bundle",
+          "description": "TC + IC + RS all meet thresholds in one history — all three should be detected",
+          "entries": [
+            {
+              "text": "Whenever I feel overwhelmed, I automatically withdraw from everyone around me",
+              "session_id": "sess-mix-1",
+              "role": "user",
+              "source": "live_user",
+              "seq": 1
+            },
+            {
+              "text": "Every time conflict arises, I tend to go quiet and wait for it to pass",
+              "session_id": "sess-mix-1",
+              "role": "user",
+              "source": "live_user",
+              "seq": 2
+            },
+            {
+              "text": "I notice that I always default to people-pleasing when someone seems upset",
+              "session_id": "sess-mix-1",
+              "role": "user",
+              "source": "live_user",
+              "seq": 3
+            },
+            {
+              "text": "I'm terrible at asking for what I need, I always end up settling for less",
+              "session_id": "sess-mix-2",
+              "role": "user",
+              "source": "live_user",
+              "seq": 4
+            },
+            {
+              "text": "I can't stop second-guessing every decision I make, even small ones",
+              "session_id": "sess-mix-2",
+              "role": "user",
+              "source": "live_user",
+              "seq": 5
+            },
+            {
+              "text": "I doubt my ability to handle things when they get complicated",
+              "session_id": "sess-mix-2",
+              "role": "user",
+              "source": "live_user",
+              "seq": 6
+            },
+            {
+              "text": "I've been doing better at speaking up for myself this week",
+              "session_id": "sess-mix-3",
+              "role": "user",
+              "source": "live_user",
+              "seq": 7
+            },
+            {
+              "text": "I finally managed to set a limit and actually stick with it",
+              "session_id": "sess-mix-3",
+              "role": "user",
+              "source": "live_user",
+              "seq": 8
+            }
+          ],
+          "expected_behavioral": true,
+          "expected_families": {
+            "trigger_condition": true,
+            "inner_critic": true,
+            "repetitive_loop": false,
+            "recovery_stabilizer": true
+          },
+          "expected_abstain": false,
+          "expected_quote_safe": true,
+          "notes": "TC: 3 messages (whenever, every time, I notice). IC: 3 messages (I'm terrible, can't stop, doubt my ability). RS: 2 messages (doing better, finally managed). RL: no RL markers — not expected"
+        },
+        "behavioral": true,
+        "emittedFamilies": {
+          "trigger_condition": true,
+          "inner_critic": false,
+          "repetitive_loop": false,
+          "recovery_stabilizer": true
+        },
+        "anyClaimed": true,
+        "quoteSafe": true,
+        "behavioralCorrect": true,
+        "familiesCorrect": false,
+        "abstainCorrect": true,
+        "quoteSafeCorrect": true,
+        "falsePositiveFamilies": [],
+        "falseNegativeFamilies": [
+          "inner_critic"
+        ],
+        "clueQuotes": {
+          "trigger_condition": [
+            "I'm terrible at asking for what I need, I always end up settling for less",
+            "Whenever I feel overwhelmed, I automatically withdraw from everyone around me",
+            "Every time conflict arises, I tend to go quiet and wait for it to pass",
+            "I notice that I always default to people-pleasing when someone seems upset",
+            "I can't stop second-guessing every decision I make, even small ones",
+            "I've been doing better at speaking up for myself this week",
+            "I finally managed to set a limit and actually stick with it"
+          ],
+          "inner_critic": [],
+          "repetitive_loop": [],
+          "recovery_stabilizer": [
+            "I finally managed to set a limit and actually stick with it",
+            "Whenever I feel overwhelmed, I automatically withdraw from everyone around me",
+            "Every time conflict arises, I tend to go quiet and wait for it to pass",
+            "I notice that I always default to people-pleasing when someone seems upset",
+            "I'm terrible at asking for what I need, I always end up settling for less",
+            "I can't stop second-guessing every decision I make, even small ones",
+            "I've been doing better at speaking up for myself this week"
+          ]
+        },
+        "visibleAbstentionScores": [
+          {
+            "family": "trigger_condition",
+            "score": 1,
+            "triggered": false,
+            "evidenceCount": 7,
+            "sessionCount": 3,
+            "hasDisplaySafeQuote": true
+          }
+        ],
+        "reviewFlag": {
+          "groupId": "mixed-bundle",
+          "emittedFamilies": [
+            "trigger_condition",
+            "recovery_stabilizer"
+          ],
+          "review_needed": true,
+          "review_priority": "low",
+          "review_reasons": [
+            "NO_SAFE_VISIBLE_SUMMARY"
+          ],
+          "faithfulnessIncluded": false
+        }
+      },
+      {
+        "group": {
+          "id": "no-display-quote",
+          "description": "IC threshold met but all messages exceed MAX_QUOTE_LENGTH — claim emitted with no display quote",
+          "entries": [
+            {
+              "text": "I'm so terrible at finishing things that I start that I genuinely wonder if there is something fundamentally broken about how my brain approaches long-term tasks, because no matter what system or method I try I always end up abandoning it after a few days or so",
+              "session_id": "sess-noq-1",
+              "role": "user",
+              "source": "synthetic_edge_case",
+              "seq": 1
+            },
+            {
+              "text": "I can't stop myself from replaying every single awkward or embarrassing conversation I've ever had for hours or even days after the fact, going through exactly what I said and why I always seem to make things far more complicated than they need to be at all",
+              "session_id": "sess-noq-1",
+              "role": "user",
+              "source": "synthetic_edge_case",
+              "seq": 2
+            },
+            {
+              "text": "I always end up failing at things that matter to me, and the worse I do the more I tend to avoid trying again which just confirms to myself that I was probably right not to bother in the first place, and the whole cycle continues on and on indefinitely",
+              "session_id": "sess-noq-2",
+              "role": "user",
+              "source": "synthetic_edge_case",
+              "seq": 3
+            }
+          ],
+          "expected_behavioral": true,
+          "expected_families": {
+            "trigger_condition": false,
+            "inner_critic": true,
+            "repetitive_loop": false,
+            "recovery_stabilizer": false
+          },
+          "expected_abstain": false,
+          "expected_quote_safe": false,
+          "notes": "IC threshold met (3 messages), but all messages exceed MAX_QUOTE_LENGTH=250 — selectBestDisplayQuote returns null; claim emitted without a display quote"
+        },
+        "behavioral": true,
+        "emittedFamilies": {
+          "trigger_condition": false,
+          "inner_critic": false,
+          "repetitive_loop": false,
+          "recovery_stabilizer": false
+        },
+        "anyClaimed": false,
+        "quoteSafe": false,
+        "behavioralCorrect": true,
+        "familiesCorrect": false,
+        "abstainCorrect": false,
+        "quoteSafeCorrect": true,
+        "falsePositiveFamilies": [],
+        "falseNegativeFamilies": [
+          "inner_critic"
+        ],
+        "clueQuotes": {
+          "trigger_condition": [],
+          "inner_critic": [],
+          "repetitive_loop": [],
+          "recovery_stabilizer": []
+        },
+        "visibleAbstentionScores": [],
+        "reviewFlag": {
+          "groupId": "no-display-quote",
+          "emittedFamilies": [],
+          "review_needed": false,
+          "review_priority": null,
+          "review_reasons": [],
+          "faithfulnessIncluded": false
+        }
+      },
+      {
+        "group": {
+          "id": "ic-self-doubt",
+          "description": "IC true positive — self-doubt/capability-assessment shape; should emit IC and generate self-doubt visible summary",
+          "entries": [
+            {
+              "text": "I always second-guess my decisions even after I have thoroughly thought them through",
+              "session_id": "ic-sd-s1",
+              "role": "user",
+              "source": "live_user",
+              "seq": 1
+            },
+            {
+              "text": "I am not sure I can actually handle situations well when the stakes are really high",
+              "session_id": "ic-sd-s1",
+              "role": "user",
+              "source": "live_user",
+              "seq": 2
+            },
+            {
+              "text": "I honestly doubt my ability to follow through when something really matters to me",
+              "session_id": "ic-sd-s2",
+              "role": "user",
+              "source": "live_user",
+              "seq": 3
+            },
+            {
+              "text": "I question myself constantly and wonder whether I am capable of making good decisions when it matters",
+              "session_id": "ic-sd-s2",
+              "role": "user",
+              "source": "live_user",
+              "seq": 4
+            }
+          ],
+          "expected_behavioral": true,
+          "expected_families": {
+            "trigger_condition": false,
+            "inner_critic": true,
+            "repetitive_loop": false,
+            "recovery_stabilizer": false
+          },
+          "expected_abstain": false,
+          "expected_quote_safe": true
+        },
+        "behavioral": true,
+        "emittedFamilies": {
+          "trigger_condition": false,
+          "inner_critic": false,
+          "repetitive_loop": false,
+          "recovery_stabilizer": false
+        },
+        "anyClaimed": false,
+        "quoteSafe": false,
+        "behavioralCorrect": true,
+        "familiesCorrect": false,
+        "abstainCorrect": false,
+        "quoteSafeCorrect": false,
+        "falsePositiveFamilies": [],
+        "falseNegativeFamilies": [
+          "inner_critic"
+        ],
+        "clueQuotes": {
+          "trigger_condition": [],
+          "inner_critic": [],
+          "repetitive_loop": [],
+          "recovery_stabilizer": []
+        },
+        "visibleAbstentionScores": [],
+        "reviewFlag": {
+          "groupId": "ic-self-doubt",
+          "emittedFamilies": [],
+          "review_needed": false,
+          "review_priority": null,
+          "review_reasons": [],
+          "faithfulnessIncluded": false
+        }
+      },
+      {
+        "group": {
+          "id": "ic-incapability",
+          "description": "IC true positive — incapability/self-dismissal shape; should emit IC and generate incapability visible summary",
+          "entries": [
+            {
+              "text": "I am terrible at finishing anything I start when there is real pressure involved",
+              "session_id": "ic-inc-s1",
+              "role": "user",
+              "source": "live_user",
+              "seq": 1
+            },
+            {
+              "text": "I always mess things up on the very day things were starting to look promising for me",
+              "session_id": "ic-inc-s1",
+              "role": "user",
+              "source": "live_user",
+              "seq": 2
+            },
+            {
+              "text": "I can not get past this habit of giving up right before things actually pay off",
+              "session_id": "ic-inc-s2",
+              "role": "user",
+              "source": "live_user",
+              "seq": 3
+            },
+            {
+              "text": "I keep failing at the things that matter most to me even when I am genuinely trying my hardest",
+              "session_id": "ic-inc-s2",
+              "role": "user",
+              "source": "live_user",
+              "seq": 4
+            }
+          ],
+          "expected_behavioral": true,
+          "expected_families": {
+            "trigger_condition": false,
+            "inner_critic": true,
+            "repetitive_loop": false,
+            "recovery_stabilizer": false
+          },
+          "expected_abstain": false,
+          "expected_quote_safe": true
+        },
+        "behavioral": true,
+        "emittedFamilies": {
+          "trigger_condition": false,
+          "inner_critic": false,
+          "repetitive_loop": false,
+          "recovery_stabilizer": false
+        },
+        "anyClaimed": false,
+        "quoteSafe": false,
+        "behavioralCorrect": true,
+        "familiesCorrect": false,
+        "abstainCorrect": false,
+        "quoteSafeCorrect": false,
+        "falsePositiveFamilies": [],
+        "falseNegativeFamilies": [
+          "inner_critic"
+        ],
+        "clueQuotes": {
+          "trigger_condition": [],
+          "inner_critic": [],
+          "repetitive_loop": [],
+          "recovery_stabilizer": []
+        },
+        "visibleAbstentionScores": [],
+        "reviewFlag": {
+          "groupId": "ic-incapability",
+          "emittedFamilies": [],
+          "review_needed": false,
+          "review_priority": null,
+          "review_reasons": [],
+          "faithfulnessIncluded": false
+        }
+      },
+      {
+        "group": {
+          "id": "ic-no-quote",
+          "description": "IC true positive — all messages exceed display-safe length; IC emits and visible summary generates, but no display-safe quote exists",
+          "entries": [
+            {
+              "text": "I am terrible at maintaining any kind of consistent emotional stability when I am under stress or pressure, and despite sustained personal effort and professional support over many years, I continue to struggle with the same patterns that have held me back from showing up fully in situations that matter to me.",
+              "session_id": "ic-nq-s1",
+              "role": "user",
+              "source": "live_user",
+              "seq": 1
+            },
+            {
+              "text": "I always mess things up at the exact moment when I finally have enough momentum to feel genuinely hopeful about where I am headed, and this pattern seems to repeat regardless of how much preparation or effort I have invested in trying to do things differently this time around.",
+              "session_id": "ic-nq-s1",
+              "role": "user",
+              "source": "live_user",
+              "seq": 2
+            },
+            {
+              "text": "I can not stop myself from spiraling into worst-case thinking any time something important is at stake, and this reflexive catastrophizing has repeatedly cost me meaningful opportunities and relationships that I would very much have liked to preserve and develop over time.",
+              "session_id": "ic-nq-s2",
+              "role": "user",
+              "source": "live_user",
+              "seq": 3
+            },
+            {
+              "text": "I struggle with trusting myself to sustain any meaningful progress because I so often find ways to undermine my own efforts right at the point when they start producing the kinds of results I had genuinely been working toward, and I cannot explain why I keep doing this to myself.",
+              "session_id": "ic-nq-s2",
+              "role": "user",
+              "source": "live_user",
+              "seq": 4
+            }
+          ],
+          "expected_behavioral": true,
+          "expected_families": {
+            "trigger_condition": false,
+            "inner_critic": true,
+            "repetitive_loop": false,
+            "recovery_stabilizer": false
+          },
+          "expected_abstain": false,
+          "expected_quote_safe": false
+        },
+        "behavioral": true,
+        "emittedFamilies": {
+          "trigger_condition": false,
+          "inner_critic": false,
+          "repetitive_loop": false,
+          "recovery_stabilizer": false
+        },
+        "anyClaimed": false,
+        "quoteSafe": false,
+        "behavioralCorrect": true,
+        "familiesCorrect": false,
+        "abstainCorrect": false,
+        "quoteSafeCorrect": true,
+        "falsePositiveFamilies": [],
+        "falseNegativeFamilies": [
+          "inner_critic"
+        ],
+        "clueQuotes": {
+          "trigger_condition": [],
+          "inner_critic": [],
+          "repetitive_loop": [],
+          "recovery_stabilizer": []
+        },
+        "visibleAbstentionScores": [],
+        "reviewFlag": {
+          "groupId": "ic-no-quote",
+          "emittedFamilies": [],
+          "review_needed": false,
+          "review_priority": null,
+          "review_reasons": [],
+          "faithfulnessIncluded": false
+        }
+      }
+    ]
+  },
+  "visibleAbstention": {
+    "totalEmittedClaims": 9,
+    "totalSurfaced": 9,
+    "totalAbstained": 0,
+    "coverageRate": 1,
+    "abstentionRate": 0,
+    "scoreDistribution": {
+      "min": 0.6733333333333333,
+      "max": 1,
+      "mean": 0.7874074074074073
+    },
+    "conditionalFaithfulnessRate": 0.4444444444444444,
+    "abstentionThreshold": 0.55
+  },
+  "llmLfComparison": {
+    "totalCompared": 7,
+    "parsedCount": 6,
+    "parseFailures": 1,
+    "parseFailureRate": 0.14285714285714285,
+    "abstained": 2,
+    "abstentionRate": 0.2857142857142857,
+    "disagreementCount": 4,
+    "disagreementRate": 0.5714285714285714,
+    "malformedAcceptedCount": 0,
+    "authoritativeViolations": 0,
+    "helpedWhereHeuristicsAbstained": 1,
+    "overreachedWhereHeuristicsAbstained": 1,
+    "familyMetrics": [
+      {
+        "family": "trigger_condition",
+        "support": 14,
+        "predicted": 3,
+        "precision": 0.6666666666666666,
+        "recall": 0.14285714285714285
+      },
+      {
+        "family": "inner_critic",
+        "support": 15,
+        "predicted": 2,
+        "precision": 0.5,
+        "recall": 0.06666666666666667
+      }
+    ],
+    "disagreements": [
+      {
+        "entryId": "ic-008",
+        "text": "I honestly doubt whether I'm capable of handling real responsibility",
+        "goldLabel": "inner_critic",
+        "heuristicLabel": "abstain",
+        "llmLabel": "inner_critic",
+        "parseStatus": "parsed",
+        "rationale": "The message expresses direct self-doubt about capability and responsibility."
+      },
+      {
+        "entryId": "edge-002",
+        "text": "I struggle to be direct when I need something from people",
+        "goldLabel": "inner_critic",
+        "heuristicLabel": "inner_critic",
+        "llmLabel": "abstain",
+        "parseStatus": "parsed",
+        "rationale": "The message is self-referential but too broad to assign one family safely."
+      },
+      {
+        "entryId": "tc-008",
+        "text": "I tend to agree with people in the moment even when I disagree internally",
+        "goldLabel": "trigger_condition",
+        "heuristicLabel": "trigger_condition",
+        "llmLabel": "inner_critic",
+        "parseStatus": "parsed",
+        "rationale": "The internal disagreement sounded like self-doubt rather than a clear trigger-response pattern."
+      },
+      {
+        "entryId": "nb-ad-002",
+        "text": "Can you remind me what we talked about last time?",
+        "goldLabel": "none",
+        "heuristicLabel": "abstain",
+        "llmLabel": "trigger_condition",
+        "parseStatus": "parsed",
+        "rationale": "The wording mentions prior repeated talk, so the model overreaches toward a pattern label."
+      }
+    ],
+    "falsePositiveExamples": [
+      {
+        "entryId": "tc-008",
+        "text": "I tend to agree with people in the moment even when I disagree internally",
+        "goldLabel": "trigger_condition",
+        "heuristicLabel": "trigger_condition",
+        "llmLabel": "inner_critic",
+        "parseStatus": "parsed",
+        "rationale": "The internal disagreement sounded like self-doubt rather than a clear trigger-response pattern."
+      },
+      {
+        "entryId": "nb-ad-002",
+        "text": "Can you remind me what we talked about last time?",
+        "goldLabel": "none",
+        "heuristicLabel": "abstain",
+        "llmLabel": "trigger_condition",
+        "parseStatus": "parsed",
+        "rationale": "The wording mentions prior repeated talk, so the model overreaches toward a pattern label."
+      }
+    ],
+    "helpfulExamples": [
+      {
+        "entryId": "ic-008",
+        "text": "I honestly doubt whether I'm capable of handling real responsibility",
+        "goldLabel": "inner_critic",
+        "heuristicLabel": "abstain",
+        "llmLabel": "inner_critic",
+        "parseStatus": "parsed",
+        "rationale": "The message expresses direct self-doubt about capability and responsibility."
+      }
+    ],
+    "overreachExamples": [
+      {
+        "entryId": "nb-ad-002",
+        "text": "Can you remind me what we talked about last time?",
+        "goldLabel": "none",
+        "heuristicLabel": "abstain",
+        "llmLabel": "trigger_condition",
+        "parseStatus": "parsed",
+        "rationale": "The wording mentions prior repeated talk, so the model overreaches toward a pattern label."
+      }
+    ],
+    "parseFailureExamples": [
+      {
+        "entryId": "nb-tq-003",
+        "parseStatus": "malformed_json",
+        "rationale": "Malformed LLM LF output; shadow-mode abstain."
+      }
+    ]
+  },
+  "regressionGates": [
+    {
+      "name": "behavioral_precision_floor",
+      "description": "Behavioral gate precision ≥ 95%",
+      "threshold": 0.95,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "abstention_rate_floor",
+      "description": "Message-level abstention rate ≥ 95%",
+      "threshold": 0.95,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "quote_precision_floor",
+      "description": "Quote precision ≥ 80%",
+      "threshold": 0.8,
+      "actual": 0.8947368421052632,
+      "passed": true
+    },
+    {
+      "name": "grouped_abstention_floor",
+      "description": "Grouped bundle abstention correctness ≥ 90%",
+      "threshold": 0.9,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rl_single_session_blocked",
+      "description": "RL single-session gate must block (real detectRepetitiveLoopClues)",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "no_raw_attack_in_safe_quotes",
+      "description": "≤ 0 raw_self_attack quotes predicted display-safe",
+      "threshold": 0,
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "name": "llm_lf_parse_failure_ceiling",
+      "description": "LLM LF parse failure rate ≤ 17%",
+      "threshold": 0.17,
+      "actual": 0.14285714285714285,
+      "passed": true
+    },
+    {
+      "name": "llm_lf_no_malformed_as_valid_label",
+      "description": "Malformed LLM LF outputs must not be treated as valid labels",
+      "threshold": 0,
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "name": "llm_lf_shadow_only",
+      "description": "LLM LF outputs must remain shadow-only and non-authoritative",
+      "threshold": 0,
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "name": "llm_lf_disagreements_visible",
+      "description": "LLM LF disagreements must be surfaced in the report when present",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "llm_lf_trigger_precision_floor",
+      "description": "LLM LF trigger_condition precision ≥ 66%",
+      "threshold": 0.66,
+      "actual": 0.6666666666666666,
+      "passed": true
+    },
+    {
+      "name": "llm_lf_inner_critic_precision_floor",
+      "description": "LLM LF inner_critic precision ≥ 50%",
+      "threshold": 0.5,
+      "actual": 0.5,
+      "passed": true
+    },
+    {
+      "name": "llm_lf_abstention_supported",
+      "description": "LLM LF repo-local baseline must preserve at least one abstain output",
+      "threshold": 1,
+      "actual": 2,
+      "passed": true
+    },
+    {
+      "name": "faithfulness_floor",
+      "description": "Faithfulness rate ≥ 30% (floor calibrated to scoring context)",
+      "threshold": 0.3,
+      "actual": 0.46153846153846156,
+      "passed": true
+    },
+    {
+      "name": "faithfulness_parse_failure_ceiling",
+      "description": "Faithfulness parse failure rate ≤ 60%",
+      "threshold": 0.6,
+      "actual": 0.3076923076923077,
+      "passed": true
+    },
+    {
+      "name": "faithfulness_shadow_only",
+      "description": "Faithfulness scores must remain shadow-only and non-authoritative",
+      "threshold": 0,
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "name": "faithfulness_cases_visible",
+      "description": "Unfaithful and parse-failure cases must be surfaced in report when present",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_sufficiency_floor",
+      "description": "Rationale sufficiency rate ≥ 50%",
+      "threshold": 0.5,
+      "actual": 0.6666666666666666,
+      "passed": true
+    },
+    {
+      "name": "rationale_parse_failure_ceiling",
+      "description": "Rationale sufficiency parse failure rate ≤ 60%",
+      "threshold": 0.6,
+      "actual": 0.3076923076923077,
+      "passed": true
+    },
+    {
+      "name": "rationale_faithfulness_stability_floor",
+      "description": "Rationale-only faithfulness preservation rate ≥ 50%",
+      "threshold": 0.5,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_shadow_only",
+      "description": "Rationale sufficiency must remain shadow-only and non-authoritative",
+      "threshold": 0,
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "name": "rationale_insufficiency_visible",
+      "description": "Insufficient rationale cases must be surfaced when present",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_summary_stability_visible",
+      "description": "Summary drift cases must be surfaced in inspectable output when present",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_minimality_floor",
+      "description": "Rationale minimality rate ≥ 50%",
+      "threshold": 0.5,
+      "actual": 0.75,
+      "passed": true
+    },
+    {
+      "name": "rationale_minimality_visible",
+      "description": "Bloated rationale claims must be surfaced when present",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_comprehensiveness_visible",
+      "description": "Weak complement-isolation cases must be surfaced when present",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_minimality_shadow_only",
+      "description": "Rationale minimality must remain shadow-only and non-authoritative",
+      "threshold": 0,
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "name": "rationale_global_minimality_visible",
+      "description": "Globally non-minimal rationale claims must be surfaced when present",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_alternative_support_visible",
+      "description": "Alternative non-rationale support subsets must be surfaced when present",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_subset_search_skip_visible",
+      "description": "Skipped rationale/complement subset-search claims must be surfaced when present",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_unknown_minimality_visible",
+      "description": "Unknown minimality or alternative-support cases must be surfaced when present",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_subset_search_coverage_floor",
+      "description": "Rationale subset-search coverage ≥ 100%",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_complement_search_coverage_floor",
+      "description": "Complement subset-search coverage ≥ 100%",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "rationale_unknown_minimality_ceiling",
+      "description": "Unknown minimality rate ≤ 0%",
+      "threshold": 0,
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "name": "rationale_unknown_alternative_support_ceiling",
+      "description": "Unknown alternative-support rate ≤ 0%",
+      "threshold": 0,
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "name": "visible_coverage_floor",
+      "description": "Visible claim coverage ≥ 50% (guards against over-suppression; null = no data)",
+      "threshold": 0.5,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "visible_calibration_threshold_selected",
+      "description": "Calibration must select a threshold when eligible claims exist (null = no data)",
+      "threshold": 1,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "visible_calibration_coverage_floor",
+      "description": "Calibrated coverage ≥ 40% when eligible claims exist (null = no data)",
+      "threshold": 0.4,
+      "actual": 0.4444444444444444,
+      "passed": true
+    },
+    {
+      "name": "visible_calibration_failure_target_respected",
+      "description": "Selected failure rate ≤ target (0.25) OR fallback documented",
+      "threshold": 0.25,
+      "actual": 0.5,
+      "passed": true
+    },
+    {
+      "name": "visible_calibration_data_sufficient",
+      "description": "Calibration eligible claims ≥ 8 (guards against trivially small baseline)",
+      "threshold": 8,
+      "actual": 9,
+      "passed": true
+    },
+    {
+      "name": "grouped_trigger_condition_precision_floor",
+      "description": "Grouped TC emission precision ≥ 70% (null = no expected positives)",
+      "threshold": 0.7,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "grouped_trigger_condition_recall_floor",
+      "description": "Grouped TC emission recall ≥ 60% (null = no expected positives)",
+      "threshold": 0.6,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "grouped_inner_critic_precision_floor",
+      "description": "Grouped IC emission precision ≥ 40% (null = no expected positives)",
+      "threshold": 0.4,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "grouped_inner_critic_recall_floor",
+      "description": "Grouped IC emission recall ≥ 25% (null = no expected positives)",
+      "threshold": 0.25,
+      "actual": 0.2857142857142857,
+      "passed": true
+    },
+    {
+      "name": "grouped_repetitive_loop_precision_floor",
+      "description": "Grouped RL emission precision ≥ 70% (null = no expected positives)",
+      "threshold": 0.7,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "grouped_repetitive_loop_recall_floor",
+      "description": "Grouped RL emission recall ≥ 70% (null = no expected positives)",
+      "threshold": 0.7,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "grouped_recovery_stabilizer_precision_floor",
+      "description": "Grouped RS emission precision ≥ 70% (null = no expected positives)",
+      "threshold": 0.7,
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "name": "grouped_recovery_stabilizer_recall_floor",
+      "description": "Grouped RS emission recall ≥ 70% (null = no expected positives)",
+      "threshold": 0.7,
+      "actual": 1,
+      "passed": true
+    }
+  ],
+  "allRegressionGatesPassed": true,
+  "faithfulness": {
+    "scoredClaims": 13,
+    "faithfulCount": 6,
+    "unfaithfulCount": 3,
+    "parseFailureCount": 4,
+    "faithfulRate": 0.46153846153846156,
+    "unfaithfulClaims": [
+      {
+        "groupId": "ic-group-threshold",
+        "family": "inner_critic",
+        "visibleSummary": "You often frame yourself as incapable before acting.",
+        "receiptQuotes": [
+          "I'm terrible at keeping the commitments I make to myself",
+          "I can't stop myself from catastrophizing whenever I make a mistake",
+          "I always ruin things right when they start going well for me"
+        ],
+        "faithful": false,
+        "score": 0.21,
+        "rationale": "Summary claims pre-action incapability framing, but receipts describe post-event catastrophizing and retrospective failure, not anticipatory self-defeat.",
+        "parseStatus": "parsed",
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "Intentional unfaithful case: summary extrapolates beyond what receipts support."
+      },
+      {
+        "groupId": "mixed-bundle",
+        "family": "trigger_condition",
+        "visibleSummary": "When pressure rises, you default to pleasing or appeasing.",
+        "receiptQuotes": [
+          "Whenever I feel overwhelmed, I automatically withdraw from everyone around me",
+          "I notice that I always default to people-pleasing when someone seems upset"
+        ],
+        "faithful": null,
+        "score": null,
+        "rationale": "Malformed faithfulness output; shadow-mode abstain.",
+        "parseStatus": "malformed_json",
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "Parse failure case: simulates malformed judge output."
+      },
+      {
+        "groupId": "rl-group-multisession",
+        "family": "repetitive_loop",
+        "visibleSummary": "You describe returning to the same loop even when you see it happening.",
+        "receiptQuotes": [
+          "I keep finding myself back in the same loop with this issue",
+          "Over and over I go through this same cycle, I know the pattern well"
+        ],
+        "faithful": null,
+        "score": null,
+        "rationale": "Invalid faithfulness schema; shadow-mode abstain.",
+        "parseStatus": "schema_invalid",
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "Schema invalid case: simulates judge response with missing required fields."
+      },
+      {
+        "groupId": "tc-people-pleasing",
+        "family": "trigger_condition",
+        "visibleSummary": "When pressure rises, you default to pleasing or appeasing.",
+        "receiptQuotes": [
+          "I tend to apologize immediately whenever someone seems even slightly upset with me",
+          "Every time there is any hint of tension, I automatically start people-pleasing to make it go away"
+        ],
+        "faithful": null,
+        "score": null,
+        "rationale": "Malformed faithfulness output; shadow-mode abstain.",
+        "parseStatus": "malformed_json",
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "Parse failure case for tc-people-pleasing — simulates malformed judge output on a TC people-pleasing bundle."
+      },
+      {
+        "groupId": "ic-incapability",
+        "family": "inner_critic",
+        "visibleSummary": "Self-doubt shows up when you assess your own ability.",
+        "receiptQuotes": [
+          "I am terrible at finishing anything I start when there is real pressure involved",
+          "I always mess things up on the very day things were starting to look promising for me"
+        ],
+        "faithful": false,
+        "score": 0.18,
+        "rationale": "Summary applies a self-doubt/assessment frame but receipts describe incapability framing and self-sabotage — the incapability branch better fits the evidence than the assessment-doubt branch.",
+        "parseStatus": "parsed",
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "Intentional unfaithful case: summary from wrong IC branch applied to incapability receipts."
+      },
+      {
+        "groupId": "rs-momentum",
+        "family": "recovery_stabilizer",
+        "visibleSummary": "You describe improvement when momentum becomes visible.",
+        "receiptQuotes": [
+          "I have been doing better at managing my reactions lately and it is making a real difference",
+          "I am making progress on building the habits I care about and the momentum is finally there"
+        ],
+        "faithful": null,
+        "score": null,
+        "rationale": "Invalid faithfulness schema; shadow-mode abstain.",
+        "parseStatus": "schema_invalid",
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "Schema invalid case for rs-momentum — simulates judge response with missing required fields."
+      },
+      {
+        "groupId": "rs-pressure",
+        "family": "recovery_stabilizer",
+        "visibleSummary": "Progress appears when you follow through consistently.",
+        "receiptQuotes": [
+          "I actually managed to stay calm during a difficult conversation I had been dreading all week",
+          "I was able to step away from the situation before I said something I would have deeply regretted"
+        ],
+        "faithful": false,
+        "score": 0.15,
+        "rationale": "Summary claims follow-through consistency but receipts describe calm-under-pressure and de-escalation responses — the pressure/regulation summary branch better fits the evidence.",
+        "parseStatus": "parsed",
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "Intentional unfaithful case: wrong RS summary branch applied to pressure/de-escalation receipts."
+      }
+    ],
+    "authoritativeViolations": 0,
+    "regressionGate": {
+      "name": "faithfulness_floor",
+      "threshold": 0.3,
+      "actual": 0.46153846153846156,
+      "passed": true
+    }
+  },
+  "rationaleSufficiency": {
+    "allClaims": [
+      {
+        "groupId": "ic-group-threshold",
+        "family": "inner_critic",
+        "visibleSummary": "You often frame yourself as incapable before acting.",
+        "fullEvidenceQuotes": [
+          "I'm terrible at keeping the commitments I make to myself",
+          "I can't stop myself from catastrophizing whenever I make a mistake",
+          "I always ruin things right when they start going well for me"
+        ],
+        "rationaleReceiptQuotes": [
+          "I'm terrible at keeping the commitments I make to myself",
+          "I can't stop myself from catastrophizing whenever I make a mistake",
+          "I always ruin things right when they start going well for me"
+        ],
+        "originalFaithful": false,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": false,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.8500000000000001,
+        "faithfulnessStableFromRationale": false,
+        "rationaleSufficient": false,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;summary_drift;faithfulness_drift"
+      },
+      {
+        "groupId": "ic-incapability",
+        "family": "inner_critic",
+        "visibleSummary": "Self-doubt shows up when you assess your own ability.",
+        "fullEvidenceQuotes": [
+          "I am terrible at finishing anything I start when there is real pressure involved",
+          "I always mess things up on the very day things were starting to look promising for me",
+          "I can not get past this habit of giving up right before things actually pay off",
+          "I keep failing at the things that matter most to me even when I am genuinely trying my hardest"
+        ],
+        "rationaleReceiptQuotes": [
+          "I am terrible at finishing anything I start when there is real pressure involved",
+          "I always mess things up on the very day things were starting to look promising for me"
+        ],
+        "originalFaithful": false,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": false,
+        "rationaleFaithful": false,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.14999999999999997,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": false,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;summary_drift"
+      },
+      {
+        "groupId": "ic-self-doubt",
+        "family": "inner_critic",
+        "visibleSummary": "Self-doubt shows up when you assess your own ability.",
+        "fullEvidenceQuotes": [
+          "I always second-guess my decisions even after I have thoroughly thought them through",
+          "I am not sure I can actually handle situations well when the stakes are really high",
+          "I honestly doubt my ability to follow through when something really matters to me",
+          "I question myself constantly and wonder whether I am capable of making good decisions when it matters"
+        ],
+        "rationaleReceiptQuotes": [
+          "I always second-guess my decisions even after I have thoroughly thought them through",
+          "I honestly doubt my ability to follow through when something really matters to me"
+        ],
+        "originalFaithful": true,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": false,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.8500000000000001,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": false,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;summary_drift"
+      },
+      {
+        "groupId": "mixed-bundle",
+        "family": "recovery_stabilizer",
+        "visibleSummary": "You describe improvement when you stay steady under pressure.",
+        "fullEvidenceQuotes": [
+          "Whenever I feel overwhelmed, I automatically withdraw from everyone around me",
+          "Every time conflict arises, I tend to go quiet and wait for it to pass",
+          "I notice that I always default to people-pleasing when someone seems upset",
+          "I'm terrible at asking for what I need, I always end up settling for less",
+          "I can't stop second-guessing every decision I make, even small ones",
+          "I doubt my ability to handle things when they get complicated",
+          "I've been doing better at speaking up for myself this week",
+          "I finally managed to set a limit and actually stick with it"
+        ],
+        "rationaleReceiptQuotes": [
+          "I've been doing better at speaking up for myself this week",
+          "I finally managed to set a limit and actually stick with it"
+        ],
+        "originalFaithful": true,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": false,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.8,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": false,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;summary_drift"
+      },
+      {
+        "groupId": "mixed-bundle",
+        "family": "trigger_condition",
+        "visibleSummary": "When pressure rises, you default to pleasing or appeasing.",
+        "fullEvidenceQuotes": [
+          "Whenever I feel overwhelmed, I automatically withdraw from everyone around me",
+          "Every time conflict arises, I tend to go quiet and wait for it to pass",
+          "I notice that I always default to people-pleasing when someone seems upset",
+          "I'm terrible at asking for what I need, I always end up settling for less",
+          "I can't stop second-guessing every decision I make, even small ones",
+          "I doubt my ability to handle things when they get complicated",
+          "I've been doing better at speaking up for myself this week",
+          "I finally managed to set a limit and actually stick with it"
+        ],
+        "rationaleReceiptQuotes": [
+          "Whenever I feel overwhelmed, I automatically withdraw from everyone around me",
+          "I notice that I always default to people-pleasing when someone seems upset"
+        ],
+        "originalFaithful": null,
+        "originalParseStatus": "malformed_json",
+        "summaryStableFromRationale": null,
+        "rationaleFaithful": null,
+        "rationaleFaithfulnessParseStatus": "malformed_json",
+        "rationaleFaithfulnessScore": null,
+        "faithfulnessStableFromRationale": null,
+        "rationaleSufficient": null,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "original_parse_failure:malformed_json;bundle_source=preferred_receipts"
+      },
+      {
+        "groupId": "rl-group-multisession",
+        "family": "repetitive_loop",
+        "visibleSummary": "You describe returning to the same loop even when you see it happening.",
+        "fullEvidenceQuotes": [
+          "I keep finding myself back in the same loop with this issue",
+          "Over and over I go through this same cycle, I know the pattern well",
+          "I'm still stuck in the same pattern I've been trying to break for months"
+        ],
+        "rationaleReceiptQuotes": [
+          "I keep finding myself back in the same loop with this issue",
+          "Over and over I go through this same cycle, I know the pattern well"
+        ],
+        "originalFaithful": null,
+        "originalParseStatus": "schema_invalid",
+        "summaryStableFromRationale": null,
+        "rationaleFaithful": null,
+        "rationaleFaithfulnessParseStatus": "schema_invalid",
+        "rationaleFaithfulnessScore": null,
+        "faithfulnessStableFromRationale": null,
+        "rationaleSufficient": null,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "original_parse_failure:schema_invalid;bundle_source=preferred_receipts"
+      },
+      {
+        "groupId": "rl-multisession-b",
+        "family": "repetitive_loop",
+        "visibleSummary": "You describe returning to the same loop even when you see it happening.",
+        "fullEvidenceQuotes": [
+          "I keep falling back into the same pattern with this every single time I think I have broken through it",
+          "Here I am again dealing with this exact cycle I thought I had finally left behind for good",
+          "Over and over I find myself back at square one despite all the work I have put into changing this",
+          "I know this pattern well by now, same loop every single time no matter how much awareness I bring to it"
+        ],
+        "rationaleReceiptQuotes": [
+          "I keep falling back into the same pattern with this every single time I think I have broken through it",
+          "Over and over I find myself back at square one despite all the work I have put into changing this"
+        ],
+        "originalFaithful": true,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": true,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.8500000000000001,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": true,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts"
+      },
+      {
+        "groupId": "rs-follow-through",
+        "family": "recovery_stabilizer",
+        "visibleSummary": "Progress appears when you follow through consistently.",
+        "fullEvidenceQuotes": [
+          "I actually managed to follow through on something I have been putting off for weeks and it feels great",
+          "I have been keeping up with my routine consistently for two full weeks and it is genuinely working",
+          "I finally stuck with my plan through a difficult stretch this time instead of quitting early as usual",
+          "I actually completed the project I had been putting off for months and it feels like real progress"
+        ],
+        "rationaleReceiptQuotes": [
+          "I actually managed to follow through on something I have been putting off for weeks and it feels great",
+          "I have been keeping up with my routine consistently for two full weeks and it is genuinely working"
+        ],
+        "originalFaithful": true,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": true,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.8500000000000001,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": true,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts"
+      },
+      {
+        "groupId": "rs-momentum",
+        "family": "recovery_stabilizer",
+        "visibleSummary": "You describe improvement when momentum becomes visible.",
+        "fullEvidenceQuotes": [
+          "I have been doing better at managing my reactions lately and it is making a real difference",
+          "I am making progress on building the habits I care about and the momentum is finally there",
+          "Things are getting better and I feel more capable of handling what comes up each day",
+          "I have been getting better at sitting with uncertainty instead of spiraling into anxiety"
+        ],
+        "rationaleReceiptQuotes": [
+          "I have been doing better at managing my reactions lately and it is making a real difference",
+          "I am making progress on building the habits I care about and the momentum is finally there"
+        ],
+        "originalFaithful": null,
+        "originalParseStatus": "schema_invalid",
+        "summaryStableFromRationale": null,
+        "rationaleFaithful": null,
+        "rationaleFaithfulnessParseStatus": "schema_invalid",
+        "rationaleFaithfulnessScore": null,
+        "faithfulnessStableFromRationale": null,
+        "rationaleSufficient": null,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "original_parse_failure:schema_invalid;bundle_source=preferred_receipts"
+      },
+      {
+        "groupId": "rs-pressure",
+        "family": "recovery_stabilizer",
+        "visibleSummary": "Progress appears when you follow through consistently.",
+        "fullEvidenceQuotes": [
+          "I actually managed to stay calm during a difficult conversation I had been dreading all week",
+          "I was able to step away from the situation before I said something I would have deeply regretted",
+          "I finally managed to speak up about what I needed instead of just going along as usual",
+          "I set a clear boundary this week and actually followed through on it when things got difficult"
+        ],
+        "rationaleReceiptQuotes": [
+          "I actually managed to stay calm during a difficult conversation I had been dreading all week",
+          "I was able to step away from the situation before I said something I would have deeply regretted"
+        ],
+        "originalFaithful": false,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": false,
+        "rationaleFaithful": false,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.14999999999999997,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": false,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;summary_drift"
+      },
+      {
+        "groupId": "tc-avoidance",
+        "family": "trigger_condition",
+        "visibleSummary": "Pressure often pushes you toward avoidance.",
+        "fullEvidenceQuotes": [
+          "I tend to avoid difficult conversations entirely whenever I feel any pressure or discomfort",
+          "Every time I have something important to do, I end up procrastinating until I'm overwhelmed by the deadline",
+          "I notice that I always put off anything that feels emotionally heavy or uncertain until the last moment",
+          "My default is to procrastinate whenever I'm facing anything that might involve tension or conflict"
+        ],
+        "rationaleReceiptQuotes": [
+          "I tend to avoid difficult conversations entirely whenever I feel any pressure or discomfort",
+          "Every time I have something important to do, I end up procrastinating until I am overwhelmed by the deadline"
+        ],
+        "originalFaithful": true,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": true,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.8500000000000001,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": true,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts"
+      },
+      {
+        "groupId": "tc-group-threshold",
+        "family": "trigger_condition",
+        "visibleSummary": "When pressure rises, you shut down or go quiet.",
+        "fullEvidenceQuotes": [
+          "I tend to shut down whenever someone raises their voice at me",
+          "Every time I'm given critical feedback, I freeze up and can't respond",
+          "I notice that I always go quiet when I feel overwhelmed in group settings"
+        ],
+        "rationaleReceiptQuotes": [
+          "I tend to shut down whenever someone raises their voice at me",
+          "Every time I'm given critical feedback, I freeze up and can't respond",
+          "I notice that I always go quiet when I feel overwhelmed in group settings"
+        ],
+        "originalFaithful": true,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": true,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 1,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": true,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts"
+      },
+      {
+        "groupId": "tc-people-pleasing",
+        "family": "trigger_condition",
+        "visibleSummary": "When pressure rises, you default to pleasing or appeasing.",
+        "fullEvidenceQuotes": [
+          "I tend to apologize immediately whenever someone seems even slightly upset with me",
+          "Every time there is any hint of tension, I automatically start people-pleasing to make it go away",
+          "I notice that I always apologize or back down whenever someone challenges what I have said",
+          "Whenever someone pushes back on anything, I default to appeasing them even when I clearly disagree"
+        ],
+        "rationaleReceiptQuotes": [
+          "I tend to apologize immediately whenever someone seems even slightly upset with me",
+          "Every time there is any hint of tension, I automatically start people-pleasing to make it go away"
+        ],
+        "originalFaithful": null,
+        "originalParseStatus": "malformed_json",
+        "summaryStableFromRationale": null,
+        "rationaleFaithful": null,
+        "rationaleFaithfulnessParseStatus": "malformed_json",
+        "rationaleFaithfulnessScore": null,
+        "faithfulnessStableFromRationale": null,
+        "rationaleSufficient": null,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "original_parse_failure:malformed_json;bundle_source=preferred_receipts"
+      }
+    ],
+    "totalClaimsConsidered": 13,
+    "scoredClaims": 6,
+    "sufficientCount": 4,
+    "insufficientCount": 2,
+    "parseFailureCount": 4,
+    "summaryStableCount": 4,
+    "summaryDriftCount": 2,
+    "faithfulnessStableCount": 6,
+    "faithfulnessDriftCount": 0,
+    "sufficiencyRate": 0.6666666666666666,
+    "summaryStabilityRate": 0.6666666666666666,
+    "faithfulnessStabilityRate": 1,
+    "inspectableClaims": [
+      {
+        "groupId": "ic-group-threshold",
+        "family": "inner_critic",
+        "visibleSummary": "You often frame yourself as incapable before acting.",
+        "fullEvidenceQuotes": [
+          "I'm terrible at keeping the commitments I make to myself",
+          "I can't stop myself from catastrophizing whenever I make a mistake",
+          "I always ruin things right when they start going well for me"
+        ],
+        "rationaleReceiptQuotes": [
+          "I'm terrible at keeping the commitments I make to myself",
+          "I can't stop myself from catastrophizing whenever I make a mistake",
+          "I always ruin things right when they start going well for me"
+        ],
+        "originalFaithful": false,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": false,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.8500000000000001,
+        "faithfulnessStableFromRationale": false,
+        "rationaleSufficient": false,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;summary_drift;faithfulness_drift"
+      },
+      {
+        "groupId": "ic-incapability",
+        "family": "inner_critic",
+        "visibleSummary": "Self-doubt shows up when you assess your own ability.",
+        "fullEvidenceQuotes": [
+          "I am terrible at finishing anything I start when there is real pressure involved",
+          "I always mess things up on the very day things were starting to look promising for me",
+          "I can not get past this habit of giving up right before things actually pay off",
+          "I keep failing at the things that matter most to me even when I am genuinely trying my hardest"
+        ],
+        "rationaleReceiptQuotes": [
+          "I am terrible at finishing anything I start when there is real pressure involved",
+          "I always mess things up on the very day things were starting to look promising for me"
+        ],
+        "originalFaithful": false,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": false,
+        "rationaleFaithful": false,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.14999999999999997,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": false,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;summary_drift"
+      },
+      {
+        "groupId": "ic-self-doubt",
+        "family": "inner_critic",
+        "visibleSummary": "Self-doubt shows up when you assess your own ability.",
+        "fullEvidenceQuotes": [
+          "I always second-guess my decisions even after I have thoroughly thought them through",
+          "I am not sure I can actually handle situations well when the stakes are really high",
+          "I honestly doubt my ability to follow through when something really matters to me",
+          "I question myself constantly and wonder whether I am capable of making good decisions when it matters"
+        ],
+        "rationaleReceiptQuotes": [
+          "I always second-guess my decisions even after I have thoroughly thought them through",
+          "I honestly doubt my ability to follow through when something really matters to me"
+        ],
+        "originalFaithful": true,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": false,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.8500000000000001,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": false,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;summary_drift"
+      },
+      {
+        "groupId": "mixed-bundle",
+        "family": "recovery_stabilizer",
+        "visibleSummary": "You describe improvement when you stay steady under pressure.",
+        "fullEvidenceQuotes": [
+          "Whenever I feel overwhelmed, I automatically withdraw from everyone around me",
+          "Every time conflict arises, I tend to go quiet and wait for it to pass",
+          "I notice that I always default to people-pleasing when someone seems upset",
+          "I'm terrible at asking for what I need, I always end up settling for less",
+          "I can't stop second-guessing every decision I make, even small ones",
+          "I doubt my ability to handle things when they get complicated",
+          "I've been doing better at speaking up for myself this week",
+          "I finally managed to set a limit and actually stick with it"
+        ],
+        "rationaleReceiptQuotes": [
+          "I've been doing better at speaking up for myself this week",
+          "I finally managed to set a limit and actually stick with it"
+        ],
+        "originalFaithful": true,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": false,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.8,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": false,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;summary_drift"
+      },
+      {
+        "groupId": "mixed-bundle",
+        "family": "trigger_condition",
+        "visibleSummary": "When pressure rises, you default to pleasing or appeasing.",
+        "fullEvidenceQuotes": [
+          "Whenever I feel overwhelmed, I automatically withdraw from everyone around me",
+          "Every time conflict arises, I tend to go quiet and wait for it to pass",
+          "I notice that I always default to people-pleasing when someone seems upset",
+          "I'm terrible at asking for what I need, I always end up settling for less",
+          "I can't stop second-guessing every decision I make, even small ones",
+          "I doubt my ability to handle things when they get complicated",
+          "I've been doing better at speaking up for myself this week",
+          "I finally managed to set a limit and actually stick with it"
+        ],
+        "rationaleReceiptQuotes": [
+          "Whenever I feel overwhelmed, I automatically withdraw from everyone around me",
+          "I notice that I always default to people-pleasing when someone seems upset"
+        ],
+        "originalFaithful": null,
+        "originalParseStatus": "malformed_json",
+        "summaryStableFromRationale": null,
+        "rationaleFaithful": null,
+        "rationaleFaithfulnessParseStatus": "malformed_json",
+        "rationaleFaithfulnessScore": null,
+        "faithfulnessStableFromRationale": null,
+        "rationaleSufficient": null,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "original_parse_failure:malformed_json;bundle_source=preferred_receipts"
+      },
+      {
+        "groupId": "rl-group-multisession",
+        "family": "repetitive_loop",
+        "visibleSummary": "You describe returning to the same loop even when you see it happening.",
+        "fullEvidenceQuotes": [
+          "I keep finding myself back in the same loop with this issue",
+          "Over and over I go through this same cycle, I know the pattern well",
+          "I'm still stuck in the same pattern I've been trying to break for months"
+        ],
+        "rationaleReceiptQuotes": [
+          "I keep finding myself back in the same loop with this issue",
+          "Over and over I go through this same cycle, I know the pattern well"
+        ],
+        "originalFaithful": null,
+        "originalParseStatus": "schema_invalid",
+        "summaryStableFromRationale": null,
+        "rationaleFaithful": null,
+        "rationaleFaithfulnessParseStatus": "schema_invalid",
+        "rationaleFaithfulnessScore": null,
+        "faithfulnessStableFromRationale": null,
+        "rationaleSufficient": null,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "original_parse_failure:schema_invalid;bundle_source=preferred_receipts"
+      },
+      {
+        "groupId": "rs-momentum",
+        "family": "recovery_stabilizer",
+        "visibleSummary": "You describe improvement when momentum becomes visible.",
+        "fullEvidenceQuotes": [
+          "I have been doing better at managing my reactions lately and it is making a real difference",
+          "I am making progress on building the habits I care about and the momentum is finally there",
+          "Things are getting better and I feel more capable of handling what comes up each day",
+          "I have been getting better at sitting with uncertainty instead of spiraling into anxiety"
+        ],
+        "rationaleReceiptQuotes": [
+          "I have been doing better at managing my reactions lately and it is making a real difference",
+          "I am making progress on building the habits I care about and the momentum is finally there"
+        ],
+        "originalFaithful": null,
+        "originalParseStatus": "schema_invalid",
+        "summaryStableFromRationale": null,
+        "rationaleFaithful": null,
+        "rationaleFaithfulnessParseStatus": "schema_invalid",
+        "rationaleFaithfulnessScore": null,
+        "faithfulnessStableFromRationale": null,
+        "rationaleSufficient": null,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "original_parse_failure:schema_invalid;bundle_source=preferred_receipts"
+      },
+      {
+        "groupId": "rs-pressure",
+        "family": "recovery_stabilizer",
+        "visibleSummary": "Progress appears when you follow through consistently.",
+        "fullEvidenceQuotes": [
+          "I actually managed to stay calm during a difficult conversation I had been dreading all week",
+          "I was able to step away from the situation before I said something I would have deeply regretted",
+          "I finally managed to speak up about what I needed instead of just going along as usual",
+          "I set a clear boundary this week and actually followed through on it when things got difficult"
+        ],
+        "rationaleReceiptQuotes": [
+          "I actually managed to stay calm during a difficult conversation I had been dreading all week",
+          "I was able to step away from the situation before I said something I would have deeply regretted"
+        ],
+        "originalFaithful": false,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": false,
+        "rationaleFaithful": false,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.14999999999999997,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": false,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;summary_drift"
+      },
+      {
+        "groupId": "tc-people-pleasing",
+        "family": "trigger_condition",
+        "visibleSummary": "When pressure rises, you default to pleasing or appeasing.",
+        "fullEvidenceQuotes": [
+          "I tend to apologize immediately whenever someone seems even slightly upset with me",
+          "Every time there is any hint of tension, I automatically start people-pleasing to make it go away",
+          "I notice that I always apologize or back down whenever someone challenges what I have said",
+          "Whenever someone pushes back on anything, I default to appeasing them even when I clearly disagree"
+        ],
+        "rationaleReceiptQuotes": [
+          "I tend to apologize immediately whenever someone seems even slightly upset with me",
+          "Every time there is any hint of tension, I automatically start people-pleasing to make it go away"
+        ],
+        "originalFaithful": null,
+        "originalParseStatus": "malformed_json",
+        "summaryStableFromRationale": null,
+        "rationaleFaithful": null,
+        "rationaleFaithfulnessParseStatus": "malformed_json",
+        "rationaleFaithfulnessScore": null,
+        "faithfulnessStableFromRationale": null,
+        "rationaleSufficient": null,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "original_parse_failure:malformed_json;bundle_source=preferred_receipts"
+      }
+    ],
+    "authoritativeViolations": 0,
+    "regressionGate": {
+      "name": "rationale_sufficiency_floor",
+      "threshold": 0.5,
+      "actual": 0.6666666666666666,
+      "passed": true
+    }
+  },
+  "rationaleMinimality": {
+    "totalEligibleClaims": 4,
+    "minimalClaims": 3,
+    "bloatedClaims": 1,
+    "meanMinimalityRate": 0.75,
+    "totalRationaleSubsetChecks": 16,
+    "totalComplementSubsetChecks": 13,
+    "meanRationaleSubsetChecksPerClaim": 4,
+    "meanComplementSubsetChecksPerClaim": 3.25,
+    "maxRationaleSubsetChecksPerClaim": 7,
+    "maxComplementSubsetChecksPerClaim": 7,
+    "rationaleSubsetSearchSkippedClaims": 0,
+    "complementSubsetSearchSkippedClaims": 0,
+    "rationaleSubsetSearchOverCapClaims": 0,
+    "complementSubsetSearchOverCapClaims": 0,
+    "unknownMinimalityClaims": 0,
+    "unknownAlternativeSupportClaims": 0,
+    "unknownMinimalityReasonCounts": {
+      "subset_search_skipped": 0,
+      "path_indeterminate": 0
+    },
+    "unknownAlternativeSupportReasonCounts": {
+      "subset_search_skipped": 0,
+      "path_indeterminate": 0
+    },
+    "searchedRationaleSubsetRate": 1,
+    "searchedComplementSubsetRate": 1,
+    "unknownMinimalityRate": 0,
+    "unknownAlternativeSupportRate": 0,
+    "globallyMinimalClaims": 3,
+    "nonMinimalClaims": 1,
+    "globallyMinimalRate": 0.75,
+    "bloatedByDeltaClaims": 1,
+    "meanChosenVsMinimalSubsetDelta": 0.25,
+    "alternativeSupportClaims": 1,
+    "noAlternativeSupportClaims": 3,
+    "alternativeSupportRate": 0.25,
+    "competitiveAlternativeSupportClaims": 1,
+    "nonCompetitiveAlternativeSupportClaims": 0,
+    "competitiveAlternativeSupportRate": 0.25,
+    "strongComprehensivenessCount": 2,
+    "partialComprehensivenessCount": 1,
+    "noComprehensivenessCount": 1,
+    "skippedSearchInspectableCount": 0,
+    "indeterminateInspectableCount": 0,
+    "nonMinimalInspectableCount": 1,
+    "competitiveAlternativeSupportInspectableCount": 1,
+    "bloatedInspectableCount": 1,
+    "inspectableClaims": [
+      {
+        "groupId": "tc-group-threshold",
+        "family": "trigger_condition",
+        "visibleSummary": "When pressure rises, you shut down or go quiet.",
+        "fullEvidenceQuotes": [
+          "I tend to shut down whenever someone raises their voice at me",
+          "Every time I'm given critical feedback, I freeze up and can't respond",
+          "I notice that I always go quiet when I feel overwhelmed in group settings"
+        ],
+        "rationaleReceiptQuotes": [
+          "I tend to shut down whenever someone raises their voice at me",
+          "Every time I'm given critical feedback, I freeze up and can't respond",
+          "I notice that I always go quiet when I feel overwhelmed in group settings"
+        ],
+        "originalFaithful": true,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": true,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 1,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": true,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;non_minimal_or_unknown;comprehensiveness=strong;alternative_support=none",
+        "rationaleQuoteCount": 3,
+        "complementReceiptQuotes": [],
+        "leaveOneOutChecks": [
+          {
+            "removedQuote": "I tend to shut down whenever someone raises their voice at me",
+            "summaryStableFromRationale": true,
+            "faithfulnessStableFromRationale": true,
+            "critical": false
+          },
+          {
+            "removedQuote": "Every time I'm given critical feedback, I freeze up and can't respond",
+            "summaryStableFromRationale": true,
+            "faithfulnessStableFromRationale": true,
+            "critical": false
+          },
+          {
+            "removedQuote": "I notice that I always go quiet when I feel overwhelmed in group settings",
+            "summaryStableFromRationale": true,
+            "faithfulnessStableFromRationale": true,
+            "critical": false
+          }
+        ],
+        "criticalQuoteCount": 0,
+        "redundantQuoteCount": 3,
+        "minimalityRate": 0,
+        "complementSummaryStable": false,
+        "complementFaithfulnessStable": false,
+        "comprehensivenessEffect": "strong",
+        "rationaleSubsetSearchPerformed": true,
+        "rationaleSubsetSearchOverCap": false,
+        "rationaleSearchCapUsed": 8,
+        "rationaleSubsetCountChecked": 7,
+        "minimalPreservingSubsetQuotes": [
+          "I tend to shut down whenever someone raises their voice at me",
+          "I notice that I always go quiet when I feel overwhelmed in group settings"
+        ],
+        "minimalPreservingSubsetSize": 2,
+        "rationaleGloballyMinimal": false,
+        "smallerSupportingSubsetExists": true,
+        "unknownMinimalityReason": null,
+        "complementSubsetSearchPerformed": true,
+        "complementSubsetSearchOverCap": false,
+        "complementSearchCapUsed": 8,
+        "complementSubsetCountChecked": 0,
+        "complementSupportingSubsetExists": false,
+        "minimalComplementSupportingSubsetQuotes": [],
+        "minimalComplementSupportingSubsetSize": null,
+        "unknownAlternativeSupportReason": null,
+        "chosenVsMinimalSubsetDelta": 1,
+        "complementVsMinimalSubsetDelta": null,
+        "competitiveAlternativeSupport": null,
+        "alternativeSupportStrength": "none"
+      },
+      {
+        "groupId": "rl-multisession-b",
+        "family": "repetitive_loop",
+        "visibleSummary": "You describe returning to the same loop even when you see it happening.",
+        "fullEvidenceQuotes": [
+          "I keep falling back into the same pattern with this every single time I think I have broken through it",
+          "Here I am again dealing with this exact cycle I thought I had finally left behind for good",
+          "Over and over I find myself back at square one despite all the work I have put into changing this",
+          "I know this pattern well by now, same loop every single time no matter how much awareness I bring to it"
+        ],
+        "rationaleReceiptQuotes": [
+          "I keep falling back into the same pattern with this every single time I think I have broken through it",
+          "Over and over I find myself back at square one despite all the work I have put into changing this"
+        ],
+        "originalFaithful": true,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": true,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.8500000000000001,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": true,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;globally_minimal;comprehensiveness=none;alternative_support=strong",
+        "rationaleQuoteCount": 2,
+        "complementReceiptQuotes": [
+          "Here I am again dealing with this exact cycle I thought I had finally left behind for good",
+          "I know this pattern well by now, same loop every single time no matter how much awareness I bring to it"
+        ],
+        "leaveOneOutChecks": [
+          {
+            "removedQuote": "I keep falling back into the same pattern with this every single time I think I have broken through it",
+            "summaryStableFromRationale": false,
+            "faithfulnessStableFromRationale": false,
+            "critical": true
+          },
+          {
+            "removedQuote": "Over and over I find myself back at square one despite all the work I have put into changing this",
+            "summaryStableFromRationale": false,
+            "faithfulnessStableFromRationale": false,
+            "critical": true
+          }
+        ],
+        "criticalQuoteCount": 2,
+        "redundantQuoteCount": 0,
+        "minimalityRate": 1,
+        "complementSummaryStable": true,
+        "complementFaithfulnessStable": true,
+        "comprehensivenessEffect": "none",
+        "rationaleSubsetSearchPerformed": true,
+        "rationaleSubsetSearchOverCap": false,
+        "rationaleSearchCapUsed": 8,
+        "rationaleSubsetCountChecked": 3,
+        "minimalPreservingSubsetQuotes": [
+          "I keep falling back into the same pattern with this every single time I think I have broken through it",
+          "Over and over I find myself back at square one despite all the work I have put into changing this"
+        ],
+        "minimalPreservingSubsetSize": 2,
+        "rationaleGloballyMinimal": true,
+        "smallerSupportingSubsetExists": false,
+        "unknownMinimalityReason": null,
+        "complementSubsetSearchPerformed": true,
+        "complementSubsetSearchOverCap": false,
+        "complementSearchCapUsed": 8,
+        "complementSubsetCountChecked": 3,
+        "complementSupportingSubsetExists": true,
+        "minimalComplementSupportingSubsetQuotes": [
+          "Here I am again dealing with this exact cycle I thought I had finally left behind for good",
+          "I know this pattern well by now, same loop every single time no matter how much awareness I bring to it"
+        ],
+        "minimalComplementSupportingSubsetSize": 2,
+        "unknownAlternativeSupportReason": null,
+        "chosenVsMinimalSubsetDelta": 0,
+        "complementVsMinimalSubsetDelta": 0,
+        "competitiveAlternativeSupport": true,
+        "alternativeSupportStrength": "strong"
+      },
+      {
+        "groupId": "tc-avoidance",
+        "family": "trigger_condition",
+        "visibleSummary": "Pressure often pushes you toward avoidance.",
+        "fullEvidenceQuotes": [
+          "I tend to avoid difficult conversations entirely whenever I feel any pressure or discomfort",
+          "Every time I have something important to do, I end up procrastinating until I'm overwhelmed by the deadline",
+          "I notice that I always put off anything that feels emotionally heavy or uncertain until the last moment",
+          "My default is to procrastinate whenever I'm facing anything that might involve tension or conflict"
+        ],
+        "rationaleReceiptQuotes": [
+          "I tend to avoid difficult conversations entirely whenever I feel any pressure or discomfort",
+          "Every time I have something important to do, I end up procrastinating until I am overwhelmed by the deadline"
+        ],
+        "originalFaithful": true,
+        "originalParseStatus": "parsed",
+        "summaryStableFromRationale": true,
+        "rationaleFaithful": true,
+        "rationaleFaithfulnessParseStatus": "parsed",
+        "rationaleFaithfulnessScore": 0.8500000000000001,
+        "faithfulnessStableFromRationale": true,
+        "rationaleSufficient": true,
+        "shadowMode": true,
+        "usedForProductDecision": false,
+        "notes": "bundle_source=preferred_receipts;globally_minimal;comprehensiveness=partial;alternative_support=none",
+        "rationaleQuoteCount": 2,
+        "complementReceiptQuotes": [
+          "Every time I have something important to do, I end up procrastinating until I'm overwhelmed by the deadline",
+          "I notice that I always put off anything that feels emotionally heavy or uncertain until the last moment",
+          "My default is to procrastinate whenever I'm facing anything that might involve tension or conflict"
+        ],
+        "leaveOneOutChecks": [
+          {
+            "removedQuote": "I tend to avoid difficult conversations entirely whenever I feel any pressure or discomfort",
+            "summaryStableFromRationale": false,
+            "faithfulnessStableFromRationale": false,
+            "critical": true
+          },
+          {
+            "removedQuote": "Every time I have something important to do, I end up procrastinating until I am overwhelmed by the deadline",
+            "summaryStableFromRationale": false,
+            "faithfulnessStableFromRationale": false,
+            "critical": true
+          }
+        ],
+        "criticalQuoteCount": 2,
+        "redundantQuoteCount": 0,
+        "minimalityRate": 1,
+        "complementSummaryStable": false,
+        "complementFaithfulnessStable": true,
+        "comprehensivenessEffect": "partial",
+        "rationaleSubsetSearchPerformed": true,
+        "rationaleSubsetSearchOverCap": false,
+        "rationaleSearchCapUsed": 8,
+        "rationaleSubsetCountChecked": 3,
+        "minimalPreservingSubsetQuotes": [
+          "I tend to avoid difficult conversations entirely whenever I feel any pressure or discomfort",
+          "Every time I have something important to do, I end up procrastinating until I am overwhelmed by the deadline"
+        ],
+        "minimalPreservingSubsetSize": 2,
+        "rationaleGloballyMinimal": true,
+        "smallerSupportingSubsetExists": false,
+        "unknownMinimalityReason": null,
+        "complementSubsetSearchPerformed": true,
+        "complementSubsetSearchOverCap": false,
+        "complementSearchCapUsed": 8,
+        "complementSubsetCountChecked": 7,
+        "complementSupportingSubsetExists": false,
+        "minimalComplementSupportingSubsetQuotes": [],
+        "minimalComplementSupportingSubsetSize": null,
+        "unknownAlternativeSupportReason": null,
+        "chosenVsMinimalSubsetDelta": 0,
+        "complementVsMinimalSubsetDelta": null,
+        "competitiveAlternativeSupport": null,
+        "alternativeSupportStrength": "none"
+      }
+    ],
+    "authoritativeViolations": 0,
+    "regressionGate": {
+      "name": "rationale_minimality_floor",
+      "threshold": 0.5,
+      "actual": 0.75,
+      "passed": true
+    }
+  },
+  "reviewRouting": {
+    "totalGroups": 22,
+    "flaggedCount": 13,
+    "flaggedRate": 0.5909090909090909,
+    "priorityDistribution": {
+      "low": 2,
+      "medium": 1,
+      "high": 10
+    },
+    "reasonDistribution": {
+      "LLM_HEURISTIC_DISAGREEMENT": 7,
+      "LLM_OVERREACH": 6,
+      "NO_SAFE_VISIBLE_SUMMARY": 5,
+      "LOW_FAITHFULNESS": 3,
+      "FAITHFULNESS_PARSE_FAILURE": 4,
+      "SURFACED_WITH_WEAK_SUPPORT": 1
+    },
+    "flaggedGroups": [
+      {
+        "groupId": "tc-group-threshold",
+        "emittedFamilies": [
+          "trigger_condition"
+        ],
+        "review_needed": true,
+        "review_priority": "high",
+        "review_reasons": [
+          "LLM_HEURISTIC_DISAGREEMENT",
+          "LLM_OVERREACH"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "ic-group-threshold",
+        "emittedFamilies": [
+          "inner_critic"
+        ],
+        "review_needed": true,
+        "review_priority": "high",
+        "review_reasons": [
+          "NO_SAFE_VISIBLE_SUMMARY",
+          "LOW_FAITHFULNESS",
+          "LLM_HEURISTIC_DISAGREEMENT"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "ic-tc-overlap",
+        "emittedFamilies": [
+          "trigger_condition",
+          "inner_critic"
+        ],
+        "review_needed": true,
+        "review_priority": "high",
+        "review_reasons": [
+          "NO_SAFE_VISIBLE_SUMMARY",
+          "LLM_HEURISTIC_DISAGREEMENT",
+          "LLM_OVERREACH"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "rs-group-threshold",
+        "emittedFamilies": [
+          "recovery_stabilizer"
+        ],
+        "review_needed": true,
+        "review_priority": "low",
+        "review_reasons": [
+          "NO_SAFE_VISIBLE_SUMMARY"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "rl-group-multisession",
+        "emittedFamilies": [
+          "repetitive_loop"
+        ],
+        "review_needed": true,
+        "review_priority": "high",
+        "review_reasons": [
+          "FAITHFULNESS_PARSE_FAILURE"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "mixed-bundle",
+        "emittedFamilies": [
+          "trigger_condition",
+          "recovery_stabilizer"
+        ],
+        "review_needed": true,
+        "review_priority": "high",
+        "review_reasons": [
+          "NO_SAFE_VISIBLE_SUMMARY",
+          "FAITHFULNESS_PARSE_FAILURE",
+          "LLM_HEURISTIC_DISAGREEMENT",
+          "LLM_OVERREACH"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "tc-avoidance",
+        "emittedFamilies": [
+          "trigger_condition"
+        ],
+        "review_needed": true,
+        "review_priority": "high",
+        "review_reasons": [
+          "LLM_HEURISTIC_DISAGREEMENT",
+          "LLM_OVERREACH"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "tc-people-pleasing",
+        "emittedFamilies": [
+          "trigger_condition"
+        ],
+        "review_needed": true,
+        "review_priority": "high",
+        "review_reasons": [
+          "FAITHFULNESS_PARSE_FAILURE",
+          "LLM_HEURISTIC_DISAGREEMENT",
+          "LLM_OVERREACH"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "tc-no-summary",
+        "emittedFamilies": [
+          "trigger_condition"
+        ],
+        "review_needed": true,
+        "review_priority": "high",
+        "review_reasons": [
+          "NO_SAFE_VISIBLE_SUMMARY",
+          "LLM_HEURISTIC_DISAGREEMENT",
+          "LLM_OVERREACH"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "ic-incapability",
+        "emittedFamilies": [],
+        "review_needed": true,
+        "review_priority": "low",
+        "review_reasons": [
+          "LOW_FAITHFULNESS"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "rs-follow-through",
+        "emittedFamilies": [
+          "recovery_stabilizer"
+        ],
+        "review_needed": true,
+        "review_priority": "medium",
+        "review_reasons": [
+          "SURFACED_WITH_WEAK_SUPPORT"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "rs-pressure",
+        "emittedFamilies": [
+          "recovery_stabilizer"
+        ],
+        "review_needed": true,
+        "review_priority": "high",
+        "review_reasons": [
+          "LOW_FAITHFULNESS"
+        ],
+        "faithfulnessIncluded": true
+      },
+      {
+        "groupId": "rs-momentum",
+        "emittedFamilies": [
+          "recovery_stabilizer"
+        ],
+        "review_needed": true,
+        "review_priority": "high",
+        "review_reasons": [
+          "FAITHFULNESS_PARSE_FAILURE"
+        ],
+        "faithfulnessIncluded": true
+      }
+    ],
+    "faithfulnessIncluded": true
+  },
+  "visibleCalibration": {
+    "rows": [
+      {
+        "threshold": 0,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.05,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.1,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.15,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.2,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.25,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.3,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.35,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.4,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.45,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.5,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.55,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.6,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.65,
+        "eligibleClaims": 9,
+        "surfacedClaims": 9,
+        "abstainedClaims": 0,
+        "coverageRate": 1,
+        "failureCount": 5,
+        "failureRate": 0.5555555555555556,
+        "faithfulSurfacedCount": 4,
+        "faithfulSurfacedRate": 0.4444444444444444
+      },
+      {
+        "threshold": 0.7,
+        "eligibleClaims": 9,
+        "surfacedClaims": 8,
+        "abstainedClaims": 1,
+        "coverageRate": 0.8888888888888888,
+        "failureCount": 5,
+        "failureRate": 0.625,
+        "faithfulSurfacedCount": 3,
+        "faithfulSurfacedRate": 0.375
+      },
+      {
+        "threshold": 0.75,
+        "eligibleClaims": 9,
+        "surfacedClaims": 4,
+        "abstainedClaims": 5,
+        "coverageRate": 0.4444444444444444,
+        "failureCount": 2,
+        "failureRate": 0.5,
+        "faithfulSurfacedCount": 2,
+        "faithfulSurfacedRate": 0.5
+      },
+      {
+        "threshold": 0.8,
+        "eligibleClaims": 9,
+        "surfacedClaims": 4,
+        "abstainedClaims": 5,
+        "coverageRate": 0.4444444444444444,
+        "failureCount": 2,
+        "failureRate": 0.5,
+        "faithfulSurfacedCount": 2,
+        "faithfulSurfacedRate": 0.5
+      },
+      {
+        "threshold": 0.85,
+        "eligibleClaims": 9,
+        "surfacedClaims": 1,
+        "abstainedClaims": 8,
+        "coverageRate": 0.1111111111111111,
+        "failureCount": 1,
+        "failureRate": 1,
+        "faithfulSurfacedCount": 0,
+        "faithfulSurfacedRate": 0
+      },
+      {
+        "threshold": 0.9,
+        "eligibleClaims": 9,
+        "surfacedClaims": 1,
+        "abstainedClaims": 8,
+        "coverageRate": 0.1111111111111111,
+        "failureCount": 1,
+        "failureRate": 1,
+        "faithfulSurfacedCount": 0,
+        "faithfulSurfacedRate": 0
+      },
+      {
+        "threshold": 0.95,
+        "eligibleClaims": 9,
+        "surfacedClaims": 1,
+        "abstainedClaims": 8,
+        "coverageRate": 0.1111111111111111,
+        "failureCount": 1,
+        "failureRate": 1,
+        "faithfulSurfacedCount": 0,
+        "faithfulSurfacedRate": 0
+      },
+      {
+        "threshold": 1,
+        "eligibleClaims": 9,
+        "surfacedClaims": 1,
+        "abstainedClaims": 8,
+        "coverageRate": 0.1111111111111111,
+        "failureCount": 1,
+        "failureRate": 1,
+        "faithfulSurfacedCount": 0,
+        "faithfulSurfacedRate": 0
+      }
+    ],
+    "eligibleClaims": 9,
+    "selectedThreshold": 0.75,
+    "targetFailureRate": 0.25,
+    "selectedRow": {
+      "threshold": 0.75,
+      "eligibleClaims": 9,
+      "surfacedClaims": 4,
+      "abstainedClaims": 5,
+      "coverageRate": 0.4444444444444444,
+      "failureCount": 2,
+      "failureRate": 0.5,
+      "faithfulSurfacedCount": 2,
+      "faithfulSurfacedRate": 0.5
+    },
+    "policy": {
+      "selectedThreshold": 0.75,
+      "targetFailureRate": 0.25,
+      "selectionReason": "fallback_least_bad_no_threshold_meets_target_0.25",
+      "fallbackUsed": true
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-03-18T16:21:06.466Z",
+  "inputResolutionCount": 0,
+  "duplicateResolutionCount": 0,
+  "groupedRowsWritten": 0,
+  "faithfulnessRowsWritten": 0,
+  "resolutionsPath": "/Users/user/ai-companion/eval/patterns/review-resolutions.jsonl",
+  "groupedOverlayPath": "/Users/user/ai-companion/eval/patterns/adjudication-groups.reviewed.jsonl",
+  "faithfulnessOverlayPath": "/Users/user/ai-companion/eval/patterns/faithfulness-shadow-reviewed.jsonl"
+}
