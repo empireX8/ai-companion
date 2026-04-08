@@ -93,6 +93,18 @@ describe("analyzeBehavioralEligibility — known ELIGIBLE messages", () => {
       "progress language — doing better",
       "I've been doing better lately when I go for walks",
     ],
+    [
+      "trigger language — default to people-pleasing",
+      "Whenever someone seems upset with me, I default to people-pleasing.",
+    ],
+    [
+      "trigger language — walk back my boundary",
+      "When I think I might disappoint someone, I walk back my boundary.",
+    ],
+    [
+      "progress language — doing a better job",
+      "Lately I've been doing a better job of slowing down before reacting.",
+    ],
   ])("accepts: %s", (_label, text) => {
     const result = analyzeBehavioralEligibility(text);
     expect(result.eligible).toBe(true);
@@ -302,6 +314,20 @@ describe("analyzeBehavioralEligibility — feature flags", () => {
   it("containsProgressLanguage is true for 'doing better'", () => {
     const { features } = analyzeBehavioralEligibility(
       "I've been doing better lately when I go for walks"
+    );
+    expect(features.containsProgressLanguage).toBe(true);
+  });
+
+  it("containsHabitLanguage is true for 'default to'", () => {
+    const { features } = analyzeBehavioralEligibility(
+      "Whenever someone seems upset with me, I default to people-pleasing."
+    );
+    expect(features.containsHabitLanguage).toBe(true);
+  });
+
+  it("containsProgressLanguage is true for 'doing a better job'", () => {
+    const { features } = analyzeBehavioralEligibility(
+      "Lately I've been doing a better job of slowing down before reacting."
     );
     expect(features.containsProgressLanguage).toBe(true);
   });
@@ -604,5 +630,28 @@ describe("integration — legitimate behavioral messages pass through", () => {
 
     expect(count).toBeGreaterThanOrEqual(1);
     expect(db._claims.find((c) => c.patternType === "trigger_condition")).toBeDefined();
+  });
+
+  it("native-like trigger phrasing now survives the behavioral gate and persists a claim", async () => {
+    const db = makeMockDb([
+      makeMsg("Whenever someone seems upset with me, I default to people-pleasing."),
+      makeMsg("When I think I might disappoint someone, I walk back my boundary.", {
+        sessionId: "s2",
+      }),
+      makeMsg("If there's tension, I start appeasing people instead of being direct.", {
+        sessionId: "s3",
+      }),
+    ]);
+
+    const count = await patternDetectorV1({
+      userId: "u1",
+      messageIds: [],
+      runId: "run1",
+      db,
+    });
+
+    expect(count).toBeGreaterThanOrEqual(1);
+    const tc = db._claims.find((c) => c.patternType === "trigger_condition");
+    expect(tc).toBeDefined();
   });
 });

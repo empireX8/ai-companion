@@ -2,6 +2,27 @@ type SessionLike = {
   id: string;
 };
 
+/**
+ * Wraps an async function so that concurrent calls share the same in-flight
+ * promise — the inner function is called at most once per "batch" of concurrent
+ * invocations. After the promise settles, the guard resets so future sequential
+ * calls execute normally.
+ *
+ * Used by the chat bootstrap to prevent React Strict-Mode double-effect
+ * execution from creating two empty sessions.
+ */
+export function createOnceGuard<T>(fn: () => Promise<T>): () => Promise<T> {
+  let inFlight: Promise<T> | null = null;
+  return () => {
+    if (!inFlight) {
+      inFlight = fn().finally(() => {
+        inFlight = null;
+      });
+    }
+    return inFlight;
+  };
+}
+
 export type ChatBootstrapResolution<TSession extends SessionLike> = {
   activeSessionId: string;
   sessions: TSession[];

@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import { detectTriggerConditionClues } from "../trigger-condition-detector";
 import {
   detectInnerCriticClues,
   IC_MIN_MATCHES,
@@ -41,6 +42,26 @@ function makeEntry(
     ...overrides,
   };
 }
+
+describe("detectTriggerConditionClues — native phrasing coverage", () => {
+  it("detects default-to / boundary-walkback / appeasing trigger phrasing across sessions", () => {
+    const entries = [
+      makeEntry("Whenever someone seems upset with me, I default to people-pleasing.", {
+        sessionId: "sess1",
+      }),
+      makeEntry("When I think I might disappoint someone, I walk back my boundary.", {
+        sessionId: "sess2",
+      }),
+      makeEntry("If there's tension, I start appeasing people instead of being direct.", {
+        sessionId: "sess3",
+      }),
+    ];
+
+    const result = detectTriggerConditionClues({ userId: "u1", entries });
+    expect(result).toHaveLength(1);
+    expect(result[0]!.patternType).toBe("trigger_condition");
+  });
+});
 
 // ── inner_critic ──────────────────────────────────────────────────────────────
 
@@ -257,6 +278,21 @@ describe("detectRecoveryStabilizerClues — clue production", () => {
       makeEntry("I've been doing better with my routines")
     );
     const result = detectRecoveryStabilizerClues({ userId: "u1", entries });
+    expect(result).toHaveLength(1);
+    expect(result[0]!.patternType).toBe("recovery_stabilizer");
+  });
+
+  it("detects native progress phrasing like doing a better job and stabilizing faster", () => {
+    const result = detectRecoveryStabilizerClues({
+      userId: "u1",
+      entries: [
+        makeEntry("Lately I've been doing a better job of slowing down before reacting."),
+        makeEntry("I've started noticing the spiral earlier and stabilizing faster than I used to.", {
+          sessionId: "sess2",
+        }),
+      ],
+    });
+
     expect(result).toHaveLength(1);
     expect(result[0]!.patternType).toBe("recovery_stabilizer");
   });

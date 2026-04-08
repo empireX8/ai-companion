@@ -30,7 +30,7 @@ import { DomainListSlot } from "@/components/layout/DomainListSlot";
 import { TopBarSlot } from "@/components/layout/TopBarSlot";
 import { useDomainListPanel } from "@/components/layout/DomainListContext";
 import { ChatContextDrawer } from "@/components/chat/ChatContextDrawer";
-import { resolveChatBootstrapSession } from "@/lib/chat-session-bootstrap";
+import { createOnceGuard, resolveChatBootstrapSession } from "@/lib/chat-session-bootstrap";
 
 type ChatMessage = {
   id: string;
@@ -256,6 +256,9 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   // Tracks which sessionId has already had its scroll position restored this mount
   const didRestoreRef = useRef<string | null>(null);
+  // Guards against duplicate session creation when the bootstrap effect fires
+  // more than once concurrently (e.g. React Strict Mode double-invocation).
+  const bootstrapCreateOnceRef = useRef<(() => Promise<string>) | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -377,10 +380,15 @@ export default function ChatPage() {
 
     const initialize = async () => {
       try {
+        // Ensure concurrent effect executions (e.g. React Strict Mode) share
+        // a single in-flight session-creation promise so at most one POST fires.
+        if (!bootstrapCreateOnceRef.current) {
+          bootstrapCreateOnceRef.current = createOnceGuard(createSession);
+        }
         const resolution = await resolveChatBootstrapSession({
           storedSessionId: window.localStorage.getItem(SESSION_STORAGE_KEY),
           fetchSessions: loadSessions,
-          createSession,
+          createSession: bootstrapCreateOnceRef.current,
         });
 
         if (!isMounted) {

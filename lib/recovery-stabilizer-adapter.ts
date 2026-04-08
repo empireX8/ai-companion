@@ -27,12 +27,15 @@ export const RS_MIN_MATCHES = 2;
 
 export const RECOVERY_STABILIZER_MARKERS: RegExp[] = [
   /\bi'?ve\s+been\s+(?:doing|getting|feeling)\s+(?:better|well|good|great)\b/i,
+  /\bi'?ve\s+been\s+doing\s+a\s+better\s+job\b/i,
+  /\blately\s+i'?ve\s+been\s+doing\s+a\s+better\s+job\b/i,
   /\b(?:finally|at\s+last)\s+(?:able\s+to|managed|starting\s+to|making)\b/i,
   /\bi'?m\s+(?:getting|making|seeing)\s+(?:better|progress|improvement)\b/i,
   /\b(?:making|seeing|noticing)\s+(?:real\s+)?progress\b/i,
   /\bi\s+(?:actually|finally|really)\s+(?:did\s+it|managed|succeeded|stuck\s+with)\b/i,
   /\bthings?\s+(?:are\s+)?(?:getting|feeling|looking)\s+(?:better|easier|clearer)\b/i,
   /\b(?:recovering|rebuilding|bouncing\s+back|stabiliz\w+)\b/i,
+  /\bstabiliz\w+\s+faster\b/i,
   /\bi\s+(?:broke|broke\s+out\s+of|overcame)\s+the\s+(?:cycle|pattern|loop)\b/i,
   // Broader recovery and progress markers
   /\bi\s+(?:managed|was\s+able)\s+to\b/i,

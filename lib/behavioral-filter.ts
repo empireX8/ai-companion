@@ -213,10 +213,13 @@ function detectHabitLanguage(text: string): boolean {
     /\bi\s+(?:always\s+)?end\s+up\b/i.test(text) ||
     // "I notice (that) I" — self-observation of a pattern
     /\bi\s+notice\s+(?:that\s+)?i\b/i.test(text) ||
+    /\b(?:i\s+)?default\s+to\b/i.test(text) ||
     // "my default / go-to / pattern / habit / instinct"
     /\bmy\s+(?:default|go-?to|pattern|habit|instinct|first\s+instinct)\b/i.test(
       text
     ) ||
+    /\bwalk\s+back\s+(?:my|the)\b/i.test(text) ||
+    /\bappeas(?:e|ing)\b/i.test(text) ||
     // Trigger-response: "triggers me", "makes me want/feel"
     /\btriggers?\s+(?:me|my)\b/i.test(text) ||
     /\bmakes?\s+me\s+(?:want|feel|start|tend)\b/i.test(text) ||
@@ -261,6 +264,7 @@ function detectSelfJudgmentLanguage(text: string): boolean {
 function detectProgressLanguage(text: string): boolean {
   return (
     /\b(?:doing|getting|feeling)\s+better\b/i.test(text) ||
+    /\bdoing\s+a\s+better\s+job\b/i.test(text) ||
     /\b(?:making|seeing|noticing)\s+(?:real\s+)?progress\b/i.test(text) ||
     /\bi\s+(?:managed|was\s+able)\s+to\b/i.test(text) ||
     /\bproud\s+of\s+(?:myself|how)\b/i.test(text) ||
@@ -268,6 +272,7 @@ function detectProgressLanguage(text: string): boolean {
       text
     ) ||
     /\b(?:recovering|bouncing\s+back|stabiliz\w+|rebuilding)\b/i.test(text) ||
+    /\bstabiliz\w+\s+faster\b/i.test(text) ||
     /\bi'?ve\s+been\s+keeping\s+(?:up|at\s+it|going)\b/i.test(text) ||
     /\b(?:improving|improved)\b/i.test(text)
   );
