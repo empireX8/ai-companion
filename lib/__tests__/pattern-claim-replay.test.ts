@@ -87,7 +87,7 @@ describe("pattern claim replay", () => {
         surfaced: true,
         evidenceCount: 3,
         thresholdUsed: 0.55,
-        displaySafeQuoteStatus: false,
+        displaySafeQuoteStatus: true,
         rationaleBundleQuotes: [
           "I default to people-pleasing when someone seems upset with me",
           "When pressure rises, I start appeasing people instead of staying honest",
@@ -399,7 +399,7 @@ describe("pattern claim replay", () => {
         surfaced: true,
         evidenceCount: 3,
         thresholdUsed: 0.55,
-        displaySafeQuoteStatus: false,
+        displaySafeQuoteStatus: true,
         rationaleBundleQuotes: [
           "I default to people-pleasing when someone seems upset with me",
           "When pressure rises, I start appeasing people instead of staying honest",
@@ -434,7 +434,7 @@ describe("pattern claim replay", () => {
           surfaced: true,
           evidenceCount: 3,
           thresholdUsed: 0.55,
-          displaySafeQuoteStatus: false,
+          displaySafeQuoteStatus: true,
           rationaleBundleQuotes: [
             "I default to people-pleasing when someone seems upset with me",
             "When pressure rises, I start appeasing people instead of staying honest",
