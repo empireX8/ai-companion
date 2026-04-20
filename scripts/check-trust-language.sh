@@ -12,9 +12,13 @@ set -euo pipefail
 # V1-visible surface directories only (core + secondary routes + shared components)
 SCAN_DIRS=(
   "app/(root)/(routes)/chat"
+  "app/(root)/(routes)/check-ins"
+  "app/(root)/(routes)/timeline"
   "app/(root)/(routes)/patterns"
   "app/(root)/(routes)/history"
+  "app/(root)/(routes)/actions"
   "app/(root)/(routes)/context"
+  "app/(root)/(routes)/memories"
   "app/(root)/(routes)/import"
   "app/(root)/(routes)/settings"
   "app/(root)/(routes)/help"

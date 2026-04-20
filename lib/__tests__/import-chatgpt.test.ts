@@ -304,3 +304,121 @@ describe("extractReferenceFromImportedMessage", () => {
     expect(refCache.get("preference")?.length).toBe(2);
   });
 });
+
+// ── Lifecycle / status regression ────────────────────────────────────────────
+//
+// Regression guard: imported references MUST be created with status="candidate",
+// never "active" or "inactive". Placing them in the wrong status at creation is
+// what caused them to appear under "No longer active" in the memory drawer
+// (the historical bucket previously used `status !== "active"` which captured
+// every candidate, routing 80 imported items to the wrong bucket).
+
+type FullReferenceRow = {
+  userId: string;
+  type: string;
+  statement: string;
+  confidence: string;
+  status: string;
+  sourceSessionId: string | null;
+  sourceMessageId: string | null;
+};
+
+function makeMockDbWithCapture(seedActive: string[] = []) {
+  const created: FullReferenceRow[] = [];
+  const db = {
+    referenceItem: {
+      findMany: async () =>
+        seedActive.map((statement) => ({ statement })),
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        const row: FullReferenceRow = {
+          userId: data.userId as string,
+          type: data.type as string,
+          statement: data.statement as string,
+          confidence: data.confidence as string,
+          status: data.status as string,
+          sourceSessionId: (data.sourceSessionId as string | null) ?? null,
+          sourceMessageId: (data.sourceMessageId as string | null) ?? null,
+        };
+        created.push(row);
+        return row;
+      },
+    },
+    _created: created,
+  } as unknown as PrismaClient & { _created: FullReferenceRow[] };
+  return db;
+}
+
+describe("extractReferenceFromImportedMessage — lifecycle status", () => {
+  const args = {
+    userId: "u_lifecycle",
+    sessionId: "sess_import_1",
+  };
+
+  it("creates imported preference with status=candidate, never active or inactive", async () => {
+    const db = makeMockDbWithCapture();
+    await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "msg_lc_1", content: "I prefer early morning workouts" },
+      db,
+      refCache: new Map(),
+    });
+
+    const rows = (db as unknown as { _created: FullReferenceRow[] })._created;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.status).toBe("candidate");
+    expect(rows[0]!.status).not.toBe("active");
+    expect(rows[0]!.status).not.toBe("inactive");
+    expect(rows[0]!.status).not.toBe("superseded");
+  });
+
+  it("records sourceSessionId and sourceMessageId so provenance is traceable", async () => {
+    const db = makeMockDbWithCapture();
+    await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "msg_lc_2", content: "I want to learn Spanish this year" },
+      db,
+      refCache: new Map(),
+    });
+
+    const rows = (db as unknown as { _created: FullReferenceRow[] })._created;
+    expect(rows[0]!.sourceSessionId).toBe("sess_import_1");
+    expect(rows[0]!.sourceMessageId).toBe("msg_lc_2");
+  });
+
+  it("imported candidates are NOT immediately superseded or dismissed on creation", async () => {
+    const db = makeMockDbWithCapture();
+    await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "msg_lc_3", content: "I prefer concise bullet-point answers" },
+      db,
+      refCache: new Map(),
+    });
+    await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "msg_lc_4", content: "I want to reduce screen time" },
+      db,
+      refCache: new Map(),
+    });
+
+    const rows = (db as unknown as { _created: FullReferenceRow[] })._created;
+    expect(rows).toHaveLength(2);
+    // All created items must be candidates — none must have been transitioned
+    // to inactive/superseded/dismissed during the import pipeline itself.
+    for (const row of rows) {
+      expect(row.status).toBe("candidate");
+    }
+  });
+
+  it("confidence is low for imported references (conservative default)", async () => {
+    const db = makeMockDbWithCapture();
+    await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "msg_lc_5", content: "I prefer direct feedback over hints" },
+      db,
+      refCache: new Map(),
+    });
+
+    const rows = (db as unknown as { _created: FullReferenceRow[] })._created;
+    expect(rows[0]!.confidence).toBe("low");
+  });
+});

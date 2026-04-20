@@ -162,6 +162,105 @@ describe("pattern claim replay", () => {
     expect(result.divergence.any).toBe(true);
   });
 
+  it("replays trigger_condition claims when persisted receipts use people pleaser wording", () => {
+    const claim = makeClaim({
+      summary: 'Trigger-response pattern: "I notice I am definitely a people pleaser"',
+      evidence: makeEvidence([
+        "I notice I am definitely a people pleaser",
+        "When pressure rises, I start appeasing people instead of staying honest",
+      ]),
+    });
+    const result = replayPersistedPatternClaim({
+      claim,
+      evidence: claim.evidence,
+    });
+
+    expect(result.replayed.summaryText).toBe(
+      "When pressure rises, you default to pleasing or appeasing."
+    );
+    expect(result.completeness.supportBundleComplete).toBe(true);
+  });
+
+  it("replays the remaining imported trigger_condition bundle when the second quote is submissive-language support", () => {
+    const claim = makeClaim({
+      summary: 'Trigger-response pattern: "I notice I am definitely a people pleaser"',
+      evidence: makeEvidence([
+        "Again — good for creativity,",
+        "I notice I am definitely a people pleaser",
+        "The combination of those three is what makes me feel like, populationly submissive, like, yo.",
+        "The combination of those three is what makes me feel like, populationly submissive, like, yo.",
+      ]),
+    });
+    const result = replayPersistedPatternClaim({
+      claim,
+      evidence: claim.evidence,
+    });
+
+    expect(result.replayed.summaryText).toBe(
+      "When pressure rises, you default to pleasing or appeasing."
+    );
+    expect(result.completeness.supportBundleComplete).toBe(true);
+  });
+
+  it("replays inner_critic claims when persisted receipts use contracted can't-do wording", () => {
+    const claim = makeClaim({
+      patternType: "inner_critic",
+      summary: 'Self-critical pattern: "So, yeah, I can\'t do that."',
+      evidence: makeEvidence([
+        "So, yeah, I can't do that.",
+        "When the pressure is on, I can't do that.",
+      ]),
+    });
+    const result = replayPersistedPatternClaim({
+      claim,
+      evidence: claim.evidence,
+    });
+
+    expect(result.replayed.summaryText).toBe(
+      "You often tell yourself you can't do it or get it right."
+    );
+    expect(result.completeness.supportBundleComplete).toBe(true);
+  });
+
+  it("keeps repetitive_loop replay behavior unchanged", () => {
+    const claim = makeClaim({
+      patternType: "repetitive_loop",
+      summary: 'Repetitive loop pattern across sessions: "I keep circling back to the same regret"',
+      evidence: makeEvidence([
+        "I keep circling back to the same regret about wasting my potential",
+        "The same confidence regret comes back whenever I think about what I could have done",
+        "I revisit that wasted-potential feeling over and over",
+      ]),
+    });
+    const result = replayPersistedPatternClaim({
+      claim,
+      evidence: claim.evidence,
+    });
+
+    expect(result.replayed.summaryText).toBe(
+      "The same confidence-related regret keeps resurfacing."
+    );
+  });
+
+  it("keeps recovery_stabilizer replay behavior unchanged", () => {
+    const claim = makeClaim({
+      patternType: "recovery_stabilizer",
+      summary: 'Recovery pattern: "I actually followed through and stayed consistent this week."',
+      evidence: makeEvidence([
+        "I actually followed through and stayed consistent this week.",
+        "I have been keeping up with my routine consistently for two full weeks.",
+      ]),
+    });
+    const result = replayPersistedPatternClaim({
+      claim,
+      evidence: claim.evidence,
+    });
+
+    expect(result.replayed.summaryText).toBe(
+      "Progress appears when you follow through consistently."
+    );
+  });
+
   it("records threshold from the same resolution path and annotates policy source", () => {
     const claim = makeClaim();
     const result = replayPersistedPatternClaim({

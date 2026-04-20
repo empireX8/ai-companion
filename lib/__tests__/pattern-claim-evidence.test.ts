@@ -19,6 +19,22 @@ describe("extractQuote", () => {
     expect(result).toBe("I always procrastinate.");
   });
 
+  it("prefers a later sentence when the opener has no behavioral signal", () => {
+    expect(
+      extractQuote(
+        "For context, this came up in therapy. When pressure rises, I start appeasing people instead of staying honest."
+      )
+    ).toBe("When pressure rises, I start appeasing people instead of staying honest.");
+  });
+
+  it("prefers a later transcript-style chunk when it contains the behavioral signal", () => {
+    expect(
+      extractQuote(
+        "Conversation excerpt. User: I struggle to trust my own judgment when I have to commit. Assistant: Thanks for sharing that."
+      )
+    ).toBe("User: I struggle to trust my own judgment when I have to commit.");
+  });
+
   it("extracts the first sentence ending in an exclamation mark", () => {
     expect(extractQuote("I did it! And then some.")).toBe("I did it!");
   });
@@ -192,5 +208,24 @@ describe("materializeReceiptsFromEntries", () => {
     expect(first).toBe(1);
     expect(second).toBe(0);
     expect(db._rows).toHaveLength(1);
+  });
+
+  it("persists the later behavioral sentence instead of an irrelevant opener", async () => {
+    const db = makeBulkMockDb();
+    const entries = [
+      {
+        messageId: "m1",
+        sessionId: "s1",
+        content:
+          "Quick note before the real point. The same confidence-related regret keeps resurfacing whenever I look back at what I avoided.",
+      },
+    ];
+
+    const count = await materializeReceiptsFromEntries({ claimId: "c1", entries, db });
+
+    expect(count).toBe(1);
+    expect(db._rows[0]?.quote).toBe(
+      "The same confidence-related regret keeps resurfacing whenever I look back at what I avoided."
+    );
   });
 });

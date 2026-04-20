@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+
+import { V1_CORE_ROUTES, V1_SECONDARY_ROUTES } from "@/lib/v1-nav";
 import { useCommandPalette } from "./CommandPaletteContext";
 import { dispatchChatEvent, CHAT_EVENTS } from "./chatEvents";
 
@@ -28,14 +30,12 @@ export function CommandPalette() {
 
   const commands = useMemo<Command[]>(
     () => [
-      // Navigation — V1 visible routes only
-      { id: "nav-chat", label: "Chat", group: "navigation", action: () => router.push("/chat") },
-      { id: "nav-patterns", label: "Patterns", group: "navigation", action: () => router.push("/patterns") },
-      { id: "nav-history", label: "History", group: "navigation", action: () => router.push("/history") },
-      { id: "nav-context", label: "Context", group: "navigation", action: () => router.push("/context") },
-      { id: "nav-import", label: "Import", group: "navigation", action: () => router.push("/import") },
-      { id: "nav-settings", label: "Settings", group: "navigation", action: () => router.push("/settings") },
-      // Chat actions
+      ...[...V1_CORE_ROUTES, ...V1_SECONDARY_ROUTES].map((route) => ({
+        id: `nav-${route.href.slice(1)}`,
+        label: route.label,
+        group: "navigation" as const,
+        action: () => router.push(route.href),
+      })),
       { id: "chat-new-session", label: "New session", group: "chat", action: () => dispatchChatEvent(CHAT_EVENTS.NEW_SESSION) },
       { id: "chat-focus", label: "Focus composer", group: "chat", action: () => dispatchChatEvent(CHAT_EVENTS.FOCUS_COMPOSER) },
       { id: "chat-toggle-memory", label: "Toggle memory panel", group: "chat", action: () => dispatchChatEvent(CHAT_EVENTS.TOGGLE_MEMORY) },

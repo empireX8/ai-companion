@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  detectNativeReferenceIntentType,
   detectReferenceIntentType,
+  extractMemoryStatement,
   isAffirmative,
   isNegative,
+  isWriteableMemoryStatement,
   pickBestPreferenceMatch,
   shouldPromptForMemoryUpdate,
 } from "../memory-governance";
@@ -16,6 +19,46 @@ describe("memory-governance", () => {
 
   it("detects memory-update intent for preference reversals", () => {
     expect(shouldPromptForMemoryUpdate("I don't like tea anymore")).toBe(true);
+  });
+
+  it("detects explicit remember-this prompts as native memory capture intent", () => {
+    expect(
+      shouldPromptForMemoryUpdate(
+        "Remember this for future chats: I prefer concrete, step-by-step advice."
+      )
+    ).toBe(true);
+  });
+
+  it("extracts the stable memory statement from explicit remember-this prompts", () => {
+    expect(
+      extractMemoryStatement(
+        "Remember this for future chats: I prefer concrete, step-by-step advice."
+      )
+    ).toBe("I prefer concrete, step-by-step advice.");
+  });
+
+  it("classifies explicit remember prompts with support-style phrasing as preferences", () => {
+    expect(
+      detectNativeReferenceIntentType(
+        "Please remember that when I'm overwhelmed I do better with calm, direct language."
+      )
+    ).toBe("preference");
+  });
+
+  it("does not classify plain support-style phrasing without explicit remember intent", () => {
+    expect(
+      detectNativeReferenceIntentType(
+        "When I'm overwhelmed I do better with calm, direct language."
+      )
+    ).toBeNull();
+  });
+
+  it("accepts first-person temporal clauses as writeable memory statements", () => {
+    expect(
+      isWriteableMemoryStatement(
+        "Please remember that when I'm overwhelmed I do better with calm, direct language."
+      )
+    ).toBe(true);
   });
 
   it("parses affirmative and negative confirmations without false yes-prefix matches", () => {
@@ -63,4 +106,3 @@ describe("memory-governance", () => {
     expect(result.score).toBe(0);
   });
 });
-

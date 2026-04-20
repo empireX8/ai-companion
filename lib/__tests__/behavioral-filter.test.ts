@@ -105,6 +105,18 @@ describe("analyzeBehavioralEligibility — known ELIGIBLE messages", () => {
       "progress language — doing a better job",
       "Lately I've been doing a better job of slowing down before reacting.",
     ],
+    [
+      "self-judgment — have a hard time (IC vocabulary)",
+      "I have a hard time being assertive when someone pushes back.",
+    ],
+    [
+      "self-judgment — probably can't (IC vocabulary)",
+      "I probably can't handle this without reverting to old habits.",
+    ],
+    [
+      "self-judgment — worried that I'll (IC vocabulary)",
+      "I'm worried that I'll disappoint everyone when it matters most.",
+    ],
   ])("accepts: %s", (_label, text) => {
     const result = analyzeBehavioralEligibility(text);
     expect(result.eligible).toBe(true);

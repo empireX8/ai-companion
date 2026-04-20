@@ -1,11 +1,17 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { ChevronLeft, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDomainListPanel } from "./DomainListContext";
+import { hasSecondaryPane } from "@/lib/layout-config";
 
 export function DomainListPanel() {
+  const pathname = usePathname();
   const { panelRef, isCollapsed, toggleCollapsed } = useDomainListPanel();
+
+  // No panel on routes that don't use DomainListSlot — let main content expand.
+  if (!hasSecondaryPane(pathname)) return null;
 
   return (
     // Wrapper is the hover zone and positioning context for the toggle button.

@@ -1,7 +1,7 @@
 /**
  * Help — V1 documentation surface (P1-11)
  *
- * Covers the V1 product surfaces only: Chat, Patterns, History, Context, Import.
+ * Covers the V1 product surfaces only: Chat, Patterns, History, Context, Memories, Import.
  * No Forecasts section. No Tensions section. No links to hidden internal routes.
  * Direct URL access only — not in the primary nav.
  */
@@ -59,11 +59,14 @@ export default function HelpPage() {
               a constraint to work around, or a preference the assistant should always factor in.
               For example: &ldquo;I want to change careers in the next two years&rdquo; or &ldquo;I only have 30 minutes in the morning.&rdquo;
             </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Candidate memories stay pending until you review them. Confirmed memories continue to shape future chats.
+            </p>
             <Link
-              href="/context"
+              href="/memories"
               className="mt-3 inline-block text-xs text-primary underline-offset-2 hover:underline"
             >
-              View your context →
+              Review candidate memories →
             </Link>
           </section>
 

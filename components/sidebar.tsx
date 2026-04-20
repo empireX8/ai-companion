@@ -22,7 +22,7 @@ export const Sidebar = () => {
     { icon: LayoutDashboard, label: "Home", href: "/" },
     { icon: Plus, label: "Create", href: "/chat" },
     { icon: Split, label: "Tensions", href: "/contradictions" },
-    { icon: BookOpenText, label: "Memories", href: "/references" },
+    { icon: BookOpenText, label: "Memories", href: "/memories" },
     { icon: Upload, label: "Import", href: "/import" },
     { icon: Database, label: "Evidence", href: "/evidence" },
     { icon: ChartNoAxesColumn, label: "Review", href: "/audit" },

@@ -10,6 +10,7 @@
 import type { PatternFamilySection } from "@/lib/patterns-api";
 import { SECTION_EMPTY_PRIMARY, SECTION_EMPTY_SECONDARY, candidateQualifier } from "@/lib/trust-copy";
 import { PatternClaimCard } from "./PatternClaimCard";
+import { PatternContradictionFamilyCard } from "./PatternContradictionFamilyCard";
 
 type Props = {
   section: PatternFamilySection;
@@ -21,6 +22,12 @@ export function PatternSection({ section }: Props) {
   const visibleClaims = section.claims.filter(
     (c) => c.status === "candidate" || c.status === "active"
   );
+  const contradictionItems =
+    section.familyKey === "contradiction_drift"
+      ? section.contradictionItems ?? []
+      : [];
+  const hasContradictionItems = contradictionItems.length > 0;
+  const hasRenderableContent = visibleClaims.length > 0 || hasContradictionItems;
 
   // P2-09 — distinguish empty, candidate-only, and mixed/active states
   const hasActive = visibleClaims.some((c) => c.status === "active");
@@ -40,7 +47,7 @@ export function PatternSection({ section }: Props) {
       </div>
 
       {/* P2-09 empty state */}
-      {visibleClaims.length === 0 && (
+      {!hasRenderableContent && (
         <div className="rounded-lg border border-dashed border-border/40 px-4 py-5 text-center">
           <p className="text-xs text-muted-foreground">
             {SECTION_EMPTY_PRIMARY}
@@ -59,12 +66,19 @@ export function PatternSection({ section }: Props) {
       )}
 
       {/* Claims */}
-      {visibleClaims.length > 0 && (
-        <div className="space-y-2">
-          {visibleClaims.map((claim) => (
-            <PatternClaimCard key={claim.id} claim={claim} />
-          ))}
-        </div>
+      {hasContradictionItems ? (
+        <PatternContradictionFamilyCard
+          items={contradictionItems}
+          claims={visibleClaims}
+        />
+      ) : (
+        visibleClaims.length > 0 && (
+          <div className="space-y-2">
+            {visibleClaims.map((claim) => (
+              <PatternClaimCard key={claim.id} claim={claim} />
+            ))}
+          </div>
+        )
       )}
     </section>
   );

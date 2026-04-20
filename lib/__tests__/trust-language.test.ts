@@ -71,12 +71,15 @@ describe("P4-01: PRODUCT_NAME", () => {
 });
 
 describe("P4-01: SURFACE_NAMES", () => {
-  it("contains exactly the six V1 surface names", () => {
+  it("contains exactly the visible V1 surface names", () => {
     expect(Object.values(SURFACE_NAMES)).toEqual([
       "Chat",
+      "Check-ins",
       "Patterns",
       "History",
+      "Actions",
       "Context",
+      "Memories",
       "Import",
       "Settings",
     ]);

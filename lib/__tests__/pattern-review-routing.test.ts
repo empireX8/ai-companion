@@ -349,12 +349,6 @@ describe("6. priority escalates when multiple reasons stack", () => {
   });
 
   it("HIGH when ≥3 reasons stack", () => {
-    const groupInput = makeGroupInput({
-      groupId: "grp-multi",
-      emittedFamilies: { trigger_condition: true },
-      visibleAbstentionScores: [makeTriggeredScore(), makeSurfacedScore("inner_critic", WEAK_SCORE)],
-    });
-
     // NO_SAFE_VISIBLE_SUMMARY + LOW_VISIBLE_COVERAGE + SURFACED_WITH_WEAK_SUPPORT → 3 reasons
     const emittedAndMissingScoreInput = makeGroupInput({
       groupId: "grp-three",

@@ -28,8 +28,8 @@ export const PATTERN_FAMILY_SECTIONS = [
   },
   {
     familyKey: "contradiction_drift" as const,
-    sectionLabel: "Contradictions & Drift",
-    description: "Systematic drift between stated values, goals, or beliefs and observed behaviour.",
+    sectionLabel: "Tensions",
+    description: "Competing pulls, internal conflicts, and unresolved tensions visible in your recent material.",
   },
   {
     familyKey: "recovery_stabilizer" as const,
@@ -92,11 +92,30 @@ export type PatternClaimView = {
   action: PatternClaimActionView | null;
 };
 
+export type PatternContradictionView = {
+  id: string;
+  title: string;
+  sideA: string;
+  sideB: string;
+  type: string;
+  status:
+    | "candidate"
+    | "open"
+    | "snoozed"
+    | "explored"
+    | "resolved"
+    | "accepted_tradeoff"
+    | "archived_tension";
+  lastEvidenceAt: string | null;
+  lastTouchedAt: string;
+};
+
 export type PatternFamilySection = {
   familyKey: FamilyKey;
   sectionLabel: string;
   description: string;
   claims: PatternClaimView[];
+  contradictionItems?: PatternContradictionView[];
 };
 
 export type PatternsResponse = {

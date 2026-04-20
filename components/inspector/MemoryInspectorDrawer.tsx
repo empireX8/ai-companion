@@ -31,8 +31,10 @@ export function useInspectorContextFromPathname(): {
   if (pathname.startsWith("/chat")) return { domain: "chat", label: "Chat" };
   if (pathname.startsWith("/contradictions"))
     return { domain: "contradictions", label: "Contradictions" };
+  if (pathname.startsWith("/memories"))
+    return { domain: "references", label: "Memories" };
   if (pathname.startsWith("/references"))
-    return { domain: "references", label: "References" };
+    return { domain: "references", label: "Memories" };
   if (pathname.startsWith("/audit")) return { domain: "audit", label: "Audit" };
   if (pathname.startsWith("/import")) return { domain: "import", label: "Import" };
   return { domain: "default", label: "Inspector" };

@@ -11,16 +11,36 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
+import { getTopContradictions } from "@/lib/contradiction-top";
 import prismadb from "@/lib/prismadb";
 import { projectVisiblePatternClaim } from "@/lib/pattern-visible-claim";
 import {
   PATTERN_FAMILY_SECTIONS,
+  type PatternContradictionView,
   type PatternFamilySection,
   type PatternsResponse,
 } from "@/lib/patterns-api";
 import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
 
 export const dynamic = "force-dynamic";
+const INLINE_RECEIPT_LIMIT = 10;
+
+type TopContradictionItem = Awaited<ReturnType<typeof getTopContradictions>>[number];
+
+function projectPatternContradictionItem(
+  item: TopContradictionItem
+): PatternContradictionView {
+  return {
+    id: item.id,
+    title: item.title,
+    sideA: item.sideA,
+    sideB: item.sideB,
+    type: item.type,
+    status: item.status,
+    lastEvidenceAt: item.lastEvidenceAt?.toISOString() ?? null,
+    lastTouchedAt: item.lastTouchedAt.toISOString(),
+  };
+}
 
 export async function GET() {
   const { userId } = await auth();
@@ -28,29 +48,30 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // ── Fetch all claims + inline evidence ──────────────────────────────────────
-  const claims = await prismadb.patternClaim.findMany({
-    where: { userId },
-    include: {
-      evidence: {
+  // ── Fetch claims, contradiction surface items, and scope metadata ──────────
+  const [claims, contradictionItems, scopeMessageCount, scopeSessionCount] =
+    await Promise.all([
+      prismadb.patternClaim.findMany({
+        where: { userId },
+        include: {
+          evidence: {
+            orderBy: { createdAt: "desc" },
+          },
+          // Include most recent pending/in_progress action (P2.5-02)
+          actions: {
+            where: { status: { in: ["pending", "in_progress"] } },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
         orderBy: { createdAt: "desc" },
-        take: 10, // cap inline receipts at 10 per claim
-      },
-      // Include most recent pending/in_progress action (P2.5-02)
-      actions: {
-        where: { status: { in: ["pending", "in_progress"] } },
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // ── Fetch scope metadata for P2-06 ─────────────────────────────────────────
-  const [scopeMessageCount, scopeSessionCount] = await Promise.all([
-    prismadb.message.count({ where: { userId } }),
-    prismadb.session.count({ where: { userId } }),
-  ]);
+      }),
+      getTopContradictions(userId, new Date(), prismadb).then((items) =>
+        items.map(projectPatternContradictionItem)
+      ),
+      prismadb.message.count({ where: { userId } }),
+      prismadb.session.count({ where: { userId } }),
+    ]);
 
   // ── Build view model ────────────────────────────────────────────────────────
 
@@ -79,8 +100,25 @@ export async function GET() {
           actions: claim.actions,
         });
 
-        return projected ? [projected] : [];
+        return projected
+          ? [
+              {
+                ...projected,
+                receipts: projected.receipts.slice(0, INLINE_RECEIPT_LIMIT),
+              },
+            ]
+          : [];
       });
+
+      if (familyKey === "contradiction_drift") {
+        return {
+          familyKey,
+          sectionLabel,
+          description,
+          claims: claimViews,
+          contradictionItems,
+        };
+      }
 
       return { familyKey, sectionLabel, description, claims: claimViews };
     }

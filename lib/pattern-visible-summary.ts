@@ -79,12 +79,24 @@ const STOPWORDS = new Set([
 ]);
 
 function normalizeText(text: string): string {
-  return text.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+  return text
+    .toLowerCase()
+    .replace(/[’']/g, "")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function canonicalizeToken(token: string): string {
+  if (/^pleas(?:e|er|ers|ing|ed)?$/.test(token)) return "please";
+  if (/^appeas(?:e|es|ed|ing)?$/.test(token)) return "appease";
+  return token;
 }
 
 function tokenize(text: string): string[] {
   return normalizeText(text)
     .split(" ")
+    .map(canonicalizeToken)
     .filter((token) => token.length >= 4 && !STOPWORDS.has(token));
 }
 
@@ -121,7 +133,7 @@ function buildTriggerSummary(quotes: string[]): string | null {
   if (
     hasRecurringSignal(
       quotes,
-      /\b(people[-\s]?pleas(?:e|ing)?|appeas(?:e|ing)?|apologiz\w*|go along|walk it back|settl(?:e|ing) for less)\b/i
+      /\b(people[-\s]?pleas(?:e|ing|er)|appeas(?:e|ing)?|apologiz\w*|go along|walk it back|settl(?:e|ing) for less|submissiv\w*)\b/i
     )
   ) {
     return "When pressure rises, you default to pleasing or appeasing.";
@@ -156,10 +168,19 @@ function buildInnerCriticSummary(quotes: string[]): string | null {
   if (
     hasRecurringSignal(
       quotes,
-      /\b(terrible at|mess things up|ruin things|failure|can t do|cant do|can t get anything right|cant get anything right)\b/i
+      /\b(terrible at|mess things up|ruin things|failure|can(?:'|’|\s)?t do|can(?:'|’|\s)?t get anything right)\b/i
     )
   ) {
-    return "You often frame yourself as incapable before acting.";
+    return "You often tell yourself you can't do it or get it right.";
+  }
+
+  if (
+    hasRecurringSignal(
+      quotes,
+      /\b(have\s+a\s+hard\s+time|have\s+trouble|have\s+difficulty|probably\s+can't|probably\s+cant|probably\s+cannot|worried\s+(?:that\s+)?i|afraid\s+(?:that\s+)?i)\b/i
+    )
+  ) {
+    return "You often find certain areas hard and doubt your own ability to handle them.";
   }
 
   return null;

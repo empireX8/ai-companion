@@ -243,6 +243,9 @@ function detectSelfJudgmentLanguage(text: string): boolean {
     /\bhate\s+myself\b/i.test(text) ||
     /\bsecond-?guess\b/i.test(text) ||
     /\bi\s+(?:find\s+it\s+)?(?:hard|difficult)\s+to\b/i.test(text) ||
+    /\bi\s+have\s+(?:a\s+hard\s+time|trouble|difficulty)\s+(?:with\b|\w+ing)/i.test(text) ||
+    /\bi\s+(?:probably|honestly)\s+(?:can't|cannot|won't\s+be\s+able)\b/i.test(text) ||
+    /\bi'?m\s+(?:worried|afraid|scared)\s+(?:that\s+)?i'?(?:ll|m\s+going\s+to)\b/i.test(text) ||
     /\b(?:people[-\s]?pleaser|perfectionist|procrastinat\w+|overthinker|overthink)\b/i.test(
       text
     ) ||

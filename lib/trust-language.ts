@@ -16,9 +16,12 @@ export const PRODUCT_NAME = "MindLab" as const;
 /** Canonical visible surface names — matches V1_CORE_ROUTES + V1_SECONDARY_ROUTES. */
 export const SURFACE_NAMES = {
   Chat: "Chat",
+  CheckIns: "Check-ins",
   Patterns: "Patterns",
   History: "History",
+  Actions: "Actions",
   Context: "Context",
+  Memories: "Memories",
   Import: "Import",
   Settings: "Settings",
 } as const;

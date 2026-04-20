@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { projectVisiblePatternClaim } from "../pattern-visible-claim";
 
 const authMock = vi.fn();
+const getTopContradictionsMock = vi.fn();
 
 const prismaMock = {
   patternClaim: {
@@ -49,6 +50,10 @@ vi.mock("@/lib/pattern-batch-orchestrator", () => ({
   patternBatchOrchestrator: {
     runForUser: vi.fn(),
   },
+}));
+
+vi.mock("@/lib/contradiction-top", () => ({
+  getTopContradictions: getTopContradictionsMock,
 }));
 
 function makeEvidence(quotes: string[]) {
@@ -139,6 +144,7 @@ describe("/api/patterns visible projection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ userId: "u1" });
+    getTopContradictionsMock.mockResolvedValue([]);
     prismaMock.message.count.mockResolvedValue(42);
     prismaMock.session.count.mockResolvedValue(7);
   });
@@ -188,6 +194,47 @@ describe("/api/patterns visible projection", () => {
     expect(triggerSection.claims[0]!.summary).toBe(
       "When pressure rises, you default to pleasing or appeasing."
     );
+  });
+
+  it("populates contradiction_drift from the existing contradiction surface", async () => {
+    prismaMock.patternClaim.findMany.mockResolvedValue([]);
+    getTopContradictionsMock.mockResolvedValue([
+      {
+        id: "contr-1",
+        title: "You keep naming the plan, then sliding away from it",
+        sideA: "You want a steadier work rhythm.",
+        sideB: "You keep describing missed follow-through.",
+        type: "goal_behavior_gap",
+        confidence: "medium",
+        status: "open",
+        recommendedRung: "rung2_explicit_contradiction",
+        lastEvidenceAt: new Date("2026-01-06T00:00:00.000Z"),
+        lastTouchedAt: new Date("2026-01-07T00:00:00.000Z"),
+        computedWeight: 12,
+      },
+    ]);
+
+    const route = await import("../../app/api/patterns/route");
+    const response = await route.GET();
+    const payload = await response.json();
+
+    const contradictionSection = payload.sections.find(
+      (section: { familyKey: string }) => section.familyKey === "contradiction_drift"
+    );
+
+    expect(contradictionSection.claims).toEqual([]);
+    expect(contradictionSection.contradictionItems).toEqual([
+      {
+        id: "contr-1",
+        title: "You keep naming the plan, then sliding away from it",
+        sideA: "You want a steadier work rhythm.",
+        sideB: "You keep describing missed follow-through.",
+        type: "goal_behavior_gap",
+        status: "open",
+        lastEvidenceAt: "2026-01-06T00:00:00.000Z",
+        lastTouchedAt: "2026-01-07T00:00:00.000Z",
+      },
+    ]);
   });
 });
 

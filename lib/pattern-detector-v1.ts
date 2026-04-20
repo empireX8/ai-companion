@@ -137,13 +137,13 @@ export async function materializeClueSupport({
   db: PrismaClient;
 }): Promise<void> {
   if (clue.supportEntries && clue.supportEntries.length > 0) {
-    const bulkEntries =
-      clue.messageId !== undefined
-        ? clue.supportEntries.filter((entry) => entry.messageId !== clue.messageId)
-        : clue.supportEntries;
     await materializeReceiptsFromEntries({
       claimId,
-      entries: bulkEntries,
+      // Persist the full support set, including the representative message.
+      // The representative drives claim.summary; replay must be able to see its
+      // extracted quote even when clue.quote points at a different display-safe
+      // sentence.
+      entries: clue.supportEntries,
       db,
     });
   }

@@ -11,8 +11,13 @@
  */
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Brain, AlertCircle, RefreshCw } from "lucide-react";
-import { fetchPatterns, type PatternsResponse } from "@/lib/patterns-api";
+import {
+  fetchPatterns,
+  type PatternFamilySection,
+  type PatternsResponse,
+} from "@/lib/patterns-api";
 import {
   LOW_DATA_BANNER,
   NO_CLAIMS_YET_HEADING,
@@ -29,6 +34,20 @@ import { ActiveStepsSection } from "./_components/ActiveStepsSection";
 // P2-09 — threshold below which a low-data banner is shown
 const LOW_DATA_MESSAGE_THRESHOLD = 20;
 
+function hasVisibleClaims(section: PatternFamilySection): boolean {
+  return section.claims.some(
+    (claim) => claim.status === "candidate" || claim.status === "active"
+  );
+}
+
+function hasVisibleSurfaceItems(section: PatternFamilySection): boolean {
+  return (
+    hasVisibleClaims(section) ||
+    (section.familyKey === "contradiction_drift" &&
+      (section.contradictionItems?.length ?? 0) > 0)
+  );
+}
+
 export default function PatternsPage() {
   const [data, setData] = useState<PatternsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +61,7 @@ export default function PatternsPage() {
     });
   };
 
-  useEffect(() => { reload(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { reload(); }, []);
 
   const triggerRerun = async () => {
     setRerunning(true);
@@ -60,12 +79,9 @@ export default function PatternsPage() {
     data.scopeMessageCount > 0 &&
     data.scopeMessageCount < LOW_DATA_MESSAGE_THRESHOLD;
 
-  // True when history exists but no candidate or active claims have been found yet
-  const hasAnyClaims =
-    data !== null &&
-    data.sections.some((s) =>
-      s.claims.some((c) => c.status === "candidate" || c.status === "active")
-    );
+  const hasAnyClaims = data !== null && data.sections.some(hasVisibleClaims);
+  const hasAnySurfaceItems =
+    data !== null && data.sections.some(hasVisibleSurfaceItems);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -97,7 +113,7 @@ export default function PatternsPage() {
             <p className="text-[11px] text-muted-foreground/70 pt-0.5">
               {data.scopeMessageCount === 0
                 ? SCOPE_EMPTY
-                : hasAnyClaims
+                : hasAnySurfaceItems
                 ? scopeLabel(data.scopeMessageCount, data.scopeSessionCount)
                 : null}
             </p>
@@ -141,7 +157,7 @@ export default function PatternsPage() {
         )}
 
         {/* No-claims state — data exists but nothing confirmed yet */}
-        {!loading && data && !hasAnyClaims && data.scopeMessageCount > 0 && (
+        {!loading && data && !hasAnySurfaceItems && data.scopeMessageCount > 0 && (
           <div className="rounded-lg border border-dashed border-border/40 px-5 py-6 space-y-3">
             <p className="text-sm font-medium text-foreground">{NO_CLAIMS_YET_HEADING}</p>
             <p className="text-xs text-muted-foreground leading-relaxed">{NO_CLAIMS_YET_BODY}</p>
@@ -158,10 +174,20 @@ export default function PatternsPage() {
         )}
 
         {/* P2.5-08 — cross-claim active steps (inline, not a separate destination) */}
-        {!loading && data && hasAnyClaims && <ActiveStepsSection sections={data.sections} />}
-
-        {/* Five locked family sections — P2-02 — only when claims exist */}
         {!loading && data && hasAnyClaims && (
+          <>
+            <ActiveStepsSection sections={data.sections} />
+            <p className="text-xs text-muted-foreground/70">
+              More suggested steps in{" "}
+              <Link href="/actions" className="text-primary/70 underline-offset-2 hover:text-primary hover:underline">
+                Actions →
+              </Link>
+            </p>
+          </>
+        )}
+
+        {/* Five locked family sections — P2-02 — only when visible items exist */}
+        {!loading && data && hasAnySurfaceItems && (
           <div className="space-y-8">
             {data.sections.map((section) => (
               <PatternSection key={section.familyKey} section={section} />

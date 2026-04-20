@@ -4,7 +4,7 @@
  * Single source of truth for nav visibility in V1.
  * Imported by GlobalRail and nav regression tests.
  *
- * LOCKED: Do not add top-level destinations without a new packet.
+ * LOCKED: Do not add top-level destinations without an explicit product decision.
  * LOCKED: Do not move hidden routes into visible nav without explicit design decision.
  */
 
@@ -13,6 +13,8 @@
 
 export const V1_CORE_ROUTES = [
   { label: "Chat", href: "/chat" },
+  { label: "Check-ins", href: "/check-ins" },
+  { label: "Timeline", href: "/timeline" },
   { label: "Patterns", href: "/patterns" },
   { label: "History", href: "/history" },
 ] as const;
@@ -21,7 +23,9 @@ export const V1_CORE_ROUTES = [
 // Shown below a divider. Supporting surfaces, not primary product destinations.
 
 export const V1_SECONDARY_ROUTES = [
+  { label: "Actions", href: "/actions" },
   { label: "Context", href: "/context" },
+  { label: "Memories", href: "/memories" },
   { label: "Import", href: "/import" },
   { label: "Settings", href: "/settings" },
 ] as const;

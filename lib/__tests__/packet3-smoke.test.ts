@@ -20,7 +20,6 @@ import { materializeClueSupport, patternDetectorV1 } from "../pattern-detector-v
 import { replayPersistedPatternClaim } from "../pattern-claim-replay";
 import { materializeReceipt } from "../pattern-claim-evidence";
 import { upsertPatternClaimFromClue } from "../pattern-claim-lifecycle";
-import type { NormalizedHistoryEntry } from "../history-synthesis";
 import type { PatternClaimEvent } from "../pattern-claim-hooks";
 
 // ── Full pipeline mock DB ─────────────────────────────────────────────────────
@@ -302,20 +301,20 @@ describe("Packet 3 smoke — trigger_condition full pipeline", () => {
     expect(replay.completeness.supportBundleComplete).toBe(true);
   });
 
-  it("does not double-persist the representative message when support entries include it", async () => {
+  it("preserves the representative support sentence even when clue.quote differs", async () => {
     const db = makePipelineMockDb();
     const clue = {
       userId: "u1",
       patternType: "trigger_condition" as const,
-      summary: 'Trigger-response pattern: "Whenever someone seems upset with me, I default to people-pleasing"',
+      summary: 'Trigger-response pattern: "I notice I am definitely a people pleaser"',
       sessionId: "s1",
       messageId: "m1",
-      quote: "Whenever someone seems upset with me, I default to people-pleasing",
+      quote: "When pressure rises, I start appeasing people instead of staying honest",
       supportEntries: [
         {
           sessionId: "s1",
           messageId: "m1",
-          content: "Whenever someone seems upset with me, I default to people-pleasing. I apologize immediately.",
+          content: "I notice I am definitely a people pleaser. I apologize immediately.",
         },
         {
           sessionId: "s2",
@@ -329,8 +328,17 @@ describe("Packet 3 smoke — trigger_condition full pipeline", () => {
     await materializeClueSupport({ claimId, clue, db });
 
     const claimEvidence = db._evidence.filter((e) => e.claimId === claimId);
-    expect(claimEvidence).toHaveLength(2);
-    expect(claimEvidence.filter((e) => e.messageId === "m1")).toHaveLength(1);
+    expect(claimEvidence).toHaveLength(3);
+    expect(
+      claimEvidence.some((e) => e.messageId === "m1" && e.quote === "I notice I am definitely a people pleaser.")
+    ).toBe(true);
+    expect(
+      claimEvidence.some(
+        (e) =>
+          e.messageId === "m1" &&
+          e.quote === "When pressure rises, I start appeasing people instead of staying honest"
+      )
+    ).toBe(true);
   });
 });
 

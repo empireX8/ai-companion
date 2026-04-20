@@ -22,12 +22,20 @@ const hiddenHrefs: string[] = V1_HIDDEN_INTERNAL_ROUTES.map((r) => r.href);
 // ── Core routes ───────────────────────────────────────────────────────────────
 
 describe("V1_CORE_ROUTES", () => {
-  it("contains exactly three routes", () => {
-    expect(V1_CORE_ROUTES).toHaveLength(3);
+  it("contains exactly five routes", () => {
+    expect(V1_CORE_ROUTES).toHaveLength(5);
   });
 
   it("contains /chat as the first core route", () => {
     expect(V1_CORE_ROUTES[0]).toMatchObject({ href: "/chat", label: "Chat" });
+  });
+
+  it("contains /check-ins as a core route", () => {
+    expect(coreHrefs).toContain("/check-ins");
+  });
+
+  it("contains /timeline as a core route", () => {
+    expect(coreHrefs).toContain("/timeline");
   });
 
   it("contains /patterns as a core route", () => {
@@ -64,12 +72,20 @@ describe("V1_CORE_ROUTES", () => {
 // ── Secondary routes ──────────────────────────────────────────────────────────
 
 describe("V1_SECONDARY_ROUTES", () => {
-  it("contains exactly three routes", () => {
-    expect(V1_SECONDARY_ROUTES).toHaveLength(3);
+  it("contains exactly five routes", () => {
+    expect(V1_SECONDARY_ROUTES).toHaveLength(5);
+  });
+
+  it("contains /actions as a secondary route", () => {
+    expect(secondaryHrefs).toContain("/actions");
   });
 
   it("contains /context as a secondary route", () => {
     expect(secondaryHrefs).toContain("/context");
+  });
+
+  it("contains /memories as a secondary route", () => {
+    expect(secondaryHrefs).toContain("/memories");
   });
 
   it("contains /import as a secondary route", () => {
@@ -160,6 +176,7 @@ describe("V1_VISIBLE_HREFS", () => {
   });
 
   it("has size equal to core + secondary count", () => {
+    // Core (5) + Secondary (5) = 10
     expect(V1_VISIBLE_HREFS.size).toBe(
       V1_CORE_ROUTES.length + V1_SECONDARY_ROUTES.length
     );

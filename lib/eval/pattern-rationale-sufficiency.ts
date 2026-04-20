@@ -48,9 +48,9 @@ const SUMMARY_RUBRICS: SummaryRubric[] = [
   },
   {
     family: "inner_critic",
-    summary: "You often frame yourself as incapable before acting.",
+    summary: "You often tell yourself you can't do it or get it right.",
     supportPattern:
-      /\b(terrible at|mess things up|ruin things|failure|failing|give up|can t do|cant do|can t get anything right|cant get anything right)\b/i,
+      /\b(terrible at|mess things up|ruin things|failure|failing|give up|can(?:'|’|\s)?t do|can(?:'|’|\s)?t get anything right)\b/i,
   },
   {
     family: "repetitive_loop",

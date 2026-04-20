@@ -491,6 +491,28 @@ enum ProfileArtifactType {
   COGNITIVE_PATTERN
 }
 
+// ── Quick Check-Ins ───────────────────────────────────────────────────────────
+
+enum QuickCheckInStateTag {
+  overloaded
+  stressed
+  flat
+  stable
+  energized
+}
+
+model QuickCheckIn {
+  id        String               @id @default(cuid())
+  userId    String
+  stateTag  QuickCheckInStateTag?
+  eventTags String[]             @default([])
+  note      String?              @db.VarChar(160)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([userId, createdAt])
+}
+
 // ── Pattern Claims ────────────────────────────────────────────────────────────
 // V1 core surface. LOCKED enums — changes require schema migration + build gate
 // update in lib/__tests__/pattern-build-gates.test.ts.
@@ -514,6 +536,18 @@ enum StrengthLevel {
   tentative
   developing
   established
+}
+
+enum SurfacedActionBucket {
+  stabilize
+  build
+}
+
+enum SurfacedActionStatus {
+  not_started
+  done
+  helped
+  didnt_help
 }
 
 model PatternClaim {
@@ -560,6 +594,26 @@ model PatternClaimAction {
   @@index([claimId])
   @@index([userId, status])
   @@index([userId, createdAt])
+}
+
+model SurfacedAction {
+  id              String               @id @default(cuid())
+  userId          String
+  surfaceKey      String
+  templateId      String
+  bucket          SurfacedActionBucket
+  linkedFamily    PatternType?
+  linkedClaimId   String?
+  linkedGoalRefId String?
+  status          SurfacedActionStatus @default(not_started)
+  note            String?
+  surfacedAt      DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@unique([userId, surfaceKey])
+  @@index([userId, bucket, updatedAt])
+  @@index([userId, linkedClaimId])
+  @@index([userId, linkedGoalRefId])
 }
 
 // Mirrors ContradictionEvidence — reuse shape, not a third evidence concept.

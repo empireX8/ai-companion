@@ -208,7 +208,7 @@ export function MemoryPanel({
     });
   };
 
-  const { manual, governed, historical } = useMemo(() => {
+  const { manual, governed, historical, otherCandidates } = useMemo(() => {
     const active = savedReferences.filter((item) => (item.status ?? "active") === "active");
     const hasSourceMetadata = savedReferences.some((item) =>
       Object.prototype.hasOwnProperty.call(item, "sourceMessageId")
@@ -220,14 +220,29 @@ export function MemoryPanel({
     const governedItems = hasSourceMetadata
       ? active.filter((item) => (item.sourceMessageId ?? null) !== null)
       : [];
-    const historicalItems = savedReferences.filter((item) => (item.status ?? "active") !== "active");
+
+    // Only truly retired items belong in "No longer active".
+    // "candidate" is NOT inactive — it means pending confirmation.
+    // Placing candidates here was the bug that routed all imported memories to this bucket.
+    const historicalItems = savedReferences.filter(
+      (item) => item.status === "inactive" || item.status === "superseded"
+    );
+
+    // Candidates from other sessions (imported history, past governance) that
+    // are not already surfaced as the current session's pendingCandidate.
+    const otherCandidateItems = savedReferences.filter(
+      (item) =>
+        item.status === "candidate" &&
+        item.id !== (pendingCandidate?.id ?? "")
+    );
 
     return {
       manual: manualItems,
       governed: governedItems,
       historical: historicalItems,
+      otherCandidates: otherCandidateItems,
     };
-  }, [savedReferences]);
+  }, [savedReferences, pendingCandidate]);
 
   const renderSection = (
     title: string,
@@ -286,11 +301,13 @@ export function MemoryPanel({
                         {item.type}
                       </span>
                     </div>
-                    <p className={`text-xs leading-snug text-foreground ${isExpanded ? "" : "line-clamp-1"}`}>
-                      {item.statement}
-                    </p>
                     {!isExpanded && (
-                      <p className="mt-1 text-[10px] text-text-dim">{formatRelativeTime(item.createdAt)}</p>
+                      <>
+                        <p className="text-xs leading-snug text-foreground line-clamp-1">
+                          {item.statement}
+                        </p>
+                        <p className="mt-1 text-[10px] text-text-dim">{formatRelativeTime(item.createdAt)}</p>
+                      </>
                     )}
                   </div>
                   <ChevronRight
@@ -541,7 +558,7 @@ export function MemoryPanel({
           <SectionHeader
             icon={<AlertCircle className="h-3.5 w-3.5" />}
             title="Pending"
-            count={pendingCandidate ? 1 : 0}
+            count={(pendingCandidate ? 1 : 0) + otherCandidates.length}
             accentClass="text-memory-pending"
             subtitle="Awaiting confirmation"
           />
@@ -559,9 +576,35 @@ export function MemoryPanel({
               </div>
               <p className="mt-1 text-[11px] text-text-dim">Awaiting confirmation in chat</p>
             </div>
-          ) : (
+          ) : null}
+
+          {otherCandidates.length > 0 ? (
+            <ul className="space-y-1.5">
+              {otherCandidates.map((item) => (
+                <li
+                  key={item.id}
+                  className="relative overflow-hidden rounded-xl bg-memory-pending/10 px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--memory-card-border)] before:absolute before:top-0 before:bottom-0 before:left-0 before:w-0.75 before:bg-memory-pending/40 before:content-['']"
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide bg-border/60 text-text-subtle">
+                      {item.type}
+                    </span>
+                  </div>
+                  <p className="text-xs leading-snug text-foreground line-clamp-2">{item.statement}</p>
+                  <div className="mt-1.5 flex items-center gap-2 text-[10px] text-text-dim">
+                    <Clock3 className="h-3 w-3 text-text-dim shrink-0" />
+                    <span>{formatRelativeTime(item.createdAt)}</span>
+                    <span>•</span>
+                    <span className="capitalize">{item.confidence}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {!pendingCandidate && otherCandidates.length === 0 ? (
             <p className="text-xs text-text-dim">No pending entries</p>
-          )}
+          ) : null}
         </section>
 
         {historical.length > 0
@@ -577,7 +620,7 @@ export function MemoryPanel({
           : null}
 
         <p className="pt-2 text-[11px] text-text-dim">
-          {savedReferences.length} entries · {pendingCandidate ? 1 : 0} pending
+          {savedReferences.length} entries · {(pendingCandidate ? 1 : 0) + otherCandidates.length} pending
         </p>
       </div>
     </div>

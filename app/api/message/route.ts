@@ -4,13 +4,15 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 import {
-  detectReferenceIntentType,
+  detectNativeReferenceIntentType,
+  extractMemoryStatement,
   isWriteableMemoryStatement,
   pickBestPreferenceMatch,
   scoreTokenOverlap,
   shouldPromptForMemoryUpdate,
 } from "@/lib/memory-governance";
 import { detectContradictions } from "@/lib/contradiction-detection";
+import { materializeContradictions } from "@/lib/contradiction-materialization";
 import { getTop3WithOptionalSurfacing } from "@/lib/contradiction-surface";
 import prismadb from "@/lib/prismadb";
 import { getRelevantReferenceMemory } from "@/lib/reference-memory";
@@ -20,6 +22,8 @@ import {
   FAST_PATH_SYSTEM_PROMPT,
 } from "@/lib/assistant/system-prompt";
 import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
+import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
+import { triggerNativeDerivationIfDue } from "@/lib/native-derivation-trigger";
 
 type GovernedType = "preference" | "goal" | "constraint";
 
@@ -222,78 +226,26 @@ export async function POST(req: Request) {
           const detections = await detectContradictions({
             userId,
             messageContent: normalizedContent,
+            db: prismadb as unknown as Parameters<typeof detectContradictions>[0]["db"],
           });
 
           if (detections.length) {
-            const now = new Date();
-            await prismadb.$transaction(async (tx) => {
-              for (const detection of detections.slice(0, 2)) {
-                if (detection.existingNodeId) {
-                  const existingNode = await tx.contradictionNode.findFirst({
-                    where: {
-                      id: detection.existingNodeId,
-                      userId,
-                      status: { in: ["candidate", "open", "explored"] },
-                    },
-                    select: { id: true },
-                  });
-
-                  if (!existingNode) {
-                    continue;
-                  }
-
-                  await tx.contradictionEvidence.create({
-                    data: {
-                      nodeId: existingNode.id,
-                      sessionId: session.id,
-                      messageId: userMessage.id,
-                      quote: normalizedContent,
-                    },
-                  });
-
-                  await tx.contradictionNode.update({
-                    where: { id: existingNode.id },
-                    data: {
-                      evidenceCount: { increment: 1 },
-                      lastEvidenceAt: now,
-                      lastTouchedAt: now,
-                    },
-                  });
-
-                  continue;
-                }
-
-                const createdNode = await tx.contradictionNode.create({
-                  data: {
-                    userId,
-                    title: detection.title,
-                    sideA: detection.sideA,
-                    sideB: detection.sideB,
-                    type: detection.type,
-                    confidence: detection.confidence,
-                    status: "candidate",
-                    sourceSessionId: session.id,
-                    sourceMessageId: userMessage.id,
-                    evidenceCount: 1,
-                    lastEvidenceAt: now,
-                    recommendedRung: "rung1_gentle_mirror",
-                    escalationLevel: 0,
-                  },
-                  select: { id: true },
-                });
-
-                await tx.contradictionEvidence.create({
-                  data: {
-                    nodeId: createdNode.id,
-                    sessionId: session.id,
-                    messageId: userMessage.id,
-                    quote: normalizedContent,
-                  },
-                });
-              }
+            await materializeContradictions({
+              userId,
+              detections,
+              sessionId: session.id,
+              messageId: userMessage.id,
+              quote: normalizedContent,
+              db: prismadb as unknown as Parameters<typeof materializeContradictions>[0]["db"],
             });
           }
         }
+        // Native pattern derivation — non-blocking, immediate-or-scheduled
+        await triggerNativeDerivationIfDue(
+          { userId },
+          prismadb,
+          patternBatchOrchestrator
+        );
       } catch (bgErr) {
         console.error(`[MESSAGE_BG_ERROR][${reqId}]`, bgErr);
       }
@@ -323,13 +275,9 @@ export async function POST(req: Request) {
       memory.queryRelevant(memoryKey, normalizedContent, vectorTopK, "user"),
     ]);
     console.debug(tag, "memory_reads_done", Date.now() - tServer);
-    const referenceIntentType = detectReferenceIntentType(normalizedContent);
+    const memoryStatement = extractMemoryStatement(normalizedContent);
     const governedType: GovernedType | null =
-      referenceIntentType === "preference" ||
-      referenceIntentType === "goal" ||
-      referenceIntentType === "constraint"
-        ? referenceIntentType
-        : null;
+      detectNativeReferenceIntentType(normalizedContent);
     const maybeMemoryUpdate = shouldPromptForMemoryUpdate(normalizedContent);
     if (maybeMemoryUpdate && governedType && isWriteableMemoryStatement(normalizedContent)) {
       const activeItems = await prismadb.referenceItem.findMany({
@@ -349,7 +297,7 @@ export async function POST(req: Request) {
 
       const preferenceMatch =
         governedType === "preference"
-          ? pickBestPreferenceMatch(activeItems, normalizedContent)
+          ? pickBestPreferenceMatch(activeItems, memoryStatement)
           : null;
       const governedOldItem =
         governedType === "preference"
@@ -369,7 +317,7 @@ export async function POST(req: Request) {
             sourceSessionId: session.id,
             type: governedType,
             supersedesId: governedOldItem.id,
-            statement: normalizedContent,
+            statement: memoryStatement,
           },
           select: { id: true },
         });
@@ -384,7 +332,7 @@ export async function POST(req: Request) {
             data: {
               userId,
               type: governedType,
-              statement: normalizedContent,
+              statement: memoryStatement,
               confidence: "medium",
               status: "candidate",
               supersedesId: governedOldItem.id,
@@ -396,11 +344,11 @@ export async function POST(req: Request) {
       } else {
         // Non-conflicting path: brand-new memory type → candidate (never promoted silently)
         const existingActive = await prismadb.referenceItem.findFirst({
-          where: { userId, status: "active", type: governedType, statement: normalizedContent },
+          where: { userId, status: "active", type: governedType, statement: memoryStatement },
           select: { id: true },
         });
         const existingCandidate = await prismadb.referenceItem.findFirst({
-          where: { userId, status: "candidate", type: governedType, statement: normalizedContent, sourceSessionId: session.id },
+          where: { userId, status: "candidate", type: governedType, statement: memoryStatement, sourceSessionId: session.id },
           select: { id: true },
         });
 
@@ -409,7 +357,7 @@ export async function POST(req: Request) {
             data: {
               userId,
               type: governedType,
-              statement: normalizedContent,
+              statement: memoryStatement,
               confidence: "medium",
               status: "candidate",
               sourceSessionId: session.id,

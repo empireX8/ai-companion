@@ -3,8 +3,8 @@
 /**
  * GlobalRail — V1 product navigation (P1-02)
  *
- * Core section:      Chat · Patterns · History
- * Secondary section: Context · Import · Settings
+ * Core section:      Chat · Check-ins · Patterns · History
+ * Secondary section: Actions · Context · Memories · Import · Settings
  *
  * Hidden from nav (routes preserved for internal access):
  *   /contradictions · /references · /audit · /evidence · /metrics
@@ -16,12 +16,16 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Plus,
+  ClipboardList,
   Brain,
   History,
+  Activity,
   Clock3,
+  BookOpen,
   Upload,
   Settings,
   ChevronLeft,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGlobalRail } from "./GlobalRailContext";
@@ -31,9 +35,13 @@ import { V1_CORE_ROUTES, V1_SECONDARY_ROUTES } from "@/lib/v1-nav";
 
 const ROUTE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/chat": Plus,
+  "/check-ins": ClipboardList,
+  "/timeline": Activity,
   "/patterns": Brain,
   "/history": History,
+  "/actions": Lightbulb,
   "/context": Clock3,
+  "/memories": BookOpen,
   "/import": Upload,
   "/settings": Settings,
 };
@@ -108,7 +116,7 @@ export function GlobalRail() {
           )}
         </div>
 
-        {/* Core nav — Chat, Patterns, History */}
+        {/* Core nav — Chat, Check-ins, Patterns, History */}
         <div className="flex flex-1 flex-col gap-0.5 pt-2">
           {V1_CORE_ROUTES.map((route) => (
             <RailLink
@@ -128,7 +136,7 @@ export function GlobalRail() {
             )}
           />
 
-          {/* Secondary nav — Context, Import, Settings */}
+          {/* Secondary nav — Actions, Context, Memories, Import, Settings */}
           {V1_SECONDARY_ROUTES.map((route) => (
             <RailLink
               key={route.href}

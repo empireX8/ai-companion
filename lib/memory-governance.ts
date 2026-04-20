@@ -1,6 +1,8 @@
 type GovernedType = "preference" | "goal" | "constraint";
 type ReferenceIntentType = GovernedType | "rule";
 
+const NORMALIZE_APOSTROPHES_PATTERN = /[\u2018\u2019]/g;
+
 const GOVERNANCE_TRIGGER_PATTERNS = [
   /\bi dont\b/i,
   /\bi don't\b/i,
@@ -17,6 +19,9 @@ const GOVERNANCE_TRIGGER_PATTERNS = [
   /\binstead\b/i,
   /\bno longer\b/i,
 ];
+
+const EXPLICIT_MEMORY_CAPTURE_PATTERN =
+  /^(?:please\s+)?remember(?:\s+this(?:\s+for\s+future\s+chats?)?)?(?:\s*[:,-]\s*|\s+that\s+|\s+)/i;
 
 const RULE_LIKE_PATTERN = /^when i say .* respond with exactly/i;
 
@@ -93,6 +98,18 @@ export const GOVERNANCE_STOPWORDS = new Set([
 
 type PreferenceItem = { id: string; type: string; statement: string };
 
+const normalizeGovernanceContent = (content: string) =>
+  content.replace(NORMALIZE_APOSTROPHES_PATTERN, "'").replace(/\s+/g, " ").trim();
+
+const hasExplicitMemoryCaptureIntent = (content: string) =>
+  EXPLICIT_MEMORY_CAPTURE_PATTERN.test(normalizeGovernanceContent(content));
+
+export const extractMemoryStatement = (content: string) => {
+  const normalized = normalizeGovernanceContent(content);
+  const extracted = normalized.replace(EXPLICIT_MEMORY_CAPTURE_PATTERN, "").trim();
+  return extracted || normalized;
+};
+
 const startsWithIntentToken = (content: string, tokens: string[]) => {
   const normalized = content.trim().toLowerCase();
   if (!normalized) {
@@ -152,8 +169,32 @@ export const detectReferenceIntentType = (content: string): ReferenceIntentType 
   return null;
 };
 
+export const detectNativeReferenceIntentType = (content: string): GovernedType | null => {
+  const statement = extractMemoryStatement(content);
+  const intent = detectReferenceIntentType(statement);
+  if (intent === "preference" || intent === "goal" || intent === "constraint") {
+    return intent;
+  }
+
+  if (
+    hasExplicitMemoryCaptureIntent(content) &&
+    /\bi\s+do\s+better\s+with\b|\bi\s+work\s+better\s+with\b|\bi\s+work\s+best\s+with\b|\bi\s+respond\s+better\s+to\b/i.test(
+      statement
+    )
+  ) {
+    return "preference";
+  }
+
+  return null;
+};
+
 export const shouldPromptForMemoryUpdate = (content: string) => {
-  return GOVERNANCE_TRIGGER_PATTERNS.some((pattern) => pattern.test(content));
+  const normalized = normalizeGovernanceContent(content);
+  if (hasExplicitMemoryCaptureIntent(normalized)) {
+    return true;
+  }
+
+  return GOVERNANCE_TRIGGER_PATTERNS.some((pattern) => pattern.test(normalized));
 };
 
 /**
@@ -164,14 +205,20 @@ export const shouldPromptForMemoryUpdate = (content: string) => {
  * with a first-person or declarative signal.
  */
 export const isWriteableMemoryStatement = (content: string): boolean => {
-  const t = content.trim();
+  const t = extractMemoryStatement(content);
   if (t.length < 25) return false;
   const wordCount = (t.match(/\b\w{2,}\b/g) ?? []).length;
   if (wordCount < 5) return false;
   // Questions are not memory statements
   if (t.endsWith("?")) return false;
-  // Must start with a first-person signal
-  if (!/^(?:i\b|my\b|i'|i'm\b|i've\b|i'll\b|i'd\b)/i.test(t)) return false;
+  // Must start with a first-person signal or a first-person temporal clause.
+  if (
+    !/^(?:i\b|my\b|i'|i'm\b|i've\b|i'll\b|i'd\b|(?:when|if)\s+(?:i\b|my\b|i'|i'm\b))/i.test(
+      t
+    )
+  ) {
+    return false;
+  }
   return true;
 };
 
@@ -229,4 +276,3 @@ export const pickBestPreferenceMatch = (items: PreferenceItem[], content: string
 
   return { item: bestItem, score: bestScore };
 };
-

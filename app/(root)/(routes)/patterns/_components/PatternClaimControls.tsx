@@ -30,7 +30,8 @@ type Props = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function PatternClaimControls({ claimId: _claimId }: Props) {
+export function PatternClaimControls({ claimId }: Props) {
+  void claimId;
   const [phase, setPhase] = useState<Phase>("idle");
   const [selected, setSelected] = useState<string | null>(null);
 

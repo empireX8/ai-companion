@@ -13,6 +13,7 @@
 
 import type { PrismaClient } from "@prisma/client";
 
+import { analyzeBehavioralEligibility } from "./behavioral-filter";
 import prismadb from "./prismadb";
 
 export type PersistedPatternClaimEvidenceRecord = {
@@ -32,18 +33,100 @@ export type PersistedPatternClaimEvidenceBundle = {
 
 // ── Quote extraction ──────────────────────────────────────────────────────────
 
-/**
- * Extract a representative quote from message content.
- * Takes the first sentence (ends at ., !, or ?) up to 200 chars.
- * Falls back to the raw content truncated to 200 chars.
- */
-export function extractQuote(content: string): string {
+const MAX_EXTRACTED_QUOTE_LENGTH = 200;
+
+type QuoteCandidate = {
+  raw: string;
+  normalizedForScoring: string;
+};
+
+function truncateExtractedQuote(text: string): string {
+  return text.trim().slice(0, MAX_EXTRACTED_QUOTE_LENGTH);
+}
+
+function extractFallbackQuote(content: string): string {
   const trimmed = content.trim();
   const match = trimmed.match(/^.{3,}?[.!?]/);
   if (match) {
-    return match[0].slice(0, 200);
+    return truncateExtractedQuote(match[0]);
   }
-  return trimmed.slice(0, 200);
+  return truncateExtractedQuote(trimmed);
+}
+
+function splitIntoQuoteCandidates(content: string): QuoteCandidate[] {
+  const trimmed = content.trim();
+  if (!trimmed) return [];
+
+  const blocks = trimmed
+    .replace(/\r\n/g, "\n")
+    .split(/\n+/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+
+  const candidates: QuoteCandidate[] = [];
+
+  for (const block of blocks) {
+    const sentences =
+      block.match(/[^.!?;\n]+(?:[.!?;]+|$)/g)?.map((sentence) => sentence.trim()) ??
+      [block];
+
+    for (const sentence of sentences) {
+      if (!sentence) continue;
+
+      const normalizedForScoring = sentence
+        .replace(/^(?:user|human|me)\s*:\s*/i, "")
+        .replace(/^(?:[-*•]\s+)/, "")
+        .trim();
+
+      candidates.push({
+        raw: sentence,
+        normalizedForScoring: normalizedForScoring || sentence,
+      });
+    }
+  }
+
+  return candidates;
+}
+
+function hasBehavioralSignal(features: ReturnType<typeof analyzeBehavioralEligibility>["features"]): boolean {
+  return (
+    features.containsHabitLanguage ||
+    features.containsSelfJudgmentLanguage ||
+    features.containsProgressLanguage
+  );
+}
+
+function containsBehavioralSignal(candidate: QuoteCandidate): boolean {
+  const analysis = analyzeBehavioralEligibility(candidate.normalizedForScoring);
+  if (analysis.eligible) {
+    return true;
+  }
+
+  return (
+    hasBehavioralSignal(analysis.features) &&
+    !analysis.features.questionLike &&
+    !analysis.features.assistantDirected &&
+    !analysis.features.imperativeLike &&
+    !analysis.features.likelyTopicQuery &&
+    !analysis.features.tooShort
+  );
+}
+
+/**
+ * Extract a representative quote from message content.
+ * Prefers the first sentence/chunk that carries behavioral signal, so replayable
+ * receipts keep the same supporting language that triggered the family detector.
+ * Falls back to the previous first-sentence behavior when no better chunk exists.
+ */
+export function extractQuote(content: string): string {
+  const candidates = splitIntoQuoteCandidates(content);
+  const behavioralCandidate = candidates.find(containsBehavioralSignal);
+
+  if (behavioralCandidate) {
+    return truncateExtractedQuote(behavioralCandidate.raw);
+  }
+
+  return extractFallbackQuote(content);
 }
 
 // ── Single receipt ────────────────────────────────────────────────────────────

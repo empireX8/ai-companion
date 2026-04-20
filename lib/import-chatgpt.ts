@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import JSZip from "jszip";
 
 import { detectContradictions } from "./contradiction-detection";
+import { materializeContradictions } from "./contradiction-materialization";
 import {
   completeDerivationRun,
   createDerivationArtifact,
@@ -698,6 +699,12 @@ export async function importExtractedConversations({
           const detections = await detectContradictions({
             userId,
             messageContent: importedMessage.content,
+            // Include candidate references: every reference extracted during
+            // this import run is created as "candidate", never "active". Without
+            // this, contradiction detection finds at most the handful of
+            // pre-existing active refs and silently returns [] for every message.
+            referenceStatuses: ["active", "candidate"],
+            db: db as unknown as Parameters<typeof detectContradictions>[0]["db"],
           });
           if (detections.length === 0) {
             continue;
@@ -729,73 +736,16 @@ export async function importExtractedConversations({
             }
           }
 
-          const now = new Date();
-          await db.$transaction(async (tx) => {
-            for (const detection of detections.slice(0, 2)) {
-              if (detection.existingNodeId) {
-                const existingNode = await tx.contradictionNode.findFirst({
-                  where: {
-                    id: detection.existingNodeId,
-                    userId,
-                    status: { in: ["candidate", "open", "explored"] },
-                  },
-                  select: { id: true },
-                });
-
-                if (!existingNode) {
-                  continue;
-                }
-
-                await tx.contradictionEvidence.create({
-                  data: {
-                    nodeId: existingNode.id,
-                    sessionId: created.sessionId,
-                    messageId: importedMessage.id,
-                    quote: importedMessage.content,
-                  },
-                });
-                await tx.contradictionNode.update({
-                  where: { id: existingNode.id },
-                  data: {
-                    evidenceCount: { increment: 1 },
-                    lastEvidenceAt: now,
-                    lastTouchedAt: now,
-                  },
-                });
-                continue;
-              }
-
-              const createdNode = await tx.contradictionNode.create({
-                data: {
-                  userId,
-                  title: detection.title,
-                  sideA: detection.sideA,
-                  sideB: detection.sideB,
-                  type: detection.type,
-                  confidence: detection.confidence,
-                  status: "candidate",
-                  sourceSessionId: created.sessionId,
-                  sourceMessageId: importedMessage.id,
-                  evidenceCount: 1,
-                  lastEvidenceAt: now,
-                  recommendedRung: "rung1_gentle_mirror",
-                  escalationLevel: 0,
-                },
-                select: { id: true },
-              });
-
-              await tx.contradictionEvidence.create({
-                data: {
-                  nodeId: createdNode.id,
-                  sessionId: created.sessionId,
-                  messageId: importedMessage.id,
-                  quote: importedMessage.content,
-                },
-              });
-
-              contradictionsCreated += 1;
-            }
+          const materialized = await materializeContradictions({
+            userId,
+            detections,
+            sessionId: created.sessionId,
+            messageId: importedMessage.id,
+            quote: importedMessage.content,
+            db: db as unknown as Parameters<typeof materializeContradictions>[0]["db"],
           });
+
+          contradictionsCreated += materialized.nodesCreated;
         } catch (error) {
           errors.push(
             `Conversation ${conversationIndex + 1} message ${importedMessage.id}: contradiction detection failed (${toErrorMessage(

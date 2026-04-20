@@ -43,7 +43,7 @@ describe("PATTERN_FAMILY_SECTIONS", () => {
       "Triggers & Conditions",
       "Inner-Critic / Self-Talk",
       "Repetitive Loops",
-      "Contradictions & Drift",
+      "Tensions",
       "Recovery & Stabilizers",
     ]);
   });

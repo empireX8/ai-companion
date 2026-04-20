@@ -1,4 +1,4 @@
-import { ContradictionType, ReferenceType } from "@prisma/client";
+import { ContradictionType, ReferenceStatus, ReferenceType } from "@prisma/client";
 
 import prismadb from "./prismadb";
 
@@ -30,6 +30,15 @@ type DetectFromDataParams = {
   messageContent: string;
   activeReferences: DetectionReference[];
   existingNodes: DetectionNode[];
+};
+
+export type ContradictionDetectionDb = {
+  referenceItem: {
+    findMany: (args: unknown) => Promise<DetectionReference[]>;
+  };
+  contradictionNode: {
+    findMany: (args: unknown) => Promise<DetectionNode[]>;
+  };
 };
 
 const MAX_DETECTIONS_PER_MESSAGE = 2;
@@ -206,9 +215,20 @@ export function detectContradictionsFromData({
 export async function detectContradictions({
   userId,
   messageContent,
+  referenceStatuses = ["active"],
+  db = prismadb as unknown as ContradictionDetectionDb,
 }: {
   userId: string;
   messageContent: string;
+  /**
+   * Which reference statuses to match against.
+   * Defaults to ["active"] for live-chat paths.
+   * Pass ["active", "candidate"] in the import pipeline so that references
+   * extracted from imported history are available for contradiction detection
+   * in the same import run (imported refs land as "candidate", never "active").
+   */
+  referenceStatuses?: ReferenceStatus[];
+  db?: ContradictionDetectionDb;
 }): Promise<DetectedContradiction[]> {
   const content = messageContent.trim();
   if (content.length < MIN_DETECTION_LENGTH) {
@@ -216,10 +236,10 @@ export async function detectContradictions({
   }
 
   const [activeReferences, existingNodes] = await Promise.all([
-    prismadb.referenceItem.findMany({
+    db.referenceItem.findMany({
       where: {
         userId,
-        status: "active",
+        status: { in: referenceStatuses },
         type: {
           in: ["goal", "constraint"],
         },
@@ -232,11 +252,11 @@ export async function detectContradictions({
         statement: true,
       },
     }),
-    prismadb.contradictionNode.findMany({
+    db.contradictionNode.findMany({
       where: {
         userId,
         status: {
-          in: ["open", "explored"],
+          in: ["candidate", "open", "snoozed", "explored"],
         },
       },
       orderBy: [{ weight: "desc" }, { lastTouchedAt: "desc" }],

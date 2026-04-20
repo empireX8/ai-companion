@@ -536,7 +536,7 @@ export default function ImportPage() {
                 </Link>
               ) : null}
               {typeof candidateMemories === "number" && candidateMemories > 0 ? (
-                <Link href="/references/candidates" className="block text-primary underline underline-offset-2">
+                <Link href="/memories" className="block text-primary underline underline-offset-2">
                   → Review candidate memories
                 </Link>
               ) : null}

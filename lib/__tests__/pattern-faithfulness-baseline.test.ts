@@ -147,7 +147,7 @@ describe("4. unfaithful example is reported correctly", () => {
     const unfaithfulScore: FaithfulnessClaimScore = {
       groupId: "ic-group-threshold",
       family: "inner_critic",
-      visibleSummary: "You often frame yourself as incapable before acting.",
+      visibleSummary: "You often tell yourself you can't do it or get it right.",
       receiptQuotes: [
         "I'm terrible at keeping the commitments I make to myself",
         "I can't stop myself from catastrophizing whenever I make a mistake",

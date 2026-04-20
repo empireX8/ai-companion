@@ -7,15 +7,17 @@ import { PanelRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
 import { useInspector } from "@/components/inspector/InspectorContext";
+import { V1_CORE_ROUTES, V1_SECONDARY_ROUTES } from "@/lib/v1-nav";
 import { useTopBarSlot } from "./TopBarSlotContext";
 
 const SECTION_LABELS: Array<[string, string]> = [
-  ["/chat", "Chat"],
+  ...[...V1_CORE_ROUTES, ...V1_SECONDARY_ROUTES].map((route) => [
+    route.href,
+    route.label,
+  ] as [string, string]),
   ["/contradictions", "Tensions"],
   ["/references", "Memories"],
-  ["/import", "Import"],
   ["/audit", "Review"],
-  ["/settings", "Settings"],
   ["/metrics", "Metrics"],
 ];
 
