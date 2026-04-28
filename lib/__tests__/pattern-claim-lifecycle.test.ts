@@ -64,6 +64,10 @@ type EvidenceRow = {
   sessionId: string | null;
   journalEntryId?: string | null;
   createdAt?: Date;
+  journalEntry?: {
+    authoredAt?: Date | null;
+    createdAt: Date;
+  } | null;
 };
 
 let idSeq = 0;
@@ -124,6 +128,7 @@ function makeMockDb(opts: {
           sessionId: row.sessionId,
           journalEntryId: row.journalEntryId ?? null,
           createdAt: row.createdAt ?? new Date("2026-01-01T00:00:00.000Z"),
+          journalEntry: row.journalEntry ?? null,
         })),
     },
     _claims: claims,
@@ -720,7 +725,7 @@ describe("advanceClaimLifecycle — journal accounting fields", () => {
     expect(result.journalDaySpread).toBe(0);
   });
 
-  it("counts journal receipts and distinct calendar days", async () => {
+  it("counts journal receipts and distinct authored calendar days", async () => {
     const db = makeMockDb({
       existingClaim: {
         id: "c1",
@@ -736,17 +741,29 @@ describe("advanceClaimLifecycle — journal accounting fields", () => {
         {
           sessionId: null,
           journalEntryId: "j1",
-          createdAt: new Date("2026-01-10T08:00:00.000Z"),
+          createdAt: new Date("2026-02-20T08:00:00.000Z"),
+          journalEntry: {
+            authoredAt: new Date("2026-01-10T08:00:00.000Z"),
+            createdAt: new Date("2026-01-10T08:00:00.000Z"),
+          },
         },
         {
           sessionId: null,
           journalEntryId: "j2",
-          createdAt: new Date("2026-01-10T20:00:00.000Z"),
+          createdAt: new Date("2026-02-20T12:00:00.000Z"),
+          journalEntry: {
+            authoredAt: new Date("2026-01-10T20:00:00.000Z"),
+            createdAt: new Date("2026-01-10T20:00:00.000Z"),
+          },
         },
         {
           sessionId: null,
           journalEntryId: "j3",
-          createdAt: new Date("2026-01-11T12:00:00.000Z"),
+          createdAt: new Date("2026-02-20T16:00:00.000Z"),
+          journalEntry: {
+            authoredAt: new Date("2026-01-11T12:00:00.000Z"),
+            createdAt: new Date("2026-01-11T12:00:00.000Z"),
+          },
         },
       ],
     });
@@ -754,7 +771,81 @@ describe("advanceClaimLifecycle — journal accounting fields", () => {
     const result = await advanceClaimLifecycle({ claimId: "c1", db });
 
     expect(result.journalEvidenceCount).toBe(3);
-    // j1 and j2 share 2026-01-10; j3 is 2026-01-11 — 2 distinct days
+    // journal evidence materialized on one day still spreads across source authored days.
+    expect(result.journalDaySpread).toBe(2);
+  });
+
+  it("falls back to JournalEntry.createdAt when authoredAt is missing", async () => {
+    const db = makeMockDb({
+      existingClaim: {
+        id: "c1",
+        userId: "u1",
+        patternType: "contradiction_drift",
+        summaryNorm: "test",
+        summary: "test",
+        status: "active",
+        strengthLevel: "tentative",
+        sourceRunId: null,
+      },
+      evidence: [
+        {
+          sessionId: null,
+          journalEntryId: "j1",
+          createdAt: new Date("2026-03-10T08:00:00.000Z"),
+          journalEntry: {
+            authoredAt: null,
+            createdAt: new Date("2026-01-20T08:00:00.000Z"),
+          },
+        },
+        {
+          sessionId: null,
+          journalEntryId: "j2",
+          createdAt: new Date("2026-03-10T10:00:00.000Z"),
+          journalEntry: {
+            authoredAt: null,
+            createdAt: new Date("2026-01-21T08:00:00.000Z"),
+          },
+        },
+      ],
+    });
+
+    const result = await advanceClaimLifecycle({ claimId: "c1", db });
+
+    expect(result.journalEvidenceCount).toBe(2);
+    expect(result.journalDaySpread).toBe(2);
+  });
+
+  it("falls back to evidence.createdAt when linked JournalEntry is unavailable", async () => {
+    const db = makeMockDb({
+      existingClaim: {
+        id: "c1",
+        userId: "u1",
+        patternType: "contradiction_drift",
+        summaryNorm: "test",
+        summary: "test",
+        status: "active",
+        strengthLevel: "tentative",
+        sourceRunId: null,
+      },
+      evidence: [
+        {
+          sessionId: null,
+          journalEntryId: "j1",
+          createdAt: new Date("2026-04-01T08:00:00.000Z"),
+          journalEntry: null,
+        },
+        {
+          sessionId: null,
+          journalEntryId: "j2",
+          createdAt: new Date("2026-04-02T08:00:00.000Z"),
+          journalEntry: null,
+        },
+      ],
+    });
+
+    const result = await advanceClaimLifecycle({ claimId: "c1", db });
+
+    expect(result.journalEvidenceCount).toBe(2);
     expect(result.journalDaySpread).toBe(2);
   });
 

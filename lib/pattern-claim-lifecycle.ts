@@ -335,7 +335,17 @@ export async function advanceClaimLifecycle({
   // Count evidence and distinct sessions
   const evidence = await db.patternClaimEvidence.findMany({
     where: { claimId },
-    select: { sessionId: true, journalEntryId: true, createdAt: true },
+    select: {
+      sessionId: true,
+      journalEntryId: true,
+      createdAt: true,
+      journalEntry: {
+        select: {
+          authoredAt: true,
+          createdAt: true,
+        },
+      },
+    },
   });
 
   const evidenceCount = evidence.length;
@@ -345,7 +355,10 @@ export async function advanceClaimLifecycle({
   const journalEvidence = evidence.filter((e) => e.journalEntryId !== null);
   const journalEvidenceCount = journalEvidence.length;
   const journalDaySpread = new Set(
-    journalEvidence.map((e) => e.createdAt.toISOString().slice(0, 10))
+    journalEvidence.map((e) => {
+      const journalDate = e.journalEntry?.authoredAt ?? e.journalEntry?.createdAt ?? e.createdAt;
+      return journalDate.toISOString().slice(0, 10);
+    })
   ).size;
 
   let newStatus = previousStatus;
