@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { PanelRight } from "lucide-react";
@@ -32,6 +33,11 @@ export function ContentTopBar() {
   const pathname = usePathname();
   const { toggle, isOpen } = useInspector();
   const { slotRef } = useTopBarSlot();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/40 bg-card px-4">
@@ -56,7 +62,16 @@ export function ContentTopBar() {
           <PanelRight className="h-4 w-4" />
         </button>
         <ModeToggle />
-        <UserButton />
+        <div className="flex h-7 w-7 items-center justify-center">
+          {mounted ? (
+            <UserButton />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="h-7 w-7 rounded-full border border-border/40 bg-muted/40"
+            />
+          )}
+        </div>
       </div>
     </div>
   );

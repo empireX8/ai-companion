@@ -18,7 +18,7 @@
 //   id, nodeId (→ claimId), source, sessionId, messageId, quote, createdAt
 //
 // PatternClaimEvidence shape:
-//   id, claimId, source, sessionId, messageId, quote, createdAt
+//   id, claimId, source, sessionId, messageId, journalEntryId, quote, createdAt
 //
 // EvidenceSpan is NOT used for PatternClaim receipts.
 // EvidenceSpan is char-level span provenance for DerivationArtifacts only.
@@ -31,6 +31,7 @@ export const V1_RECEIPT_REQUIRED_FIELDS = [
   "source",     // provenance: "derivation" | "user_input"
   "sessionId",  // session/date reference (nullable)
   "messageId",  // message/entry reference (nullable)
+  "journalEntryId", // journal-entry reference (nullable)
   "quote",      // extracted quote (nullable)
 ] as const;
 

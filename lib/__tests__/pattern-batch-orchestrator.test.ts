@@ -75,8 +75,10 @@ function makeMockDb() {
 const makeEntry = (
   overrides: Partial<NormalizedHistoryEntry> = {}
 ): NormalizedHistoryEntry => ({
+  sourceKind: "chat_message",
   messageId: "msg1",
   sessionId: "sess1",
+  journalEntryId: null,
   sessionOrigin: "APP",
   sessionStartedAt: new Date("2024-01-01"),
   role: "user",
@@ -155,6 +157,34 @@ describe("createPatternBatchOrchestrator — with history", () => {
     expect(run?.sessionCount).toBe(2);
     expect(run?.windowStart?.getTime()).toBe(t1.getTime());
     expect(run?.windowEnd?.getTime()).toBe(t2.getTime());
+  });
+
+  it("runs when synthesis contains only journal-backed entries", async () => {
+    const db = makeMockDb();
+    const journalOnlyEntry = makeEntry({
+      sourceKind: "journal_entry",
+      messageId: null,
+      sessionId: null,
+      journalEntryId: "journal-1",
+      sessionOrigin: null,
+      sessionStartedAt: null,
+      content: "I keep defaulting to people-pleasing.",
+      createdAt: new Date("2024-03-01T10:00:00.000Z"),
+    });
+
+    const orchestrator = createPatternBatchOrchestrator({
+      db,
+      synthesize: async () => [journalOnlyEntry],
+    });
+
+    const result = await orchestrator.runForUser({ userId: "u1", trigger: "manual" });
+
+    expect(result.status).toBe("completed");
+    expect(result.messageCount).toBe(0);
+    expect(result.sessionCount).toBe(0);
+    const run = db._runs.find((r) => r.id === result.runId);
+    expect(run?.messageCount).toBe(0);
+    expect(run?.sessionCount).toBe(0);
   });
 
   it("import trigger → scope=import on the DerivationRun", async () => {

@@ -71,6 +71,7 @@ export type PatternReceiptView = {
   source: string;
   sessionId: string | null;
   messageId: string | null;
+  journalEntryId?: string | null;
   quote: string | null;
   createdAt: string;
 };
@@ -85,6 +86,10 @@ export type PatternClaimView = {
   evidenceCount: number;
   /** Number of distinct sessions represented in receipts */
   sessionCount: number;
+  /** Number of evidence receipts backed by journal entries */
+  journalEvidenceCount: number;
+  /** Number of distinct UTC calendar days represented by journal-backed evidence */
+  journalDaySpread: number;
   createdAt: string;
   updatedAt: string;
   receipts: PatternReceiptView[];

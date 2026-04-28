@@ -37,6 +37,7 @@ model Session {
   userId                    String
   label                     String?
   origin                    SessionOrigin       @default(APP)
+  surfaceType               SessionSurfaceType?
   importedSource            String?
   importedAt                DateTime?
   importedExternalId        String?
@@ -52,6 +53,7 @@ model Session {
   @@index([userId])
   @@index([userId, startedAt])
   @@index([userId, origin, createdAt])
+  @@index([userId, origin, surfaceType, startedAt])
 }
 
 model Message {
@@ -72,6 +74,20 @@ model Message {
   @@index([sessionId, createdAt])
   @@index([userId, createdAt])
   @@index([companionId])
+}
+
+model JournalEntry {
+  id                   String                 @id @default(uuid())
+  userId               String
+  title                String?
+  body                 String
+  authoredAt           DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  patternClaimEvidence PatternClaimEvidence[]
+
+  @@index([userId, createdAt])
+  @@index([userId, updatedAt])
 }
 
 model UserSubscription {
@@ -244,6 +260,11 @@ model ImportUploadChunk {
 enum SessionOrigin {
   APP
   IMPORTED_ARCHIVE
+}
+
+enum SessionSurfaceType {
+  journal_chat
+  explore_chat
 }
 
 enum Role {
@@ -561,9 +582,11 @@ model PatternClaim {
   sourceRunId       String?
   // P2.5-07 — set true when a not_helpful action outcome is recorded;
   // consumed + cleared by batchRefreshClaimsForUser on next refresh pass.
-  needsReevaluation Boolean              @default(false)
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  needsReevaluation    Boolean              @default(false)
+  journalEvidenceCount Int                @default(0)
+  journalDaySpread     Int                @default(0)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
   evidence          PatternClaimEvidence[]
   actions           PatternClaimAction[]
 
@@ -619,14 +642,17 @@ model SurfacedAction {
 // Mirrors ContradictionEvidence — reuse shape, not a third evidence concept.
 // Fields: claimId (≙ nodeId), source, sessionId, messageId, quote, createdAt
 model PatternClaimEvidence {
-  id        String       @id @default(cuid())
-  claimId   String
-  claim     PatternClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
-  source    String       @default("derivation") // "derivation" | "user_input"
-  sessionId String?
-  messageId String?
-  quote     String?
-  createdAt DateTime     @default(now())
+  id             String       @id @default(cuid())
+  claimId        String
+  claim          PatternClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  source         String       @default("derivation") // "derivation" | "user_input"
+  sessionId      String?
+  messageId      String?
+  journalEntryId String?
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+  quote          String?
+  createdAt      DateTime     @default(now())
 
   @@index([claimId])
+  @@index([journalEntryId])
 }

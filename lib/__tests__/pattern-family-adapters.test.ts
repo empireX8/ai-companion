@@ -338,3 +338,108 @@ describe("detectRecoveryStabilizerClues — marker coverage", () => {
     expect(result).toHaveLength(1);
   });
 });
+
+// ── Journal-backed supportEntries ─────────────────────────────────────────────
+
+function makeJournalEntry(
+  content: string,
+  journalEntryId = `j_${++seq}`
+): NormalizedHistoryEntry {
+  return {
+    sourceKind: "journal_entry",
+    messageId: null,
+    sessionId: null,
+    journalEntryId,
+    sessionOrigin: null,
+    sessionStartedAt: null,
+    role: "user",
+    content,
+    createdAt: new Date("2026-04-01"),
+  };
+}
+
+describe("detectRepetitiveLoopClues — journal cues in supportEntries", () => {
+  it("journal loop cues are excluded from session gate but included in supportEntries when gate passes", () => {
+    const journalPhrase = makeJournalEntry(
+      "I notice the same loop: pressure, overthinking, avoidance, then frustration with myself."
+    );
+    const sessionEntries = [
+      makeEntry("I keep falling back into the same pattern", { sessionId: "s1" }),
+      makeEntry("I keep ending up in the same place mentally", { sessionId: "s2" }),
+    ];
+
+    const result = detectRepetitiveLoopClues({
+      userId: "u1",
+      entries: [...sessionEntries, journalPhrase],
+    });
+
+    expect(result).toHaveLength(1);
+    const supportEntries = result[0]!.supportEntries!;
+    const journalSupport = supportEntries.filter(
+      (e) => e.sourceKind === "journal_entry"
+    );
+    expect(journalSupport).toHaveLength(1);
+    expect(journalSupport[0]!.journalEntryId).toBe(journalPhrase.journalEntryId);
+  });
+
+  it("journal loop cues alone do NOT fire the session gate (no clue without message sessions)", () => {
+    const entries = [
+      makeJournalEntry("I notice the same loop: pressure, overthinking, avoidance."),
+      makeJournalEntry("The same pattern keeps happening every time."),
+    ];
+    // Two journal cues — should NOT fire (session gate requires ≥2 distinct sessions)
+    expect(detectRepetitiveLoopClues({ userId: "u1", entries })).toHaveLength(0);
+  });
+
+  it("journal cues do not contribute to sessionCount in session grouping", () => {
+    const journalCue = makeJournalEntry("This keeps happening when I have something important to do.");
+    const singleSession = [
+      makeEntry("I keep falling back into the same pattern", { sessionId: "s1" }),
+      makeEntry("I keep going back to the same place", { sessionId: "s1" }),
+    ];
+    // Only 1 message session — gate not met — no clue even with journal cue
+    expect(detectRepetitiveLoopClues({ userId: "u1", entries: [...singleSession, journalCue] })).toHaveLength(0);
+  });
+
+  it("'keeps happening' matches REPETITIVE_LOOP_MARKERS", () => {
+    const entries = [
+      makeEntry("I keep falling back into the same pattern", { sessionId: "s1" }),
+      makeEntry("This keeps happening when I have something important to do.", { sessionId: "s2" }),
+    ];
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+    expect(result).toHaveLength(1);
+  });
+});
+
+describe("detectInnerCriticClues — overthink\\w* marker coverage", () => {
+  it("'overthinking' (inflected form) matches inner critic marker", () => {
+    const matches = Array.from({ length: IC_MIN_MATCHES }, () =>
+      makeEntry("I start overthinking every possible outcome")
+    );
+    const result = detectInnerCriticClues({ userId: "u1", entries: matches });
+    expect(result).toHaveLength(1);
+    expect(result[0]!.patternType).toBe("inner_critic");
+  });
+
+  it("journal entry with 'overthinking' appears in inner_critic supportEntries", () => {
+    const journalEntry = makeJournalEntry(
+      "When I feel pressure building, I start overthinking every possible outcome and then I avoid taking action."
+    );
+    const messageMatches = Array.from({ length: IC_MIN_MATCHES }, (_, i) =>
+      makeEntry("I start overthinking when I'm under pressure", { sessionId: `s${i + 1}`, messageId: `m${i + 1}` })
+    );
+
+    const result = detectInnerCriticClues({
+      userId: "u1",
+      entries: [...messageMatches, journalEntry],
+    });
+
+    expect(result).toHaveLength(1);
+    const supportEntries = result[0]!.supportEntries!;
+    const journalSupport = supportEntries.filter(
+      (e) => e.sourceKind === "journal_entry"
+    );
+    expect(journalSupport).toHaveLength(1);
+    expect(journalSupport[0]!.journalEntryId).toBe(journalEntry.journalEntryId);
+  });
+});

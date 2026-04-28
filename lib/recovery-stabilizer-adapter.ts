@@ -84,12 +84,20 @@ export function detectRecoveryStabilizerClues({
       userId,
       patternType: "recovery_stabilizer",
       summary,
+      sourceKind:
+        representative.sourceKind ??
+        (representative.journalEntryId ? "journal_entry" : "chat_message"),
       sessionId: representative.sessionId,
       messageId: representative.messageId,
+      journalEntryId: representative.journalEntryId ?? null,
       quote,
       supportEntries: matches.map((match) => ({
+        sourceKind:
+          match.sourceKind ?? (match.journalEntryId ? "journal_entry" : "chat_message"),
         sessionId: match.sessionId,
         messageId: match.messageId,
+        journalEntryId: match.journalEntryId ?? null,
+        timestamp: match.createdAt,
         content: match.content,
       })),
     },

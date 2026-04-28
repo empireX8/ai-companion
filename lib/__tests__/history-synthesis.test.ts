@@ -19,8 +19,10 @@ import {
 const makeEntry = (
   overrides: Partial<NormalizedHistoryEntry> = {}
 ): NormalizedHistoryEntry => ({
+  sourceKind: "chat_message",
   messageId: "msg1",
   sessionId: "sess1",
+  journalEntryId: null,
   sessionOrigin: "APP",
   sessionStartedAt: new Date("2024-01-01"),
   role: "user",
@@ -42,6 +44,22 @@ describe("extractMessageIds", () => {
   it("returns empty array for empty input", () => {
     expect(extractMessageIds([])).toEqual([]);
   });
+
+  it("excludes journal-backed entries that have no messageId", () => {
+    const entries = [
+      makeEntry({ messageId: "m1" }),
+      makeEntry({
+        sourceKind: "journal_entry",
+        messageId: null,
+        sessionId: null,
+        journalEntryId: "journal-1",
+        sessionOrigin: null,
+        sessionStartedAt: null,
+      }),
+      makeEntry({ messageId: "m2" }),
+    ];
+    expect(extractMessageIds(entries)).toEqual(["m1", "m2"]);
+  });
 });
 
 describe("extractSessionCount", () => {
@@ -56,6 +74,21 @@ describe("extractSessionCount", () => {
 
   it("returns 0 for empty input", () => {
     expect(extractSessionCount([])).toBe(0);
+  });
+
+  it("ignores entries without sessionId (for example journal entries)", () => {
+    const entries = [
+      makeEntry({ sessionId: "s1" }),
+      makeEntry({
+        sourceKind: "journal_entry",
+        sessionId: null,
+        messageId: null,
+        journalEntryId: "journal-1",
+        sessionOrigin: null,
+        sessionStartedAt: null,
+      }),
+    ];
+    expect(extractSessionCount(entries)).toBe(1);
   });
 });
 
@@ -115,10 +148,20 @@ type MockMessageRow = {
   session: { origin: string; startedAt: Date };
 };
 
-function makeMockDb(rows: MockMessageRow[]) {
+type MockJournalEntryRow = {
+  id: string;
+  body: string;
+  authoredAt: Date | null;
+  createdAt: Date;
+};
+
+function makeMockDb(rows: MockMessageRow[], journalRows: MockJournalEntryRow[] = []) {
   const db = {
     message: {
       findMany: async () => rows,
+    },
+    journalEntry: {
+      findMany: async () => journalRows,
     },
   };
   return db as unknown as PrismaClient;
@@ -141,8 +184,10 @@ describe("synthesizeHistory", () => {
 
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
+      sourceKind: "chat_message",
       messageId: "msg1",
       sessionId: "sess1",
+      journalEntryId: null,
       sessionOrigin: "APP",
       role: "user",
       content: "Hello",
@@ -218,6 +263,69 @@ describe("synthesizeHistory", () => {
 
     const entries = await synthesizeHistory({ userId: "u1", db });
 
-    expect(entries[0]!.sessionStartedAt.getTime()).toBe(startedAt.getTime());
+    expect(entries[0]!.sessionStartedAt!.getTime()).toBe(startedAt.getTime());
+  });
+
+  it("includes journal entries as source-aware user history units", async () => {
+    const db = makeMockDb(
+      [],
+      [
+        {
+          id: "journal-1",
+          body: "I keep defaulting to people-pleasing when conflict appears.",
+          authoredAt: new Date("2024-02-01T09:00:00Z"),
+          createdAt: new Date("2024-02-01T09:05:00Z"),
+        },
+      ]
+    );
+
+    const entries = await synthesizeHistory({ userId: "u1", db });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      sourceKind: "journal_entry",
+      messageId: null,
+      sessionId: null,
+      journalEntryId: "journal-1",
+      sessionOrigin: null,
+      role: "user",
+      content: "I keep defaulting to people-pleasing when conflict appears.",
+    });
+    expect(entries[0]?.createdAt.toISOString()).toBe("2024-02-01T09:00:00.000Z");
+  });
+
+  it("orders mixed message + journal history by canonical timestamp", async () => {
+    const db = makeMockDb(
+      [
+        {
+          id: "message-1",
+          sessionId: "sess-1",
+          role: "user",
+          content: "Message row",
+          createdAt: new Date("2024-02-01T10:00:00Z"),
+          session: { origin: "APP", startedAt: new Date("2024-02-01T08:00:00Z") },
+        },
+      ],
+      [
+        {
+          id: "journal-authored",
+          body: "Journal authored timestamp should drive ordering.",
+          authoredAt: new Date("2024-02-01T09:00:00Z"),
+          createdAt: new Date("2024-02-01T11:00:00Z"),
+        },
+        {
+          id: "journal-created",
+          body: "Journal without authoredAt falls back to createdAt.",
+          authoredAt: null,
+          createdAt: new Date("2024-02-01T12:00:00Z"),
+        },
+      ]
+    );
+
+    const entries = await synthesizeHistory({ userId: "u1", db });
+    expect(entries.map((entry) => entry.messageId ?? entry.journalEntryId)).toEqual([
+      "journal-authored",
+      "message-1",
+      "journal-created",
+    ]);
   });
 });

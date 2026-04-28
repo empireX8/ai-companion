@@ -17,6 +17,7 @@
 import type { PrismaClient } from "@prisma/client";
 
 import prismadb from "./prismadb";
+import type { PatternRerunDebugCollector } from "./pattern-rerun-debug";
 import {
   createDerivationRun,
   startDerivationRun,
@@ -38,6 +39,7 @@ export type PatternDetectionInput = {
   messageIds: string[];
   processorVersion?: string;
   batchMeta?: DerivationBatchMeta;
+  debugCollector?: PatternRerunDebugCollector;
 };
 
 export type PatternDetectionResult = {
@@ -57,6 +59,7 @@ export type PatternDetector = (ctx: {
   messageIds: string[];
   runId: string;
   db: PrismaClient;
+  debugCollector?: PatternRerunDebugCollector;
 }) => Promise<number>;
 
 export type PatternLlmShadowRunner = (ctx: {
@@ -122,6 +125,7 @@ export function createPatternDetectionExecutor(
       messageIds,
       processorVersion = "pattern-v1",
       batchMeta,
+      debugCollector,
     } = input;
 
     // Map trigger to DerivationRun scope
@@ -153,7 +157,13 @@ export function createPatternDetectionExecutor(
         // Shadow-mode only. Never fail the canonical detection run on LLM LF errors.
       }
 
-      const claimsCreated = await detect({ userId, messageIds, runId, db });
+      const claimsCreated = await detect({
+        userId,
+        messageIds,
+        runId,
+        db,
+        debugCollector,
+      });
 
       await completeDerivationRun(runId, db);
 

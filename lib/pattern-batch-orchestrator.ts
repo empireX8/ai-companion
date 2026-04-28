@@ -20,6 +20,7 @@ import {
   type PatternDetectionTrigger,
   type PatternDetector,
 } from "./pattern-detection-executor";
+import type { PatternRerunDebugCollector } from "./pattern-rerun-debug";
 import {
   synthesizeHistory,
   extractMessageIds,
@@ -36,6 +37,7 @@ export type BatchOrchestrationInput = {
   /** Optional window bounds — defaults to full history if omitted */
   windowStart?: Date;
   windowEnd?: Date;
+  debugCollector?: PatternRerunDebugCollector;
 };
 
 export type BatchOrchestrationResult = {
@@ -76,11 +78,12 @@ export function createPatternBatchOrchestrator(
   async function runForUser(
     input: BatchOrchestrationInput
   ): Promise<BatchOrchestrationResult> {
-    const { userId, trigger, windowStart, windowEnd } = input;
+    const { userId, trigger, windowStart, windowEnd, debugCollector } = input;
 
     let entries;
     try {
       entries = await synthesizeFn({ userId, windowStart, windowEnd, db });
+      debugCollector?.recordHistory(entries);
     } catch (err) {
       return {
         runId: "",
@@ -103,6 +106,8 @@ export function createPatternBatchOrchestrator(
       };
     }
 
+    // Message IDs remain message-backed only; journal-backed units are included
+    // in synthesized detector input but intentionally do not appear in this ID set.
     const messageIds = extractMessageIds(entries);
     const sessionCount = extractSessionCount(entries);
     const bounds = extractWindowBounds(entries);
@@ -111,6 +116,7 @@ export function createPatternBatchOrchestrator(
       userId,
       trigger,
       messageIds,
+      debugCollector,
       batchMeta: {
         messageCount: messageIds.length,
         sessionCount,

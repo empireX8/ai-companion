@@ -13,6 +13,7 @@ type VisibleEvidenceRecord = {
   source: string;
   sessionId: string | null;
   messageId: string | null;
+  journalEntryId?: string | null;
   quote: string | null;
   createdAt: Date;
 };
@@ -39,6 +40,8 @@ export type CanonicalVisibleSupportBundle = {
   rationaleBundleQuotes: string[];
   surfaced: boolean;
   sessionCount: number;
+  journalEvidenceCount: number;
+  journalDaySpread: number;
 };
 
 export type VisiblePatternClaimRecord = {
@@ -216,6 +219,7 @@ function toReceiptViews(evidence: VisibleEvidenceRecord[]): PatternReceiptView[]
     source: ev.source,
     sessionId: ev.sessionId,
     messageId: ev.messageId,
+    journalEntryId: ev.journalEntryId ?? null,
     quote: ev.quote,
     createdAt: ev.createdAt.toISOString(),
   }));
@@ -253,6 +257,11 @@ export function buildCanonicalVisibleSupportBundle(
     claim.evidence
       .map((ev) => ev.sessionId)
       .filter((sessionId): sessionId is string => sessionId !== null)
+  ).size;
+  const journalEvidence = claim.evidence.filter((ev) => ev.journalEntryId != null);
+  const journalEvidenceCount = journalEvidence.length;
+  const journalDaySpread = new Set(
+    journalEvidence.map((ev) => ev.createdAt.toISOString().slice(0, 10))
   ).size;
   const policyArtifact =
     options?.policyArtifact ??
@@ -293,6 +302,8 @@ export function buildCanonicalVisibleSupportBundle(
     rationaleBundleQuotes,
     surfaced,
     sessionCount,
+    journalEvidenceCount,
+    journalDaySpread,
   };
 }
 
@@ -326,6 +337,8 @@ export function projectVisiblePatternClaim(
     strengthLevel: claim.strengthLevel,
     evidenceCount: supportBundle.evidenceCount,
     sessionCount: supportBundle.sessionCount,
+    journalEvidenceCount: supportBundle.journalEvidenceCount,
+    journalDaySpread: supportBundle.journalDaySpread,
     createdAt: claim.createdAt.toISOString(),
     updatedAt: claim.updatedAt.toISOString(),
     receipts,

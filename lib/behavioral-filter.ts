@@ -206,7 +206,7 @@ function detectQuotedOrPasted(text: string): boolean {
 function detectHabitLanguage(text: string): boolean {
   return (
     // Explicit habit/frequency words
-    /\b(?:always|tend\s+to|every\s+time|keep\s+\w+ing|usually|typically|by\s+default|instinctively|automatically|habitually)\b/i.test(
+    /\b(?:always|tend\s+to|every\s+time|keeps?\s+\w+ing|usually|typically|by\s+default|instinctively|automatically|habitually)\b/i.test(
       text
     ) ||
     // "I (always) end up"
@@ -246,7 +246,7 @@ function detectSelfJudgmentLanguage(text: string): boolean {
     /\bi\s+have\s+(?:a\s+hard\s+time|trouble|difficulty)\s+(?:with\b|\w+ing)/i.test(text) ||
     /\bi\s+(?:probably|honestly)\s+(?:can't|cannot|won't\s+be\s+able)\b/i.test(text) ||
     /\bi'?m\s+(?:worried|afraid|scared)\s+(?:that\s+)?i'?(?:ll|m\s+going\s+to)\b/i.test(text) ||
-    /\b(?:people[-\s]?pleaser|perfectionist|procrastinat\w+|overthinker|overthink)\b/i.test(
+    /\b(?:people[-\s]?pleaser|perfectionist|procrastinat\w+|overthink\w*)\b/i.test(
       text
     ) ||
     /\bi'?m\s+(?:so\s+)?(?:terrible|awful|bad|horrible|pathetic|useless)\s+at\b/i.test(

@@ -215,11 +215,29 @@ describe("V1 receipt model governance", () => {
     expect(V1_RECEIPT_MIRRORS).toBe("ContradictionEvidence");
   });
 
-  it("required fields include claimId, source, sessionId, messageId, quote", () => {
-    const required = ["claimId", "source", "sessionId", "messageId", "quote"];
+  it("required fields include claimId, source, sessionId, messageId, journalEntryId, quote", () => {
+    const required = [
+      "claimId",
+      "source",
+      "sessionId",
+      "messageId",
+      "journalEntryId",
+      "quote",
+    ];
     for (const f of required) {
       expect(V1_RECEIPT_REQUIRED_FIELDS).toContain(f);
     }
+  });
+
+  it("required field set is pinned (including journalEntryId provenance)", () => {
+    expect([...V1_RECEIPT_REQUIRED_FIELDS].sort()).toEqual([
+      "claimId",
+      "journalEntryId",
+      "messageId",
+      "quote",
+      "sessionId",
+      "source",
+    ]);
   });
 
   it("allowed evidence models are exactly 3", () => {

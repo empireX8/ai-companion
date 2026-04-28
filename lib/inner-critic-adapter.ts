@@ -40,6 +40,8 @@ export const INNER_CRITIC_MARKERS: RegExp[] = [
   /\bi'?m\s+(?:worried|afraid|scared)\s+(?:that\s+)?i'?(?:ll|m\s+going\s+to)\b/i,
   /\b(?:not\s+my\s+(?:strong|best)\s+suit|my\s+weakness)\b/i,
   /\bi\s+(?:always\s+)?(?:overthink|second.?guess)\b/i,
+  // "start overthinking", "keep overthinking" — verb-form not covered by the I-prefix pattern
+  /\boverthink\w+\b/i,
 ];
 
 // ── Adapter ───────────────────────────────────────────────────────────────────
@@ -78,12 +80,20 @@ export function detectInnerCriticClues({
     userId,
     patternType: "inner_critic",
     summary,
+    sourceKind:
+      representative.sourceKind ??
+      (representative.journalEntryId ? "journal_entry" : "chat_message"),
     sessionId: representative.sessionId,
     messageId: representative.messageId,
+    journalEntryId: representative.journalEntryId ?? null,
     quote,
     supportEntries: matches.map((match) => ({
+      sourceKind:
+        match.sourceKind ?? (match.journalEntryId ? "journal_entry" : "chat_message"),
       sessionId: match.sessionId,
       messageId: match.messageId,
+      journalEntryId: match.journalEntryId ?? null,
+      timestamp: match.createdAt,
       content: match.content,
     })),
   }];

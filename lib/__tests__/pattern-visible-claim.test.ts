@@ -52,6 +52,17 @@ vi.mock("@/lib/pattern-batch-orchestrator", () => ({
   },
 }));
 
+vi.mock("@/lib/pattern-rerun-debug", () => ({
+  createPatternRerunDebugCollector: vi.fn(() => ({
+    recordHistory: vi.fn(),
+    recordCluesEmittedByFamily: vi.fn(),
+    recordClaimUpsert: vi.fn(),
+    recordReceiptMaterialization: vi.fn(),
+    recordLifecycleEvaluation: vi.fn(),
+    buildDiagnostics: vi.fn(() => ({})),
+  })),
+}));
+
 vi.mock("@/lib/contradiction-top", () => ({
   getTopContradictions: getTopContradictionsMock,
 }));
@@ -137,6 +148,33 @@ describe("projectVisiblePatternClaim", () => {
 
     expect(projected).not.toBeNull();
     expect(projected!.summary).toBe("Recurring goal behavior gap across 3 contradictions");
+  });
+
+  it("projects journal-backed receipts without requiring sessionId/messageId", () => {
+    const projected = projectVisiblePatternClaim(
+      makeClaim({
+        patternType: "contradiction_drift",
+        summary: "Recurring goal behavior gap across 3 contradictions",
+        evidence: [
+          {
+            id: "ev-journal-1",
+            source: "derivation",
+            sessionId: null,
+            messageId: null,
+            journalEntryId: "journal-entry-1",
+            quote: "I keep drifting between two priorities and avoid choosing.",
+            createdAt: new Date("2026-01-03T00:00:00.000Z"),
+          },
+        ],
+      })
+    );
+
+    expect(projected).not.toBeNull();
+    expect(projected!.receipts[0]).toMatchObject({
+      sessionId: null,
+      messageId: null,
+      journalEntryId: "journal-entry-1",
+    });
   });
 });
 

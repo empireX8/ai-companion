@@ -14,6 +14,11 @@
 import type { PrismaClient } from "@prisma/client";
 
 import { analyzeBehavioralEligibility } from "./behavioral-filter";
+import type { HistorySourceKind } from "./history-synthesis";
+import type {
+  PatternRerunDebugCollector,
+  PatternRerunReceiptSourceKind,
+} from "./pattern-rerun-debug";
 import prismadb from "./prismadb";
 
 export type PersistedPatternClaimEvidenceRecord = {
@@ -21,6 +26,7 @@ export type PersistedPatternClaimEvidenceRecord = {
   source: string;
   sessionId: string | null;
   messageId: string | null;
+  journalEntryId?: string | null;
   quote: string | null;
   createdAt: Date;
 };
@@ -136,7 +142,10 @@ export type ReceiptInput = {
   source?: string; // "derivation" | "user_input" — defaults to "derivation"
   sessionId?: string;
   messageId?: string;
+  journalEntryId?: string;
   quote?: string;
+  sourceKind?: HistorySourceKind;
+  debugCollector?: PatternRerunDebugCollector;
   db?: PrismaClient;
 };
 
@@ -145,11 +154,28 @@ export type ReceiptResult = {
   created: boolean;
 };
 
+function resolveReceiptSourceKind({
+  sourceKind,
+  messageId,
+  journalEntryId,
+}: {
+  sourceKind?: HistorySourceKind;
+  messageId?: string;
+  journalEntryId?: string;
+}): PatternRerunReceiptSourceKind {
+  if (sourceKind) return sourceKind;
+  if (journalEntryId !== undefined) return "journal_entry";
+  if (messageId !== undefined) return "chat_message";
+  return "unknown";
+}
+
 /**
  * Materialize one V1 receipt for a PatternClaim.
  *
- * Idempotent: if a receipt with the same (claimId, messageId, quote) already
- * exists it is returned without creating a duplicate.
+ * Idempotent: if a receipt with the same provenance tuple already exists, it is
+ * returned without creating a duplicate:
+ * - message-backed: (claimId, messageId, quote)
+ * - journal-backed: (claimId, journalEntryId, quote)
  *
  * When neither messageId nor quote is supplied, no dedup check is performed
  * and a new record is always created (bare provenance receipt).
@@ -159,19 +185,37 @@ export async function materializeReceipt({
   source = "derivation",
   sessionId,
   messageId,
+  journalEntryId,
   quote,
+  sourceKind,
+  debugCollector,
   db = prismadb,
 }: ReceiptInput): Promise<ReceiptResult> {
-  if (messageId !== undefined || quote !== undefined) {
+  const debugSourceKind = resolveReceiptSourceKind({
+    sourceKind,
+    messageId,
+    journalEntryId,
+  });
+
+  if (
+    messageId !== undefined ||
+    journalEntryId !== undefined ||
+    quote !== undefined
+  ) {
     const existing = await db.patternClaimEvidence.findFirst({
       where: {
         claimId,
         ...(messageId !== undefined ? { messageId } : {}),
+        ...(journalEntryId !== undefined ? { journalEntryId } : {}),
         ...(quote !== undefined ? { quote } : {}),
       },
       select: { id: true },
     });
     if (existing) {
+      debugCollector?.recordReceiptMaterialization({
+        created: false,
+        sourceKind: debugSourceKind,
+      });
       return { evidenceId: existing.id, created: false };
     }
   }
@@ -182,9 +226,15 @@ export async function materializeReceipt({
       source,
       sessionId: sessionId ?? null,
       messageId: messageId ?? null,
+      journalEntryId: journalEntryId ?? null,
       quote: quote ?? null,
     },
     select: { id: true },
+  });
+
+  debugCollector?.recordReceiptMaterialization({
+    created: true,
+    sourceKind: debugSourceKind,
   });
 
   return { evidenceId: record.id, created: true };
@@ -193,9 +243,12 @@ export async function materializeReceipt({
 // ── Bulk pipeline ─────────────────────────────────────────────────────────────
 
 export type BulkReceiptEntry = {
-  messageId: string;
-  sessionId: string;
+  sourceKind?: HistorySourceKind;
+  messageId?: string | null;
+  sessionId?: string | null;
+  journalEntryId?: string | null;
   content: string;
+  timestamp?: Date;
 };
 
 /**
@@ -206,21 +259,34 @@ export type BulkReceiptEntry = {
 export async function materializeReceiptsFromEntries({
   claimId,
   entries,
+  debugCollector,
   db = prismadb,
 }: {
   claimId: string;
   entries: BulkReceiptEntry[];
+  debugCollector?: PatternRerunDebugCollector;
   db?: PrismaClient;
 }): Promise<number> {
   let created = 0;
 
   for (const entry of entries) {
+    const sourceKind =
+      entry.sourceKind ?? (entry.journalEntryId ? "journal_entry" : "chat_message");
+    const sessionId =
+      sourceKind === "chat_message" ? entry.sessionId ?? undefined : undefined;
+    const messageId =
+      sourceKind === "chat_message" ? entry.messageId ?? undefined : undefined;
+    const journalEntryId =
+      sourceKind === "journal_entry" ? entry.journalEntryId ?? undefined : undefined;
     const quote = extractQuote(entry.content);
     const result = await materializeReceipt({
       claimId,
-      sessionId: entry.sessionId,
-      messageId: entry.messageId,
+      sessionId,
+      messageId,
+      journalEntryId,
       quote,
+      sourceKind,
+      debugCollector,
       db,
     });
     if (result.created) created++;

@@ -3,7 +3,8 @@
  */
 
 import type { PrismaClient } from "@prisma/client";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { PatternRerunDebugCollector } from "../pattern-rerun-debug";
 
 import {
   extractQuote,
@@ -63,7 +64,14 @@ describe("extractQuote", () => {
 
 // ── materializeReceipt ────────────────────────────────────────────────────────
 
-type EvidenceRow = { id: string; claimId: string; messageId: string | null; quote: string | null; source?: string };
+type EvidenceRow = {
+  id: string;
+  claimId: string;
+  messageId: string | null;
+  journalEntryId: string | null;
+  quote: string | null;
+  source?: string;
+};
 
 function makeMockDb(opts: { existingRow?: EvidenceRow | null } = {}) {
   const rows: EvidenceRow[] = opts.existingRow ? [opts.existingRow] : [];
@@ -73,9 +81,16 @@ function makeMockDb(opts: { existingRow?: EvidenceRow | null } = {}) {
     patternClaimEvidence: {
       findFirst: async () => (rows.length > 0 ? rows[0] : null),
       create: async ({ data }: { data: Record<string, unknown>; select: unknown }) => {
-        const row = { id: `ev_${Date.now()}`, ...data };
+        const row: EvidenceRow = {
+          id: `ev_${Date.now()}`,
+          claimId: data.claimId as string,
+          messageId: (data.messageId as string | null) ?? null,
+          journalEntryId: (data.journalEntryId as string | null) ?? null,
+          quote: (data.quote as string | null) ?? null,
+          source: data.source as string | undefined,
+        };
         lastCreated = row as Partial<EvidenceRow>;
-        rows.push(row as EvidenceRow);
+        rows.push(row);
         return row;
       },
     },
@@ -111,6 +126,7 @@ describe("materializeReceipt", () => {
       id: "ev_existing",
       claimId: "claim1",
       messageId: "msg1",
+      journalEntryId: null,
       quote: "same quote",
     };
     const db = makeMockDb({ existingRow: existing });
@@ -141,6 +157,71 @@ describe("materializeReceipt", () => {
     const result = await materializeReceipt({ claimId: "claim1", db });
     expect(result.created).toBe(true);
   });
+
+  it("stores journalEntryId provenance on journal-backed receipts", async () => {
+    const db = makeMockDb();
+    const result = await materializeReceipt({
+      claimId: "claim1",
+      journalEntryId: "journal-entry-1",
+      quote: "I felt calmer today after writing.",
+      db,
+    });
+
+    expect(result.created).toBe(true);
+    expect(db._state.lastCreated?.journalEntryId).toBe("journal-entry-1");
+    expect(db._state.lastCreated?.messageId).toBeNull();
+  });
+
+  it("emits created/duplicate debug materialization events", async () => {
+    const db = makeMockDb();
+    const debugCollector = {
+      recordReceiptMaterialization: vi.fn(),
+    } as unknown as PatternRerunDebugCollector;
+
+    await materializeReceipt({
+      claimId: "claim-debug",
+      messageId: "msg-new",
+      quote: "I keep avoiding this.",
+      sourceKind: "chat_message",
+      debugCollector,
+      db,
+    });
+
+    expect(debugCollector.recordReceiptMaterialization).toHaveBeenNthCalledWith(
+      1,
+      {
+        created: true,
+        sourceKind: "chat_message",
+      }
+    );
+
+    const dbWithExisting = makeMockDb({
+      existingRow: {
+        id: "ev-existing",
+        claimId: "claim-debug",
+        messageId: "msg-new",
+        journalEntryId: null,
+        quote: "I keep avoiding this.",
+      },
+    });
+
+    await materializeReceipt({
+      claimId: "claim-debug",
+      messageId: "msg-new",
+      quote: "I keep avoiding this.",
+      sourceKind: "chat_message",
+      debugCollector,
+      db: dbWithExisting,
+    });
+
+    expect(debugCollector.recordReceiptMaterialization).toHaveBeenNthCalledWith(
+      2,
+      {
+        created: false,
+        sourceKind: "chat_message",
+      }
+    );
+  });
 });
 
 // ── materializeReceiptsFromEntries ────────────────────────────────────────────
@@ -156,12 +237,20 @@ function makeBulkMockDb() {
             (r) =>
               r.claimId === where.claimId &&
               r.messageId === (where.messageId ?? null) &&
+              r.journalEntryId === (where.journalEntryId ?? null) &&
               r.quote === (where.quote ?? null)
           ) ?? null
         );
       },
       create: async ({ data }: { data: Record<string, unknown> }) => {
-        const row = { id: `ev_${rows.length}`, ...data } as EvidenceRow;
+        const row: EvidenceRow = {
+          id: `ev_${rows.length}`,
+          claimId: data.claimId as string,
+          messageId: (data.messageId as string | null) ?? null,
+          journalEntryId: (data.journalEntryId as string | null) ?? null,
+          quote: (data.quote as string | null) ?? null,
+          source: data.source as string | undefined,
+        };
         rows.push(row);
         return row;
       },
@@ -227,5 +316,58 @@ describe("materializeReceiptsFromEntries", () => {
     expect(db._rows[0]?.quote).toBe(
       "The same confidence-related regret keeps resurfacing whenever I look back at what I avoided."
     );
+  });
+
+  it("materializes journal-backed support entries with journalEntryId provenance", async () => {
+    const db = makeBulkMockDb();
+    const entries = [
+      {
+        sourceKind: "journal_entry" as const,
+        journalEntryId: "journal-1",
+        content: "I keep defaulting to people-pleasing when conflict appears.",
+        timestamp: new Date("2026-01-01T10:00:00.000Z"),
+      },
+      {
+        sourceKind: "journal_entry" as const,
+        journalEntryId: "journal-2",
+        content: "When pressure builds I abandon my own plan.",
+        timestamp: new Date("2026-01-02T10:00:00.000Z"),
+      },
+    ];
+
+    const count = await materializeReceiptsFromEntries({ claimId: "c-journal", entries, db });
+
+    expect(count).toBe(2);
+    expect(db._rows).toHaveLength(2);
+    expect(db._rows[0]?.journalEntryId).toBe("journal-1");
+    expect(db._rows[0]?.messageId).toBeNull();
+    expect(db._rows[1]?.journalEntryId).toBe("journal-2");
+    expect(db._rows[1]?.messageId).toBeNull();
+  });
+
+  it("reports journal receipt source kind in debug instrumentation", async () => {
+    const db = makeBulkMockDb();
+    const debugCollector = {
+      recordReceiptMaterialization: vi.fn(),
+    } as unknown as PatternRerunDebugCollector;
+
+    await materializeReceiptsFromEntries({
+      claimId: "c-journal",
+      entries: [
+        {
+          sourceKind: "journal_entry" as const,
+          journalEntryId: "journal-1",
+          content: "I keep defaulting to people-pleasing when conflict appears.",
+          timestamp: new Date("2026-01-01T10:00:00.000Z"),
+        },
+      ],
+      debugCollector,
+      db,
+    });
+
+    expect(debugCollector.recordReceiptMaterialization).toHaveBeenCalledWith({
+      created: true,
+      sourceKind: "journal_entry",
+    });
   });
 });

@@ -1,7 +1,45 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import type { Prisma } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
+import {
+  parseSessionSurfaceTypeQuery,
+  type SessionSurfaceTypeValue,
+} from "../../../../lib/session-surface-type";
+
+function buildSessionWhere(
+  userId: string,
+  originParam: "app" | "imported" | "all" | null,
+  surfaceType: SessionSurfaceTypeValue | null
+): Prisma.SessionWhereInput {
+  if (originParam === "imported") {
+    return {
+      userId,
+      origin: "IMPORTED_ARCHIVE",
+    };
+  }
+
+  if (originParam === "all") {
+    if (!surfaceType) {
+      return { userId };
+    }
+
+    return {
+      userId,
+      OR: [
+        { origin: "IMPORTED_ARCHIVE" },
+        { origin: "APP", surfaceType },
+      ],
+    };
+  }
+
+  return {
+    userId,
+    origin: "APP",
+    ...(surfaceType ? { surfaceType } : {}),
+  };
+}
 
 export async function GET(req: Request) {
   try {
@@ -13,6 +51,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const originParam = searchParams.get("origin");
+    const surfaceTypeParam = searchParams.get("surfaceType");
 
     if (
       originParam !== null &&
@@ -23,20 +62,19 @@ export async function GET(req: Request) {
       return new NextResponse("Invalid origin value", { status: 400 });
     }
 
-    // Build the where clause. Explicit if-else — never accidentally return
-    // non-APP sessions when origin is missing or "app".
-    let originWhere: { origin?: "APP" | "IMPORTED_ARCHIVE" } = {};
-    if (originParam === "imported") {
-      originWhere = { origin: "IMPORTED_ARCHIVE" };
-    } else if (originParam === "all") {
-      originWhere = {};
-    } else {
-      // "app" or null → APP only (safe default)
-      originWhere = { origin: "APP" };
+    const parsedSurfaceType = parseSessionSurfaceTypeQuery(surfaceTypeParam);
+    if (!parsedSurfaceType.ok) {
+      return new NextResponse("Invalid surfaceType value", { status: 400 });
     }
 
+    const where = buildSessionWhere(
+      userId,
+      originParam as "app" | "imported" | "all" | null,
+      parsedSurfaceType.value
+    );
+
     const sessions = await prismadb.session.findMany({
-      where: { userId, ...originWhere },
+      where,
       orderBy: { startedAt: "desc" },
       take: 20,
       select: {

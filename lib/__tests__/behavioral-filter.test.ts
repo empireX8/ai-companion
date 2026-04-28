@@ -410,6 +410,57 @@ describe("analyzeBehavioralEligibility — additional edge cases", () => {
   });
 });
 
+// ── Journal-style phrase regression tests ────────────────────────────────────
+// These three phrases are representative of real journal entry phrasing that
+// must survive the behavioral filter after the keeps?/overthink\w* fix.
+
+describe("analyzeBehavioralEligibility — journal-style phrase regression", () => {
+  it("accepts phrase A: 'I start overthinking' (self-judgment via overthink\\w*)", () => {
+    const result = analyzeBehavioralEligibility(
+      "When I feel pressure building, I start overthinking every possible outcome and then I avoid taking action."
+    );
+    expect(result.eligible).toBe(true);
+    expect(result.features.containsSelfJudgmentLanguage).toBe(true);
+  });
+
+  it("accepts phrase B: 'This keeps happening' (habit language via keeps?\\s+\\w+ing)", () => {
+    const result = analyzeBehavioralEligibility(
+      "This keeps happening when I have something important to do. I freeze, delay, then criticise myself afterwards."
+    );
+    expect(result.eligible).toBe(true);
+    expect(result.features.containsHabitLanguage).toBe(true);
+  });
+
+  it("accepts phrase C: 'same loop' (habit language via same\\s+loop — unchanged)", () => {
+    const result = analyzeBehavioralEligibility(
+      "I notice the same loop: pressure, overthinking, avoidance, then frustration with myself."
+    );
+    expect(result.eligible).toBe(true);
+    expect(result.features.containsHabitLanguage).toBe(true);
+  });
+
+  it("containsHabitLanguage is true for 'keeps happening'", () => {
+    const { features } = analyzeBehavioralEligibility(
+      "This keeps happening when I have something important to do."
+    );
+    expect(features.containsHabitLanguage).toBe(true);
+  });
+
+  it("containsSelfJudgmentLanguage is true for 'overthinking'", () => {
+    const { features } = analyzeBehavioralEligibility(
+      "I start overthinking every possible outcome."
+    );
+    expect(features.containsSelfJudgmentLanguage).toBe(true);
+  });
+
+  it("containsHabitLanguage is true for 'keep happening' (base form)", () => {
+    const { features } = analyzeBehavioralEligibility(
+      "Things keep happening that I don't know how to handle."
+    );
+    expect(features.containsHabitLanguage).toBe(true);
+  });
+});
+
 // ── Integration: detectors do NOT emit from rejected messages ─────────────────
 
 // Minimal mock DB for integration tests (mirrors packet3-smoke.test.ts pattern)
@@ -424,15 +475,24 @@ type MessageRow = {
   session: { origin: string; startedAt: Date };
 };
 
+type JournalEntryRow = {
+  id: string;
+  userId: string;
+  body: string;
+  authoredAt: Date | null;
+  createdAt: Date;
+};
+
 let rowSeq = 0;
 const nextId = () => `row_${++rowSeq}`;
 
-function makeMockDb(messages: MessageRow[]) {
+function makeMockDb(messages: MessageRow[], journalEntries: JournalEntryRow[] = []) {
   const claims: ClaimRow[] = [];
   const evidence: Array<Record<string, unknown>> = [];
 
   return {
     message: { findMany: async () => messages },
+    journalEntry: { findMany: async () => journalEntries },
     contradictionNode: { findMany: async () => [] },
     patternClaim: {
       findUnique: async ({ where }: { where: Record<string, unknown> }) => {
@@ -483,6 +543,8 @@ function makeMockDb(messages: MessageRow[]) {
           (e) =>
             e.claimId === where.claimId &&
             (where.messageId === undefined || e.messageId === where.messageId) &&
+            (where.journalEntryId === undefined ||
+              e.journalEntryId === where.journalEntryId) &&
             (where.quote === undefined || e.quote === where.quote)
         ) ?? null,
       findMany: async ({ where }: { where: { claimId?: string } }) =>

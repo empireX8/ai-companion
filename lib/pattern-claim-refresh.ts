@@ -8,7 +8,8 @@
  *                summaryNorm) unique index. Re-runs that produce the same clue
  *                return the existing claim and never create a duplicate.
  *
- *  2. Reinforce — materializeReceipt is idempotent by (claimId, messageId, quote).
+ *  2. Reinforce — materializeReceipt is idempotent by source provenance tuple:
+ *                 (claimId, messageId, quote) or (claimId, journalEntryId, quote).
  *                 New messages in a re-run add new evidence records. Lifecycle
  *                 advancement re-evaluates based on total accumulated evidence.
  *

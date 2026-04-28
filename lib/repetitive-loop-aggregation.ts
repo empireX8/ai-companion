@@ -38,12 +38,15 @@ export function detectRepetitiveLoopCueMessages(
 
 /**
  * Stage 2a: Group cue messages by sessionId (insertion-order preserved).
+ * Journal-backed cues (no sessionId) are intentionally excluded from the
+ * cross-session gate to avoid inflating session spread.
  */
 export function groupLoopCuesBySession(
   cues: NormalizedHistoryEntry[]
 ): Map<string, NormalizedHistoryEntry[]> {
   const map = new Map<string, NormalizedHistoryEntry[]>();
   for (const cue of cues) {
+    if (!cue.sessionId) continue;
     const group = map.get(cue.sessionId);
     if (group) {
       group.push(cue);
@@ -85,12 +88,20 @@ export function buildRepetitiveLoopClueFromSessions(
     userId,
     patternType: "repetitive_loop",
     summary,
+    sourceKind:
+      representative.sourceKind ??
+      (representative.journalEntryId ? "journal_entry" : "chat_message"),
     sessionId: representative.sessionId,
     messageId: representative.messageId,
+    journalEntryId: representative.journalEntryId ?? null,
     quote,
     supportEntries: allCues.map((cue) => ({
+      sourceKind:
+        cue.sourceKind ?? (cue.journalEntryId ? "journal_entry" : "chat_message"),
       sessionId: cue.sessionId,
       messageId: cue.messageId,
+      journalEntryId: cue.journalEntryId ?? null,
+      timestamp: cue.createdAt,
       content: cue.content,
     })),
   };

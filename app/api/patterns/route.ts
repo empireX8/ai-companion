@@ -21,6 +21,7 @@ import {
   type PatternsResponse,
 } from "@/lib/patterns-api";
 import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
+import { createPatternRerunDebugCollector } from "@/lib/pattern-rerun-debug";
 
 export const dynamic = "force-dynamic";
 const INLINE_RECEIPT_LIMIT = 10;
@@ -135,22 +136,41 @@ export async function GET() {
 
 /**
  * POST /api/patterns — trigger a manual detection re-run for the current user.
- * Returns { status, claimsCreated } so the client can decide whether to refresh.
+ * Default response: { status, claimsCreated, messageCount }.
+ * Optional diagnostics: POST /api/patterns?debug=1 includes a `debug` payload.
  */
-export async function POST() {
+export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const debugParam = new URL(request.url).searchParams.get("debug");
+  const debugEnabled =
+    debugParam === "1" || debugParam?.toLowerCase() === "true";
+
+  const debugCollector = debugEnabled
+    ? createPatternRerunDebugCollector()
+    : undefined;
+
   const result = await patternBatchOrchestrator.runForUser({
     userId,
     trigger: "manual",
+    debugCollector,
   });
+
+  if (!debugEnabled || !debugCollector) {
+    return NextResponse.json({
+      status: result.status,
+      claimsCreated: result.claimsCreated,
+      messageCount: result.messageCount,
+    });
+  }
 
   return NextResponse.json({
     status: result.status,
     claimsCreated: result.claimsCreated,
     messageCount: result.messageCount,
+    debug: debugCollector.buildDiagnostics(),
   });
 }

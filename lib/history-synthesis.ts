@@ -2,11 +2,11 @@
  * History Synthesis Substrate (P3-02)
  *
  * Produces one normalized history format for downstream pattern detectors.
- * Covers both native sessions (SessionOrigin.APP) and imported sessions
- * (SessionOrigin.IMPORTED_ARCHIVE) in a single unified output.
+ * Covers native/imported message history plus first-class JournalEntry history
+ * in one unified, source-aware output stream.
  *
- * Session and date context is always preserved in the output — detectors
- * can filter or group by sessionOrigin, sessionId, or date window as needed.
+ * Session/date context is preserved for message-backed units. Journal-backed
+ * units carry journalEntryId and a canonical timestamp with session fields null.
  *
  * This module is pure data synthesis. It does not run any detection logic.
  */
@@ -17,15 +17,24 @@ import prismadb from "./prismadb";
 
 // ── Normalized entry type ─────────────────────────────────────────────────────
 
+export type HistorySourceKind = "chat_message" | "journal_entry";
+
 export type NormalizedHistoryEntry = {
-  messageId: string;
-  sessionId: string;
+  sourceKind?: HistorySourceKind;
+  messageId: string | null;
+  sessionId: string | null;
+  journalEntryId?: string | null;
   /** "APP" for native sessions, "IMPORTED_ARCHIVE" for imported sessions */
-  sessionOrigin: string;
-  sessionStartedAt: Date;
+  sessionOrigin: string | null;
+  sessionStartedAt: Date | null;
   /** "user" | "assistant" | "system" */
   role: string;
   content: string;
+  /**
+   * Canonical detection timestamp:
+   * - Message rows: Message.createdAt
+   * - Journal rows: JournalEntry.authoredAt ?? JournalEntry.createdAt
+   */
   createdAt: Date;
 };
 
@@ -41,13 +50,14 @@ export type HistorySynthesisOptions = {
 };
 
 /**
- * Synthesize a user's full normalized message history.
+ * Synthesize a user's full normalized detection history.
  *
- * Queries all Message rows for the user, joined to their parent Session
- * for origin and startedAt context. Results are sorted oldest-first.
+ * Queries Message + JournalEntry rows for the user, normalizes both shapes,
+ * and returns one oldest-first stream.
  *
- * Both APP (native) and IMPORTED_ARCHIVE sessions are included.
- * windowStart / windowEnd optionally bound the result by createdAt.
+ * Message rows include APP and IMPORTED_ARCHIVE sessions.
+ * Journal rows use authoredAt for temporal placement when present, else
+ * createdAt. windowStart/windowEnd are applied to these canonical timestamps.
  */
 export async function synthesizeHistory({
   userId,
@@ -55,55 +65,123 @@ export async function synthesizeHistory({
   windowEnd,
   db = prismadb,
 }: HistorySynthesisOptions): Promise<NormalizedHistoryEntry[]> {
-  const messages = await db.message.findMany({
-    where: {
-      userId,
-      ...(windowStart !== undefined || windowEnd !== undefined
-        ? {
-            createdAt: {
-              ...(windowStart !== undefined ? { gte: windowStart } : {}),
-              ...(windowEnd !== undefined ? { lte: windowEnd } : {}),
-            },
-          }
-        : {}),
-    },
-    select: {
-      id: true,
-      sessionId: true,
-      role: true,
-      content: true,
-      createdAt: true,
-      session: {
-        select: {
-          origin: true,
-          startedAt: true,
+  const [messages, journalEntries] = await Promise.all([
+    db.message.findMany({
+      where: {
+        userId,
+        ...(windowStart !== undefined || windowEnd !== undefined
+          ? {
+              createdAt: {
+                ...(windowStart !== undefined ? { gte: windowStart } : {}),
+                ...(windowEnd !== undefined ? { lte: windowEnd } : {}),
+              },
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        sessionId: true,
+        role: true,
+        content: true,
+        createdAt: true,
+        session: {
+          select: {
+            origin: true,
+            startedAt: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "asc" },
-  });
+      orderBy: { createdAt: "asc" },
+    }),
+    db.journalEntry.findMany({
+      where: {
+        userId,
+        ...(windowStart !== undefined || windowEnd !== undefined
+          ? {
+              OR: [
+                {
+                  authoredAt: {
+                    not: null,
+                    ...(windowStart !== undefined ? { gte: windowStart } : {}),
+                    ...(windowEnd !== undefined ? { lte: windowEnd } : {}),
+                  },
+                },
+                {
+                  authoredAt: null,
+                  createdAt: {
+                    ...(windowStart !== undefined ? { gte: windowStart } : {}),
+                    ...(windowEnd !== undefined ? { lte: windowEnd } : {}),
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        body: true,
+        authoredAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
 
-  return messages.map((m) => ({
+  const messageEntries: NormalizedHistoryEntry[] = messages.map((m) => ({
+    sourceKind: "chat_message",
     messageId: m.id,
     sessionId: m.sessionId,
+    journalEntryId: null,
     sessionOrigin: m.session.origin as string,
     sessionStartedAt: m.session.startedAt,
     role: m.role as string,
     content: m.content,
     createdAt: m.createdAt,
   }));
+
+  const journalHistoryEntries: NormalizedHistoryEntry[] = journalEntries.map((entry) => ({
+    sourceKind: "journal_entry",
+    messageId: null,
+    sessionId: null,
+    journalEntryId: entry.id,
+    sessionOrigin: null,
+    sessionStartedAt: null,
+    role: "user",
+    content: entry.body,
+    createdAt: entry.authoredAt ?? entry.createdAt,
+  }));
+
+  return [...messageEntries, ...journalHistoryEntries].sort((a, b) => {
+    const createdAtCompare = a.createdAt.getTime() - b.createdAt.getTime();
+    if (createdAtCompare !== 0) return createdAtCompare;
+    const sourceA =
+      a.sourceKind ?? (a.journalEntryId ? "journal_entry" : "chat_message");
+    const sourceB =
+      b.sourceKind ?? (b.journalEntryId ? "journal_entry" : "chat_message");
+    const sourceCompare = sourceA.localeCompare(sourceB);
+    if (sourceCompare !== 0) return sourceCompare;
+    const aId = a.messageId ?? a.journalEntryId ?? "";
+    const bId = b.messageId ?? b.journalEntryId ?? "";
+    return aId.localeCompare(bId);
+  });
 }
 
 // ── Helper utilities ──────────────────────────────────────────────────────────
 
 /** Extract the ordered list of message IDs from a synthesized history. */
 export function extractMessageIds(entries: NormalizedHistoryEntry[]): string[] {
-  return entries.map((e) => e.messageId);
+  return entries
+    .map((e) => e.messageId)
+    .filter((messageId): messageId is string => messageId !== null);
 }
 
 /** Count distinct sessions represented in the history. */
 export function extractSessionCount(entries: NormalizedHistoryEntry[]): number {
-  return new Set(entries.map((e) => e.sessionId)).size;
+  return new Set(
+    entries
+      .map((e) => e.sessionId)
+      .filter((sessionId): sessionId is string => sessionId !== null)
+  ).size;
 }
 
 /**

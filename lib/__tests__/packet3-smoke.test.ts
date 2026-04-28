@@ -42,6 +42,7 @@ type EvidenceRow = {
   source: string;
   sessionId: string | null;
   messageId: string | null;
+  journalEntryId: string | null;
   quote: string | null;
   createdAt: Date;
 };
@@ -56,15 +57,25 @@ type MessageRow = {
   session: { origin: string; startedAt: Date };
 };
 
+type JournalEntryRow = {
+  id: string;
+  userId: string;
+  body: string;
+  authoredAt: Date | null;
+  createdAt: Date;
+};
+
 let rowSeq = 0;
 const nextId = () => `row_${++rowSeq}`;
 
 function makePipelineMockDb(opts: {
   messages?: MessageRow[];
+  journalEntries?: JournalEntryRow[];
   existingClaims?: ClaimRow[];
   existingEvidence?: EvidenceRow[];
 } = {}) {
   const messages: MessageRow[] = opts.messages ?? [];
+  const journalEntries: JournalEntryRow[] = opts.journalEntries ?? [];
   const claims: ClaimRow[] = opts.existingClaims ?? [];
   const evidence: EvidenceRow[] = opts.existingEvidence ?? [];
 
@@ -72,6 +83,9 @@ function makePipelineMockDb(opts: {
     // history-synthesis
     message: {
       findMany: async () => messages,
+    },
+    journalEntry: {
+      findMany: async () => journalEntries,
     },
     // contradiction-drift-adapter (return empty — no contradictions in smoke tests)
     contradictionNode: {
@@ -135,6 +149,8 @@ function makePipelineMockDb(opts: {
             (e) =>
               e.claimId === where.claimId &&
               (where.messageId === undefined || e.messageId === where.messageId) &&
+              (where.journalEntryId === undefined ||
+                e.journalEntryId === where.journalEntryId) &&
               (where.quote === undefined || e.quote === where.quote)
           ) ?? null
         );
@@ -148,6 +164,7 @@ function makePipelineMockDb(opts: {
           source: (data.source as string) ?? "derivation",
           sessionId: (data.sessionId as string | null) ?? null,
           messageId: (data.messageId as string | null) ?? null,
+          journalEntryId: (data.journalEntryId as string | null) ?? null,
           quote: (data.quote as string | null) ?? null,
           createdAt: new Date(),
         };
@@ -177,6 +194,20 @@ function makeMessage(
     content,
     createdAt: new Date("2026-01-10"),
     session: { origin: "APP", startedAt: new Date("2026-01-01") },
+    ...overrides,
+  };
+}
+
+function makeJournalEntry(
+  body: string,
+  overrides: Partial<JournalEntryRow> = {}
+): JournalEntryRow {
+  return {
+    id: nextId(),
+    userId: "u1",
+    body,
+    authoredAt: new Date("2026-01-10"),
+    createdAt: new Date("2026-01-10"),
     ...overrides,
   };
 }
@@ -215,6 +246,7 @@ function buildReplayableClaimFromDb(
         source: row.source,
         sessionId: row.sessionId,
         messageId: row.messageId,
+        journalEntryId: row.journalEntryId,
         quote: row.quote,
         createdAt: row.createdAt,
       })),
@@ -259,23 +291,34 @@ describe("Packet 3 smoke — trigger_condition full pipeline", () => {
       userId: "u1",
       patternType: "trigger_condition" as const,
       summary: 'Trigger-response pattern: "Whenever someone seems upset with me, I default to people-pleasing"',
+      sourceKind: "chat_message" as const,
       sessionId: "s1",
       messageId: "m1",
+      journalEntryId: null,
       quote: "Whenever someone seems upset with me, I default to people-pleasing",
       supportEntries: [
         {
+          sourceKind: "chat_message" as const,
           sessionId: "s1",
           messageId: "m1",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
           content: "Whenever someone seems upset with me, I default to people-pleasing",
         },
         {
+          sourceKind: "chat_message" as const,
           sessionId: "s2",
           messageId: "m2",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
           content: "When pressure rises, I start appeasing people instead of staying honest",
         },
         {
+          sourceKind: "chat_message" as const,
           sessionId: "s3",
           messageId: "m3",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-03T00:00:00.000Z"),
           content: "Every time a boundary might disappoint someone, I walk it back quickly",
         },
       ],
@@ -307,18 +350,26 @@ describe("Packet 3 smoke — trigger_condition full pipeline", () => {
       userId: "u1",
       patternType: "trigger_condition" as const,
       summary: 'Trigger-response pattern: "I notice I am definitely a people pleaser"',
+      sourceKind: "chat_message" as const,
       sessionId: "s1",
       messageId: "m1",
+      journalEntryId: null,
       quote: "When pressure rises, I start appeasing people instead of staying honest",
       supportEntries: [
         {
+          sourceKind: "chat_message" as const,
           sessionId: "s1",
           messageId: "m1",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
           content: "I notice I am definitely a people pleaser. I apologize immediately.",
         },
         {
+          sourceKind: "chat_message" as const,
           sessionId: "s2",
           messageId: "m2",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
           content: "When pressure rises, I start appeasing people instead of staying honest",
         },
       ],
@@ -596,6 +647,49 @@ describe("Packet 3 smoke — empty history returns 0 claims", () => {
     });
     expect(count).toBe(0);
     expect(db._claims).toHaveLength(0);
+  });
+});
+
+describe("Packet 3 smoke — journal entries feed detector input", () => {
+  it("creates claims from journal-only history and stores journalEntryId provenance", async () => {
+    const db = makePipelineMockDb({
+      messages: [],
+      journalEntries: [
+        makeJournalEntry("I'm terrible at staying on track lately.", {
+          id: "journal-1",
+          authoredAt: new Date("2026-01-01T10:00:00.000Z"),
+        }),
+        makeJournalEntry("I can't keep commitments when pressure builds.", {
+          id: "journal-2",
+          authoredAt: new Date("2026-01-02T10:00:00.000Z"),
+        }),
+        makeJournalEntry("why do I always mess this up", {
+          id: "journal-3",
+          authoredAt: new Date("2026-01-03T10:00:00.000Z"),
+        }),
+      ],
+    });
+
+    const claimsCreated = await patternDetectorV1({
+      userId: "u1",
+      messageIds: [],
+      runId: "run-journal-1",
+      db,
+    });
+
+    expect(claimsCreated).toBeGreaterThanOrEqual(1);
+    const innerCritic = db._claims.find((claim) => claim.patternType === "inner_critic");
+    expect(innerCritic).toBeDefined();
+
+    const journalReceipts = db._evidence.filter(
+      (evidence) => evidence.claimId === innerCritic!.id && evidence.journalEntryId !== null
+    );
+    expect(journalReceipts.length).toBeGreaterThan(0);
+    expect(
+      journalReceipts.every(
+        (evidence) => evidence.sessionId === null && evidence.messageId === null
+      )
+    ).toBe(true);
   });
 });
 

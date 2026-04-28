@@ -47,6 +47,8 @@ export const REPETITIVE_LOOP_MARKERS: RegExp[] = [
   /\bi\s+know\s+this\s+(?:pattern|cycle|feeling)\b/i,
   /\bkeep\s+(?:ending\s+up|running\s+into|hitting)\s+the\s+same\b/i,
   /\bi\s+(?:went\s+back\s+to|defaulted\s+back\s+to|slipped\s+back\s+into)\b/i,
+  // "This keeps happening" / "it keeps happening" — third-person recurrence phrasing
+  /\bkeeps?\s+happening\b/i,
 ];
 
 // ── Adapter ───────────────────────────────────────────────────────────────────
@@ -68,5 +70,25 @@ export function detectRepetitiveLoopClues({
   const cues = detectRepetitiveLoopCueMessages(entries, REPETITIVE_LOOP_MARKERS);
   const sessionGroups = groupLoopCuesBySession(cues);
   const clue = buildRepetitiveLoopClueFromSessions(userId, sessionGroups);
-  return clue ? [clue] : [];
+  if (!clue) return [];
+
+  // Journal-backed cues (no sessionId) are excluded from the cross-session gate
+  // so they never inflate session spread. Once the gate passes via message sessions,
+  // append journal cues to supportEntries so they receive journal-backed receipts.
+  const journalCues = cues.filter((c) => !c.sessionId);
+  if (journalCues.length > 0) {
+    clue.supportEntries = [
+      ...clue.supportEntries!,
+      ...journalCues.map((c) => ({
+        sourceKind: (c.sourceKind ?? (c.journalEntryId ? "journal_entry" : "chat_message")) as "chat_message" | "journal_entry",
+        sessionId: c.sessionId,
+        messageId: c.messageId,
+        journalEntryId: c.journalEntryId ?? null,
+        timestamp: c.createdAt,
+        content: c.content,
+      })),
+    ];
+  }
+
+  return [clue];
 }

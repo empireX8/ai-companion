@@ -34,6 +34,7 @@ import type { PatternDetector } from "./pattern-detection-executor";
 import { detectRecoveryStabilizerClues } from "./recovery-stabilizer-adapter";
 import { detectRepetitiveLoopClues } from "./repetitive-loop-adapter";
 import { detectTriggerConditionClues } from "./trigger-condition-detector";
+import type { PatternRerunDebugCollector } from "./pattern-rerun-debug";
 
 /**
  * V1 implementation of PatternDetector.
@@ -43,16 +44,19 @@ export const patternDetectorV1: PatternDetector = async ({
   userId,
   runId,
   db,
+  debugCollector,
 }: {
   userId: string;
   messageIds: string[];
   runId: string;
   db: PrismaClient;
+  debugCollector?: PatternRerunDebugCollector;
 }): Promise<number> => {
   let claimsCreated = 0;
 
-  // Synthesize normalized history for rule-based (history-scan) detectors.
-  // contradiction_drift reads ContradictionNode directly, not message history.
+  // Synthesize normalized history for rule-based detectors.
+  // Includes chat messages and journal entries as source-aware units.
+  // contradiction_drift reads ContradictionNode directly, not history text.
   const entries = await synthesizeHistory({ userId, db });
 
   // Phase 1: behavioral filter — produce a stream of exclusively eligible,
@@ -74,6 +78,14 @@ export const patternDetectorV1: PatternDetector = async ({
   const repetitiveLoopClues = detectRepetitiveLoopClues({ userId, entries: behavioralEntries });
   const recoveryStabilizerClues = detectRecoveryStabilizerClues({ userId, entries: behavioralEntries });
 
+  debugCollector?.recordCluesEmittedByFamily({
+    contradiction_drift: driftClues.length,
+    trigger_condition: triggerClues.length,
+    inner_critic: innerCriticClues.length,
+    repetitive_loop: repetitiveLoopClues.length,
+    recovery_stabilizer: recoveryStabilizerClues.length,
+  });
+
   const allClues = [
     ...driftClues,
     ...triggerClues,
@@ -91,6 +103,12 @@ export const patternDetectorV1: PatternDetector = async ({
       db,
     });
 
+    debugCollector?.recordClaimUpsert({
+      claimId,
+      patternType: clue.patternType,
+      created,
+    });
+
     if (created) {
       claimsCreated++;
       // P3-10: notify downstream — new candidate available
@@ -102,10 +120,21 @@ export const patternDetectorV1: PatternDetector = async ({
       });
     }
 
-    await materializeClueSupport({ claimId, clue, db });
+    await materializeClueSupport({ claimId, clue, db, debugCollector });
 
     // P3-06: advance lifecycle based on accumulated evidence
     const lifecycle = await advanceClaimLifecycle({ claimId, db });
+    debugCollector?.recordLifecycleEvaluation({
+      claimId,
+      patternType: clue.patternType,
+      advanced: lifecycle.advanced,
+      newStatus: lifecycle.newStatus,
+      newStrengthLevel: lifecycle.newStrengthLevel,
+      evidenceCount: lifecycle.evidenceCount,
+      sessionCount: lifecycle.sessionCount,
+      journalEvidenceCount: lifecycle.journalEvidenceCount,
+      journalDaySpread: lifecycle.journalDaySpread,
+    });
 
     // P3-10: notify downstream if claim transitioned to active
     if (
@@ -131,12 +160,15 @@ export async function materializeClueSupport({
   claimId,
   clue,
   db,
+  debugCollector,
 }: {
   claimId: string;
   clue: PatternClue;
   db: PrismaClient;
+  debugCollector?: PatternRerunDebugCollector;
 }): Promise<void> {
   if (clue.supportEntries && clue.supportEntries.length > 0) {
+    debugCollector?.recordClueSupportEntries(clue.supportEntries);
     await materializeReceiptsFromEntries({
       claimId,
       // Persist the full support set, including the representative message.
@@ -144,16 +176,24 @@ export async function materializeClueSupport({
       // extracted quote even when clue.quote points at a different display-safe
       // sentence.
       entries: clue.supportEntries,
+      debugCollector,
       db,
     });
   }
 
-  if (clue.sessionId !== undefined || clue.messageId !== undefined) {
+  if (
+    clue.sessionId !== undefined ||
+    clue.messageId !== undefined ||
+    clue.journalEntryId !== undefined
+  ) {
     await materializeReceipt({
       claimId,
-      sessionId: clue.sessionId,
-      messageId: clue.messageId,
+      sessionId: clue.sessionId ?? undefined,
+      messageId: clue.messageId ?? undefined,
+      journalEntryId: clue.journalEntryId ?? undefined,
       quote: clue.quote,
+      sourceKind: clue.sourceKind,
+      debugCollector,
       db,
     });
   }

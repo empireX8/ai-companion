@@ -61,15 +61,20 @@ export type PatternClue = {
   summary: string;
   sourceRunId?: string;
   // Optional evidence context for the initial receipt
-  sessionId?: string;
-  messageId?: string;
+  sourceKind?: "chat_message" | "journal_entry";
+  sessionId?: string | null;
+  messageId?: string | null;
+  journalEntryId?: string | null;
   quote?: string;
   // Optional deterministic replay-support entries. These preserve additional
   // source quotes already available at detection time so persisted replay can
   // reconstruct the same canonical visible-summary path later.
   supportEntries?: Array<{
-    sessionId: string;
-    messageId: string;
+    sourceKind: "chat_message" | "journal_entry";
+    sessionId: string | null;
+    messageId: string | null;
+    journalEntryId: string | null;
+    timestamp: Date;
     content: string;
   }>;
 };
@@ -162,6 +167,8 @@ export type LifecycleAdvancementResult = {
   newStrengthLevel: StrengthLevelValue;
   evidenceCount: number;
   sessionCount: number;
+  journalEvidenceCount: number;
+  journalDaySpread: number;
   advanced: boolean;
 };
 
@@ -204,6 +211,7 @@ export async function loadPersistedPatternClaimsForReplay({
           source: true,
           sessionId: true,
           messageId: true,
+          journalEntryId: true,
           quote: true,
           createdAt: true,
         },
@@ -232,6 +240,7 @@ export async function loadPersistedPatternClaimsForReplay({
           source: evidence.source,
           sessionId: evidence.sessionId,
           messageId: evidence.messageId,
+          journalEntryId: evidence.journalEntryId,
           quote: evidence.quote,
           createdAt: evidence.createdAt,
         })),
@@ -317,6 +326,8 @@ export async function advanceClaimLifecycle({
       newStrengthLevel: previousStrength,
       evidenceCount: 0,
       sessionCount: 0,
+      journalEvidenceCount: 0,
+      journalDaySpread: 0,
       advanced: false,
     };
   }
@@ -324,12 +335,17 @@ export async function advanceClaimLifecycle({
   // Count evidence and distinct sessions
   const evidence = await db.patternClaimEvidence.findMany({
     where: { claimId },
-    select: { sessionId: true },
+    select: { sessionId: true, journalEntryId: true, createdAt: true },
   });
 
   const evidenceCount = evidence.length;
   const sessionCount = new Set(
     evidence.map((e) => e.sessionId).filter((s): s is string => s !== null)
+  ).size;
+  const journalEvidence = evidence.filter((e) => e.journalEntryId !== null);
+  const journalEvidenceCount = journalEvidence.length;
+  const journalDaySpread = new Set(
+    journalEvidence.map((e) => e.createdAt.toISOString().slice(0, 10))
   ).size;
 
   let newStatus = previousStatus;
@@ -365,12 +381,14 @@ export async function advanceClaimLifecycle({
 
   const advanced = newStatus !== previousStatus || newStrength !== previousStrength;
 
-  if (advanced) {
-    await db.patternClaim.update({
-      where: { id: claimId },
-      data: { status: newStatus, strengthLevel: newStrength },
-    });
-  }
+  await db.patternClaim.update({
+    where: { id: claimId },
+    data: {
+      journalEvidenceCount,
+      journalDaySpread,
+      ...(advanced ? { status: newStatus, strengthLevel: newStrength } : {}),
+    },
+  });
 
   return {
     claimId,
@@ -380,6 +398,8 @@ export async function advanceClaimLifecycle({
     newStrengthLevel: newStrength,
     evidenceCount,
     sessionCount,
+    journalEvidenceCount,
+    journalDaySpread,
     advanced,
   };
 }
