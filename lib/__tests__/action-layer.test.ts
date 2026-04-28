@@ -31,18 +31,19 @@ import type { PatternClaimView, PatternClaimActionView } from "../patterns-api";
 const makeClaim = (
   overrides: Partial<PatternClaimView> = {}
 ): PatternClaimView => ({
-  id: "claim-abc123",
-  patternType: "trigger_condition",
-  summary: "Test pattern",
-  status: "active",
-  strengthLevel: "developing",
-  evidenceCount: 3,
-  sessionCount: 2,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  receipts: [],
-  action: null,
-  ...overrides,
+  id: overrides.id ?? "claim-abc123",
+  patternType: overrides.patternType ?? "trigger_condition",
+  summary: overrides.summary ?? "Test pattern",
+  status: overrides.status ?? "active",
+  strengthLevel: overrides.strengthLevel ?? "developing",
+  evidenceCount: overrides.evidenceCount ?? 3,
+  sessionCount: overrides.sessionCount ?? 2,
+  journalEvidenceCount: overrides.journalEvidenceCount ?? 0,
+  journalDaySpread: overrides.journalDaySpread ?? 0,
+  createdAt: overrides.createdAt ?? new Date().toISOString(),
+  updatedAt: overrides.updatedAt ?? new Date().toISOString(),
+  receipts: overrides.receipts ?? [],
+  action: overrides.action ?? null,
 });
 
 import type { PatternReceiptView } from "../patterns-api";

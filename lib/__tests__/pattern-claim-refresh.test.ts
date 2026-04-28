@@ -27,6 +27,8 @@ type EvidenceRow = {
   id: string;
   claimId: string;
   sessionId: string | null;
+  journalEntryId: string | null;
+  createdAt: Date;
 };
 
 let idSeq = 0;
@@ -142,7 +144,15 @@ describe("batchRefreshClaimsForUser", () => {
         makeClaim({ id: "c1", status: "paused" }),
         makeClaim({ id: "c2", status: "dismissed" }),
       ],
-      evidence: [{ id: "e1", claimId: "c1", sessionId: "s1" }],
+      evidence: [
+        {
+          id: "e1",
+          claimId: "c1",
+          sessionId: "s1",
+          journalEntryId: null,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      ],
     });
     const result = await batchRefreshClaimsForUser({ userId: "u1", db });
     expect(result.claimsEvaluated).toBe(0);
@@ -163,7 +173,15 @@ describe("batchRefreshClaimsForUser", () => {
   it("advances candidate to active when evidence meets threshold", async () => {
     const db = makeMockDb({
       claims: [makeClaim({ id: "c1", status: "candidate", strengthLevel: "tentative" })],
-      evidence: [{ id: "e1", claimId: "c1", sessionId: "s1" }],
+      evidence: [
+        {
+          id: "e1",
+          claimId: "c1",
+          sessionId: "s1",
+          journalEntryId: null,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      ],
     });
     const result = await batchRefreshClaimsForUser({ userId: "u1", db });
     expect(result.claimsAdvanced).toBe(1);
@@ -176,13 +194,13 @@ describe("batchRefreshClaimsForUser", () => {
         makeClaim({ id: "c1", status: "active", strengthLevel: "established" }),
       ],
       evidence: [
-        { id: "e1", claimId: "c1", sessionId: "s1" },
-        { id: "e2", claimId: "c1", sessionId: "s2" },
-        { id: "e3", claimId: "c1", sessionId: "s3" },
-        { id: "e4", claimId: "c1", sessionId: "s1" },
-        { id: "e5", claimId: "c1", sessionId: "s2" },
-        { id: "e6", claimId: "c1", sessionId: "s3" },
-        { id: "e7", claimId: "c1", sessionId: "s1" },
+        { id: "e1", claimId: "c1", sessionId: "s1", journalEntryId: null, createdAt: new Date("2026-01-01T00:00:00.000Z") },
+        { id: "e2", claimId: "c1", sessionId: "s2", journalEntryId: null, createdAt: new Date("2026-01-02T00:00:00.000Z") },
+        { id: "e3", claimId: "c1", sessionId: "s3", journalEntryId: null, createdAt: new Date("2026-01-03T00:00:00.000Z") },
+        { id: "e4", claimId: "c1", sessionId: "s1", journalEntryId: null, createdAt: new Date("2026-01-04T00:00:00.000Z") },
+        { id: "e5", claimId: "c1", sessionId: "s2", journalEntryId: null, createdAt: new Date("2026-01-05T00:00:00.000Z") },
+        { id: "e6", claimId: "c1", sessionId: "s3", journalEntryId: null, createdAt: new Date("2026-01-06T00:00:00.000Z") },
+        { id: "e7", claimId: "c1", sessionId: "s1", journalEntryId: null, createdAt: new Date("2026-01-07T00:00:00.000Z") },
       ],
     });
     const result = await batchRefreshClaimsForUser({ userId: "u1", db });
@@ -243,8 +261,20 @@ describe("mergeStaleDuplicateClaims", () => {
         makeClaim({ id: "c_new", summaryNorm: "same_norm", createdAt: new Date("2026-02-01") }),
       ],
       evidence: [
-        { id: "e1", claimId: "c_old", sessionId: "s1" },
-        { id: "e2", claimId: "c_new", sessionId: "s2" },
+        {
+          id: "e1",
+          claimId: "c_old",
+          sessionId: "s1",
+          journalEntryId: null,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+        {
+          id: "e2",
+          claimId: "c_new",
+          sessionId: "s2",
+          journalEntryId: null,
+          createdAt: new Date("2026-01-02T00:00:00.000Z"),
+        },
       ],
     });
     await mergeStaleDuplicateClaims({ userId: "u1", db });

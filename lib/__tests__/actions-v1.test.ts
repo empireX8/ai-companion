@@ -23,6 +23,8 @@ function makeClaim(
     strengthLevel: overrides.strengthLevel ?? "developing",
     evidenceCount: overrides.evidenceCount ?? 3,
     sessionCount: overrides.sessionCount ?? 2,
+    journalEvidenceCount: overrides.journalEvidenceCount ?? 0,
+    journalDaySpread: overrides.journalDaySpread ?? 0,
     createdAt: overrides.createdAt ?? new Date("2026-04-10T09:00:00.000Z").toISOString(),
     updatedAt: overrides.updatedAt ?? new Date("2026-04-15T09:00:00.000Z").toISOString(),
     receipts: overrides.receipts ?? [],

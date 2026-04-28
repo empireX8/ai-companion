@@ -94,18 +94,19 @@ describe("PatternClaimView shape", () => {
   const makeClaim = (
     overrides: Partial<PatternClaimView> = {}
   ): PatternClaimView => ({
-    id: "claim-1",
-    patternType: "trigger_condition",
-    summary: "Test summary",
-    status: "candidate",
-    strengthLevel: "tentative",
-    evidenceCount: 0,
-    sessionCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    receipts: [],
-    action: null,
-    ...overrides,
+    id: overrides.id ?? "claim-1",
+    patternType: overrides.patternType ?? "trigger_condition",
+    summary: overrides.summary ?? "Test summary",
+    status: overrides.status ?? "candidate",
+    strengthLevel: overrides.strengthLevel ?? "tentative",
+    evidenceCount: overrides.evidenceCount ?? 0,
+    sessionCount: overrides.sessionCount ?? 0,
+    journalEvidenceCount: overrides.journalEvidenceCount ?? 0,
+    journalDaySpread: overrides.journalDaySpread ?? 0,
+    createdAt: overrides.createdAt ?? new Date().toISOString(),
+    updatedAt: overrides.updatedAt ?? new Date().toISOString(),
+    receipts: overrides.receipts ?? [],
+    action: overrides.action ?? null,
   });
 
   it("status is one of the four locked values", () => {
@@ -156,6 +157,8 @@ describe("main dashboard display rules (P2-09, P2-10)", () => {
     strengthLevel: "tentative",
     evidenceCount: 0,
     sessionCount: 0,
+    journalEvidenceCount: 0,
+    journalDaySpread: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     receipts: [],
