@@ -584,7 +584,9 @@ model PatternClaim {
   // consumed + cleared by batchRefreshClaimsForUser on next refresh pass.
   needsReevaluation    Boolean              @default(false)
   journalEvidenceCount Int                @default(0)
+  journalEntrySpread   Int                @default(0)
   journalDaySpread     Int                @default(0)
+  supportContainerSpread Int              @default(0)
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
   evidence          PatternClaimEvidence[]

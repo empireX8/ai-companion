@@ -94,7 +94,9 @@ describe("createPatternRerunDebugCollector", () => {
       evidenceCount: 3,
       sessionCount: 2,
       journalEvidenceCount: 1,
+      journalEntrySpread: 1,
       journalDaySpread: 1,
+      supportContainerSpread: 3,
     });
     collector.recordLifecycleEvaluation({
       claimId: "claim-existing",
@@ -105,7 +107,9 @@ describe("createPatternRerunDebugCollector", () => {
       evidenceCount: 2,
       sessionCount: 0,
       journalEvidenceCount: 2,
+      journalEntrySpread: 2,
       journalDaySpread: 2,
+      supportContainerSpread: 2,
     });
 
     const diagnostics = collector.buildDiagnostics();
@@ -150,7 +154,9 @@ describe("createPatternRerunDebugCollector", () => {
         evidenceCount: 3,
         sessionCount: 2,
         journalEvidenceCount: 1,
+        journalEntrySpread: 1,
         journalDaySpread: 1,
+        supportContainerSpread: 3,
       },
       {
         id: "claim-existing",
@@ -160,7 +166,9 @@ describe("createPatternRerunDebugCollector", () => {
         evidenceCount: 2,
         sessionCount: 0,
         journalEvidenceCount: 2,
+        journalEntrySpread: 2,
         journalDaySpread: 2,
+        supportContainerSpread: 2,
       },
     ]);
   });
@@ -193,7 +201,9 @@ describe("createPatternRerunDebugCollector", () => {
       evidenceCount: 1,
       sessionCount: 1,
       journalEvidenceCount: 0,
+      journalEntrySpread: 0,
       journalDaySpread: 0,
+      supportContainerSpread: 1,
     });
     collector.recordLifecycleEvaluation({
       claimId: "c2",
@@ -204,7 +214,9 @@ describe("createPatternRerunDebugCollector", () => {
       evidenceCount: 1,
       sessionCount: 0,
       journalEvidenceCount: 1,
+      journalEntrySpread: 1,
       journalDaySpread: 1,
+      supportContainerSpread: 1,
     });
     collector.recordLifecycleEvaluation({
       claimId: "c3",
@@ -215,7 +227,9 @@ describe("createPatternRerunDebugCollector", () => {
       evidenceCount: 3,
       sessionCount: 2,
       journalEvidenceCount: 0,
+      journalEntrySpread: 0,
       journalDaySpread: 0,
+      supportContainerSpread: 2,
     });
 
     const diagnostics = collector.buildDiagnostics();

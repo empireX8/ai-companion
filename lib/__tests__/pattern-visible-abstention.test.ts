@@ -431,44 +431,45 @@ describe("5. quote safety affects the abstention score", () => {
   });
 });
 
-describe("5b. effective spread integration", () => {
-  it("keeps message-only scoring unchanged when journalDaySpread=0", () => {
+describe("5b. support-container spread integration", () => {
+  it("keeps message-only scoring unchanged when journalEntrySpread=0", () => {
     const legacy = scoreVisiblePatternClaim({
       evidenceCount: 3,
       sessionCount: 2,
       hasDisplaySafeQuote: false,
     });
-    const explicitZeroJournal = scoreVisiblePatternClaim({
+    const explicitSupportContainer = scoreVisiblePatternClaim({
       evidenceCount: 3,
       sessionCount: 2,
-      journalDaySpread: 0,
+      journalEntrySpread: 0,
+      supportContainerSpread: 2,
       hasDisplaySafeQuote: false,
     });
 
-    expect(explicitZeroJournal.score).toBeCloseTo(legacy.score);
-    expect(explicitZeroJournal.triggered).toBe(legacy.triggered);
+    expect(explicitSupportContainer.score).toBeCloseTo(legacy.score);
+    expect(explicitSupportContainer.triggered).toBe(legacy.triggered);
   });
 
-  it("adds spread support from journalDaySpread via effectiveSpread", () => {
-    const noJournalSpread = scoreVisiblePatternClaim({
+  it("adds spread support from journalEntrySpread via supportContainerSpread", () => {
+    const noJournalContainer = scoreVisiblePatternClaim({
       evidenceCount: 3,
       sessionCount: 1,
-      journalDaySpread: 0,
+      journalEntrySpread: 0,
       hasDisplaySafeQuote: false,
     });
-    const withJournalSpread = scoreVisiblePatternClaim({
+    const withJournalContainers = scoreVisiblePatternClaim({
       evidenceCount: 3,
       sessionCount: 1,
-      journalDaySpread: 4,
+      journalEntrySpread: 2,
       hasDisplaySafeQuote: false,
     });
 
-    expect(noJournalSpread.triggered).toBe(true);
-    expect(withJournalSpread.triggered).toBe(false);
-    expect(withJournalSpread.score).toBeGreaterThan(noJournalSpread.score);
+    expect(noJournalContainer.triggered).toBe(true);
+    expect(withJournalContainers.triggered).toBe(false);
+    expect(withJournalContainers.score).toBeGreaterThan(noJournalContainer.score);
   });
 
-  it("journal-backed claim can surface from persisted journal spread even with one chat session", () => {
+  it("journal-backed claim can surface from journalEntrySpread even with one chat session", () => {
     const claim = makeClaim({
       evidenceCount: 3,
       sessionCount: 1,
@@ -479,14 +480,16 @@ describe("5b. effective spread integration", () => {
       ],
     });
     claim.journalEvidenceCount = 3;
+    claim.journalEntrySpread = 2;
     claim.journalDaySpread = 4;
+    claim.supportContainerSpread = 3;
     claim.evidence = claim.evidence.map((ev, i) => ({
       ...ev,
       journalEntryId: `journal-${i + 1}`,
       createdAt: new Date("2026-04-20T00:00:00.000Z"),
     }));
 
-    // Old spread path (sessions only) would abstain here; effectiveSpread should surface.
+    // Old spread path (sessions only) would abstain here; support containers should surface.
     expect(projectVisiblePatternClaim(claim)).not.toBeNull();
   });
 
@@ -497,7 +500,9 @@ describe("5b. effective spread integration", () => {
       quotes: [null, null, null],
     });
     claim.journalEvidenceCount = 3;
+    claim.journalEntrySpread = 3;
     claim.journalDaySpread = 6;
+    claim.supportContainerSpread = 3;
     claim.evidence = claim.evidence.map((ev, i) => ({
       ...ev,
       sessionId: null,
@@ -506,6 +511,33 @@ describe("5b. effective spread integration", () => {
     }));
 
     expect(projectVisiblePatternClaim(claim)).toBeNull();
+  });
+
+  it("journalDaySpread is secondary metadata and does not drive visibility when container spread is fixed", () => {
+    const baseClaim = makeClaim({
+      evidenceCount: 3,
+      sessionCount: 1,
+      quotes: [
+        "I tend to avoid difficult conversations whenever pressure builds",
+        "I always procrastinate when I need to make important decisions",
+        "I avoid confrontation by procrastinating",
+      ],
+    });
+    baseClaim.journalEvidenceCount = 3;
+    baseClaim.journalEntrySpread = 2;
+    baseClaim.supportContainerSpread = 3;
+
+    const lowDaySpreadClaim = {
+      ...baseClaim,
+      journalDaySpread: 1,
+    };
+    const highDaySpreadClaim = {
+      ...baseClaim,
+      journalDaySpread: 9,
+    };
+
+    expect(projectVisiblePatternClaim(lowDaySpreadClaim)).not.toBeNull();
+    expect(projectVisiblePatternClaim(highDaySpreadClaim)).not.toBeNull();
   });
 });
 

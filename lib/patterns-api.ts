@@ -88,8 +88,12 @@ export type PatternClaimView = {
   sessionCount: number;
   /** Number of evidence receipts backed by journal entries */
   journalEvidenceCount: number;
+  /** Number of distinct journal entries represented by journal-backed evidence */
+  journalEntrySpread: number;
   /** Number of distinct UTC calendar days represented by journal-backed evidence */
   journalDaySpread: number;
+  /** Number of distinct support containers (sessions + journal entries) */
+  supportContainerSpread: number;
   createdAt: string;
   updatedAt: string;
   receipts: PatternReceiptView[];

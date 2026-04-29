@@ -59,7 +59,9 @@ type ClaimRow = {
   strengthLevel: string;
   sourceRunId: string | null;
   journalEvidenceCount?: number;
+  journalEntrySpread?: number;
   journalDaySpread?: number;
+  supportContainerSpread?: number;
 };
 
 type EvidenceRow = {
@@ -623,7 +625,7 @@ describe("advanceClaimLifecycle — strength advancement", () => {
     expect(result.newStrengthLevel).toBe("tentative");
   });
 
-  it("active claim with sessionCount=1 can advance via journal day spread without inflating sessionCount", async () => {
+  it("active claim with sessionCount=1 can advance via journal entry spread without inflating sessionCount", async () => {
     const db = makeMockDb({
       existingClaim: {
         id: "c1",
@@ -663,12 +665,14 @@ describe("advanceClaimLifecycle — strength advancement", () => {
     expect(result.evidenceCount).toBe(3);
     expect(result.sessionCount).toBe(1);
     expect(result.journalEvidenceCount).toBe(2);
+    expect(result.journalEntrySpread).toBe(2);
     expect(result.journalDaySpread).toBe(2);
+    expect(result.supportContainerSpread).toBe(3);
     expect(result.newStrengthLevel).toBe("developing");
   });
 
-  it("applies Math.floor(journalDaySpread / 2) at boundaries for strength spread checks", async () => {
-    const withThreeJournalDays = makeMockDb({
+  it("applies supportContainerSpread boundaries for strength spread checks", async () => {
+    const belowBoundary = makeMockDb({
       existingClaim: {
         id: "c1",
         userId: "u1",
@@ -681,8 +685,8 @@ describe("advanceClaimLifecycle — strength advancement", () => {
       },
       evidence: [
         { sessionId: "s1", journalEntryId: null },
-        { sessionId: "s1", journalEntryId: null },
-        { sessionId: "s1", journalEntryId: null },
+        { sessionId: "s2", journalEntryId: null },
+        { sessionId: "s2", journalEntryId: null },
         { sessionId: "s1", journalEntryId: null },
         {
           sessionId: null,
@@ -694,24 +698,20 @@ describe("advanceClaimLifecycle — strength advancement", () => {
           journalEntryId: "j2",
           journalEntry: { authoredAt: new Date("2026-01-02T00:00:00.000Z"), createdAt: new Date("2026-01-02T00:00:00.000Z") },
         },
-        {
-          sessionId: null,
-          journalEntryId: "j3",
-          journalEntry: { authoredAt: new Date("2026-01-03T00:00:00.000Z"), createdAt: new Date("2026-01-03T00:00:00.000Z") },
-        },
       ],
     });
 
-    const threeDayResult = await advanceClaimLifecycle({
+    const belowBoundaryResult = await advanceClaimLifecycle({
       claimId: "c1",
-      db: withThreeJournalDays,
+      db: belowBoundary,
     });
-    expect(threeDayResult.evidenceCount).toBe(7);
-    expect(threeDayResult.sessionCount).toBe(1);
-    expect(threeDayResult.journalDaySpread).toBe(3);
-    expect(threeDayResult.newStrengthLevel).toBe("developing");
+    expect(belowBoundaryResult.evidenceCount).toBe(6);
+    expect(belowBoundaryResult.sessionCount).toBe(2);
+    expect(belowBoundaryResult.journalEntrySpread).toBe(2);
+    expect(belowBoundaryResult.supportContainerSpread).toBe(4);
+    expect(belowBoundaryResult.newStrengthLevel).toBe("developing");
 
-    const withFourJournalDays = makeMockDb({
+    const meetsBoundary = makeMockDb({
       existingClaim: {
         id: "c2",
         userId: "u1",
@@ -724,8 +724,8 @@ describe("advanceClaimLifecycle — strength advancement", () => {
       },
       evidence: [
         { sessionId: "s1", journalEntryId: null },
-        { sessionId: "s1", journalEntryId: null },
-        { sessionId: "s1", journalEntryId: null },
+        { sessionId: "s2", journalEntryId: null },
+        { sessionId: "s2", journalEntryId: null },
         {
           sessionId: null,
           journalEntryId: "j1",
@@ -749,14 +749,15 @@ describe("advanceClaimLifecycle — strength advancement", () => {
       ],
     });
 
-    const fourDayResult = await advanceClaimLifecycle({
+    const meetsBoundaryResult = await advanceClaimLifecycle({
       claimId: "c2",
-      db: withFourJournalDays,
+      db: meetsBoundary,
     });
-    expect(fourDayResult.evidenceCount).toBe(7);
-    expect(fourDayResult.sessionCount).toBe(1);
-    expect(fourDayResult.journalDaySpread).toBe(4);
-    expect(fourDayResult.newStrengthLevel).toBe("established");
+    expect(meetsBoundaryResult.evidenceCount).toBe(7);
+    expect(meetsBoundaryResult.sessionCount).toBe(2);
+    expect(meetsBoundaryResult.journalEntrySpread).toBe(4);
+    expect(meetsBoundaryResult.supportContainerSpread).toBe(6);
+    expect(meetsBoundaryResult.newStrengthLevel).toBe("established");
   });
 });
 
@@ -857,6 +858,8 @@ describe("advanceClaimLifecycle — cascade (single call, multiple advances)", (
 
     expect(result.evidenceCount).toBe(2);
     expect(result.sessionCount).toBe(0);
+    expect(result.journalEntrySpread).toBe(2);
+    expect(result.supportContainerSpread).toBe(2);
     expect(result.newStatus).toBe("candidate");
   });
 });
@@ -864,7 +867,7 @@ describe("advanceClaimLifecycle — cascade (single call, multiple advances)", (
 // ── journal accounting fields ─────────────────────────────────────────────────
 
 describe("advanceClaimLifecycle — journal accounting fields", () => {
-  it("persists message-only accounting as journalEvidenceCount=0 and journalDaySpread=0", async () => {
+  it("persists message-only accounting and keeps supportContainerSpread=sessionCount", async () => {
     const db = makeMockDb({
       existingClaim: {
         id: "c1",
@@ -883,9 +886,13 @@ describe("advanceClaimLifecycle — journal accounting fields", () => {
 
     expect(result.sessionCount).toBe(2);
     expect(result.journalEvidenceCount).toBe(0);
+    expect(result.journalEntrySpread).toBe(0);
     expect(result.journalDaySpread).toBe(0);
+    expect(result.supportContainerSpread).toBe(2);
     expect(db._claims[0]?.journalEvidenceCount).toBe(0);
+    expect(db._claims[0]?.journalEntrySpread).toBe(0);
     expect(db._claims[0]?.journalDaySpread).toBe(0);
+    expect(db._claims[0]?.supportContainerSpread).toBe(2);
   });
 
   it("returns journalEvidenceCount=0 and journalDaySpread=0 when no journal evidence", async () => {
@@ -906,7 +913,9 @@ describe("advanceClaimLifecycle — journal accounting fields", () => {
     const result = await advanceClaimLifecycle({ claimId: "c1", db });
 
     expect(result.journalEvidenceCount).toBe(0);
+    expect(result.journalEntrySpread).toBe(0);
     expect(result.journalDaySpread).toBe(0);
+    expect(result.supportContainerSpread).toBe(2);
   });
 
   it("counts journal receipts and distinct authored calendar days", async () => {
@@ -955,8 +964,10 @@ describe("advanceClaimLifecycle — journal accounting fields", () => {
     const result = await advanceClaimLifecycle({ claimId: "c1", db });
 
     expect(result.journalEvidenceCount).toBe(3);
+    expect(result.journalEntrySpread).toBe(3);
     // journal evidence materialized on one day still spreads across source authored days.
     expect(result.journalDaySpread).toBe(2);
+    expect(result.supportContainerSpread).toBe(3);
   });
 
   it("falls back to JournalEntry.createdAt when authoredAt is missing", async () => {
@@ -996,7 +1007,9 @@ describe("advanceClaimLifecycle — journal accounting fields", () => {
     const result = await advanceClaimLifecycle({ claimId: "c1", db });
 
     expect(result.journalEvidenceCount).toBe(2);
+    expect(result.journalEntrySpread).toBe(2);
     expect(result.journalDaySpread).toBe(2);
+    expect(result.supportContainerSpread).toBe(2);
   });
 
   it("falls back to evidence.createdAt when linked JournalEntry is unavailable", async () => {
@@ -1030,7 +1043,42 @@ describe("advanceClaimLifecycle — journal accounting fields", () => {
     const result = await advanceClaimLifecycle({ claimId: "c1", db });
 
     expect(result.journalEvidenceCount).toBe(2);
+    expect(result.journalEntrySpread).toBe(2);
     expect(result.journalDaySpread).toBe(2);
+    expect(result.supportContainerSpread).toBe(2);
+  });
+
+  it("multiple receipts from the same journal entry count as journalEntrySpread=1", async () => {
+    const db = makeMockDb({
+      existingClaim: {
+        id: "c1",
+        userId: "u1",
+        patternType: "contradiction_drift",
+        summaryNorm: "test",
+        summary: "test",
+        status: "active",
+        strengthLevel: "tentative",
+        sourceRunId: null,
+      },
+      evidence: [
+        {
+          sessionId: null,
+          journalEntryId: "j1",
+          createdAt: new Date("2026-01-10T08:00:00.000Z"),
+        },
+        {
+          sessionId: null,
+          journalEntryId: "j1",
+          createdAt: new Date("2026-01-11T08:00:00.000Z"),
+        },
+      ],
+    });
+
+    const result = await advanceClaimLifecycle({ claimId: "c1", db });
+
+    expect(result.journalEvidenceCount).toBe(2);
+    expect(result.journalEntrySpread).toBe(1);
+    expect(result.supportContainerSpread).toBe(1);
   });
 
   it("mixed chat+journal evidence splits counts correctly", async () => {
@@ -1061,7 +1109,9 @@ describe("advanceClaimLifecycle — journal accounting fields", () => {
     expect(result.evidenceCount).toBe(3);
     expect(result.sessionCount).toBe(2);
     expect(result.journalEvidenceCount).toBe(1);
+    expect(result.journalEntrySpread).toBe(1);
     expect(result.journalDaySpread).toBe(1);
+    expect(result.supportContainerSpread).toBe(3);
   });
 
   it("always writes accounting fields even when lifecycle does not advance", async () => {
@@ -1089,7 +1139,9 @@ describe("advanceClaimLifecycle — journal accounting fields", () => {
 
     expect(result.advanced).toBe(false);
     expect(result.journalEvidenceCount).toBe(1);
+    expect(result.journalEntrySpread).toBe(1);
     expect(result.journalDaySpread).toBe(1);
+    expect(result.supportContainerSpread).toBe(1);
   });
 
   it("frozen states return journalDaySpread=0 without querying evidence", async () => {
@@ -1110,6 +1162,8 @@ describe("advanceClaimLifecycle — journal accounting fields", () => {
 
     expect(result.advanced).toBe(false);
     expect(result.journalEvidenceCount).toBe(0);
+    expect(result.journalEntrySpread).toBe(0);
     expect(result.journalDaySpread).toBe(0);
+    expect(result.supportContainerSpread).toBe(0);
   });
 });

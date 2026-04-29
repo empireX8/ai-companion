@@ -133,7 +133,9 @@ export const patternDetectorV1: PatternDetector = async ({
       evidenceCount: lifecycle.evidenceCount,
       sessionCount: lifecycle.sessionCount,
       journalEvidenceCount: lifecycle.journalEvidenceCount,
+      journalEntrySpread: lifecycle.journalEntrySpread,
       journalDaySpread: lifecycle.journalDaySpread,
+      supportContainerSpread: lifecycle.supportContainerSpread,
     });
 
     // P3-10: notify downstream if claim transitioned to active

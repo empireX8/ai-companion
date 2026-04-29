@@ -7,7 +7,8 @@ import {
   resolveVisibleAbstentionPolicyThreshold,
 } from "./visible-abstention-policy";
 import {
-  computeEffectiveSpread,
+  computeSupportContainerSpread,
+  computeJournalEntrySpread,
   computeJournalDaySpread,
   computeJournalEvidenceCount,
   computeSessionCount,
@@ -51,7 +52,9 @@ export type CanonicalVisibleSupportBundle = {
   surfaced: boolean;
   sessionCount: number;
   journalEvidenceCount: number;
+  journalEntrySpread: number;
   journalDaySpread: number;
+  supportContainerSpread: number;
 };
 
 export type VisiblePatternClaimRecord = {
@@ -63,7 +66,9 @@ export type VisiblePatternClaimRecord = {
   createdAt: Date;
   updatedAt: Date;
   journalEvidenceCount?: number;
+  journalEntrySpread?: number;
   journalDaySpread?: number;
+  supportContainerSpread?: number;
   evidence: VisibleEvidenceRecord[];
   actions?: VisibleActionRecord[];
 };
@@ -184,27 +189,31 @@ export type VisibleClaimAbstentionScore = {
 export function scoreVisiblePatternClaim(inputs: {
   evidenceCount: number;
   sessionCount: number;
-  journalDaySpread?: number;
+  journalEntrySpread?: number;
+  supportContainerSpread?: number;
   hasDisplaySafeQuote: boolean;
 }): VisibleClaimAbstentionScore {
   const {
     evidenceCount,
     sessionCount,
-    journalDaySpread = 0,
+    journalEntrySpread = 0,
+    supportContainerSpread = computeSupportContainerSpread(
+      sessionCount,
+      journalEntrySpread
+    ),
     hasDisplaySafeQuote,
   } = inputs;
   const reasons: string[] = [];
 
-  const effectiveSpread = computeEffectiveSpread(sessionCount, journalDaySpread);
   const evidenceFraction = Math.min(evidenceCount / VISIBLE_CLAIM_EVIDENCE_SATURATION, 1);
-  const sessionFraction  = Math.min(effectiveSpread / VISIBLE_CLAIM_SESSION_SATURATION, 1);
+  const sessionFraction  = Math.min(supportContainerSpread / VISIBLE_CLAIM_SESSION_SATURATION, 1);
   const quoteFraction    = hasDisplaySafeQuote ? 1 : 0;
 
   reasons.push(evidenceCount > 0 ? `evidence=${evidenceCount}` : "no-evidence");
   reasons.push(sessionCount > 0 ? `sessions=${sessionCount}` : "no-sessions");
-  if (journalDaySpread > 0) {
-    reasons.push(`journal-day-spread=${journalDaySpread}`);
-    reasons.push(`effective-spread=${effectiveSpread}`);
+  if (journalEntrySpread > 0) {
+    reasons.push(`journal-entry-spread=${journalEntrySpread}`);
+    reasons.push(`support-containers=${supportContainerSpread}`);
   }
   reasons.push(hasDisplaySafeQuote ? "quote-safe" : "no-safe-quote");
 
@@ -223,7 +232,8 @@ export function scoreVisiblePatternClaim(inputs: {
 export function shouldAbstainVisiblePatternClaim(inputs: {
   evidenceCount: number;
   sessionCount: number;
-  journalDaySpread?: number;
+  journalEntrySpread?: number;
+  supportContainerSpread?: number;
   hasDisplaySafeQuote: boolean;
   abstentionThreshold?: number;
 }): boolean {
@@ -278,10 +288,30 @@ export function buildCanonicalVisibleSupportBundle(
     receipts,
   });
   const sessionCount = computeSessionCount(claim.evidence);
-  const journalEvidenceCount =
-    claim.journalEvidenceCount ?? computeJournalEvidenceCount(claim.evidence);
-  const journalDaySpread =
-    claim.journalDaySpread ?? computeJournalDaySpread(claim.evidence);
+  const computedJournalEvidenceCount = computeJournalEvidenceCount(claim.evidence);
+  const computedJournalEntrySpread = computeJournalEntrySpread(claim.evidence);
+  const computedJournalDaySpread = computeJournalDaySpread(claim.evidence);
+  const computedSupportContainerSpread = computeSupportContainerSpread(
+    sessionCount,
+    computedJournalEntrySpread
+  );
+
+  const journalEvidenceCount = Math.max(
+    claim.journalEvidenceCount ?? 0,
+    computedJournalEvidenceCount
+  );
+  const journalEntrySpread = Math.max(
+    claim.journalEntrySpread ?? 0,
+    computedJournalEntrySpread
+  );
+  const journalDaySpread = Math.max(
+    claim.journalDaySpread ?? 0,
+    computedJournalDaySpread
+  );
+  const supportContainerSpread = Math.max(
+    claim.supportContainerSpread ?? 0,
+    computedSupportContainerSpread
+  );
   const policyArtifact =
     options?.policyArtifact ??
     loadVisibleAbstentionPolicyArtifact(options?.policyArtifactPath);
@@ -306,7 +336,8 @@ export function buildCanonicalVisibleSupportBundle(
       !shouldAbstainVisiblePatternClaim({
         evidenceCount: claim.evidence.length,
         sessionCount,
-        journalDaySpread,
+        journalEntrySpread,
+        supportContainerSpread,
         hasDisplaySafeQuote: displaySafeQuoteStatus,
         abstentionThreshold: thresholdUsed,
       }));
@@ -323,7 +354,9 @@ export function buildCanonicalVisibleSupportBundle(
     surfaced,
     sessionCount,
     journalEvidenceCount,
+    journalEntrySpread,
     journalDaySpread,
+    supportContainerSpread,
   };
 }
 
@@ -358,7 +391,9 @@ export function projectVisiblePatternClaim(
     evidenceCount: supportBundle.evidenceCount,
     sessionCount: supportBundle.sessionCount,
     journalEvidenceCount: supportBundle.journalEvidenceCount,
+    journalEntrySpread: supportBundle.journalEntrySpread,
     journalDaySpread: supportBundle.journalDaySpread,
+    supportContainerSpread: supportBundle.supportContainerSpread,
     createdAt: claim.createdAt.toISOString(),
     updatedAt: claim.updatedAt.toISOString(),
     receipts,

@@ -28,7 +28,9 @@ type ImpactRow = {
   oldSurfaced: boolean;
   newSurfaced: boolean;
   sessionCount: number;
+  journalEntrySpread: number;
   journalDaySpread: number;
+  supportContainerSpread: number;
   journalEvidenceCount: number;
   evidenceCount: number;
 };
@@ -85,7 +87,9 @@ export async function runEffectiveSpreadImpactReport(
   scannedClaims: number;
   scoredClaims: number;
   claimsWithJournalEvidence: number;
+  journalEntrySpreadDistribution: Record<string, number>;
   journalDaySpreadDistribution: Record<string, number>;
+  supportContainerSpreadDistribution: Record<string, number>;
   scoreChangedClaims: number;
   outcomeChangedClaims: number;
   newlySurfacedClaims: number;
@@ -112,6 +116,8 @@ export async function runEffectiveSpreadImpactReport(
   });
 
   const journalDaySpreadDistribution: Record<string, number> = {};
+  const journalEntrySpreadDistribution: Record<string, number> = {};
+  const supportContainerSpreadDistribution: Record<string, number> = {};
   let claimsWithJournalEvidence = 0;
 
   const changedRows: ImpactRow[] = [];
@@ -128,7 +134,9 @@ export async function runEffectiveSpreadImpactReport(
       createdAt: claim.createdAt,
       updatedAt: claim.updatedAt,
       journalEvidenceCount: claim.journalEvidenceCount,
+      journalEntrySpread: claim.journalEntrySpread,
       journalDaySpread: claim.journalDaySpread,
+      supportContainerSpread: claim.supportContainerSpread,
       evidence: claim.evidence.map((evidence) => ({
         id: evidence.id,
         source: evidence.source,
@@ -147,6 +155,12 @@ export async function runEffectiveSpreadImpactReport(
     }
     journalDaySpreadDistribution[String(claim.journalDaySpread)] =
       (journalDaySpreadDistribution[String(claim.journalDaySpread)] ?? 0) + 1;
+    journalEntrySpreadDistribution[String(claim.journalEntrySpread)] =
+      (journalEntrySpreadDistribution[String(claim.journalEntrySpread)] ?? 0) +
+      1;
+    supportContainerSpreadDistribution[String(claim.supportContainerSpread)] =
+      (supportContainerSpreadDistribution[String(claim.supportContainerSpread)] ??
+        0) + 1;
 
     const support = buildCanonicalVisibleSupportBundle(visibleRecord);
     if (claim.patternType === "contradiction_drift" || support.summaryText === null) {
@@ -163,7 +177,8 @@ export async function runEffectiveSpreadImpactReport(
     const newScore = scoreVisiblePatternClaim({
       evidenceCount: support.evidenceCount,
       sessionCount: support.sessionCount,
-      journalDaySpread: support.journalDaySpread,
+      journalEntrySpread: support.journalEntrySpread,
+      supportContainerSpread: support.supportContainerSpread,
       hasDisplaySafeQuote: support.displaySafeQuoteStatus,
     }).score;
     const threshold = support.thresholdUsed;
@@ -179,7 +194,9 @@ export async function runEffectiveSpreadImpactReport(
       oldSurfaced,
       newSurfaced,
       sessionCount: support.sessionCount,
+      journalEntrySpread: support.journalEntrySpread,
       journalDaySpread: support.journalDaySpread,
+      supportContainerSpread: support.supportContainerSpread,
       journalEvidenceCount: support.journalEvidenceCount,
       evidenceCount: support.evidenceCount,
     };
@@ -201,7 +218,9 @@ export async function runEffectiveSpreadImpactReport(
     scannedClaims: claims.length,
     scoredClaims,
     claimsWithJournalEvidence,
+    journalEntrySpreadDistribution,
     journalDaySpreadDistribution,
+    supportContainerSpreadDistribution,
     scoreChangedClaims: changedRows.length,
     outcomeChangedClaims: changedRows.filter((row) => row.oldSurfaced !== row.newSurfaced).length,
     newlySurfacedClaims: newlySurfacedRows.length,

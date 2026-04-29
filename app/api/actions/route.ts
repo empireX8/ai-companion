@@ -56,6 +56,10 @@ export async function GET() {
       strengthLevel: claim.strengthLevel as PatternClaimView["strengthLevel"],
       createdAt: claim.createdAt,
       updatedAt: claim.updatedAt,
+      journalEvidenceCount: claim.journalEvidenceCount,
+      journalEntrySpread: claim.journalEntrySpread,
+      journalDaySpread: claim.journalDaySpread,
+      supportContainerSpread: claim.supportContainerSpread,
       evidence: claim.evidence,
       actions: [],
     });

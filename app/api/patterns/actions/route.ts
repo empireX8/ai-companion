@@ -66,7 +66,9 @@ export async function POST(req: Request) {
     createdAt: claim.createdAt,
     updatedAt: claim.updatedAt,
     journalEvidenceCount: claim.journalEvidenceCount,
+    journalEntrySpread: claim.journalEntrySpread,
     journalDaySpread: claim.journalDaySpread,
+    supportContainerSpread: claim.supportContainerSpread,
     evidence: claim.evidence,
     actions: claim.actions,
   });

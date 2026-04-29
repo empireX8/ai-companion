@@ -27,6 +27,16 @@ export function computeJournalEvidenceCount(
   return evidence.filter((entry) => entry.journalEntryId !== null && entry.journalEntryId !== undefined).length;
 }
 
+export function computeJournalEntrySpread(
+  evidence: ReadonlyArray<Pick<JournalEvidenceLike, "journalEntryId">>
+): number {
+  return new Set(
+    evidence
+      .map((entry) => entry.journalEntryId)
+      .filter((journalEntryId): journalEntryId is string => journalEntryId !== null && journalEntryId !== undefined)
+  ).size;
+}
+
 export function resolveJournalEvidenceDate(
   entry: JournalEvidenceLike
 ): Date | null {
@@ -47,15 +57,15 @@ export function computeJournalDaySpread(
   return new Set(dayKeys).size;
 }
 
-export function computeEffectiveSpread(
+export function computeSupportContainerSpread(
   sessionCount: number,
-  journalDaySpread: number
+  journalEntrySpread: number
 ): number {
   const safeSessionCount = Number.isFinite(sessionCount)
     ? Math.max(0, Math.floor(sessionCount))
     : 0;
-  const safeJournalDaySpread = Number.isFinite(journalDaySpread)
-    ? Math.max(0, Math.floor(journalDaySpread))
+  const safeJournalEntrySpread = Number.isFinite(journalEntrySpread)
+    ? Math.max(0, Math.floor(journalEntrySpread))
     : 0;
-  return safeSessionCount + Math.floor(safeJournalDaySpread / 2);
+  return safeSessionCount + safeJournalEntrySpread;
 }

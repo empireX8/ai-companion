@@ -17,7 +17,9 @@ export type PatternRerunTouchedClaimSummary = {
   evidenceCount: number;
   sessionCount: number;
   journalEvidenceCount: number;
+  journalEntrySpread: number;
   journalDaySpread: number;
+  supportContainerSpread: number;
 };
 
 export type PatternRerunDebugDiagnostics = {
@@ -89,7 +91,9 @@ export type PatternRerunDebugCollector = {
     evidenceCount: number;
     sessionCount: number;
     journalEvidenceCount: number;
+    journalEntrySpread?: number;
     journalDaySpread?: number;
+    supportContainerSpread?: number;
   }) => void;
   buildDiagnostics: () => PatternRerunDebugDiagnostics;
 };
@@ -253,7 +257,9 @@ export function createPatternRerunDebugCollector({
       evidenceCount,
       sessionCount,
       journalEvidenceCount,
+      journalEntrySpread,
       journalDaySpread,
+      supportContainerSpread,
     }) {
       const resolvedPatternType = claimPatternTypeById.get(claimId) ?? patternType;
       claimPatternTypeById.set(claimId, resolvedPatternType);
@@ -269,7 +275,9 @@ export function createPatternRerunDebugCollector({
         evidenceCount,
         sessionCount,
         journalEvidenceCount,
+        journalEntrySpread: journalEntrySpread ?? 0,
         journalDaySpread: journalDaySpread ?? 0,
+        supportContainerSpread: supportContainerSpread ?? sessionCount,
       });
     },
 

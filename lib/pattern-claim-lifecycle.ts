@@ -24,7 +24,8 @@ import {
   type StrengthLevelValue,
 } from "./pattern-claim-boundary";
 import {
-  computeEffectiveSpread,
+  computeSupportContainerSpread,
+  computeJournalEntrySpread,
   computeJournalDaySpread,
   computeJournalEvidenceCount,
   computeSessionCount,
@@ -174,7 +175,9 @@ export type LifecycleAdvancementResult = {
   evidenceCount: number;
   sessionCount: number;
   journalEvidenceCount: number;
+  journalEntrySpread: number;
   journalDaySpread: number;
+  supportContainerSpread: number;
   advanced: boolean;
 };
 
@@ -210,7 +213,9 @@ export async function loadPersistedPatternClaimsForReplay({
       status: true,
       strengthLevel: true,
       journalEvidenceCount: true,
+      journalEntrySpread: true,
       journalDaySpread: true,
+      supportContainerSpread: true,
       createdAt: true,
       updatedAt: true,
       evidence: {
@@ -235,7 +240,9 @@ export async function loadPersistedPatternClaimsForReplay({
       status: row.status as VisiblePatternClaimRecord["status"],
       strengthLevel: row.strengthLevel as VisiblePatternClaimRecord["strengthLevel"],
       journalEvidenceCount: row.journalEvidenceCount,
+      journalEntrySpread: row.journalEntrySpread,
       journalDaySpread: row.journalDaySpread,
+      supportContainerSpread: row.supportContainerSpread,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       evidence: row.evidence
@@ -278,6 +285,10 @@ export function runPersistedClaimReplayAudit({
       strengthLevel: claim.strengthLevel,
       createdAt: claim.createdAt,
       updatedAt: claim.updatedAt,
+      journalEvidenceCount: claim.journalEvidenceCount,
+      journalEntrySpread: claim.journalEntrySpread,
+      journalDaySpread: claim.journalDaySpread,
+      supportContainerSpread: claim.supportContainerSpread,
       evidence: claim.evidence,
     },
     evidence: claim.evidence,
@@ -299,8 +310,8 @@ export function runPersistedClaimReplayAudit({
  *
  * Lifecycle transitions:
  *  candidate → active      : evidenceCount >= 1, sessionCount >= 1 (tentative threshold)
- *  active + tentative  → developing  : evidenceCount >= 3, effectiveSpread >= 2
- *  active + developing → established : evidenceCount >= 7, effectiveSpread >= 3
+ *  active + tentative  → developing  : evidenceCount >= 3, supportContainerSpread >= 2
+ *  active + developing → established : evidenceCount >= 7, supportContainerSpread >= 3
  *
  * Cascades in a single call — if evidence supports multiple advances,
  * all eligible transitions are applied.
@@ -337,7 +348,9 @@ export async function advanceClaimLifecycle({
       evidenceCount: 0,
       sessionCount: 0,
       journalEvidenceCount: 0,
+      journalEntrySpread: 0,
       journalDaySpread: 0,
+      supportContainerSpread: 0,
       advanced: false,
     };
   }
@@ -361,8 +374,12 @@ export async function advanceClaimLifecycle({
   const evidenceCount = evidence.length;
   const sessionCount = computeSessionCount(evidence);
   const journalEvidenceCount = computeJournalEvidenceCount(evidence);
+  const journalEntrySpread = computeJournalEntrySpread(evidence);
   const journalDaySpread = computeJournalDaySpread(evidence);
-  const effectiveSpread = computeEffectiveSpread(sessionCount, journalDaySpread);
+  const supportContainerSpread = computeSupportContainerSpread(
+    sessionCount,
+    journalEntrySpread
+  );
 
   let newStatus = previousStatus;
   let newStrength = previousStrength;
@@ -386,7 +403,7 @@ export async function advanceClaimLifecycle({
       const thresh = STRENGTH_ADVANCEMENT_THRESHOLDS[next];
       if (
         evidenceCount >= thresh.evidenceRequired &&
-        effectiveSpread >= thresh.minSessionSpread
+        supportContainerSpread >= thresh.minSessionSpread
       ) {
         newStrength = next;
       } else {
@@ -401,7 +418,9 @@ export async function advanceClaimLifecycle({
     where: { id: claimId },
     data: {
       journalEvidenceCount,
+      journalEntrySpread,
       journalDaySpread,
+      supportContainerSpread,
       ...(advanced ? { status: newStatus, strengthLevel: newStrength } : {}),
     },
   });
@@ -415,7 +434,9 @@ export async function advanceClaimLifecycle({
     evidenceCount,
     sessionCount,
     journalEvidenceCount,
+    journalEntrySpread,
     journalDaySpread,
+    supportContainerSpread,
     advanced,
   };
 }

@@ -102,7 +102,11 @@ describe("PatternClaimView shape", () => {
     evidenceCount: overrides.evidenceCount ?? 0,
     sessionCount: overrides.sessionCount ?? 0,
     journalEvidenceCount: overrides.journalEvidenceCount ?? 0,
+    journalEntrySpread: overrides.journalEntrySpread ?? 0,
     journalDaySpread: overrides.journalDaySpread ?? 0,
+    supportContainerSpread:
+      overrides.supportContainerSpread ??
+      (overrides.sessionCount ?? 0) + (overrides.journalEntrySpread ?? 0),
     createdAt: overrides.createdAt ?? new Date().toISOString(),
     updatedAt: overrides.updatedAt ?? new Date().toISOString(),
     receipts: overrides.receipts ?? [],
@@ -158,7 +162,9 @@ describe("main dashboard display rules (P2-09, P2-10)", () => {
     evidenceCount: 0,
     sessionCount: 0,
     journalEvidenceCount: 0,
+    journalEntrySpread: 0,
     journalDaySpread: 0,
+    supportContainerSpread: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     receipts: [],
