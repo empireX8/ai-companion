@@ -97,6 +97,8 @@ export async function GET() {
           strengthLevel: claim.strengthLevel as typeof familyClaims[number]["strengthLevel"] & ("tentative" | "developing" | "established"),
           createdAt: claim.createdAt,
           updatedAt: claim.updatedAt,
+          journalEvidenceCount: claim.journalEvidenceCount,
+          journalDaySpread: claim.journalDaySpread,
           evidence: claim.evidence,
           actions: claim.actions,
         });

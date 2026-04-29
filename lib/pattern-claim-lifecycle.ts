@@ -24,6 +24,12 @@ import {
   type StrengthLevelValue,
 } from "./pattern-claim-boundary";
 import {
+  computeEffectiveSpread,
+  computeJournalDaySpread,
+  computeJournalEvidenceCount,
+  computeSessionCount,
+} from "./pattern-spread";
+import {
   replayPersistedPatternClaimsBatch,
   writePersistedClaimReplayArtifact,
   DEFAULT_PERSISTED_CLAIM_REPLAY_ARTIFACT_PATH,
@@ -203,6 +209,8 @@ export async function loadPersistedPatternClaimsForReplay({
       summary: true,
       status: true,
       strengthLevel: true,
+      journalEvidenceCount: true,
+      journalDaySpread: true,
       createdAt: true,
       updatedAt: true,
       evidence: {
@@ -226,6 +234,8 @@ export async function loadPersistedPatternClaimsForReplay({
       summary: row.summary,
       status: row.status as VisiblePatternClaimRecord["status"],
       strengthLevel: row.strengthLevel as VisiblePatternClaimRecord["strengthLevel"],
+      journalEvidenceCount: row.journalEvidenceCount,
+      journalDaySpread: row.journalDaySpread,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       evidence: row.evidence
@@ -289,8 +299,8 @@ export function runPersistedClaimReplayAudit({
  *
  * Lifecycle transitions:
  *  candidate → active      : evidenceCount >= 1, sessionCount >= 1 (tentative threshold)
- *  active + tentative  → developing  : evidenceCount >= 3, sessionCount >= 2
- *  active + developing → established : evidenceCount >= 7, sessionCount >= 3
+ *  active + tentative  → developing  : evidenceCount >= 3, effectiveSpread >= 2
+ *  active + developing → established : evidenceCount >= 7, effectiveSpread >= 3
  *
  * Cascades in a single call — if evidence supports multiple advances,
  * all eligible transitions are applied.
@@ -349,17 +359,10 @@ export async function advanceClaimLifecycle({
   });
 
   const evidenceCount = evidence.length;
-  const sessionCount = new Set(
-    evidence.map((e) => e.sessionId).filter((s): s is string => s !== null)
-  ).size;
-  const journalEvidence = evidence.filter((e) => e.journalEntryId !== null);
-  const journalEvidenceCount = journalEvidence.length;
-  const journalDaySpread = new Set(
-    journalEvidence.map((e) => {
-      const journalDate = e.journalEntry?.authoredAt ?? e.journalEntry?.createdAt ?? e.createdAt;
-      return journalDate.toISOString().slice(0, 10);
-    })
-  ).size;
+  const sessionCount = computeSessionCount(evidence);
+  const journalEvidenceCount = computeJournalEvidenceCount(evidence);
+  const journalDaySpread = computeJournalDaySpread(evidence);
+  const effectiveSpread = computeEffectiveSpread(sessionCount, journalDaySpread);
 
   let newStatus = previousStatus;
   let newStrength = previousStrength;
@@ -383,7 +386,7 @@ export async function advanceClaimLifecycle({
       const thresh = STRENGTH_ADVANCEMENT_THRESHOLDS[next];
       if (
         evidenceCount >= thresh.evidenceRequired &&
-        sessionCount >= thresh.minSessionSpread
+        effectiveSpread >= thresh.minSessionSpread
       ) {
         newStrength = next;
       } else {

@@ -65,6 +65,8 @@ export async function POST(req: Request) {
     strengthLevel: claim.strengthLevel as "tentative" | "developing" | "established",
     createdAt: claim.createdAt,
     updatedAt: claim.updatedAt,
+    journalEvidenceCount: claim.journalEvidenceCount,
+    journalDaySpread: claim.journalDaySpread,
     evidence: claim.evidence,
     actions: claim.actions,
   });
