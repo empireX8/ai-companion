@@ -9,11 +9,11 @@
  */
 
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 
 import { getTopContradictions } from "@/lib/contradiction-top";
 import prismadb from "@/lib/prismadb";
 import { projectVisiblePatternClaim } from "@/lib/pattern-visible-claim";
+import { resolveApiUserId } from "../../../lib/api-user-auth";
 import {
   PATTERN_FAMILY_SECTIONS,
   type PatternContradictionView,
@@ -43,8 +43,8 @@ function projectPatternContradictionItem(
   };
 }
 
-export async function GET() {
-  const { userId } = await auth();
+export async function GET(req?: Request) {
+  const userId = await resolveApiUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -144,7 +144,7 @@ export async function GET() {
  * Optional diagnostics: POST /api/patterns?debug=1 includes a `debug` payload.
  */
 export async function POST(request: Request) {
-  const { userId } = await auth();
+  const userId = await resolveApiUserId(request);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

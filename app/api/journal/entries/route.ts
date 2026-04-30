@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 
 import prismadb from "@/lib/prismadb";
+import { resolveApiUserId } from "../../../../lib/api-user-auth";
 import {
   createJournalEntrySchema,
   parseJournalEntryListLimit,
@@ -20,7 +20,7 @@ const JOURNAL_ENTRY_SELECT = {
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const { userId } = await auth();
+  const userId = await resolveApiUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -47,7 +47,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
+  const userId = await resolveApiUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 
 import prismadb from "@/lib/prismadb";
+import { resolveApiUserId } from "../../../lib/api-user-auth";
 import { type SessionSurfaceTypeValue } from "../../../lib/session-surface-type";
 import { toQuickCheckInView } from "../../../lib/quick-check-ins";
 import {
@@ -130,7 +130,7 @@ function shouldIncludeTimelineOptionalField(value: string | null): boolean {
 }
 
 export async function GET(req: Request) {
-  const { userId } = await auth();
+  const userId = await resolveApiUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

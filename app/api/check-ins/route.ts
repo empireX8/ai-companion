@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 
 import prismadb from "@/lib/prismadb";
+import { resolveApiUserId } from "../../../lib/api-user-auth";
 import {
   QUICK_CHECK_IN_LIST_LIMIT,
   createQuickCheckInSchema,
@@ -10,8 +10,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const { userId } = await auth();
+export async function GET(req: Request) {
+  const userId = await resolveApiUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -39,7 +39,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
+  const userId = await resolveApiUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

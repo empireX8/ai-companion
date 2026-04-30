@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 
 import prismadb from "@/lib/prismadb";
+import { resolveApiUserId } from "../../../lib/api-user-auth";
 import { parseSessionSurfaceTypeBody } from "../../../lib/session-surface-type";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    const userId = await resolveApiUserId(req);
 
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });

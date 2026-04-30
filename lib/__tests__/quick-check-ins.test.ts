@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   QUICK_CHECK_IN_NOTE_MAX_LENGTH,
@@ -13,6 +13,9 @@ const prismaMock = {
     create: vi.fn(),
   },
 };
+
+const originalDevMobileUserId = process.env.DEV_MOBILE_USER_ID;
+const originalAllowDevMobileApi = process.env.ALLOW_DEV_MOBILE_API;
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: authMock,
@@ -71,11 +74,27 @@ describe("/api/check-ins", () => {
     authMock.mockResolvedValue({ userId: "user-1" });
   });
 
+  afterEach(() => {
+    if (originalDevMobileUserId === undefined) {
+      delete process.env.DEV_MOBILE_USER_ID;
+    } else {
+      process.env.DEV_MOBILE_USER_ID = originalDevMobileUserId;
+    }
+
+    if (originalAllowDevMobileApi === undefined) {
+      delete process.env.ALLOW_DEV_MOBILE_API;
+    } else {
+      process.env.ALLOW_DEV_MOBILE_API = originalAllowDevMobileApi;
+    }
+  });
+
   it("returns unauthorized when no user is signed in", async () => {
     authMock.mockResolvedValueOnce({ userId: null });
 
     const route = await import("../../app/api/check-ins/route");
-    const response = await route.GET();
+    const response = await route.GET(
+      new Request("http://localhost/api/check-ins")
+    );
 
     expect(response.status).toBe(401);
   });
@@ -101,7 +120,9 @@ describe("/api/check-ins", () => {
     ]);
 
     const route = await import("../../app/api/check-ins/route");
-    const response = await route.GET();
+    const response = await route.GET(
+      new Request("http://localhost/api/check-ins")
+    );
     const payload = await response.json();
 
     expect(response.status).toBe(200);
@@ -202,6 +223,53 @@ describe("/api/check-ins", () => {
       note: "Short note",
       createdAt: "2026-04-17T12:00:00.000Z",
       updatedAt: "2026-04-17T12:00:00.000Z",
+    });
+  });
+
+  it("accepts dev-mobile bypass requests when clerk user is missing", async () => {
+    authMock.mockResolvedValueOnce({ userId: null });
+    process.env.DEV_MOBILE_USER_ID = "dev-mobile-user";
+
+    prismaMock.quickCheckIn.create.mockResolvedValue({
+      id: "check-in-dev",
+      stateTag: "stable",
+      eventTags: ["pressure"],
+      note: "Dev mobile check-in",
+      createdAt: new Date("2026-04-29T20:00:00.000Z"),
+      updatedAt: new Date("2026-04-29T20:00:00.000Z"),
+    });
+
+    const route = await import("../../app/api/check-ins/route");
+    const request = new Request("http://localhost/api/check-ins", {
+      method: "POST",
+      body: JSON.stringify({
+        stateTag: "stable",
+        eventTags: ["pressure"],
+        note: "Dev mobile check-in",
+      }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-mindlab-dev-mobile": "1",
+      },
+    });
+
+    const response = await route.POST(request);
+    expect(response.status).toBe(201);
+    expect(prismaMock.quickCheckIn.create).toHaveBeenCalledWith({
+      data: {
+        userId: "dev-mobile-user",
+        stateTag: "stable",
+        eventTags: ["pressure"],
+        note: "Dev mobile check-in",
+      },
+      select: {
+        id: true,
+        stateTag: true,
+        eventTags: true,
+        note: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   });
 });

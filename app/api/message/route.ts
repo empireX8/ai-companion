@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
@@ -24,6 +23,7 @@ import {
 import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
 import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
 import { triggerNativeDerivationIfDue } from "@/lib/native-derivation-trigger";
+import { resolveApiUserId } from "../../../lib/api-user-auth";
 
 type GovernedType = "preference" | "goal" | "constraint";
 
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
   const tag = `[CHAT_TIMING_SERVER][${reqId}]`;
   console.debug(tag, "request_received", 0);
   try {
-    const { userId } = await auth();
+    const userId = await resolveApiUserId(req);
     console.debug(tag, "auth_complete", Date.now() - tServer);
 
     if (!userId) {
