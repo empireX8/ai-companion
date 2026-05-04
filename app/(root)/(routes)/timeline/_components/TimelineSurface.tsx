@@ -1,709 +1,447 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { RhythmGraph, OccurrenceDots } from "@/components/Visuals";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { Activity, ChevronDown, ChevronRight } from "lucide-react";
 
 import {
-  QUICK_CHECK_IN_EVENT_LABELS,
-  QUICK_CHECK_IN_STATE_LABELS,
-  type QuickCheckInView,
-  formatQuickCheckInTimestamp,
-} from "@/lib/quick-check-ins";
-import {
-  TIMELINE_WINDOWS,
-  TIMELINE_DEFAULT_WINDOW,
-  computeRhythms,
   computeRepeatedSignals,
-  computeImportedConversationSummary,
-  groupCheckInsByDate,
-  groupImportedConversationActivityByDate,
-  type ImportedConversationActivityItem,
-  type ImportedConversationDateGroup,
+  computeRhythms,
+  TIMELINE_WINDOWS,
   type TimelineWindow,
 } from "@/lib/timeline-aggregation";
 import {
-  computeTimelineLinks,
-  type TimelineLink,
-} from "@/lib/timeline-links";
-import { cn } from "@/lib/utils";
+  QUICK_CHECK_IN_EVENT_LABELS,
+  QUICK_CHECK_IN_STATE_LABELS,
+  type QuickCheckInStateTag,
+  type QuickCheckInView,
+} from "@/lib/quick-check-ins";
 
-// ── Fetch ──────────────────────────────────────────────────────────────────────
-
-type TimelinePayload = {
-  checkIns: QuickCheckInView[];
-  importedActivity: ImportedConversationActivityItem[];
+type TimelineImportedActivityItem = {
+  id: string;
+  startedAt: string;
+  label: string | null;
+  preview: string | null;
+  messageCount: number;
 };
 
-async function fetchTimeline(window: TimelineWindow): Promise<TimelinePayload> {
-  const response = await fetch(`/api/timeline?window=${window}`, {
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    return {
-      checkIns: [],
-      importedActivity: [],
-    };
+type TimelineAppActivityItem = TimelineImportedActivityItem & {
+  surfaceType?: string | null;
+};
+
+type TimelineJournalEntryItem = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  authoredAt: string | null;
+  title: string | null;
+  preview: string;
+  bodyLength: number;
+};
+
+type TimelineResponse = {
+  checkIns: QuickCheckInView[];
+  importedActivity: TimelineImportedActivityItem[];
+  appActivity?: TimelineAppActivityItem[];
+  journalEntries?: TimelineJournalEntryItem[];
+};
+
+type TimelineEntry = {
+  id: string;
+  occurredAt: string;
+  chip: "Check-in" | "Journal" | "Journal Chat" | "Explore" | "Imported";
+  title: string;
+  body: string | null;
+  href: string;
+  weight?: "low";
+};
+
+const STATE_DISPLAY_LABELS: Record<QuickCheckInStateTag, string> = {
+  stable: "Calm",
+  stressed: "Anxious",
+  overloaded: "Overwhelmed",
+  flat: "Numb",
+  energized: "Energized",
+};
+
+function formatTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "--:--";
   }
-  const data = (await response.json()) as Partial<TimelinePayload>;
-  return {
-    checkIns: data.checkIns ?? [],
-    importedActivity: data.importedActivity ?? [],
-  };
-}
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
-function WindowSelector({
-  value,
-  onChange,
-}: {
-  value: TimelineWindow;
-  onChange: (w: TimelineWindow) => void;
-}) {
-  const LABELS: Record<TimelineWindow, string> = {
-    "14d": "14 days",
-    "30d": "30 days",
-    "90d": "90 days",
-  };
-
-  return (
-    <div className="flex gap-1 rounded-lg border border-border/40 bg-muted/30 p-0.5">
-      {TIMELINE_WINDOWS.map((w) => (
-        <button
-          key={w}
-          type="button"
-          onClick={() => onChange(w)}
-          className={cn(
-            "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-            value === w
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          {LABELS[w]}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function TagPill({
-  label,
-  variant = "default",
-}: {
-  label: string;
-  variant?: "default" | "emphasis";
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium",
-        variant === "emphasis"
-          ? "border-primary/20 bg-primary/10 text-primary"
-          : "border-border/50 bg-muted/40 text-muted-foreground"
-      )}
-    >
-      {label}
-    </span>
-  );
-}
-
-function formatSignalDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "recently";
-  const now = new Date();
-  return d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
-  });
-}
-
-function SignalRow({
-  children,
-  count,
-  lastSeenAt,
-}: {
-  children: React.ReactNode;
-  count: number;
-  lastSeenAt?: string;
-}) {
-  const supportText = `${count} check-in${count !== 1 ? "s" : ""}${
-    lastSeenAt ? ` · Last ${formatSignalDate(lastSeenAt)}` : ""
-  }`;
-
-  return (
-    <div className="flex items-center justify-between gap-3 py-1.5">
-      <div className="flex flex-wrap items-center gap-1.5">{children}</div>
-      <span className="shrink-0 text-[11px] text-muted-foreground">{supportText}</span>
-    </div>
-  );
-}
-
-function formatConversationTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, {
-    hour: "numeric",
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
     minute: "2-digit",
-  });
+    hour12: false,
+    timeZone: "Europe/London",
+  }).format(date);
 }
 
-function formatConversationCount(count: number): string {
-  return `${count} conversation${count !== 1 ? "s" : ""}`;
+function toDateKey(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "invalid";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-function formatMessageCount(count: number): string {
-  return `${count} message${count !== 1 ? "s" : ""}`;
-}
-
-function formatConversationActivityDay(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-
-  const yesterday = new Date(today);
+function formatDateLabel(dateKey: string, now: Date): string {
+  const todayKey = toDateKey(now.toISOString());
+  const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayKey = toDateKey(yesterday.toISOString());
 
-  const activityDay = new Date(d);
-  activityDay.setHours(0, 0, 0, 0);
+  if (dateKey === todayKey) {
+    return "Today";
+  }
 
-  if (activityDay.getTime() === today.getTime()) return "Today";
-  if (activityDay.getTime() === yesterday.getTime()) return "Yesterday";
+  if (dateKey === yesterdayKey) {
+    return "Yesterday";
+  }
 
-  return d.toLocaleDateString(undefined, {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  if (!year || !month || !day) {
+    return "Unknown day";
+  }
+
+  const parsed = new Date(year, month - 1, day);
+  return new Intl.DateTimeFormat("en-GB", {
     month: "short",
     day: "numeric",
-    ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+    ...(parsed.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  }).format(parsed);
+}
+
+function formatRecentLabel(iso: string | null): string {
+  if (!iso) {
+    return "—";
+  }
+
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  const deltaMs = Math.max(0, Date.now() - date.getTime());
+  const deltaMinutes = Math.floor(deltaMs / 60_000);
+
+  if (deltaMinutes < 60) {
+    return `${deltaMinutes}m`;
+  }
+
+  const deltaHours = Math.floor(deltaMinutes / 60);
+  if (deltaHours < 48) {
+    return `${deltaHours}h`;
+  }
+
+  const deltaDays = Math.floor(deltaHours / 24);
+  return `${deltaDays}d`;
+}
+
+function stateLabel(stateTag: QuickCheckInStateTag | null): string {
+  if (!stateTag) {
+    return "Check-in";
+  }
+
+  return STATE_DISPLAY_LABELS[stateTag] ?? QUICK_CHECK_IN_STATE_LABELS[stateTag];
+}
+
+function mapTimelineEntries(payload: TimelineResponse): TimelineEntry[] {
+  const checkInEntries: TimelineEntry[] = payload.checkIns.map((checkIn) => {
+    const eventLabel = checkIn.eventTags.length > 0
+      ? checkIn.eventTags.map((eventTag) => QUICK_CHECK_IN_EVENT_LABELS[eventTag]).join(", ")
+      : null;
+
+    return {
+      id: checkIn.id,
+      occurredAt: checkIn.createdAt,
+      chip: "Check-in",
+      title: `Check-in · ${stateLabel(checkIn.stateTag)}`,
+      body: checkIn.note ?? eventLabel,
+      href: "/check-ins",
+      weight: checkIn.note ? undefined : "low",
+    };
   });
+
+  const journalEntries: TimelineEntry[] = (payload.journalEntries ?? []).map((entry) => ({
+    id: entry.id,
+    occurredAt: entry.authoredAt ?? entry.createdAt,
+    chip: "Journal",
+    title: entry.title ?? "Journal entry",
+    body: entry.preview,
+    href: "/journal",
+  }));
+
+  const appEntries: TimelineEntry[] = (payload.appActivity ?? []).map((entry) => ({
+    id: entry.id,
+    occurredAt: entry.startedAt,
+    chip: entry.surfaceType === "explore_chat" ? "Explore" : "Journal Chat",
+    title: entry.label ?? (entry.surfaceType === "explore_chat" ? "Explore session" : "Journal chat"),
+    body: entry.preview,
+    href: entry.surfaceType === "explore_chat" ? "/explore" : "/journal-chat",
+  }));
+
+  const importedEntries: TimelineEntry[] = payload.importedActivity.map((entry) => ({
+    id: entry.id,
+    occurredAt: entry.startedAt,
+    chip: "Imported",
+    title: entry.label ?? "Imported conversation",
+    body: entry.preview,
+    href: "/library",
+    weight: "low",
+  }));
+
+  return [...checkInEntries, ...journalEntries, ...appEntries, ...importedEntries].sort(
+    (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
+  );
 }
 
-function formatConversationActivityPreview(
-  groups: ImportedConversationDateGroup[]
-): string | null {
-  if (groups.length === 0) return null;
-
-  const labels = groups.slice(0, 3).map((group) => group.label);
-  const prefix = labels.length === 1 ? "Recent day" : "Recent days";
-
-  return `${prefix}: ${labels.join(" · ")}`;
-}
-
-function getConversationActivityTitle(item: ImportedConversationActivityItem): string {
-  const label = item.label?.trim() ?? "";
-  if (label && !/^Imported conversation \d+$/i.test(label)) {
-    return label;
-  }
-
-  const preview = item.preview?.trim() ?? "";
-  if (preview.length > 0) {
-    return preview;
-  }
-
-  return "Conversation";
-}
-
-// ── Possible links — sentence formatters ─────────────────────────────────────
-
-function formatLinkPrimaryText(link: TimelineLink): string {
-  if (link.kind === "event_state") {
-    const eventLabel = QUICK_CHECK_IN_EVENT_LABELS[link.eventTag];
-    const stateLabel = QUICK_CHECK_IN_STATE_LABELS[link.stateTag];
-    const qualifier =
-      link.count >= 3 ? "often appears near" : "sometimes appears near";
-    return `${eventLabel} ${qualifier} ${stateLabel}`;
-  }
-  const fromLabel = QUICK_CHECK_IN_STATE_LABELS[link.fromState];
-  const toLabel = QUICK_CHECK_IN_STATE_LABELS[link.toState];
-  return `${fromLabel} → ${toLabel}`;
-}
-
-function formatLinkSupportText(link: TimelineLink): string {
-  const n = link.count;
-  return `Seen ${n} time${n !== 1 ? "s" : ""} · Last ${formatSignalDate(link.lastSeenAt)}`;
-}
-
-// ── Main surface ───────────────────────────────────────────────────────────────
-
-export function TimelineSurface({
-  initialWindow = TIMELINE_DEFAULT_WINDOW,
-}: {
-  initialWindow?: TimelineWindow;
-}) {
-  const [window, setWindow] = useState<TimelineWindow>(initialWindow);
-  const [conversationActivityOpen, setConversationActivityOpen] = useState(false);
-  const [checkIns, setCheckIns] = useState<QuickCheckInView[]>([]);
-  const [importedActivity, setImportedActivity] = useState<
-    ImportedConversationActivityItem[]
-  >([]);
-  const [loading, setLoading] = useState(true);
+export default function TimelineSurface() {
+  const [windowValue, setWindowValue] = useState<TimelineWindow>("30d");
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [payload, setPayload] = useState<TimelineResponse | null>(null);
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
+    let cancelled = false;
 
-    void fetchTimeline(window)
-      .then((data) => {
-        if (active) {
-          setCheckIns(data.checkIns);
-          setImportedActivity(data.importedActivity);
+    const loadTimeline = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const response = await fetch(
+          `/api/timeline?window=${windowValue}&includeAppActivity=true&includeJournalEntries=true`,
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Could not load timeline.");
         }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+
+        const nextPayload = (await response.json()) as TimelineResponse;
+        if (!cancelled) {
+          setPayload(nextPayload);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPayload(null);
+          setErrorMessage(
+            error instanceof Error && error.message
+              ? error.message
+              : "Could not load timeline."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadTimeline();
 
     return () => {
-      active = false;
+      cancelled = true;
     };
-  }, [window]);
+  }, [windowValue]);
 
-  const rhythms = computeRhythms(checkIns);
-  const repeated = computeRepeatedSignals(checkIns);
-  const { links } = computeTimelineLinks(checkIns);
-  const groups = groupCheckInsByDate(checkIns, new Date());
-  const importedSummary = computeImportedConversationSummary(importedActivity);
-  const importedGroups = groupImportedConversationActivityByDate(
-    importedActivity,
-    new Date()
+  const checkIns = payload?.checkIns;
+  const timelineEntries = useMemo(
+    () => (payload ? mapTimelineEntries(payload) : []),
+    [payload]
   );
-  const importedLatestDayLabel = importedSummary.lastActivityAt
-    ? formatConversationActivityDay(importedSummary.lastActivityAt)
-    : null;
 
-  const hasAnyRepeated = repeated.rankedItems.length > 0;
-  const hasImportedActivity = importedSummary.sessionCount > 0;
-  const importedPreviewLine =
-    hasImportedActivity ? formatConversationActivityPreview(importedGroups) : null;
+  const rhythms = useMemo(() => computeRhythms(checkIns ?? []), [checkIns]);
+  const repeatedSignals = useMemo(
+    () => computeRepeatedSignals(checkIns ?? []),
+    [checkIns]
+  );
+
+  const groupedActivity = useMemo(() => {
+    const now = new Date();
+    const grouped = new Map<string, TimelineEntry[]>();
+
+    for (const entry of timelineEntries) {
+      const key = toDateKey(entry.occurredAt);
+      const current = grouped.get(key) ?? [];
+      current.push(entry);
+      grouped.set(key, current);
+    }
+
+    return [...grouped.entries()]
+      .sort((left, right) => right[0].localeCompare(left[0]))
+      .map(([dateKey, entries]) => ({
+        date: formatDateLabel(dateKey, now),
+        entries,
+      }));
+  }, [timelineEntries]);
+
+  const possibleLinks = repeatedSignals.repeatedPairs.slice(0, 4).map((pair) => ({
+    event: QUICK_CHECK_IN_EVENT_LABELS[pair.eventTag],
+    state: stateLabel(pair.stateTag),
+    count: pair.count,
+  }));
+
+  const topStateChips = rhythms.topStateTags.map((item) => ({
+    label: stateLabel(item.tag),
+    count: item.count,
+  }));
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-2xl space-y-5 px-4 py-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-primary" />
-              <h1 className="text-base font-semibold text-foreground">Timeline</h1>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Review check-in signals first, with imported activity shown separately.
-            </p>
-          </div>
-          <WindowSelector value={window} onChange={setWindow} />
-        </div>
-
-        {/* Recent Rhythms */}
-        <section className="rounded-lg border border-border/40 bg-card px-4 py-4 space-y-2">
-          <div className="space-y-0.5">
-            <h2 className="text-sm font-medium text-foreground">Recent rhythms</h2>
-            <p className="text-xs text-muted-foreground">
-              Check-ins in this window, with imported activity listed below.
-            </p>
-          </div>
-
-          {loading ? (
-            <div className="space-y-2">
-              <div className="h-4 w-1/3 animate-pulse rounded bg-muted/50" />
-              <div className="h-4 w-1/2 animate-pulse rounded bg-muted/50" />
-            </div>
-          ) : rhythms.totalCount === 0 && !hasImportedActivity ? (
-            <p className="text-xs text-muted-foreground">
-              No check-ins in this window.{" "}
-              <Link
-                href="/check-ins"
-                className="underline underline-offset-2 hover:text-foreground transition-colors"
-              >
-                Add one
-              </Link>
-              .
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {rhythms.totalCount === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  No check-ins in this window yet.{" "}
-                  <Link
-                    href="/check-ins"
-                    className="underline underline-offset-2 hover:text-foreground transition-colors"
-                  >
-                    Add one
-                  </Link>
-                  .
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {rhythms.totalCount} check-in{rhythms.totalCount !== 1 ? "s" : ""} recorded
-                  {rhythms.lastCheckInAt
-                    ? ` · Last: ${formatQuickCheckInTimestamp(rhythms.lastCheckInAt)}`
-                    : ""}
-                </p>
-              )}
-
-              {hasImportedActivity && (
-                <p className="text-[10px] text-muted-foreground/55">
-                  Imported activity: {importedSummary.activeDayCount} active day
-                  {importedSummary.activeDayCount !== 1 ? "s" : ""} ·{" "}
-                  {formatConversationCount(importedSummary.sessionCount)} ·{" "}
-                  {formatMessageCount(importedSummary.messageCount)} logged
-                </p>
-              )}
-
-              {rhythms.topStateTags.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                    States
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {rhythms.topStateTags.map(({ tag, count }) => (
-                      <span key={tag} className="flex items-center gap-1">
-                        <TagPill label={QUICK_CHECK_IN_STATE_LABELS[tag]} variant="emphasis" />
-                        <span className="text-[11px] text-muted-foreground">{count}×</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {rhythms.topEventTags.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                    Events
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {rhythms.topEventTags.map(({ tag, count }) => (
-                      <span key={tag} className="flex items-center gap-1">
-                        <TagPill label={QUICK_CHECK_IN_EVENT_LABELS[tag]} />
-                        <span className="text-[11px] text-muted-foreground">{count}×</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* Possible links — event/state proximity and state transitions */}
-        <section className="rounded-lg border border-border/40 bg-card px-4 py-4 space-y-2">
-          <div className="space-y-0.5">
-            <h2 className="text-sm font-medium text-foreground">Possible links</h2>
-            <p className="text-xs text-muted-foreground">
-              Repeated event/state proximity and state shifts from your{" "}
-              <Link href="/check-ins" className="text-primary/70 underline-offset-2 hover:text-primary hover:underline">
-                check-ins
-              </Link>{" "}
-              in this window.
-            </p>
-          </div>
-
-          {loading ? (
-            <div className="space-y-2">
-              <div className="h-4 w-2/5 animate-pulse rounded bg-muted/50" />
-              <div className="h-4 w-1/3 animate-pulse rounded bg-muted/50" />
-            </div>
-          ) : links.length === 0 ? (
-            <div>
-              <p className="text-xs text-muted-foreground">
-                No clear links in this window yet.
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground/60">
-                More check-ins over time make event and state links easier to see.
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border/30">
-              {links.map((link, i) => (
-                <div key={i} className="py-1.5">
-                  <p className="text-xs text-foreground">
-                    {formatLinkPrimaryText(link)}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground/70">
-                    {formatLinkSupportText(link)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Repeated Signals — always rendered */}
-        <section className="rounded-lg border border-border/40 bg-card px-4 py-4 space-y-2">
-          <div className="space-y-0.5">
-            <h2 className="text-sm font-medium text-foreground">Repeated signals</h2>
-            <p className="text-xs text-muted-foreground">
-              Most repeated states, events, and pairings across your{" "}
-              <Link href="/check-ins" className="text-primary/70 underline-offset-2 hover:text-primary hover:underline">
-                check-ins
-              </Link>{" "}
-              in this window.
-            </p>
-          </div>
-
-          {loading ? (
-            <div className="space-y-2">
-              <div className="h-4 w-2/5 animate-pulse rounded bg-muted/50" />
-              <div className="h-4 w-1/3 animate-pulse rounded bg-muted/50" />
-            </div>
-          ) : !hasAnyRepeated ? (
-            <div>
-              <p className="text-xs text-muted-foreground">No clear repeats in this window yet.</p>
-              <p className="mt-1 text-xs text-muted-foreground/60">
-                Add more check-ins over time to make repeats easier to spot.
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border/30">
-              {repeated.rankedItems.map((item) => {
-                if (item.kind === "state") {
-                  return (
-                    <SignalRow
-                      key={`state-${item.tag}`}
-                      count={item.count}
-                      lastSeenAt={item.lastSeenAt}
-                    >
-                      <TagPill label={QUICK_CHECK_IN_STATE_LABELS[item.tag]} variant="emphasis" />
-                    </SignalRow>
-                  );
-                }
-                if (item.kind === "event") {
-                  const isStrong = item.count >= 3;
-                  return (
-                    <SignalRow
-                      key={`event-${item.tag}`}
-                      count={item.count}
-                      lastSeenAt={item.lastSeenAt}
-                    >
-                      <TagPill
-                        label={QUICK_CHECK_IN_EVENT_LABELS[item.tag]}
-                        variant={isStrong ? "emphasis" : "default"}
-                      />
-                    </SignalRow>
-                  );
-                }
-                const isStrong = item.count >= 3;
-                return (
-                  <SignalRow
-                    key={`pair-${item.stateTag}-${item.eventTag}`}
-                    count={item.count}
-                    lastSeenAt={item.lastSeenAt}
-                  >
-                    <TagPill label={QUICK_CHECK_IN_STATE_LABELS[item.stateTag]} variant="emphasis" />
-                    <span className="text-[11px] text-muted-foreground/50">+</span>
-                    <TagPill
-                      label={QUICK_CHECK_IN_EVENT_LABELS[item.eventTag]}
-                      variant={isStrong ? "emphasis" : "default"}
-                    />
-                  </SignalRow>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* Conversation activity — imported chronology only */}
-        <section className="space-y-2.5">
-          <div className="space-y-0.5">
-            <h2 className="text-sm font-medium text-foreground">Conversation activity</h2>
-            <p className="text-xs text-muted-foreground">
-              Imported chronology only, grouped by day in this window.
-            </p>
-          </div>
-
-          {loading && (
-            <div className="space-y-3">
-              {Array.from({ length: 2 }).map((_, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="h-3 w-20 animate-pulse rounded bg-muted/50" />
-                  <div className="h-20 animate-pulse rounded-lg bg-muted/50" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!loading && importedGroups.length === 0 && (
-            <div className="rounded-lg border border-dashed border-border/40 px-4 py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                No imported conversation activity in this window.
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground/60">
-                Imported sessions will appear here when they fall inside the selected range.
-              </p>
-            </div>
-          )}
-
-          {/* Compact summary card — always shown when there is activity */}
-          {!loading && hasImportedActivity && (
-            <div className="rounded-lg border border-border/40 bg-card px-4 py-3 space-y-2">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                <span>
-                  {importedSummary.activeDayCount} active day
-                  {importedSummary.activeDayCount !== 1 ? "s" : ""}
-                </span>
-                <span>{formatConversationCount(importedSummary.sessionCount)}</span>
-                <span>{formatMessageCount(importedSummary.messageCount)}</span>
-                {importedLatestDayLabel && <span>Latest day: {importedLatestDayLabel}</span>}
-              </div>
-
-              {importedPreviewLine && (
-                <p className="truncate text-[11px] text-muted-foreground/70">
-                  {importedPreviewLine}
-                </p>
-              )}
-
+    <div className="px-12 py-10 max-w-[1180px] mx-auto animate-fade-in">
+      <PageHeader
+        title="Timeline"
+        meta="Rhythms, signals, and connected activity"
+        right={
+          <div className="inline-flex card-standard p-1 rounded-md">
+            {TIMELINE_WINDOWS.map((windowKey) => (
               <button
-                type="button"
-                onClick={() => setConversationActivityOpen((v) => !v)}
-                aria-expanded={conversationActivityOpen}
-                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                key={windowKey}
+                onClick={() => setWindowValue(windowKey)}
+                className={`label-meta px-3 h-7 rounded ${windowValue === windowKey ? "bg-[hsl(187_100%_50%/0.12)] text-cyan" : "text-meta hover:text-white"}`}
               >
-                {conversationActivityOpen ? (
-                  <>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                    <span>Hide activity</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                    <span>Show activity</span>
-                  </>
-                )}
+                {windowKey}
               </button>
-            </div>
+            ))}
+          </div>
+        }
+      />
+
+      <section className="card-focal p-6 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="label-meta mb-1">Recent rhythms</div>
+            <div className="text-[15px]">Check-in cadence · last {windowValue}</div>
+          </div>
+          <div className="flex gap-4 text-right">
+            <Stat label="Active days" value={String(groupedActivity.length)} />
+            <Stat label="Last check-in" value={formatRecentLabel(rhythms.lastCheckInAt)} />
+          </div>
+        </div>
+        <RhythmGraph seed={windowValue === "14d" ? 3 : windowValue === "90d" ? 8 : 4} height={150} />
+        <div className="flex gap-2 flex-wrap mt-4">
+          {topStateChips.length > 0 ? (
+            topStateChips.map((chip) => (
+              <span key={chip.label} className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
+                {chip.label} <span className="text-cyan/70">×{chip.count}</span>
+              </span>
+            ))
+          ) : (
+            <span className="label-meta text-meta">No check-ins in this window yet.</span>
           )}
+        </div>
+      </section>
 
-          {/* Expanded detail panel — separate container, only when open */}
-          {!loading && hasImportedActivity && conversationActivityOpen && (
-            <div className="rounded-lg border border-border/40 bg-card px-4 py-4">
-              <div className="max-h-[28rem] space-y-4 overflow-y-auto pr-1">
-                {importedGroups.map((group) => (
-                  <div key={group.dateKey} className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold text-muted-foreground/70">
-                        {group.label}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {formatConversationCount(group.sessionCount)} ·{" "}
-                        {formatMessageCount(group.messageCount)}
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      {group.items.slice(0, 3).map((item) => {
-                        const title = getConversationActivityTitle(item);
-                        const preview = item.preview?.trim() ?? "";
-                        const showPreview = preview.length > 0 && preview !== title;
-
-                        return (
-                          <div
-                            key={item.id}
-                            className="rounded-lg border border-border/40 bg-muted/20 px-4 py-3"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-foreground">
-                                  {title}
-                                </p>
-                                {showPreview && (
-                                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                                    {preview}
-                                  </p>
-                                )}
-                              </div>
-                              <span className="shrink-0 text-[11px] text-muted-foreground/70">
-                                {formatConversationTime(item.startedAt)}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      {group.items.length > 3 && (
-                        <p className="text-[11px] text-muted-foreground/60">
-                          +{group.items.length - 3} more imported conversation
-                          {group.items.length - 3 !== 1 ? "s" : ""} that day.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* Chronological log */}
-        <section className="space-y-4">
-          <h2 className="text-sm font-medium text-foreground">Check-in log</h2>
-
-          {loading && (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="space-y-2">
-                  <div className="h-3 w-16 animate-pulse rounded bg-muted/50" />
-                  <div className="h-16 animate-pulse rounded-lg bg-muted/50" />
+      <section className="mb-10">
+        <SectionLabel>Possible links</SectionLabel>
+        <div className="grid grid-cols-2 gap-3">
+          {possibleLinks.length > 0 ? (
+            possibleLinks.map((link, index) => (
+              <div key={`${link.event}-${link.state}-${index}`} className="card-surfaced p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 card-standard px-3 py-2 text-[13px]">{link.event}</div>
+                  <ArrowRight className="h-4 w-4 text-cyan" strokeWidth={1.5} />
+                  <div className="flex-1 card-standard px-3 py-2 text-[13px]">{link.state}</div>
                 </div>
-              ))}
-            </div>
+                <div className="label-meta mt-3">Appeared together {link.count} times</div>
+              </div>
+            ))
+          ) : (
+            <div className="card-standard p-4 text-[13px] text-meta col-span-2">No recurring state/event links yet.</div>
           )}
+        </div>
+      </section>
 
-          {!loading && groups.length === 0 && (
-            <div className="rounded-lg border border-dashed border-border/40 px-4 py-8 text-center">
-              <p className="text-sm text-muted-foreground">No check-ins in this window.</p>
-              <p className="mt-1 text-xs text-muted-foreground/60">
-                <Link
-                  href="/check-ins"
-                  className="underline underline-offset-2 hover:text-foreground transition-colors"
-                >
-                  Add a check-in
-                </Link>{" "}
-                to start your timeline.
-              </p>
-            </div>
+      <section className="mb-10">
+        <SectionLabel>Repeated signals</SectionLabel>
+        <div className="card-standard divide-y divide-white/[0.05]">
+          {repeatedSignals.rankedItems.length > 0 ? (
+            repeatedSignals.rankedItems.map((signal, index) => {
+              const text = signal.kind === "state"
+                ? stateLabel(signal.tag)
+                : signal.kind === "event"
+                  ? QUICK_CHECK_IN_EVENT_LABELS[signal.tag]
+                  : `${stateLabel(signal.stateTag)} + ${QUICK_CHECK_IN_EVENT_LABELS[signal.eventTag]}`;
+
+              const marks = Array.from({ length: Math.min(14, signal.count) }, (_, markIndex) =>
+                Math.min(13, markIndex * 2)
+              );
+
+              return (
+                <div key={`${signal.kind}-${index}`} className="w-full p-4 flex items-center gap-4 text-left">
+                  <div className="flex-1 text-[14px]">{text}</div>
+                  <OccurrenceDots count={14} marks={marks} />
+                  <div className="label-meta w-8 text-right">×{signal.count}</div>
+                  <ChevronRight className="h-4 w-4 text-meta" strokeWidth={1.5} />
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-4 text-[13px] text-meta">No repeated signals in this window yet.</div>
           )}
+        </div>
+      </section>
 
-          {!loading &&
-            groups.map((group) => (
-              <div key={group.dateKey} className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground/70">{group.label}</p>
-
-                {group.items.map((checkIn) => (
-                  <div
-                    key={checkIn.id}
-                    className="rounded-lg border border-border/40 bg-card px-4 py-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        {checkIn.stateTag && (
-                          <TagPill
-                            label={QUICK_CHECK_IN_STATE_LABELS[checkIn.stateTag]}
-                            variant="emphasis"
-                          />
-                        )}
-                        {checkIn.eventTags.map((tag) => (
-                          <TagPill
-                            key={`${checkIn.id}-${tag}`}
-                            label={QUICK_CHECK_IN_EVENT_LABELS[tag]}
-                          />
-                        ))}
-                        {!checkIn.stateTag && checkIn.eventTags.length === 0 && (
-                          <span className="text-xs text-muted-foreground/50 italic">Note only</span>
-                        )}
+      <section>
+        <SectionLabel>Connected activity</SectionLabel>
+        {isLoading ? (
+          <div className="card-standard p-4 text-[13px] text-meta">Loading timeline activity...</div>
+        ) : errorMessage ? (
+          <div className="card-standard p-4 text-[13px] text-[hsl(12_80%_64%)]">{errorMessage}</div>
+        ) : groupedActivity.length === 0 ? (
+          <div className="card-standard p-4 text-[13px] text-meta">No activity yet in this window.</div>
+        ) : (
+          <div className="space-y-6">
+            {groupedActivity.map((group) => (
+              <div key={group.date}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-1.5 w-1.5 rounded-full bg-cyan glow-cyan" />
+                  <div className="label-meta">{group.date}</div>
+                </div>
+                <div className="ml-[3px] border-l hairline pl-6 space-y-4">
+                  {group.entries.map((entry) => (
+                    <div key={entry.id} className="relative">
+                      <div className="absolute -left-[27px] top-1.5 h-1.5 w-1.5 rounded-full bg-white/20" />
+                      <div className={entry.weight === "low" ? "opacity-60" : ""}>
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="label-meta">{formatTime(entry.occurredAt)}</span>
+                          <Link href={entry.href} className="text-[14px] font-medium hover:text-cyan transition-colors">
+                            {entry.title}
+                          </Link>
+                          <span className="label-meta text-cyan/70 px-2 h-5 rounded bg-[hsl(187_100%_50%/0.08)] inline-flex items-center">
+                            {entry.chip}
+                          </span>
+                        </div>
+                        {entry.body && <div className="text-[13px] text-meta leading-relaxed line-clamp-2">{entry.body}</div>}
                       </div>
-                      <span className="shrink-0 text-[11px] text-muted-foreground/70">
-                        {formatQuickCheckInTimestamp(checkIn.createdAt)}
-                      </span>
                     </div>
-                    {checkIn.note && (
-                      <p className="mt-2 text-sm text-foreground/90">{checkIn.note}</p>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             ))}
-        </section>
-      </div>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="label-meta">{label}</div>
+      <div className="font-mono text-[15px] mt-0.5">{value}</div>
     </div>
   );
 }
