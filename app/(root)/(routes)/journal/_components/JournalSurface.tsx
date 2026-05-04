@@ -332,6 +332,7 @@ export default function JournalSurface() {
                   onClick={() => mediaInputRef.current?.click()}
                   className="flex items-center gap-1.5 px-2.5 h-8 rounded-md text-[12px] text-meta hover:text-white hover:bg-white/5 transition-colors"
                 >
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
                   <Image className="h-3.5 w-3.5" strokeWidth={1.5} />
                   Media
                 </button>

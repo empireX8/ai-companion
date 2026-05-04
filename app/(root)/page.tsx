@@ -120,7 +120,6 @@ function strengthLabel(value: PatternClaim["strengthLevel"]): string {
 export default function Today() {
   const router = useRouter();
   const [captureText, setCaptureText] = useState("");
-  const [isSavingCapture, setIsSavingCapture] = useState(false);
   const [captureMessage, setCaptureMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const mediaInputRef = useRef<HTMLInputElement>(null);
@@ -243,7 +242,7 @@ export default function Today() {
   }, []);
 
   function handleSaveCapture() {
-    if (!trimmedCaptureText || isSavingCapture) {
+    if (!trimmedCaptureText) {
       return;
     }
 
@@ -337,16 +336,17 @@ export default function Today() {
               onClick={() => mediaInputRef.current?.click()}
               className="flex items-center gap-1.5 px-2.5 h-8 rounded-md text-[12px] text-meta hover:text-white hover:bg-white/5 transition-colors"
             >
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image className="h-3.5 w-3.5" strokeWidth={1.5} />
               Media
             </button>
           </div>
           <button
             onClick={handleSaveCapture}
-            disabled={!trimmedCaptureText || isSavingCapture}
+            disabled={!trimmedCaptureText}
             className="px-4 h-8 rounded-md bg-cyan text-black text-[12px] font-medium hover:opacity-90 transition-opacity disabled:opacity-45 disabled:cursor-not-allowed"
           >
-            {isSavingCapture ? "Saving…" : "Continue"}
+            Continue
           </button>
         </div>
         {voice.message ? (
