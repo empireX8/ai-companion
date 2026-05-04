@@ -1,526 +1,466 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { BookText, FileText, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { Search, MessageCircle, Compass, Tag, Clock, X, ChevronRight, Mic, Image } from "lucide-react";
+import Link from "next/link";
+import type { ComponentType, ReactNode } from "react";
+import { toJournalPreview, type JournalEntryView } from "@/lib/journal-ui";
+import { useVoiceInput } from "@/hooks/use-voice-input";
+import { VoiceWaveform } from "@/components/VoiceWaveform";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  JOURNAL_BODY_MAX_LENGTH,
-  JOURNAL_TITLE_MAX_LENGTH,
-  toJournalDisplayDate,
-  toJournalPreview,
-  type JournalEntryView,
-} from "@/lib/journal-ui";
+const DATE_LABEL = new Intl.DateTimeFormat("en-GB", {
+  month: "short",
+  day: "numeric",
+  timeZone: "Europe/London",
+});
 
-type EntryPayload = {
-  title: string;
-  body: string;
-  authoredAt: string | null;
-};
+const DATE_TIME_LABEL = new Intl.DateTimeFormat("en-GB", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: "Europe/London",
+});
 
-function toDatetimeLocalValue(iso: string | null): string {
-  if (!iso) return "";
-
+function formatDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
-    return "";
+    return "Unknown";
   }
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-
-  return `${year}-${month}-${day}T${hour}:${minute}`;
+  return DATE_LABEL.format(date);
 }
 
-function toApiPayload(
-  title: string,
-  body: string,
-  authoredAtValue: string
-): EntryPayload {
-  return {
-    title,
-    body,
-    authoredAt: authoredAtValue.trim().length > 0 ? new Date(authoredAtValue).toISOString() : null,
-  };
-}
-
-async function fetchEntries(): Promise<JournalEntryView[]> {
-  const response = await fetch("/api/journal/entries", {
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to load entries.");
+function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
   }
 
-  return (await response.json()) as JournalEntryView[];
+  return DATE_TIME_LABEL.format(date);
 }
 
-async function fetchEntry(id: string): Promise<JournalEntryView> {
-  const response = await fetch(`/api/journal/entries/${encodeURIComponent(id)}`, {
-    cache: "no-store",
-  });
+function getEntryDate(entry: JournalEntryView): string {
+  return entry.authoredAt ?? entry.createdAt;
+}
 
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error("Entry not found.");
-    }
-    throw new Error("Failed to load entry.");
+function getEntryTitle(entry: JournalEntryView): string {
+  const title = entry.title?.trim();
+  if (title) {
+    return title;
   }
 
-  return (await response.json()) as JournalEntryView;
+  const preview = toJournalPreview(entry.body, 84);
+  return preview.length > 0 ? preview : "Journal entry";
 }
 
-export function JournalSurface() {
+export default function JournalSurface() {
   const [entries, setEntries] = useState<JournalEntryView[]>([]);
-  const [loadingEntries, setLoadingEntries] = useState(true);
-  const [entriesError, setEntriesError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [newTitle, setNewTitle] = useState("");
-  const [newBody, setNewBody] = useState("");
-  const [newAuthoredAt, setNewAuthoredAt] = useState("");
-  const [creatingEntry, setCreatingEntry] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
-  const [selectedEntry, setSelectedEntry] = useState<JournalEntryView | null>(null);
-  const [loadingSelected, setLoadingSelected] = useState(false);
-  const [selectedError, setSelectedError] = useState<string | null>(null);
+  const [journalDraft, setJournalDraft] = useState("");
+  const [isSavingJournal, setIsSavingJournal] = useState(false);
+  const [journalSaveMessage, setJournalSaveMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const draftTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [editTitle, setEditTitle] = useState("");
-  const [editBody, setEditBody] = useState("");
-  const [editAuthoredAt, setEditAuthoredAt] = useState("");
-  const [savingSelected, setSavingSelected] = useState(false);
-  const [deletingSelected, setDeletingSelected] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const voice = useVoiceInput();
 
-  async function loadEntries() {
-    setLoadingEntries(true);
-    setEntriesError(null);
-
-    try {
-      const data = await fetchEntries();
-      setEntries(data);
-    } catch (error) {
-      setEntriesError(error instanceof Error ? error.message : "Failed to load entries.");
-    } finally {
-      setLoadingEntries(false);
+  // Insert voice transcript into journal draft when recording completes
+  useEffect(() => {
+    if (voice.transcript && voice.state === "idle") {
+      setJournalDraft((prev) => {
+        const trimmed = prev.trim();
+        return trimmed ? `${trimmed} ${voice.transcript}` : voice.transcript;
+      });
     }
-  }
+  }, [voice.transcript, voice.state]);
+
+  // Auto-scroll textarea to bottom when interim transcript updates
+  useEffect(() => {
+    if (voice.state === "recording" && draftTextareaRef.current) {
+      draftTextareaRef.current.scrollTop = draftTextareaRef.current.scrollHeight;
+    }
+  }, [voice.interimTranscript, voice.state]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadEntries = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch("/api/journal/entries?limit=100", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (response.status === 401) {
+          throw new Error("Please sign in to view Journal entries.");
+        }
+
+        if (!response.ok) {
+          throw new Error("Could not load Journal entries. The server may be unavailable.");
+        }
+
+        const payload = (await response.json()) as JournalEntryView[];
+        if (cancelled) {
+          return;
+        }
+
+        setEntries(payload);
+        setSelectedId((current) => current ?? payload[0]?.id ?? null);
+      } catch (err) {
+        if (!cancelled) {
+          setEntries([]);
+          setError(
+            err instanceof Error ? err.message : "Could not load Journal entries."
+          );
+          setSelectedId(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
     void loadEntries();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function openEntry(id: string) {
-    if (loadingSelected || deletingSelected || savingSelected) {
-      return;
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) {
+      return entries;
     }
 
-    setSelectedEntryId(id);
-    setSelectedError(null);
-    setSaveError(null);
-    setLoadingSelected(true);
+    return entries.filter((entry) => {
+      const title = getEntryTitle(entry).toLowerCase();
+      const body = entry.body.toLowerCase();
+      return title.includes(needle) || body.includes(needle);
+    });
+  }, [entries, query]);
 
-    try {
-      const entry = await fetchEntry(id);
-      setSelectedEntry(entry);
-      setEditTitle(entry.title ?? "");
-      setEditBody(entry.body);
-      setEditAuthoredAt(toDatetimeLocalValue(entry.authoredAt));
-    } catch (error) {
-      setSelectedEntry(null);
-      setSelectedError(error instanceof Error ? error.message : "Failed to load entry.");
-    } finally {
-      setLoadingSelected(false);
-    }
-  }
+  const selected =
+    (selectedId ? filtered.find((entry) => entry.id === selectedId) : null) ??
+    filtered[0] ??
+    entries[0] ??
+    null;
 
-  const canCreateEntry = !creatingEntry && newBody.trim().length > 0;
-
-  async function onCreateEntry(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!canCreateEntry) {
-      return;
+  const selectedParagraphs = useMemo(() => {
+    if (!selected) {
+      return [];
     }
 
-    setCreatingEntry(true);
-    setCreateError(null);
+    return selected.body
+      .split(/\n{2,}/)
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+  }, [selected]);
 
-    try {
-      const response = await fetch("/api/journal/entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(toApiPayload(newTitle, newBody, newAuthoredAt)),
-      });
+  function handleMediaSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-      const payload = (await response.json()) as JournalEntryView | { error?: string };
-      if (!response.ok) {
-        setCreateError(
-          typeof payload === "object" && payload && "error" in payload && payload.error
-            ? payload.error
-            : "Could not create entry."
-        );
-        return;
-      }
+    const selected = Array.from(files);
+    setMediaFiles((prev) => [...prev, ...selected]);
 
-      const created = payload as JournalEntryView;
-      setEntries((current) => [created, ...current]);
-      setSelectedEntryId(created.id);
-      setSelectedEntry(created);
-      setEditTitle(created.title ?? "");
-      setEditBody(created.body);
-      setEditAuthoredAt(toDatetimeLocalValue(created.authoredAt));
-      setNewTitle("");
-      setNewBody("");
-      setNewAuthoredAt("");
-    } catch {
-      setCreateError("Could not create entry.");
-    } finally {
-      setCreatingEntry(false);
-    }
-  }
+    setJournalSaveMessage({
+      tone: "success",
+      text: `Media selected (${selected.length} file${selected.length === 1 ? "" : "s"}). Saving media is not wired yet.`,
+    });
 
-  const canSaveSelected =
-    !!selectedEntry && !savingSelected && !deletingSelected && editBody.trim().length > 0;
-
-  async function onSaveSelected(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!selectedEntryId || !canSaveSelected) {
-      return;
-    }
-
-    setSavingSelected(true);
-    setSaveError(null);
-
-    try {
-      const response = await fetch(`/api/journal/entries/${encodeURIComponent(selectedEntryId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(toApiPayload(editTitle, editBody, editAuthoredAt)),
-      });
-
-      const payload = (await response.json()) as JournalEntryView | { error?: string };
-      if (!response.ok) {
-        setSaveError(
-          typeof payload === "object" && payload && "error" in payload && payload.error
-            ? payload.error
-            : "Could not save entry."
-        );
-        return;
-      }
-
-      const updated = payload as JournalEntryView;
-      setSelectedEntry(updated);
-      setEntries((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item))
-      );
-    } catch {
-      setSaveError("Could not save entry.");
-    } finally {
-      setSavingSelected(false);
-    }
-  }
-
-  async function onDeleteSelected() {
-    if (!selectedEntryId || deletingSelected || savingSelected) {
-      return;
-    }
-
-    setDeletingSelected(true);
-    setSaveError(null);
-
-    try {
-      const response = await fetch(`/api/journal/entries/${encodeURIComponent(selectedEntryId)}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        setSaveError("Could not delete entry.");
-        return;
-      }
-
-      setEntries((current) => current.filter((item) => item.id !== selectedEntryId));
-      setSelectedEntryId(null);
-      setSelectedEntry(null);
-      setEditTitle("");
-      setEditBody("");
-      setEditAuthoredAt("");
-    } catch {
-      setSaveError("Could not delete entry.");
-    } finally {
-      setDeletingSelected(false);
-    }
+    event.target.value = "";
   }
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <BookText className="h-5 w-5 text-primary" />
-            <h1 className="text-base font-semibold text-foreground">Journal</h1>
+    <div className="flex h-screen">
+      {/* Hidden file input for Media */}
+      <input
+        ref={mediaInputRef}
+        type="file"
+        accept="image/*,audio/*,video/*"
+        multiple
+        className="hidden"
+        onChange={handleMediaSelect}
+      />
+
+      <div className="w-[360px] shrink-0 border-r hairline flex flex-col h-screen">
+        <div className="p-5 border-b hairline">
+          <div className="flex items-end justify-between mb-4">
+            <h2 className="text-[20px] font-bold tracking-tight">Journal</h2>
+            <div className="label-meta">
+              {filtered.length} of {entries.length}
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Save personal entries. Newest entries appear first.
-          </p>
+          <div className="relative">
+            <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-meta" strokeWidth={1.5} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search entries…"
+              className="w-full h-9 pl-9 pr-8 rounded-md bg-[hsl(213_41%_9%)] border border-white/[0.06] text-[13px] focus:outline-none focus:border-[hsl(187_100%_50%/0.3)]"
+            />
+            {query ? (
+              <button
+                onClick={() => setQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-meta hover:text-white"
+              >
+                <X className="h-3 w-3" strokeWidth={1.5} />
+              </button>
+            ) : null}
+          </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <section className="space-y-4">
-            <form
-              onSubmit={onCreateEntry}
-              className="space-y-3 rounded-lg border border-border/40 bg-card px-4 py-4"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-medium text-foreground">New entry</h2>
-                <Button type="submit" size="sm" disabled={!canCreateEntry}>
-                  {creatingEntry ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Saving...
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Plus className="h-3.5 w-3.5" />
-                      Save entry
-                    </span>
-                  )}
-                </Button>
-              </div>
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="px-5 py-10 text-center">
+              <div className="text-[13px] text-meta mb-1">Loading entries…</div>
+            </div>
+          ) : error ? (
+            <div className="px-5 py-10 text-center">
+              <div className="text-[13px] text-[hsl(12_80%_64%)] mb-1">{error}</div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="px-5 py-10 text-center">
+              <div className="text-[13px] text-meta mb-1">No entries match.</div>
+              <div className="label-meta text-meta">Try another search.</div>
+            </div>
+          ) : (
+            filtered.map((entry) => {
+              const isSelected = selected?.id === entry.id;
+              const entryDate = getEntryDate(entry);
 
-              <div className="space-y-1.5">
-                <label htmlFor="journal-new-title" className="text-xs text-muted-foreground">
-                  Title (optional)
-                </label>
-                <Input
-                  id="journal-new-title"
-                  value={newTitle}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => setNewTitle(event.target.value)}
-                  maxLength={JOURNAL_TITLE_MAX_LENGTH}
-                  placeholder="Entry title"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="journal-new-authored-at" className="text-xs text-muted-foreground">
-                  Authored at (optional)
-                </label>
-                <Input
-                  id="journal-new-authored-at"
-                  type="datetime-local"
-                  value={newAuthoredAt}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => setNewAuthoredAt(event.target.value)}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-3">
-                  <label htmlFor="journal-new-body" className="text-xs text-muted-foreground">
-                    Body
-                  </label>
-                  <span className="text-[11px] text-muted-foreground/70">
-                    {newBody.length}/{JOURNAL_BODY_MAX_LENGTH}
-                  </span>
-                </div>
-                <Textarea
-                  id="journal-new-body"
-                  rows={6}
-                  value={newBody}
-                  onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setNewBody(event.target.value)}
-                  maxLength={JOURNAL_BODY_MAX_LENGTH}
-                  placeholder="Write your entry"
-                  className="min-h-[140px] resize-y"
-                />
-              </div>
-
-              {createError ? <p className="text-xs text-destructive">{createError}</p> : null}
-            </form>
-
-            <section className="space-y-2">
-              <div>
-                <h2 className="text-sm font-medium text-foreground">Recent entries</h2>
-                <p className="text-xs text-muted-foreground">Newest first.</p>
-              </div>
-
-              {loadingEntries ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className="h-20 animate-pulse rounded-lg bg-muted/50" />
-                  ))}
-                </div>
-              ) : entriesError ? (
-                <div className="rounded-lg border border-dashed border-border/40 px-4 py-6 text-center">
-                  <p className="text-sm text-muted-foreground">{entriesError}</p>
-                  <Button size="sm" variant="outline" className="mt-3" onClick={() => void loadEntries()}>
-                    Retry
-                  </Button>
-                </div>
-              ) : entries.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border/40 px-4 py-8 text-center">
-                  <p className="text-sm text-muted-foreground">No entries yet.</p>
-                  <p className="mt-1 text-xs text-muted-foreground/70">
-                    Save your first entry to begin.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {entries.map((entry) => {
-                    const isActive = selectedEntryId === entry.id;
-                    return (
-                      <button
-                        key={entry.id}
-                        type="button"
-                        onClick={() => void openEntry(entry.id)}
-                        className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${
-                          isActive
-                            ? "border-primary/30 bg-primary/5"
-                            : "border-border/40 bg-card hover:border-border hover:bg-muted/20"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {entry.title?.trim() || "Untitled entry"}
-                          </p>
-                          <span className="shrink-0 text-[11px] text-muted-foreground/70">
-                            {toJournalDisplayDate(entry.authoredAt ?? entry.createdAt)}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {toJournalPreview(entry.body)}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          </section>
-
-          <section className="rounded-lg border border-border/40 bg-card px-4 py-4">
-            {!selectedEntryId ? (
-              <div className="flex h-full min-h-[280px] flex-col items-center justify-center rounded-lg border border-dashed border-border/40 px-4 text-center">
-                <FileText className="h-5 w-5 text-muted-foreground/60" />
-                <p className="mt-3 text-sm text-muted-foreground">Select an entry to view or edit.</p>
-              </div>
-            ) : loadingSelected ? (
-              <div className="space-y-2">
-                <div className="h-6 w-1/3 animate-pulse rounded bg-muted/50" />
-                <div className="h-10 animate-pulse rounded bg-muted/50" />
-                <div className="h-44 animate-pulse rounded bg-muted/50" />
-              </div>
-            ) : selectedError ? (
-              <div className="space-y-3">
-                <p className="text-sm text-destructive">{selectedError}</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => selectedEntryId && void openEntry(selectedEntryId)}
+              return (
+                <button
+                  key={entry.id}
+                  onClick={() => setSelectedId(entry.id)}
+                  className={`group w-full text-left px-5 py-4 border-b hairline transition-colors ${
+                    isSelected ? "bg-[hsl(187_100%_50%/0.04)]" : "hover:bg-white/[0.02]"
+                  }`}
                 >
-                  Retry
-                </Button>
-              </div>
-            ) : selectedEntry ? (
-              <form onSubmit={onSaveSelected} className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-medium text-foreground">Edit entry</h2>
-                  <span className="text-[11px] text-muted-foreground/70">
-                    {toJournalDisplayDate(selectedEntry.updatedAt)}
-                  </span>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label htmlFor="journal-edit-title" className="text-xs text-muted-foreground">
-                    Title (optional)
-                  </label>
-                  <Input
-                    id="journal-edit-title"
-                    value={editTitle}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => setEditTitle(event.target.value)}
-                    maxLength={JOURNAL_TITLE_MAX_LENGTH}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label htmlFor="journal-edit-authored-at" className="text-xs text-muted-foreground">
-                    Authored at (optional)
-                  </label>
-                  <Input
-                    id="journal-edit-authored-at"
-                    type="datetime-local"
-                    value={editAuthoredAt}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => setEditAuthoredAt(event.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-3">
-                    <label htmlFor="journal-edit-body" className="text-xs text-muted-foreground">
-                      Body
-                    </label>
-                    <span className="text-[11px] text-muted-foreground/70">
-                      {editBody.length}/{JOURNAL_BODY_MAX_LENGTH}
-                    </span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="label-meta">{formatDate(entryDate)}</div>
+                    <div className="label-meta">{entry.body.trim().length} chars</div>
                   </div>
-                  <Textarea
-                    id="journal-edit-body"
-                    rows={10}
-                    value={editBody}
-                    onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setEditBody(event.target.value)}
-                    maxLength={JOURNAL_BODY_MAX_LENGTH}
-                    className="min-h-[220px] resize-y"
-                  />
-                </div>
-
-                {saveError ? <p className="text-xs text-destructive">{saveError}</p> : null}
-
-                <div className="flex items-center justify-between gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={deletingSelected || savingSelected}
-                    onClick={() => void onDeleteSelected()}
+                  <div
+                    className={`text-[13.5px] mb-1 leading-snug flex items-start justify-between gap-2 ${
+                      isSelected ? "text-white" : "text-[hsl(216_11%_75%)]"
+                    }`}
                   >
-                    {deletingSelected ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Deleting...
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-destructive">
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
-                      </span>
-                    )}
-                  </Button>
+                    <span>
+                      <Highlight text={getEntryTitle(entry)} query={query} />
+                    </span>
+                    <ChevronRight
+                      className={`h-3.5 w-3.5 shrink-0 mt-0.5 transition-opacity ${
+                        isSelected ? "opacity-100 text-cyan" : "opacity-0 group-hover:opacity-60"
+                      }`}
+                      strokeWidth={1.5}
+                    />
+                  </div>
+                  <div className="text-[12px] text-meta line-clamp-2 leading-relaxed">
+                    <Highlight text={toJournalPreview(entry.body)} query={query} />
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
 
-                  <Button type="submit" size="sm" disabled={!canSaveSelected}>
-                    {savingSelected ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Saving...
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Pencil className="h-3.5 w-3.5" />
-                        Save changes
-                      </span>
-                    )}
-                  </Button>
-                </div>
-              </form>
+      <div className="flex-1 min-w-0 overflow-y-auto">
+        <div className="max-w-[760px] mx-auto px-12 py-10">
+          {/* Voice-enabled capture area */}
+          <div className="card-focal p-6 mb-8">
+            <div className="label-meta mb-3">New entry</div>
+            <textarea
+              ref={draftTextareaRef}
+              rows={3}
+              placeholder="What's present right now…"
+              value={
+                voice.state === "recording" && voice.interimTranscript
+                  ? journalDraft
+                    ? `${journalDraft}\n${voice.interimTranscript}`
+                    : voice.interimTranscript
+                  : journalDraft
+              }
+              onChange={(event) => {
+                setJournalDraft(event.target.value);
+                if (journalSaveMessage) setJournalSaveMessage(null);
+              }}
+              className="w-full bg-transparent border-0 resize-none focus:outline-none text-[16px] leading-relaxed placeholder:text-meta-deep max-h-[200px] overflow-y-auto"
+            />
+            <div className="flex items-center justify-between pt-3 border-t hairline">
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => {
+                    void voice.toggle();
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 h-8 rounded-md text-[12px] transition-colors ${
+                    voice.state === "recording"
+                      ? "text-[hsl(12_80%_64%)] bg-[hsl(12_80%_64%/0.1)]"
+                      : "text-meta hover:text-white hover:bg-white/5"
+                  }`}
+                  title="Voice input"
+                >
+                  {voice.state === "recording" ? (
+                    <>
+                      <VoiceWaveform active={true} />
+                      <span className="ml-1">Recording…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="h-3.5 w-3.5" strokeWidth={1.5} />
+                      Voice
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => mediaInputRef.current?.click()}
+                  className="flex items-center gap-1.5 px-2.5 h-8 rounded-md text-[12px] text-meta hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  <Image className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  Media
+                </button>
+              </div>
+              <button
+                onClick={async () => {
+                  const trimmed = journalDraft.trim();
+                  if (!trimmed || isSavingJournal) return;
+                  setIsSavingJournal(true);
+                  setJournalSaveMessage(null);
+                  try {
+                    const response = await fetch("/api/journal/entries", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ title: null, body: trimmed, authoredAt: null }),
+                    });
+                    if (!response.ok) throw new Error("Could not save.");
+                    setJournalDraft("");
+                    setJournalSaveMessage({ tone: "success", text: "Saved to Journal." });
+                    // Refresh entries
+                    const refresh = await fetch("/api/journal/entries?limit=100", { method: "GET", cache: "no-store" });
+                    if (refresh.ok) {
+                      const payload = (await refresh.json()) as JournalEntryView[];
+                      setEntries(payload);
+                    }
+                  } catch {
+                    setJournalSaveMessage({ tone: "error", text: "Could not save to Journal." });
+                  } finally {
+                    setIsSavingJournal(false);
+                  }
+                }}
+                disabled={!journalDraft.trim() || isSavingJournal}
+                className="px-4 h-8 rounded-md bg-cyan text-black text-[12px] font-medium hover:opacity-90 transition-opacity disabled:opacity-45 disabled:cursor-not-allowed"
+              >
+                {isSavingJournal ? "Saving…" : "Save"}
+              </button>
+            </div>
+            {voice.message ? (
+              <div className="mt-2 text-[12px] text-[hsl(216_11%_65%)]">{voice.message}</div>
             ) : null}
-          </section>
+            {journalSaveMessage ? (
+              <div className={`mt-2 text-[12px] ${journalSaveMessage.tone === "success" ? "text-cyan/85" : "text-[hsl(12_80%_64%)]"}`}>
+                {journalSaveMessage.text}
+              </div>
+            ) : null}
+            {mediaFiles.length > 0 ? (
+              <div className="mt-2 text-[12px] text-meta">
+                {mediaFiles.length} file{mediaFiles.length === 1 ? "" : "s"} selected
+              </div>
+            ) : null}
+          </div>
+
+          {selected ? (
+            <>
+              <PageHeader
+                eyebrow={`Entry · ${formatDate(getEntryDate(selected))}`}
+                title={getEntryTitle(selected)}
+                right={
+                  <div className="flex gap-2">
+                    <Link
+                      href="/journal-chat"
+                      className="flex items-center gap-2 px-3 h-9 rounded-md card-standard hover:border-[hsl(187_100%_50%/0.3)] text-[12.5px]"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 text-cyan" strokeWidth={1.5} />
+                      Journal Chat
+                    </Link>
+                    <Link
+                      href="/explore"
+                      className="flex items-center gap-2 px-3 h-9 rounded-md card-standard hover:border-[hsl(187_100%_50%/0.3)] text-[12.5px]"
+                    >
+                      <Compass className="h-3.5 w-3.5 text-cyan" strokeWidth={1.5} />
+                      Explore
+                    </Link>
+                  </div>
+                }
+              />
+
+              <div className="card-standard p-7 mb-6">
+                <div className="prose prose-invert text-[15px] leading-[1.75] text-[hsl(216_11%_82%)] space-y-4">
+                  {selectedParagraphs.length > 0 ? (
+                    selectedParagraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)
+                  ) : (
+                    <p>{toJournalPreview(selected.body, 300)}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-6 pt-5 border-t hairline">
+                  <Chip icon={Clock}>{formatDateTime(getEntryDate(selected))}</Chip>
+                  <Chip icon={Tag}>Journal</Chip>
+                </div>
+              </div>
+
+              <SectionLabel>Linked</SectionLabel>
+              <div className="card-standard p-4 text-[13px] text-meta">No linked surfaces yet for this entry.</div>
+            </>
+          ) : (
+            <div className="card-standard p-6 text-[13px] text-meta">No Journal entries yet.</div>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+function Highlight({ text, query }: { text: string; query: string }) {
+  const needle = query.trim();
+  if (!needle) return <>{text}</>;
+
+  const parts = text.split(new RegExp(`(${needle.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")})`, "ig"));
+
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.toLowerCase() === needle.toLowerCase() ? (
+          <mark key={index} className="bg-[hsl(187_100%_50%/0.18)] text-cyan rounded-sm px-0.5">
+            {part}
+          </mark>
+        ) : (
+          <span key={index}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
+function Chip({ icon: Icon, children }: { icon?: ComponentType<{ className?: string; strokeWidth?: number }>; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md bg-white/[0.03] border hairline text-[12px] text-[hsl(216_11%_75%)]">
+      {Icon ? <Icon className="h-3 w-3 text-meta" strokeWidth={1.5} /> : null}
+      {children}
+    </span>
   );
 }

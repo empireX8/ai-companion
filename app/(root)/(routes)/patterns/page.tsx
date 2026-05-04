@@ -1,206 +1,211 @@
 "use client";
 
-/**
- * Patterns Page — unified destination with five-section dashboard (P2-02)
- *
- * One top-level destination. Five locked family sections.
- * Scope + qualitative uncertainty header (P2-06).
- * Low-data banner shown below 20 messages (P2-09).
- * Resolved/archived secondary surface at bottom (P2-10).
- * No ProfileArtifact data. No numeric scores.
- */
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Brain, AlertCircle, RefreshCw } from "lucide-react";
-import {
-  fetchPatterns,
-  type PatternFamilySection,
-  type PatternsResponse,
-} from "@/lib/patterns-api";
-import {
-  LOW_DATA_BANNER,
-  NO_CLAIMS_YET_HEADING,
-  NO_CLAIMS_YET_BODY,
-  RERUN_LABEL,
-  RERUN_RUNNING_LABEL,
-  SCOPE_EMPTY,
-  scopeLabel,
-} from "@/lib/trust-copy";
-import { PatternSection } from "./_components/PatternSection";
-import { ResolvedClaimsSection } from "./_components/ResolvedClaimsSection";
-import { ActiveStepsSection } from "./_components/ActiveStepsSection";
+import { useEffect, useMemo, useState } from "react";
+import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { Waveform } from "@/components/Visuals";
+import { fetchPatterns, type PatternClaimView, type PatternContradictionView, type PatternsResponse } from "@/lib/patterns-api";
+import { ArrowUpRight } from "lucide-react";
 
-// P2-09 — threshold below which a low-data banner is shown
-const LOW_DATA_MESSAGE_THRESHOLD = 20;
-
-function hasVisibleClaims(section: PatternFamilySection): boolean {
-  return section.claims.some(
-    (claim) => claim.status === "candidate" || claim.status === "active"
+export function PTToggle({ active }: { active: "patterns" | "tensions" }) {
+  return (
+    <div className="inline-flex card-standard p-1 rounded-md">
+      <Link
+        href="/patterns"
+        className={`px-4 h-8 rounded text-[12.5px] inline-flex items-center ${active === "patterns" ? "bg-[hsl(187_100%_50%/0.12)] text-cyan" : "text-meta hover:text-white"}`}
+      >
+        Patterns
+      </Link>
+      <Link
+        href="/contradictions"
+        className={`px-4 h-8 rounded text-[12.5px] inline-flex items-center ${active === "tensions" ? "bg-[hsl(187_100%_50%/0.12)] text-cyan" : "text-meta hover:text-white"}`}
+      >
+        Tensions
+      </Link>
+    </div>
   );
 }
 
-function hasVisibleSurfaceItems(section: PatternFamilySection): boolean {
-  return (
-    hasVisibleClaims(section) ||
-    (section.familyKey === "contradiction_drift" &&
-      (section.contradictionItems?.length ?? 0) > 0)
-  );
+function strengthLabel(level: PatternClaimView["strengthLevel"]): string {
+  if (level === "established") return "High";
+  if (level === "developing") return "Medium";
+  return "Emerging";
+}
+
+function normalizeText(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function clampText(value: string, max: number): string {
+  if (value.length <= max) {
+    return value;
+  }
+  return `${value.slice(0, max - 1).trimEnd()}…`;
+}
+
+function toTensionPreview(item: PatternContradictionView): string {
+  const combined = [normalizeText(item.sideA), normalizeText(item.sideB)].filter(Boolean).join(" · ");
+  if (!combined) {
+    return clampText(normalizeText(item.title), 220);
+  }
+  return clampText(combined, 220);
 }
 
 export default function PatternsPage() {
   const [data, setData] = useState<PatternsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [rerunning, setRerunning] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const reload = () => {
-    setLoading(true);
-    fetchPatterns().then((result) => {
-      setData(result);
-      setLoading(false);
-    });
-  };
+  useEffect(() => {
+    let cancelled = false;
 
-  useEffect(() => { reload(); }, []);
+    const load = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
 
-  const triggerRerun = async () => {
-    setRerunning(true);
-    try {
-      await fetch("/api/patterns", { method: "POST" });
-      reload();
-    } finally {
-      setRerunning(false);
+      try {
+        const next = await fetchPatterns();
+        if (cancelled) {
+          return;
+        }
+
+        if (!next) {
+          setData(null);
+          setErrorMessage("Could not load patterns.");
+          return;
+        }
+
+        setData(next);
+      } catch {
+        if (!cancelled) {
+          setData(null);
+          setErrorMessage("Could not load patterns.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const claims = useMemo(() => {
+    if (!data) {
+      return [] as Array<PatternClaimView & { familyLabel: string }>;
     }
-  };
 
-  const isLowData =
-    !loading &&
-    data !== null &&
-    data.scopeMessageCount > 0 &&
-    data.scopeMessageCount < LOW_DATA_MESSAGE_THRESHOLD;
+    return data.sections.flatMap((section) =>
+      section.claims
+        .filter((claim) => claim.status === "active" || claim.status === "candidate")
+        .map((claim) => ({
+          ...claim,
+          familyLabel: section.sectionLabel,
+        }))
+    );
+  }, [data]);
 
-  const hasAnyClaims = data !== null && data.sections.some(hasVisibleClaims);
-  const hasAnySurfaceItems =
-    data !== null && data.sections.some(hasVisibleSurfaceItems);
+  const topClaims = useMemo(
+    () => [...claims].sort((left, right) => right.evidenceCount - left.evidenceCount),
+    [claims]
+  );
+
+  const keyTension = useMemo<PatternContradictionView | null>(() => {
+    if (!data) {
+      return null;
+    }
+
+    const contradictionSection = data.sections.find((section) => section.familyKey === "contradiction_drift");
+    return contradictionSection?.contradictionItems?.[0] ?? null;
+  }, [data]);
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-2xl px-4 py-6 space-y-8">
+    <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
+      <PageHeader
+        title="Patterns"
+        meta="Recurring inner motion the system has noticed"
+        right={<PTToggle active="patterns" />}
+      />
 
-        {/* Page header */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-primary" />
-              <h1 className="text-base font-semibold text-foreground">Patterns</h1>
-            </div>
-            <button
-              type="button"
-              onClick={() => void triggerRerun()}
-              disabled={rerunning || loading}
-              className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+      <SectionLabel>Recurring patterns</SectionLabel>
+      {isLoading ? (
+        <div className="card-standard p-4 text-[13px] text-meta mb-10">Loading patterns…</div>
+      ) : errorMessage ? (
+        <div className="card-standard p-4 text-[13px] text-[hsl(12_80%_64%)] mb-10">{errorMessage}</div>
+      ) : topClaims.length === 0 ? (
+        <div className="card-standard p-4 text-[13px] text-meta mb-10">No recurring patterns yet.</div>
+      ) : (
+        <div className="space-y-3 mb-10">
+          {topClaims.map((claim, index) => (
+            <Link
+              href={`/patterns/${claim.id}`}
+              key={claim.id}
+              className={`block p-5 ${
+                index === 0 ? "card-surfaced" : "card-standard hover:border-[hsl(187_100%_50%/0.18)]"
+              } transition-colors group`}
             >
-              <RefreshCw className={`h-3 w-3 ${rerunning ? "animate-spin" : ""}`} />
-              {rerunning ? RERUN_RUNNING_LABEL : RERUN_LABEL}
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Recurring behavioural and cognitive patterns detected across your conversations.
-          </p>
-
-          {/* P2-06 — scope / sample-size — only shown when claims exist */}
-          {!loading && data && (
-            <p className="text-[11px] text-muted-foreground/70 pt-0.5">
-              {data.scopeMessageCount === 0
-                ? SCOPE_EMPTY
-                : hasAnySurfaceItems
-                ? scopeLabel(data.scopeMessageCount, data.scopeSessionCount)
-                : null}
-            </p>
-          )}
-        </div>
-
-        {/* P2-09 — low-data banner */}
-        {isLowData && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500/70" />
-            <div className="space-y-0.5">
-              <p className="text-xs font-medium text-foreground">
-                {LOW_DATA_BANNER.heading}
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {LOW_DATA_BANNER.body}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Loading state */}
-        {loading && (
-          <div className="space-y-6">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="space-y-2">
-                <div className="h-4 w-40 rounded bg-muted animate-pulse" />
-                <div className="h-16 rounded-lg bg-muted/50 animate-pulse" />
+              <div className="flex items-start gap-6">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="label-meta text-cyan/70">Pattern</div>
+                    <span className="label-meta">·</span>
+                    <div className="label-meta">
+                      Strength <span className="text-white/80">{strengthLabel(claim.strengthLevel)}</span>
+                    </div>
+                  </div>
+                  <div className="text-[16px] font-medium leading-snug mb-1.5 line-clamp-2">
+                    {clampText(normalizeText(claim.summary), 180)}
+                  </div>
+                  <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed mb-4 max-w-[640px]">
+                    {claim.evidenceCount > 0
+                      ? `${claim.evidenceCount} evidence receipts across ${claim.sessionCount} sessions.`
+                      : "Early signal in recent material."}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
+                      <span className="text-cyan/70">Family</span> {claim.familyLabel}
+                    </span>
+                    <span className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
+                      <span className="text-cyan/70">Action</span>{" "}
+                      <span className="max-w-[240px] truncate">
+                        {clampText(normalizeText(claim.action?.prompt ?? "No action suggested yet"), 72)}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+                <div className="w-[200px] shrink-0">
+                  <Waveform seed={index + 1} height={48} />
+                  <div className="label-meta mt-2 text-right">Seen {claim.evidenceCount}×</div>
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-meta group-hover:text-cyan transition-colors shrink-0" strokeWidth={1.5} />
               </div>
-            ))}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <SectionLabel>Key tension</SectionLabel>
+      {keyTension ? (
+        <Link
+          href={`/contradictions/${keyTension.id}`}
+          className="block card-surfaced p-5 hover:border-[hsl(187_100%_50%/0.32)] transition-colors"
+        >
+          <div className="label-meta text-cyan/70 mb-2">Tension · {keyTension.status.replace(/_/g, " ")}</div>
+          <div className="text-[16px] font-medium mb-1.5 leading-snug line-clamp-2">
+            {clampText(normalizeText(keyTension.title), 170)}
           </div>
-        )}
-
-        {/* Error / no data */}
-        {!loading && !data && (
-          <div className="rounded-lg border border-dashed border-border/40 px-4 py-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              Could not load patterns. Please try again.
-            </p>
+          <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed line-clamp-3">
+            {toTensionPreview(keyTension)}
           </div>
-        )}
-
-        {/* No-claims state — data exists but nothing confirmed yet */}
-        {!loading && data && !hasAnySurfaceItems && data.scopeMessageCount > 0 && (
-          <div className="rounded-lg border border-dashed border-border/40 px-5 py-6 space-y-3">
-            <p className="text-sm font-medium text-foreground">{NO_CLAIMS_YET_HEADING}</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">{NO_CLAIMS_YET_BODY}</p>
-            <button
-              type="button"
-              onClick={() => void triggerRerun()}
-              disabled={rerunning || loading}
-              className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3 w-3 ${rerunning ? "animate-spin" : ""}`} />
-              {rerunning ? RERUN_RUNNING_LABEL : RERUN_LABEL}
-            </button>
-          </div>
-        )}
-
-        {/* P2.5-08 — cross-claim active steps (inline, not a separate destination) */}
-        {!loading && data && hasAnyClaims && (
-          <>
-            <ActiveStepsSection sections={data.sections} />
-            <p className="text-xs text-muted-foreground/70">
-              More suggested steps in{" "}
-              <Link href="/actions" className="text-primary/70 underline-offset-2 hover:text-primary hover:underline">
-                Actions →
-              </Link>
-            </p>
-          </>
-        )}
-
-        {/* Five locked family sections — P2-02 — only when visible items exist */}
-        {!loading && data && hasAnySurfaceItems && (
-          <div className="space-y-8">
-            {data.sections.map((section) => (
-              <PatternSection key={section.familyKey} section={section} />
-            ))}
-          </div>
-        )}
-
-        {/* Secondary resolved/archived surface — P2-10 */}
-        {!loading && data && (
-          <ResolvedClaimsSection sections={data.sections} />
-        )}
-
-      </div>
+        </Link>
+      ) : (
+        <div className="card-standard p-4 text-[13px] text-meta">No active tensions yet.</div>
+      )}
     </div>
   );
 }
