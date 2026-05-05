@@ -12,6 +12,10 @@ import {
   initUploadSession,
   upsertUploadChunk,
 } from "../import-upload-service";
+import {
+  combineResultErrorsWithDiagnostics,
+  createEmptyImportRunDiagnostics,
+} from "../import-diagnostics";
 import { enqueueImportProcessing } from "../import-upload-queue";
 
 const buildMockDb = () => {
@@ -226,6 +230,46 @@ describe("import upload service", () => {
     expect(status.missingChunkIndexes).toEqual([1]);
     expect(status.receivedChunks).toBe(2);
     expect(status.totalChunks).toBe(3);
+  });
+
+  it("returns parsed diagnostics and excludes diagnostics payload from result errors", async () => {
+    const mock = buildMockDb();
+    const { sessionId } = await initUploadSession({
+      userId: "user_1",
+      input: {
+        filename: "chatgpt-export.json",
+        contentType: "application/json",
+        bytesTotal: 2 * 1024 * 1024,
+        chunkSize: 1024 * 1024,
+        totalChunks: 2,
+      },
+      db: mock.db as any,
+    });
+
+    const diagnostics = createEmptyImportRunDiagnostics();
+    diagnostics.importedConversationCount = 7;
+    diagnostics.importedMessageCount = 42;
+
+    await mock.db.importUploadSession.update({
+      where: { id: sessionId },
+      data: {
+        status: "complete",
+        resultErrors: combineResultErrorsWithDiagnostics(
+          ["Conversation 2: invalid shape"],
+          diagnostics
+        ),
+      },
+    });
+
+    const status = await getUploadSessionStatus({
+      userId: "user_1",
+      sessionId,
+      db: mock.db as any,
+    });
+
+    expect(status.resultSummary?.errors).toEqual(["Conversation 2: invalid shape"]);
+    expect(status.diagnostics?.importedConversationCount).toBe(7);
+    expect(status.diagnostics?.importedMessageCount).toBe(42);
   });
 
   it("finalize enqueues processing when complete", async () => {

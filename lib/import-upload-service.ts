@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 import type { ImportUploadSession, PrismaClient } from "@prisma/client";
 
 import { getChunkStorage, type ChunkStorage } from "./import-chunk-storage";
+import {
+  splitResultErrorsAndDiagnostics,
+  type ImportRunDiagnostics,
+} from "./import-diagnostics";
 import { enqueueImportProcessing } from "./import-upload-queue";
 import prismadb from "./prismadb";
 
@@ -265,6 +269,7 @@ export type UploadSessionStatusResponse = {
     contradictionsCreated: number;
     errors: string[];
   } | null;
+  diagnostics: ImportRunDiagnostics | null;
   missingChunkIndexes: number[];
   error: string | null;
 };
@@ -298,6 +303,7 @@ export async function getUploadSessionStatus({
       missingChunkIndexes.push(i);
     }
   }
+  const parsedResult = splitResultErrorsAndDiagnostics(session.resultErrors);
 
   return {
     status: session.status,
@@ -312,9 +318,10 @@ export async function getUploadSessionStatus({
             sessionsCreated: session.sessionsCreated,
             messagesCreated: session.messagesCreated,
             contradictionsCreated: session.contradictionsCreated,
-            errors: session.resultErrors,
+            errors: parsedResult.errors,
           }
         : null,
+    diagnostics: parsedResult.diagnostics,
     missingChunkIndexes,
     error: session.error,
   };

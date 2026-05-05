@@ -4,6 +4,11 @@ import JSZip from "jszip";
 import { detectContradictions } from "./contradiction-detection";
 import { materializeContradictions } from "./contradiction-materialization";
 import {
+  incrementReasonCodeCount,
+  pushDiagnosticSample,
+  type ImportRunDiagnostics,
+} from "./import-diagnostics";
+import {
   completeDerivationRun,
   createDerivationArtifact,
   createDerivationRun,
@@ -493,15 +498,45 @@ export async function extractReferenceFromImportedMessage({
   sessionId,
   db,
   refCache,
+  diagnostics,
 }: {
   userId: string;
   message: { id: string; content: string };
   sessionId: string;
   db: PrismaClient;
   refCache: ImportRefCache;
+  diagnostics?: ImportRunDiagnostics;
 }): Promise<boolean> {
   const intentType = detectReferenceIntentType(message.content);
-  if (!intentType || intentType === "rule") {
+  if (!intentType) {
+    if (diagnostics) {
+      diagnostics.referenceCandidatesRejected += 1;
+    }
+    if (diagnostics) {
+      incrementReasonCodeCount(diagnostics, "reference_intent_not_detected");
+      pushDiagnosticSample(diagnostics, "rejected", {
+        reason: "reference_intent_not_detected",
+        snippet: message.content,
+        sessionId,
+        messageId: message.id,
+      });
+    }
+    return false;
+  }
+
+  if (intentType === "rule") {
+    if (diagnostics) {
+      diagnostics.referenceCandidatesRejected += 1;
+    }
+    if (diagnostics) {
+      incrementReasonCodeCount(diagnostics, "reference_rule_intent_skipped");
+      pushDiagnosticSample(diagnostics, "rejected", {
+        reason: "reference_rule_intent_skipped",
+        snippet: message.content,
+        sessionId,
+        messageId: message.id,
+      });
+    }
     return false;
   }
 
@@ -523,6 +558,18 @@ export async function extractReferenceFromImportedMessage({
       statement
     );
     if (score >= 2) {
+      if (diagnostics) {
+        diagnostics.referenceCandidatesRejected += 1;
+      }
+      if (diagnostics) {
+        incrementReasonCodeCount(diagnostics, "reference_dedup_overlap");
+        pushDiagnosticSample(diagnostics, "rejected", {
+          reason: "reference_dedup_overlap",
+          snippet: statement,
+          sessionId,
+          messageId: message.id,
+        });
+      }
       return false;
     }
   }
@@ -539,6 +586,19 @@ export async function extractReferenceFromImportedMessage({
     },
   });
 
+  if (diagnostics) {
+    diagnostics.referenceCandidatesAccepted += 1;
+  }
+  if (diagnostics) {
+    incrementReasonCodeCount(diagnostics, "accepted_reference_candidate");
+    pushDiagnosticSample(diagnostics, "accepted", {
+      reason: "accepted_reference_candidate",
+      snippet: statement,
+      sessionId,
+      messageId: message.id,
+    });
+  }
+
   cached.push(statement);
   return true;
 }
@@ -548,11 +608,13 @@ export async function importExtractedConversations({
   conversations,
   importedSource = "chatgpt_export_json",
   db = prismadb,
+  diagnostics,
 }: {
   userId: string;
   conversations: ExtractedConversation[];
   importedSource?: string;
   db?: PrismaClient;
+  diagnostics?: ImportRunDiagnostics;
 }): Promise<{
   sessionsCreated: number;
   messagesCreated: number;
@@ -614,6 +676,19 @@ export async function importExtractedConversations({
               id: createdMessage.id,
               content: createdMessage.content,
             });
+          } else if (createdMessage.role === "user") {
+            if (diagnostics) {
+              diagnostics.userMessagesSkippedForLength += 1;
+              incrementReasonCodeCount(diagnostics, "too_short");
+              pushDiagnosticSample(diagnostics, "rejected", {
+                reason: "too_short",
+                snippet: createdMessage.content,
+                sessionId: session.id,
+                messageId: createdMessage.id,
+              });
+            }
+          } else if (diagnostics) {
+            incrementReasonCodeCount(diagnostics, "non_user_role");
           }
         }
 
@@ -651,6 +726,9 @@ export async function importExtractedConversations({
       }
 
       for (const importedMessage of created.userMessagesForDetection) {
+        if (diagnostics) {
+          diagnostics.candidateMessagesConsideredForReferenceExtraction += 1;
+        }
         // Profile derivation: create EvidenceSpan + extract claims (runs independently of
         // the DerivationRun — spans are created even when run scaffolding fails).
         const profileResult = await processMessageForProfile({
@@ -668,6 +746,7 @@ export async function importExtractedConversations({
             sessionId: created.sessionId,
             db,
             refCache,
+            diagnostics,
           });
           // Derivation scaffolding: store reference candidate artifact.
           if (refCreated && derivationRunId !== null) {
@@ -696,6 +775,9 @@ export async function importExtractedConversations({
         }
 
         try {
+          if (diagnostics) {
+            diagnostics.contradictionDetectionAttemptedCount += 1;
+          }
           const detections = await detectContradictions({
             userId,
             messageContent: importedMessage.content,
@@ -746,6 +828,25 @@ export async function importExtractedConversations({
           });
 
           contradictionsCreated += materialized.nodesCreated;
+          if (diagnostics && materialized.nodesCreated > 0) {
+            diagnostics.contradictionEvidenceAcceptedCount += materialized.nodesCreated;
+            incrementReasonCodeCount(
+              diagnostics,
+              "accepted_contradiction_evidence",
+              materialized.nodesCreated
+            );
+            incrementReasonCodeCount(
+              diagnostics,
+              "candidate_contradiction_created",
+              materialized.nodesCreated
+            );
+            pushDiagnosticSample(diagnostics, "accepted", {
+              reason: "candidate_contradiction_created",
+              snippet: importedMessage.content,
+              sessionId: created.sessionId,
+              messageId: importedMessage.id,
+            });
+          }
         } catch (error) {
           errors.push(
             `Conversation ${conversationIndex + 1} message ${importedMessage.id}: contradiction detection failed (${toErrorMessage(

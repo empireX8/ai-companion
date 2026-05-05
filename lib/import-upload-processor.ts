@@ -15,6 +15,12 @@ import {
   parseConversationForImport,
   type ExtractedConversation,
 } from "./import-chatgpt";
+import {
+  combineResultErrorsWithDiagnostics,
+  createEmptyImportRunDiagnostics,
+  splitResultErrorsAndDiagnostics,
+  type ImportRunDiagnostics,
+} from "./import-diagnostics";
 import { reconcileImportedStructureForUser } from "./import-reconcile";
 import prismadb from "./prismadb";
 
@@ -26,10 +32,10 @@ type ProcessImportParams = {
   storage?: ChunkStorage;
   /**
    * Optional hook called after import completes successfully (status="complete").
-   * Receives the userId so callers can trigger downstream processing (e.g.
+   * Receives session/user identifiers so callers can trigger downstream processing (e.g.
    * pattern detection). Errors in this hook are logged but do not fail the import.
    */
-  onImportComplete?: (userId: string) => void | Promise<void>;
+  onImportComplete?: (args: { sessionId: string; userId: string }) => void | Promise<void>;
 };
 
 const toErrorMessage = (error: unknown) =>
@@ -145,12 +151,14 @@ async function ingestBatch({
   session,
   batch,
   errors,
+  diagnostics,
 }: {
   db: PrismaClient;
   userId: string;
   session: ImportUploadSession;
   batch: ExtractedConversation[];
   errors: string[];
+  diagnostics: ImportRunDiagnostics;
 }) {
   if (batch.length === 0) {
     return;
@@ -160,6 +168,7 @@ async function ingestBatch({
     userId,
     conversations: batch,
     db,
+    diagnostics,
   });
 
   const batchErrors = [...errors, ...imported.errors];
@@ -175,7 +184,7 @@ async function ingestBatch({
         session.processedConversations + batch.length,
         true
       ),
-      resultErrors: batchErrors,
+      resultErrors: combineResultErrorsWithDiagnostics(batchErrors, diagnostics),
       updatedAt: new Date(),
     },
   });
@@ -229,7 +238,9 @@ export async function processChatImportSession({
     },
   });
 
-  const parseErrors: string[] = [...session.resultErrors];
+  const persisted = splitResultErrorsAndDiagnostics(session.resultErrors);
+  const parseErrors: string[] = [...persisted.errors];
+  const diagnostics = persisted.diagnostics ?? createEmptyImportRunDiagnostics();
   let batch: ExtractedConversation[] = [];
   let seenConversations = 0;
   const checkpoint = session.processedConversations;
@@ -245,6 +256,7 @@ export async function processChatImportSession({
       session,
       batch,
       errors: parseErrors,
+      diagnostics,
     });
     batch = [];
   };
@@ -278,6 +290,12 @@ export async function processChatImportSession({
 
       if (parsed.conversation) {
         batch.push(parsed.conversation);
+        diagnostics.importedConversationCount += 1;
+        diagnostics.importedMessageCount += parsed.conversation.messages.length;
+        for (const message of parsed.conversation.messages) {
+          if (message.role === "user") diagnostics.importedUserMessageCount += 1;
+          else diagnostics.importedAssistantMessageCount += 1;
+        }
       }
 
       if (batch.length >= BATCH_SIZE) {
@@ -294,7 +312,7 @@ export async function processChatImportSession({
       data: {
         status: "complete",
         processingProgress: 100,
-        resultErrors: parseErrors,
+        resultErrors: combineResultErrorsWithDiagnostics(parseErrors, diagnostics),
         finishedAt: new Date(),
         updatedAt: new Date(),
       },
@@ -306,14 +324,22 @@ export async function processChatImportSession({
       const msg = reconcileError instanceof Error ? reconcileError.message : "Unknown error";
       await db.importUploadSession.update({
         where: { id: session.id },
-        data: { resultErrors: [...parseErrors, `reconcile: failed (${msg})`] },
+        data: {
+          resultErrors: combineResultErrorsWithDiagnostics(
+            [...parseErrors, `reconcile: failed (${msg})`],
+            diagnostics
+          ),
+        },
       });
     }
 
     // P3-03: fire the post-import hook (e.g. pattern detection) non-blocking.
     // Import is already marked complete — hook failure must not affect that status.
     if (onImportComplete) {
-      void Promise.resolve(onImportComplete(session.userId)).catch((hookError) => {
+      void Promise.resolve(onImportComplete({
+        sessionId: session.id,
+        userId: session.userId,
+      })).catch((hookError) => {
         console.error("[IMPORT_COMPLETE_HOOK_ERROR]", session.id, hookError);
       });
     }
@@ -325,7 +351,7 @@ export async function processChatImportSession({
       data: {
         status: "failed",
         error: toErrorMessage(error),
-        resultErrors: parseErrors,
+        resultErrors: combineResultErrorsWithDiagnostics(parseErrors, diagnostics),
       },
     });
 
