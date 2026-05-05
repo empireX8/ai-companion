@@ -12,6 +12,7 @@ import {
   Compass,
   CircleDot,
   Image as ImageIcon,
+  Receipt,
   X,
   ArrowUpDown,
   Link2,
@@ -27,6 +28,7 @@ const categories = [
   { id: "Explore", label: "Explore", icon: Compass },
   { id: "Check-in", label: "Check-ins", icon: CircleDot },
   { id: "Media", label: "Media", icon: ImageIcon },
+  { id: "Receipts", label: "Receipts", icon: Receipt },
 ] as const;
 
 export default function LibraryPage() {

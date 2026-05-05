@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
-import { Clock } from "lucide-react";
+import { Clock, Receipt } from "lucide-react";
+import Link from "next/link";
 
 import {
   fetchActionsPageData,
@@ -130,9 +131,21 @@ export default function ActionsPage() {
                   <div className="label-meta inline-flex items-center gap-2">
                     Based on <span className="text-cyan">{action.linkedClaimSummary ?? action.linkedGoalStatement ?? "Recent activity"}</span>
                   </div>
+                  {action.linkedClaimId ? (
+                    <div className="mt-3 pt-3 border-t hairline">
+                      <Link
+                        href={`/library/receipt-pattern-${action.linkedClaimId}`}
+                        className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+                      >
+                        <Receipt className="h-3 w-3" strokeWidth={1.5} />
+                        Receipts
+                      </Link>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
+
           ))}
         </div>
       )}

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import Link from "next/link";
 import { DualWaveform } from "@/components/Visuals";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Receipt } from "lucide-react";
 import { fetchContradictions, type ContradictionListItem } from "@/lib/nodes-api";
 
 function PTToggle({ active }: { active: "patterns" | "tensions" }) {
@@ -203,19 +203,28 @@ export default function TensionsPage() {
                 ) : null}
 
                 <div className="mt-4 border-t hairline pt-3 flex items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedIds((current) =>
-                        current.includes(item.id)
-                          ? current.filter((expandedId) => expandedId !== item.id)
-                          : [...current, item.id]
-                      )
-                    }
-                    className="label-meta hover:text-white transition-colors"
-                  >
-                    {isExpanded ? "Collapse" : "Show more"}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedIds((current) =>
+                          current.includes(item.id)
+                            ? current.filter((expandedId) => expandedId !== item.id)
+                            : [...current, item.id]
+                        )
+                      }
+                      className="label-meta hover:text-white transition-colors"
+                    >
+                      {isExpanded ? "Collapse" : "Show more"}
+                    </button>
+                    <Link
+                      href={`/library/receipt-tension-${item.id}`}
+                      className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+                    >
+                      <Receipt className="h-3 w-3" strokeWidth={1.5} />
+                      Receipts
+                    </Link>
+                  </div>
                   <Link
                     href={`/contradictions/${item.id}`}
                     className="inline-flex items-center gap-1.5 text-[12px] text-meta hover:text-cyan transition-colors"

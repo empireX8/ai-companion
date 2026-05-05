@@ -4,7 +4,7 @@ import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { toJournalPreview } from "@/lib/journal-ui";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
-import { ArrowUpRight, Mic, Image } from "lucide-react";
+import { ArrowUpRight, Mic, Image, Receipt } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -388,27 +388,48 @@ export default function Today() {
           <div className="card-standard p-4 text-[13px] text-meta">{surfacingError ?? "No surfaced items yet."}</div>
         ) : (
           <div className="space-y-3">
-            {surfacingCards.map((card) => (
-              <Link
-                key={`${card.kind}-${card.title}`}
-                href={card.href}
-                className="card-surfaced p-5 block group hover:border-[hsl(187_100%_50%/0.32)] transition-colors"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="label-meta mb-2 text-cyan/70">{card.kind}</div>
-                    <div className="text-[16px] font-medium mb-1.5 leading-snug line-clamp-2">
-                      {clampText(normalizeText(card.title), 170)}
+            {surfacingCards.map((card) => {
+              const receiptHref =
+                card.kind === "Recent Pattern"
+                  ? `/library/receipt-pattern-${card.href.replace("/patterns/", "")}`
+                  : card.kind === "Active Tension"
+                    ? `/library/receipt-tension-${card.href.replace("/contradictions/", "")}`
+                    : null;
+
+              return (
+                <div
+                  key={`${card.kind}-${card.title}`}
+                  className="card-surfaced p-5 hover:border-[hsl(187_100%_50%/0.32)] transition-colors"
+                >
+                  <Link href={card.href} className="block group">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="label-meta mb-2 text-cyan/70">{card.kind}</div>
+                        <div className="text-[16px] font-medium mb-1.5 leading-snug line-clamp-2">
+                          {clampText(normalizeText(card.title), 170)}
+                        </div>
+                        <div className="text-[13.5px] text-[hsl(216_11%_65%)] leading-relaxed line-clamp-3">
+                          {clampText(normalizeText(card.body), 220)}
+                        </div>
+                        <div className="label-meta mt-3">{card.meta}</div>
+                      </div>
+                      <ArrowUpRight className="h-4 w-4 text-meta group-hover:text-cyan transition-colors shrink-0" strokeWidth={1.5} />
                     </div>
-                    <div className="text-[13.5px] text-[hsl(216_11%_65%)] leading-relaxed line-clamp-3">
-                      {clampText(normalizeText(card.body), 220)}
+                  </Link>
+                  {receiptHref ? (
+                    <div className="mt-3 pt-3 border-t hairline">
+                      <Link
+                        href={receiptHref}
+                        className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+                      >
+                        <Receipt className="h-3 w-3" strokeWidth={1.5} />
+                        Receipts
+                      </Link>
                     </div>
-                    <div className="label-meta mt-3">{card.meta}</div>
-                  </div>
-                  <ArrowUpRight className="h-4 w-4 text-meta group-hover:text-cyan transition-colors shrink-0" strokeWidth={1.5} />
+                  ) : null}
                 </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

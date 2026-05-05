@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { Waveform } from "@/components/Visuals";
 import { fetchPatterns, type PatternClaimView, type PatternContradictionView, type PatternsResponse } from "@/lib/patterns-api";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Receipt } from "lucide-react";
 
 export function PTToggle({ active }: { active: "patterns" | "tensions" }) {
   return (
@@ -142,67 +142,87 @@ export default function PatternsPage() {
       ) : (
         <div className="space-y-3 mb-10">
           {topClaims.map((claim, index) => (
-            <Link
-              href={`/patterns/${claim.id}`}
+            <div
               key={claim.id}
-              className={`block p-5 ${
+              className={`p-5 ${
                 index === 0 ? "card-surfaced" : "card-standard hover:border-[hsl(187_100%_50%/0.18)]"
-              } transition-colors group`}
+              } transition-colors`}
             >
-              <div className="flex items-start gap-6">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="label-meta text-cyan/70">Pattern</div>
-                    <span className="label-meta">·</span>
-                    <div className="label-meta">
-                      Strength <span className="text-white/80">{strengthLabel(claim.strengthLevel)}</span>
+              <Link href={`/patterns/${claim.id}`} className="block group">
+                <div className="flex items-start gap-6">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="label-meta text-cyan/70">Pattern</div>
+                      <span className="label-meta">·</span>
+                      <div className="label-meta">
+                        Strength <span className="text-white/80">{strengthLabel(claim.strengthLevel)}</span>
+                      </div>
+                    </div>
+                    <div className="text-[16px] font-medium leading-snug mb-1.5 line-clamp-2">
+                      {clampText(normalizeText(claim.summary), 180)}
+                    </div>
+                    <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed mb-4 max-w-[640px]">
+                      {claim.evidenceCount > 0
+                        ? `${claim.evidenceCount} evidence receipts across ${claim.sessionCount} sessions.`
+                        : "Early signal in recent material."}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
+                        <span className="text-cyan/70">Family</span> {claim.familyLabel}
+                      </span>
+                      <span className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
+                        <span className="text-cyan/70">Action</span>{" "}
+                        <span className="max-w-[240px] truncate">
+                          {clampText(normalizeText(claim.action?.prompt ?? "No action suggested yet"), 72)}
+                        </span>
+                      </span>
                     </div>
                   </div>
-                  <div className="text-[16px] font-medium leading-snug mb-1.5 line-clamp-2">
-                    {clampText(normalizeText(claim.summary), 180)}
+                  <div className="w-[200px] shrink-0">
+                    <Waveform seed={index + 1} height={48} />
+                    <div className="label-meta mt-2 text-right">Seen {claim.evidenceCount}×</div>
                   </div>
-                  <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed mb-4 max-w-[640px]">
-                    {claim.evidenceCount > 0
-                      ? `${claim.evidenceCount} evidence receipts across ${claim.sessionCount} sessions.`
-                      : "Early signal in recent material."}
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
-                      <span className="text-cyan/70">Family</span> {claim.familyLabel}
-                    </span>
-                    <span className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
-                      <span className="text-cyan/70">Action</span>{" "}
-                      <span className="max-w-[240px] truncate">
-                        {clampText(normalizeText(claim.action?.prompt ?? "No action suggested yet"), 72)}
-                      </span>
-                    </span>
-                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-meta group-hover:text-cyan transition-colors shrink-0" strokeWidth={1.5} />
                 </div>
-                <div className="w-[200px] shrink-0">
-                  <Waveform seed={index + 1} height={48} />
-                  <div className="label-meta mt-2 text-right">Seen {claim.evidenceCount}×</div>
+              </Link>
+              {claim.evidenceCount > 0 ? (
+                <div className="mt-3 pt-3 border-t hairline">
+                  <Link
+                    href={`/library/receipt-pattern-${claim.id}`}
+                    className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+                  >
+                    <Receipt className="h-3 w-3" strokeWidth={1.5} />
+                    Receipts
+                  </Link>
                 </div>
-                <ArrowUpRight className="h-4 w-4 text-meta group-hover:text-cyan transition-colors shrink-0" strokeWidth={1.5} />
-              </div>
-            </Link>
+              ) : null}
+            </div>
           ))}
         </div>
       )}
 
       <SectionLabel>Key tension</SectionLabel>
       {keyTension ? (
-        <Link
-          href={`/contradictions/${keyTension.id}`}
-          className="block card-surfaced p-5 hover:border-[hsl(187_100%_50%/0.32)] transition-colors"
-        >
-          <div className="label-meta text-cyan/70 mb-2">Tension · {keyTension.status.replace(/_/g, " ")}</div>
-          <div className="text-[16px] font-medium mb-1.5 leading-snug line-clamp-2">
-            {clampText(normalizeText(keyTension.title), 170)}
+        <div className="card-surfaced p-5 hover:border-[hsl(187_100%_50%/0.32)] transition-colors">
+          <Link href={`/contradictions/${keyTension.id}`} className="block">
+            <div className="label-meta text-cyan/70 mb-2">Tension · {keyTension.status.replace(/_/g, " ")}</div>
+            <div className="text-[16px] font-medium mb-1.5 leading-snug line-clamp-2">
+              {clampText(normalizeText(keyTension.title), 170)}
+            </div>
+            <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed line-clamp-3">
+              {toTensionPreview(keyTension)}
+            </div>
+          </Link>
+          <div className="mt-3 pt-3 border-t hairline">
+            <Link
+              href={`/library/receipt-tension-${keyTension.id}`}
+              className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+            >
+              <Receipt className="h-3 w-3" strokeWidth={1.5} />
+              Receipts
+            </Link>
           </div>
-          <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed line-clamp-3">
-            {toTensionPreview(keyTension)}
-          </div>
-        </Link>
+        </div>
       ) : (
         <div className="card-standard p-4 text-[13px] text-meta">No active tensions yet.</div>
       )}

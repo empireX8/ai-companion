@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { RhythmGraph, OccurrenceDots } from "@/components/Visuals";
 import { fetchPatterns, type PatternClaimView, type PatternContradictionView, type PatternsResponse } from "@/lib/patterns-api";
-import { ChevronLeft, Compass } from "lucide-react";
+import { ChevronLeft, Compass, Receipt } from "lucide-react";
 
 const DATE_TIME_LABEL = new Intl.DateTimeFormat("en-GB", {
   month: "short",
@@ -306,6 +306,16 @@ export default function PatternDetailPage() {
           ) : (
             <div className="card-standard px-3 h-8 inline-flex items-center text-[12px] text-meta">No linked tension yet.</div>
           )}
+          {claim.evidenceCount > 0 ? (
+            <Link
+              href={`/library/receipt-pattern-${claim.id}`}
+              className="card-standard px-3 h-8 inline-flex items-center text-[12px] hover:border-[hsl(187_100%_50%/0.3)]"
+            >
+              <Receipt className="h-3 w-3 mr-1.5 text-cyan/70" strokeWidth={1.5} />
+              <span className="text-cyan/70 label-meta mr-2">Receipts</span>
+              {claim.evidenceCount}
+            </Link>
+          ) : null}
         </div>
         <div className="flex gap-2">
           <Link

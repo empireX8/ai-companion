@@ -17,10 +17,12 @@ import {
   Compass,
   CircleDot,
   Image as ImageIcon,
+  Receipt,
   Tag,
   Link2,
   Sparkles,
   Clock,
+  ExternalLink,
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
@@ -30,6 +32,7 @@ const TYPE_ICON = {
   Explore: Compass,
   "Check-in": CircleDot,
   Media: ImageIcon,
+  Receipts: Receipt,
 } as const;
 
 export default function LibraryDetailPage() {
@@ -137,6 +140,7 @@ export default function LibraryDetailPage() {
         {detail.kind === "journal" ? <JournalView detail={detail} /> : null}
         {detail.kind === "session" ? <SessionView detail={detail} /> : null}
         {detail.kind === "checkin" ? <CheckInView detail={detail} /> : null}
+        {detail.kind === "receipt" ? <ReceiptView detail={detail} /> : null}
 
         {detail.item.linked.length > 0 ? (
           <div className="mt-8">
@@ -276,6 +280,87 @@ function CheckInView({ detail }: { detail: Extract<LibraryDetailView, { kind: "c
           )}
         </div>
       </div>
+    </>
+  );
+}
+
+function ReceiptView({ detail }: { detail: Extract<LibraryDetailView, { kind: "receipt" }> }) {
+  const receipt = detail.receipt;
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+
+  return (
+
+    <>
+      <div className="card-standard p-6 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Receipt className="h-4 w-4 text-cyan/70" strokeWidth={1.5} />
+          <span className="label-meta text-cyan/70">Receipt · {receipt.conclusionType}</span>
+        </div>
+
+        <div className="text-[15px] leading-relaxed text-[hsl(216_11%_82%)] mb-4">
+          {receipt.conclusionTitle}
+        </div>
+
+        <div className="label-meta text-meta mb-4">
+          This is the context MindLab used.
+        </div>
+      </div>
+
+      <SectionLabel>Supporting evidence</SectionLabel>
+      {receipt.evidenceItems.length === 0 ? (
+        <div className="card-standard p-4 text-[13px] text-meta mb-6">No evidence items available.</div>
+      ) : (
+        <div className="space-y-3 mb-6">
+          {receipt.evidenceItems.map((item, index) => {
+            const quote = item.quote ?? "No quote stored.";
+            const isExpanded = expandedIds.includes(String(index));
+            const isLong = quote.length > 360;
+
+            return (
+              <div key={index} className="card-standard p-4">
+                <div className="label-meta mb-2 text-meta">
+                  {item.sourceDate ? (
+                    <span>{item.sourceDate} · </span>
+                  ) : null}
+                  {item.sourceLabel ?? "Evidence"}
+                </div>
+                <div className={`text-[14px] leading-relaxed text-[hsl(216_11%_82%)] ${isExpanded ? "" : "line-clamp-4"}`}>
+                  {isExpanded ? quote : quote.length > 360 ? `${quote.slice(0, 359).trimEnd()}…` : quote}
+                </div>
+                {isLong ? (
+                  <button
+                    type="button"
+                    className="mt-2 label-meta hover:text-white transition-colors"
+                    onClick={() =>
+                      setExpandedIds((current) =>
+                        current.includes(String(index))
+                          ? current.filter((id) => id !== String(index))
+                          : [...current, String(index)]
+                      )
+                    }
+                  >
+                    {isExpanded ? "Show less" : "Show more"}
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="label-meta text-meta mb-6">
+        Receipts are supporting evidence, not proof.
+      </div>
+
+      {receipt.linkedHref ? (
+        <Link
+          href={receipt.linkedHref}
+          className="card-standard px-4 h-9 inline-flex items-center gap-2 text-[12.5px] hover:border-[hsl(187_100%_50%/0.3)]"
+        >
+          <ExternalLink className="h-3.5 w-3.5 text-cyan/70" strokeWidth={1.5} />
+          {receipt.linkedLabel ?? "View source"}
+        </Link>
+      ) : null}
     </>
   );
 }

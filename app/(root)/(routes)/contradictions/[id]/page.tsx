@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { DualWaveform, OccurrenceDots } from "@/components/Visuals";
 import { fetchContradictionById, fetchLinkedReferences, type ContradictionDetail, type LinkedReference } from "@/lib/nodes-api";
-import { ChevronLeft, Compass } from "lucide-react";
+import { ChevronLeft, Compass, Receipt } from "lucide-react";
 
 const DATE_LABEL = new Intl.DateTimeFormat("en-GB", {
   month: "short",
@@ -303,6 +303,15 @@ export default function TensionDetailPage() {
             ))}
           </div>
         )}
+        {detail.evidence.length > 0 ? (
+          <Link
+            href={`/library/receipt-tension-${detail.id}`}
+            className="card-standard px-4 h-9 inline-flex items-center gap-2 text-[12.5px] hover:border-[hsl(187_100%_50%/0.3)]"
+          >
+            <Receipt className="h-3.5 w-3.5 text-cyan/70" strokeWidth={1.5} />
+            Receipts ({detail.evidence.length})
+          </Link>
+        ) : null}
       </section>
 
       <Link href="/explore" className="card-focal p-5 flex items-center gap-4 hover:opacity-95">
