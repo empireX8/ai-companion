@@ -120,6 +120,19 @@ type ContradictionDetailSource = {
   evidence: ContradictionEvidenceSource[];
 };
 
+type ContradictionListItemSource = {
+  id: string;
+  title: string;
+  status: string;
+  lastTouchedAt: string;
+};
+
+type ContradictionListPayload =
+  | ContradictionListItemSource[]
+  | {
+      items?: ContradictionListItemSource[];
+    };
+
 type ActionSource = {
   id: string;
   title: string;
@@ -278,6 +291,20 @@ function clampText(value: string, max: number): string {
   return `${value.slice(0, max - 1).trimEnd()}…`;
 }
 
+function readContradictionItems(
+  payload: ContradictionListPayload | null | undefined
+): ContradictionListItemSource[] {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (payload && Array.isArray(payload.items)) {
+    return payload.items;
+  }
+
+  return [];
+}
+
 // ── Receipt fetching ───────────────────────────────────────────────────────────
 
 export async function fetchReceiptItems(): Promise<LibraryItemView[]> {
@@ -315,9 +342,10 @@ export async function fetchReceiptItems(): Promise<LibraryItemView[]> {
 
   // 2. Tension evidence receipts
   try {
-    const tensions = await getJson<Array<{ id: string; title: string; status: string; lastTouchedAt: string }>>(
+    const tensionPayload = await getJson<ContradictionListPayload>(
       "/api/contradiction?status=open&limit=50"
     );
+    const tensions = readContradictionItems(tensionPayload);
     for (const tension of tensions) {
       const detail = await fetchContradictionDetail(tension.id);
       if (!detail || detail.evidence.length === 0) continue;
