@@ -436,4 +436,145 @@ describe("importExtractedConversations — import relevance gate", () => {
     expect(referenceCreate).not.toHaveBeenCalled();
     expect(contradictionFindMany).not.toHaveBeenCalled();
   });
+
+  it("rejects cross-topic imported contradiction pairs before node materialization", async () => {
+    let messageCounter = 0;
+    const referenceRows: Array<{
+      id: string;
+      userId: string;
+      type: string;
+      statement: string;
+      status: string;
+      confidence: string;
+      updatedAt: Date;
+    }> = [];
+    const evidenceSpanFindUnique = vi.fn(async () => null);
+    const evidenceSpanCreate = vi.fn(async () => ({ id: "span_3" }));
+    const contradictionFindMany = vi.fn(async () => []);
+
+    const tx = {
+      session: {
+        findUnique: async () => null,
+        create: async () => ({ id: "session_3" }),
+      },
+      message: {
+        create: async ({ data }: { data: { role: string; content: string } }) => {
+          messageCounter += 1;
+          return {
+            id: `msg_c_${messageCounter}`,
+            role: data.role,
+            content: data.content,
+          };
+        },
+      },
+    };
+
+    const db = {
+      $transaction: async (input: unknown) => {
+        if (typeof input === "function") {
+          return (input as (arg: typeof tx) => Promise<unknown>)(tx);
+        }
+        return Promise.resolve([]);
+      },
+      referenceItem: {
+        findMany: async ({
+          where,
+        }: {
+          where?: { userId?: string; type?: string | { in?: string[] }; status?: { in?: string[] } };
+        }) => {
+          return referenceRows.filter((row) => {
+            if (where?.userId && row.userId !== where.userId) return false;
+            if (typeof where?.type === "string" && row.type !== where.type) return false;
+            if (typeof where?.type === "object" && Array.isArray(where.type?.in)) {
+              if (!where.type.in.includes(row.type)) return false;
+            }
+            if (where?.status?.in && !where.status.in.includes(row.status)) return false;
+            return true;
+          }).map((row) => ({
+            id: row.id,
+            type: row.type,
+            statement: row.statement,
+            updatedAt: row.updatedAt,
+            confidence: row.confidence,
+            status: row.status,
+          }));
+        },
+        create: async ({ data }: { data: { userId: string; type: string; statement: string; status: string; confidence: string } }) => {
+          referenceRows.push({
+            id: `ref_${referenceRows.length + 1}`,
+            userId: data.userId,
+            type: data.type,
+            statement: data.statement,
+            status: data.status,
+            confidence: data.confidence,
+            updatedAt: new Date(),
+          });
+          return data;
+        },
+      },
+      contradictionNode: {
+        findMany: contradictionFindMany,
+      },
+      derivationRun: {
+        create: async () => ({ id: "run_3" }),
+        update: async () => ({}),
+      },
+      evidenceSpan: {
+        findUnique: evidenceSpanFindUnique,
+        create: evidenceSpanCreate,
+      },
+      derivationArtifact: {
+        create: async () => ({}),
+      },
+      artifactEvidenceLink: {
+        create: async () => ({}),
+      },
+      profileArtifact: {
+        findUnique: async () => null,
+        create: async () => ({ id: "artifact_3" }),
+        update: async () => ({}),
+      },
+      profileArtifactEvidenceLink: {
+        create: async () => ({}),
+      },
+      contradictionEvidence: {
+        findFirst: async () => null,
+        create: async () => ({}),
+      },
+    } as unknown as PrismaClient;
+
+    const diagnostics = createEmptyImportRunDiagnostics();
+    const result = await importExtractedConversations({
+      userId: "user_1",
+      conversations: [
+        {
+          title: "cross topic contradiction",
+          externalId: "conv-cross-topic-1",
+          messages: [
+            {
+              role: "user",
+              content: "I must protect ethnic and cultural survival in my life.",
+              createdAt: null,
+            },
+            {
+              role: "user",
+              content:
+                "I care about this, but I need to wire Stripe and Telegram to ship the MVP implementation.",
+              createdAt: null,
+            },
+          ],
+        },
+      ],
+      db,
+      diagnostics,
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.contradictionsCreated).toBe(0);
+    expect(diagnostics.contradictionDetectionAttemptedCount).toBeGreaterThanOrEqual(1);
+    expect(
+      (diagnostics.reasonCodeCounts.imported_contradiction_rejected ?? 0) +
+        (diagnostics.reasonCodeCounts.import_human_relevance_rejected ?? 0)
+    ).toBeGreaterThanOrEqual(1);
+  });
 });

@@ -6,6 +6,7 @@ import {
   ImportRefCache,
   MAX_IMPORT_FILE_BYTES,
   classifyImportHumanRelevance,
+  classifyImportedContradictionPair,
   extractChatGptConversations,
   extractReferenceFromImportedMessage,
   importChatGptExport,
@@ -208,6 +209,100 @@ describe("classifyImportHumanRelevance", () => {
 
     expect(result.eligible).toBe(true);
     expect(result.reasons).toEqual(["import_human_relevance_accepted"]);
+  });
+});
+
+describe("classifyImportedContradictionPair", () => {
+  it("rejects ethnic/cultural reflection paired with Stripe/Telegram MVP chatter", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I feel a deep responsibility for ethnic and cultural survival.",
+      sideB: "We need to wire Stripe and Telegram to ship the MVP implementation.",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_project_task_pair");
+    expect(result.reasons).toContain("contradiction_cross_topic_pair");
+  });
+
+  it("rejects assistant/code-process frustration paired with payment/persona planning", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I feel frustrated with the assistant and code process.",
+      sideB: "Next we implement payment flow and creator persona onboarding.",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_project_task_pair");
+  });
+
+  it("rejects low-context task question pairs", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I must protect my focus and keep things coherent.",
+      sideB: "do i need to do that in the terminal? i can do that myself in the finder",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_low_context_pair");
+  });
+
+  it("rejects pasted implementation plan paired with philosophical reflection", () => {
+    const result = classifyImportedContradictionPair({
+      sideA:
+        "Context: migration\nGoal: ship the route\nScope: prisma schema + webhook setup\nImplementation requirements: wire db and deploy",
+      sideB: "I value coherence and reducing self-deception.",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_pasted_plan_pair");
+  });
+
+  it("rejects code/debug setup chatter pairs", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I must keep the API stable for this deploy.",
+      sideB: "The Prisma migration is failing and route debug setup is broken again.",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_project_task_pair");
+  });
+
+  it("accepts honesty-vs-conflict contradiction pair", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want honesty.",
+      sideB: "I want honesty, but I avoid conflict.",
+    });
+
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("accepts independence-vs-approval contradiction pair", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I value independence.",
+      sideB: "I value independence, but I keep seeking approval.",
+    });
+
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("accepts simplify-life-vs-systems contradiction pair", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want to simplify my life.",
+      sideB: "I want to simplify my life, but I keep adding more systems.",
+    });
+
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("accepts coherence-vs-uncertainty contradiction pair", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want coherence.",
+      sideB: "I want coherence, but I change direction whenever I feel uncertain.",
+    });
+
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
   });
 });
 

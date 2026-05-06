@@ -1,7 +1,10 @@
 import type { PrismaClient } from "@prisma/client";
 import JSZip from "jszip";
 
-import { detectContradictions } from "./contradiction-detection";
+import {
+  detectContradictions,
+  type DetectedContradiction,
+} from "./contradiction-detection";
 import { materializeContradictions } from "./contradiction-materialization";
 import {
   incrementReasonCodeCount,
@@ -286,6 +289,17 @@ export type ImportHumanRelevanceResult = {
   reasons: ImportHumanRelevanceReason[];
 };
 
+export type ImportedContradictionRejectionReason =
+  | "contradiction_cross_topic_pair"
+  | "contradiction_project_task_pair"
+  | "contradiction_low_context_pair"
+  | "contradiction_pasted_plan_pair";
+
+export type ImportedContradictionPairAssessment = {
+  eligible: boolean;
+  reasons: ImportedContradictionRejectionReason[];
+};
+
 const FIRST_PERSON_PATTERN = /\b(?:i|me|my|myself)\b/i;
 const DURABLE_HUMAN_SIGNAL_PATTERNS = [
   /\b(?:i\s+feel\b|i\s+get\s+(?:frustrated|reactive|anxious|overwhelmed|stressed|upset|angry|sad)|i\s+lose\s+trust\b|i\s+value\b|important\s+to\s+me\b|matters\s+to\s+me\b|i\s+care\s+about\b|i\s+keep\s+\w+ing\b|i\s+tend\s+to\b|i\s+overcomplicat\w*\b|i\s+struggle\s+to\b|i\s+want\s+(?:the\s+)?(?:app|mindlab)\b.*\b(?:reveal|pattern|coherence|truth|insight|understand)\w*)/i,
@@ -343,6 +357,115 @@ const TUTORIAL_OR_SETUP_PATTERN =
   /\b(?:tutorial|walkthrough|step[-\s]?by[-\s]?step|follow(?:ing)?\s+(?:the\s+)?(?:tutorial|docs?)|setup|set\s+up|configuration|configure|install|seed|db:seed)\b/i;
 const OPERATIONAL_TASK_VERBS_PATTERN =
   /\b(?:connect|wire|hook|turn|seed|install|configure|setup|set\s+up|build|ship|deploy|debug|fix|submit|route|run|execute|implement|refactor|harden)\b/i;
+const CONTRADICTION_PERSONAL_REFLECTION_PATTERN =
+  /\b(?:i\s+want|i\s+value|i\s+feel|i\s+need|i\s+believe|i\s+avoid|i\s+keep|honesty|coherence|approval|independence|identity|cultural|culture|survival|uncertain|uncertainty|trust|self[-\s]?deception)\b/i;
+const CONTRADICTION_TECHNICAL_DOMAIN_PATTERN =
+  /\b(?:stripe|telegram|mvp|payment|checkout|webhook|api|endpoint|route|routing|form[-\s]?submit|vector\s+store|retriever|setup|config|deploy|build|repo|codex|debug|implementation|migration|prisma)\b/i;
+const PASTED_PLAN_SECTION_PATTERN =
+  /(?:^|\n)\s*(?:context|goal|scope|constraints|implementation requirements|required tests|required final output|acceptance criteria|steps?)\s*:/im;
+
+const IMPORT_RELEVANCE_TECHNICAL_REASONS = new Set<ImportHumanRelevanceReason>([
+  "technical_or_terminal_noise",
+  "code_or_stacktrace_noise",
+  "project_handoff_noise",
+  "project_task_chatter",
+  "codex_workflow_chatter",
+  "implementation_debug_chatter",
+  "tutorial_or_setup_chatter",
+]);
+
+const CONTRADICTION_PAIR_STOPWORDS = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "that",
+  "this",
+  "but",
+  "however",
+  "even",
+  "though",
+  "because",
+  "when",
+  "where",
+  "which",
+  "what",
+  "how",
+  "why",
+  "are",
+  "was",
+  "were",
+  "have",
+  "has",
+  "had",
+  "will",
+  "would",
+  "should",
+  "could",
+  "from",
+  "into",
+  "onto",
+  "about",
+  "just",
+  "really",
+  "very",
+  "more",
+  "less",
+  "then",
+  "than",
+  "need",
+  "needs",
+  "want",
+  "wants",
+  "keep",
+  "keeps",
+  "value",
+  "values",
+  "feel",
+  "feels",
+  "process",
+  "project",
+  "task",
+  "tasks",
+]);
+
+function contradictionPairTokens(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length >= 3 && !CONTRADICTION_PAIR_STOPWORDS.has(token));
+}
+
+function contradictionPairOverlapCount(left: string, right: string) {
+  const leftTokens = new Set(contradictionPairTokens(left));
+  const rightTokens = new Set(contradictionPairTokens(right));
+  let count = 0;
+  for (const token of leftTokens) {
+    if (rightTokens.has(token)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function isLikelyPastedPlanOrDoc(text: string) {
+  if (PASTED_PLAN_SECTION_PATTERN.test(text)) {
+    return true;
+  }
+
+  const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
+  if (lines.length < 3) {
+    return false;
+  }
+
+  const bulletLike = lines.filter((line) => /^[-*]\s+|^\d+\.\s+/.test(line)).length;
+  const sectionLike = lines.filter((line) =>
+    /^(?:context|goal|scope|constraints|requirements|steps?)\s*:/i.test(line)
+  ).length;
+
+  return bulletLike >= 3 || sectionLike >= 2;
+}
 
 function isSourceCodeHeavy(text: string) {
   const lines = text.split("\n");
@@ -446,6 +569,73 @@ export function classifyImportHumanRelevance(content: string): ImportHumanReleva
     eligible: true,
     reasons: ["import_human_relevance_accepted"],
   };
+}
+
+export function classifyImportedContradictionPair(
+  detection: Pick<DetectedContradiction, "sideA" | "sideB">
+): ImportedContradictionPairAssessment {
+  const sideA = detection.sideA.trim();
+  const sideB = detection.sideB.trim();
+
+  const sideARelevance = classifyImportHumanRelevance(sideA);
+  const sideBRelevance = classifyImportHumanRelevance(sideB);
+
+  const sideAHasTechnicalChatter = sideARelevance.reasons.some((reason) =>
+    IMPORT_RELEVANCE_TECHNICAL_REASONS.has(reason)
+  );
+  const sideBHasTechnicalChatter = sideBRelevance.reasons.some((reason) =>
+    IMPORT_RELEVANCE_TECHNICAL_REASONS.has(reason)
+  );
+  const sideALowContext =
+    sideARelevance.reasons.includes("low_context_technical_question") ||
+    (LOW_CONTEXT_QUESTION_LEAD_PATTERN.test(sideA) &&
+      TECHNICAL_CONTEXT_TOKENS_PATTERN.test(sideA));
+  const sideBLowContext =
+    sideBRelevance.reasons.includes("low_context_technical_question") ||
+    (LOW_CONTEXT_QUESTION_LEAD_PATTERN.test(sideB) &&
+      TECHNICAL_CONTEXT_TOKENS_PATTERN.test(sideB));
+  const sideAPastedPlan = isLikelyPastedPlanOrDoc(sideA);
+  const sideBPastedPlan = isLikelyPastedPlanOrDoc(sideB);
+
+  const sideAReflective = CONTRADICTION_PERSONAL_REFLECTION_PATTERN.test(sideA);
+  const sideBReflective = CONTRADICTION_PERSONAL_REFLECTION_PATTERN.test(sideB);
+  const sideATechnicalDomain = CONTRADICTION_TECHNICAL_DOMAIN_PATTERN.test(sideA);
+  const sideBTechnicalDomain = CONTRADICTION_TECHNICAL_DOMAIN_PATTERN.test(sideB);
+  const hasOperationalTaskVerb =
+    OPERATIONAL_TASK_VERBS_PATTERN.test(sideA) ||
+    OPERATIONAL_TASK_VERBS_PATTERN.test(sideB);
+  const overlapCount = contradictionPairOverlapCount(sideA, sideB);
+  const crossTopicPair =
+    (((sideAReflective && sideBTechnicalDomain) ||
+      (sideBReflective && sideATechnicalDomain)) &&
+      overlapCount <= 1) ||
+    (((sideAHasTechnicalChatter && sideBReflective) ||
+      (sideBHasTechnicalChatter && sideAReflective)) &&
+      overlapCount === 0);
+
+  const rejectionReasons: ImportedContradictionRejectionReason[] = [];
+  if (
+    sideAHasTechnicalChatter ||
+    sideBHasTechnicalChatter ||
+    ((sideATechnicalDomain || sideBTechnicalDomain) && hasOperationalTaskVerb)
+  ) {
+    rejectionReasons.push("contradiction_project_task_pair");
+  }
+  if (sideALowContext || sideBLowContext) {
+    rejectionReasons.push("contradiction_low_context_pair");
+  }
+  if ((sideAPastedPlan && sideBReflective) || (sideBPastedPlan && sideAReflective)) {
+    rejectionReasons.push("contradiction_pasted_plan_pair");
+  }
+  if (crossTopicPair) {
+    rejectionReasons.push("contradiction_cross_topic_pair");
+  }
+
+  if (rejectionReasons.length > 0) {
+    return { eligible: false, reasons: rejectionReasons };
+  }
+
+  return { eligible: true, reasons: [] };
 }
 
 const getConversationCandidates = (raw: unknown): unknown[] => {
@@ -994,9 +1184,34 @@ export async function importExtractedConversations({
             continue;
           }
 
+          const filteredDetections: typeof detections = [];
+          for (const detection of detections) {
+            const pairAssessment = classifyImportedContradictionPair(detection);
+            if (!pairAssessment.eligible) {
+              if (diagnostics) {
+                incrementReasonCodeCount(diagnostics, "imported_contradiction_rejected");
+                for (const reason of pairAssessment.reasons) {
+                  incrementReasonCodeCount(diagnostics, reason);
+                }
+                pushDiagnosticSample(diagnostics, "rejected", {
+                  reason: "imported_contradiction_rejected",
+                  snippet: `${detection.sideA} || ${detection.sideB}`,
+                  sessionId: created.sessionId,
+                  messageId: importedMessage.id,
+                });
+              }
+              continue;
+            }
+            filteredDetections.push(detection);
+          }
+
+          if (filteredDetections.length === 0) {
+            continue;
+          }
+
           // Derivation scaffolding: store contradiction candidate artifacts.
           if (derivationRunId !== null) {
-            for (const detection of detections.slice(0, 2)) {
+            for (const detection of filteredDetections.slice(0, 2)) {
               try {
                 await createDerivationArtifact(
                   {
@@ -1022,7 +1237,7 @@ export async function importExtractedConversations({
 
           const materialized = await materializeContradictions({
             userId,
-            detections,
+            detections: filteredDetections,
             sessionId: created.sessionId,
             messageId: importedMessage.id,
             quote: importedMessage.content,
