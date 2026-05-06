@@ -354,13 +354,17 @@ const PROJECT_HANDOFF_DIRECTIVE_PATTERN =
 const PROJECT_ENGINEERING_TOKENS_PATTERN =
   /\b(?:typescript|javascript|tsx?|python|prisma|next(?:\.js)?|vite|api|schema|migration|repository|repo|pull request|commit|branch|frontend|backend|database|terminal|debug|build|deploy)\b/i;
 const TECHNICAL_CONTEXT_TOKENS_PATTERN =
-  /\b(?:terminal|finder|vector\s+store|retriever|chatopen\s*ai|chatopenai|form[-\s]?submit|code[-\s]?routing|route|routing|api|endpoint|middleware|schema|migration|db:seed|seed\.cjs|prisma|npm|npx|pnpm|yarn|package(?:\.json)?|build|deploy|debug(?:ging)?|repo|repository)\b/i;
+  /\b(?:terminal|finder|vector\s+store|retriever|chatopen\s*ai|chatopenai|form[-\s]?submit|code[-\s]?routing|route|routing|api|endpoint|middleware|schema|migration|db:seed|seed\.cjs|prisma|npm|npx|pnpm|yarn|package(?:\.json)?|build|deploy|debug(?:ging)?|repo|repository|modelfile|model\s*file|supabase|firebase|bolt|sql|query|codebase|new\s+folder)\b/i;
 const LOW_CONTEXT_QUESTION_LEAD_PATTERN =
   /^\s*(?:do\s+i\s+need\s+to|dont\s+i\s+need\s+to|don't\s+i\s+need\s+to|is\s+there\s+(?:an?|any)\b|should\s+i\b|can\s+i\b|how\s+do\s+i\b|what\s+do\s+i\s+need\s+to\b)\b/i;
 const LOW_CONTEXT_TECHNICAL_QUESTION_PHRASE_PATTERN =
-  /\b(?:intermediary|need\s+to\s+connect|need\s+to\s+do\s+this\s+first|turn\s+this\s+into\s+this)\b/i;
+  /\b(?:intermediary|need\s+to\s+connect|need\s+to\s+do\s+this\s+first|turn\s+this\s+into\s+this|change\s+back|down(?:load|laod)(?:\s+it)?|what\s+do\s+i\s+do|how\s+many\s+pages?\s+forward|understand\s+your\s+instructions)\b/i;
+const LOW_CONTEXT_WORKFLOW_QUESTION_PATTERN =
+  /(?:^|[.!?,]\s*|\s+)(?:okay\s+so\s+)?(?:so\s+)?(?:do\s+i\s+need\s+to\s+change\s+back|do\s+i\s+need\s+to\s+down(?:load|laod)(?:\s+it)?|should\s+i\s+change\s+back|how\s+many\s+pages?\s+forward\s+do\s+i\s+need\s+to\s+go|what\s+do\s+i\s+do(?:\s+now)?)\b/i;
 const PROJECT_TASK_CHATTER_PATTERN =
   /\b(?:it\s+looks\s+like\s+i\s+need\s+to|need\s+to\s+do\s+this\s+first|turn\s+this\s+into\s+this|implementation\s+planning|project\s+handoff|task\s+coordination|workflow\s+coordination)\b/i;
+const CODEBASE_COORDINATION_PATTERN =
+  /\b(?:copied\s+(?:his|their|the)\s+code|entire\s+code|new\s+folder|red\s+in\s+the\s+file|modelfile|model\s*file|failed\s+query|insert\s+into)\b/i;
 const CODEX_WORKFLOW_TOKENS_PATTERN = /\bcodex\b/i;
 const CODEX_WORKFLOW_CHATTER_PATTERN =
   /\b(?:show\b.*\bresults?\b|needs?\s+to\s+do|do\s+half\s+of\s+this|handoff|workflow|prompt|execute|run)\b/i;
@@ -373,11 +377,11 @@ const IMPLEMENTATION_DEBUG_PATTERN =
 const TUTORIAL_OR_SETUP_PATTERN =
   /\b(?:tutorial|walkthrough|step[-\s]?by[-\s]?step|follow(?:ing)?\s+(?:the\s+)?(?:tutorial|docs?)|setup|set\s+up|configuration|configure|install|seed|db:seed)\b/i;
 const OPERATIONAL_TASK_VERBS_PATTERN =
-  /\b(?:connect|wire|hook|turn|seed|install|configure|setup|set\s+up|build|ship|deploy|debug|fix|submit|route|run|execute|implement|refactor|harden)\b/i;
+  /\b(?:connect|wire|hook|turn|seed|install|configure|setup|set\s+up|build|ship|deploy|debug|fix|submit|route|run|execute|implement|refactor|harden|update|change|open|edit|download)\b/i;
 const CONTRADICTION_PERSONAL_REFLECTION_PATTERN =
   /\b(?:i\s+want|i\s+value|i\s+feel|i\s+need|i\s+believe|i\s+avoid|i\s+keep|honesty|coherence|approval|independence|identity|cultural|culture|survival|uncertain|uncertainty|trust|self[-\s]?deception)\b/i;
 const CONTRADICTION_TECHNICAL_DOMAIN_PATTERN =
-  /\b(?:stripe|telegram|mvp|payment|checkout|webhook|api|endpoint|route|routing|form[-\s]?submit|vector\s+store|retriever|setup|config|deploy|build|repo|codex|debug|implementation|migration|prisma)\b/i;
+  /\b(?:stripe|telegram|mvp|payment|checkout|webhook|api|endpoint|route|routing|form[-\s]?submit|vector\s+store|retriever|setup|config|deploy|build|repo|codex|debug|implementation|migration|prisma|bolt|supabase|firebase|modelfile|model\s*file|query|sql|failed\s+query|insert\s+into|entire\s+code|new\s+folder|red\s+in\s+the\s+file)\b/i;
 const PASTED_PLAN_SECTION_PATTERN =
   /(?:^|\n)\s*(?:context|goal|scope|constraints|implementation requirements|required tests|required final output|acceptance criteria|steps?)\s*:/im;
 export const IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP = 3;
@@ -509,6 +513,12 @@ function isSourceCodeHeavy(text: string) {
   return symbolCount >= 20 && symbolCount / Math.max(text.length, 1) >= 0.07;
 }
 
+function hasSqlOrQueryOutputNoise(text: string) {
+  return /\b(?:failed\s+query|insert\s+into|delete\s+from|update\s+\w+\s+set|sqlstate|query\s+failed|violates\s+\w+\s+constraint)\b/i.test(
+    text
+  );
+}
+
 export function classifyImportHumanRelevance(content: string): ImportHumanRelevanceResult {
   const normalized = content.replace(/\r\n/g, "\n").trim();
   const hasFirstPerson = FIRST_PERSON_PATTERN.test(normalized);
@@ -521,7 +531,8 @@ export function classifyImportHumanRelevance(content: string): ImportHumanReleva
   );
   const codeOrStacktraceNoise =
     CODE_OR_STACKTRACE_PATTERNS.some((pattern) => pattern.test(normalized)) ||
-    isSourceCodeHeavy(normalized);
+    isSourceCodeHeavy(normalized) ||
+    hasSqlOrQueryOutputNoise(normalized);
   const projectHandoffNoise =
     (PROJECT_HANDOFF_SECTION_PATTERN.test(normalized) ||
       PROJECT_HANDOFF_INSTRUCTION_PATTERN.test(normalized) ||
@@ -531,13 +542,20 @@ export function classifyImportHumanRelevance(content: string): ImportHumanReleva
     (LOW_CONTEXT_QUESTION_LEAD_PATTERN.test(normalized) &&
       (TECHNICAL_CONTEXT_TOKENS_PATTERN.test(normalized) ||
         LOW_CONTEXT_TECHNICAL_QUESTION_PHRASE_PATTERN.test(normalized))) ||
-    (normalized.endsWith("?") && TECHNICAL_CONTEXT_TOKENS_PATTERN.test(normalized));
+    (normalized.endsWith("?") && TECHNICAL_CONTEXT_TOKENS_PATTERN.test(normalized)) ||
+    LOW_CONTEXT_WORKFLOW_QUESTION_PATTERN.test(normalized);
   const codexWorkflowChatter =
     CODEX_WORKFLOW_TOKENS_PATTERN.test(normalized) &&
     (CODEX_WORKFLOW_CHATTER_PATTERN.test(normalized) ||
       OPERATIONAL_TASK_VERBS_PATTERN.test(normalized));
   const projectTaskChatter =
     PROJECT_TASK_CHATTER_PATTERN.test(normalized) ||
+    (CODEBASE_COORDINATION_PATTERN.test(normalized) &&
+      (TECHNICAL_CONTEXT_TOKENS_PATTERN.test(normalized) ||
+        OPERATIONAL_TASK_VERBS_PATTERN.test(normalized))) ||
+    (OPERATIONAL_TASK_VERBS_PATTERN.test(normalized) &&
+      (TECHNICAL_CONTEXT_TOKENS_PATTERN.test(normalized) ||
+        CODEBASE_COORDINATION_PATTERN.test(normalized))) ||
     (/\b(?:task|tasks|handoff|workflow)\b/i.test(normalized) &&
       OPERATIONAL_TASK_VERBS_PATTERN.test(normalized));
   const implementationDebugChatter =

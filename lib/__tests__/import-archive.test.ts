@@ -439,6 +439,116 @@ describe("importExtractedConversations — import relevance gate", () => {
     expect(contradictionFindMany).not.toHaveBeenCalled();
   });
 
+  it("blocks residual workflow/query chatter before profile/reference/contradiction extraction", async () => {
+    let messageCounter = 0;
+    const evidenceSpanFindUnique = vi.fn(async () => null);
+    const evidenceSpanCreate = vi.fn(async () => ({ id: "span_residual" }));
+    const referenceFindMany = vi.fn(async () => []);
+    const referenceCreate = vi.fn(async () => ({}));
+    const contradictionFindMany = vi.fn(async () => []);
+
+    const tx = {
+      session: {
+        findUnique: async () => null,
+        create: async () => ({ id: "session_residual" }),
+      },
+      message: {
+        create: async ({ data }: { data: { role: string; content: string } }) => {
+          messageCounter += 1;
+          return {
+            id: `msg_residual_${messageCounter}`,
+            role: data.role,
+            content: data.content,
+          };
+        },
+      },
+    };
+
+    const db = {
+      $transaction: async (fn: (input: typeof tx) => Promise<unknown>) => fn(tx),
+      referenceItem: {
+        findMany: referenceFindMany,
+        create: referenceCreate,
+      },
+      contradictionNode: {
+        findMany: contradictionFindMany,
+      },
+      derivationRun: {
+        create: async () => ({ id: "run_residual" }),
+        update: async () => ({}),
+      },
+      evidenceSpan: {
+        findUnique: evidenceSpanFindUnique,
+        create: evidenceSpanCreate,
+      },
+      derivationArtifact: {
+        create: async () => ({}),
+      },
+      artifactEvidenceLink: {
+        create: async () => ({}),
+      },
+      profileArtifact: {
+        findUnique: async () => null,
+        create: async () => ({ id: "artifact_residual" }),
+        update: async () => ({}),
+      },
+      profileArtifactEvidenceLink: {
+        create: async () => ({}),
+      },
+    } as unknown as PrismaClient;
+
+    const diagnostics = createEmptyImportRunDiagnostics();
+    await importExtractedConversations({
+      userId: "user_1",
+      conversations: [
+        {
+          title: "residual workflow chatter",
+          externalId: "conv-residual-1",
+          messages: [
+            {
+              role: "user",
+              content: "i need to update the modelfile but cant remember how we opened it in the terminall",
+              createdAt: null,
+            },
+            {
+              role: "user",
+              content:
+                "so do i need to change back? to match antonio then and i dont udnerstand your instructions anyway",
+              createdAt: null,
+            },
+            {
+              role: "user",
+              content:
+                "reply to who saying DONE - trying the form now? Failed query: INSERT INTO Category (name) VALUES ('x')",
+              createdAt: null,
+            },
+            {
+              role: "user",
+              content: "Bruh im not reading all that, do i need to downlaod it or nto",
+              createdAt: null,
+            },
+            {
+              role: "user",
+              content: "okay so how many pages forward do i need to go this was 120",
+              createdAt: null,
+            },
+          ],
+        },
+      ],
+      db,
+      diagnostics,
+    });
+
+    expect(diagnostics.reasonCodeCounts.import_human_relevance_rejected).toBe(5);
+    expect(diagnostics.candidateMessagesConsideredForReferenceExtraction).toBe(0);
+    expect(diagnostics.contradictionDetectionAttemptedCount).toBe(0);
+    expect(evidenceSpanFindUnique).not.toHaveBeenCalled();
+    expect(evidenceSpanCreate).not.toHaveBeenCalled();
+    expect(referenceFindMany).not.toHaveBeenCalled();
+    expect(referenceCreate).not.toHaveBeenCalled();
+    expect(contradictionFindMany).not.toHaveBeenCalled();
+  });
+
   it("rejects cross-topic imported contradiction pairs before node materialization", async () => {
     let messageCounter = 0;
     const referenceRows: Array<{

@@ -168,6 +168,51 @@ describe("classifyImportHumanRelevance", () => {
     expect(result.reasons).toContain("technical_or_terminal_noise");
   });
 
+  it("rejects terminal/modelfile setup chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "i need to update the modelfile but cant remember how we opened it in the terminall"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("project_task_chatter");
+  });
+
+  it("rejects change-back instruction workflow question chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "so do i need to change back? to match antonio then and i dont udnerstand your instructions anyway"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("low_context_technical_question");
+  });
+
+  it("rejects failed-query/status output chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "reply to who saying DONE - trying the form now? Failed query: INSERT INTO Category (name) VALUES ('x')"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("code_or_stacktrace_noise");
+  });
+
+  it("rejects generic download workflow question chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "Bruh im not reading all that, do i need to downlaod it or nto"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("low_context_technical_question");
+  });
+
+  it("rejects low-context navigation task chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "okay so how many pages forward do i need to go this was 120"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("low_context_technical_question");
+  });
+
   it("accepts emotionally meaningful project frustration", () => {
     const result = classifyImportHumanRelevance(
       "I get frustrated when instructions are unclear and I lose trust in the process."
@@ -261,6 +306,56 @@ describe("classifyImportedContradictionPair", () => {
     const result = classifyImportedContradictionPair({
       sideA: "I must keep the API stable for this deploy.",
       sideB: "The Prisma migration is failing and route debug setup is broken again.",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_project_task_pair");
+  });
+
+  it("rejects copied-code paired with bolt/supabase/firebase chatter", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "NO i didnt fix it, i just copied his code...",
+      sideB: "Using Bolt plus Supabase or Firebase...",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_project_task_pair");
+  });
+
+  it("rejects code-process complaint paired with new-folder coordination chatter", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "no okay i'm glad you understand it but i said that i want to go into it...",
+      sideB: "You're saying I called it. I'm missing the new folder...",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_project_task_pair");
+  });
+
+  it("rejects prosocial intent paired with codebase complaint chatter", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want to do what needs to be done for us",
+      sideB: "Bro, why do people ask questions like I didn't already give you the entire code...",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_cross_topic_pair");
+  });
+
+  it("rejects daily-life intent paired with codebase complaint chatter", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "Im going to order on amazon now, i want to clean a dirty bathroom...",
+      sideB: "Bro, why do people ask questions like I didn't already give you the entire code...",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_cross_topic_pair");
+  });
+
+  it("rejects failed-query chatter paired with red-file status chatter", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "reply to who saying DONE - trying the form now? Failed query: INSERT INTO Category...",
+      sideB: "but it still shows as red in the file...",
     });
 
     expect(result.eligible).toBe(false);
