@@ -312,6 +312,11 @@ export type ImportedContradictionFanoutResult = {
   }>;
 };
 
+export type ImportedContradictionFanoutState = {
+  sideAUsage: Map<string, number>;
+  sideBUsage: Map<string, number>;
+};
+
 const FIRST_PERSON_PATTERN = /\b(?:i|me|my|myself)\b/i;
 const DURABLE_HUMAN_SIGNAL_PATTERNS = [
   /\b(?:i\s+feel\b|i\s+get\s+(?:frustrated|reactive|anxious|overwhelmed|stressed|upset|angry|sad)|i\s+lose\s+trust\b|i\s+value\b|important\s+to\s+me\b|matters\s+to\s+me\b|i\s+care\s+about\b|i\s+keep\s+\w+ing\b|i\s+tend\s+to\b|i\s+overcomplicat\w*\b|i\s+struggle\s+to\b|i\s+want\s+(?:the\s+)?(?:app|mindlab)\b.*\b(?:reveal|pattern|coherence|truth|insight|understand)\w*)/i,
@@ -376,6 +381,13 @@ const CONTRADICTION_TECHNICAL_DOMAIN_PATTERN =
 const PASTED_PLAN_SECTION_PATTERN =
   /(?:^|\n)\s*(?:context|goal|scope|constraints|implementation requirements|required tests|required final output|acceptance criteria|steps?)\s*:/im;
 export const IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP = 3;
+
+export function createImportedContradictionFanoutState(): ImportedContradictionFanoutState {
+  return {
+    sideAUsage: new Map<string, number>(),
+    sideBUsage: new Map<string, number>(),
+  };
+}
 
 const IMPORT_RELEVANCE_TECHNICAL_REASONS = new Set<ImportHumanRelevanceReason>([
   "technical_or_terminal_noise",
@@ -1039,12 +1051,14 @@ export async function importExtractedConversations({
   importedSource = "chatgpt_export_json",
   db = prismadb,
   diagnostics,
+  fanoutState = createImportedContradictionFanoutState(),
 }: {
   userId: string;
   conversations: ExtractedConversation[];
   importedSource?: string;
   db?: PrismaClient;
   diagnostics?: ImportRunDiagnostics;
+  fanoutState?: ImportedContradictionFanoutState;
 }): Promise<{
   sessionsCreated: number;
   messagesCreated: number;
@@ -1056,8 +1070,6 @@ export async function importExtractedConversations({
   let contradictionsCreated = 0;
   const errors: string[] = [];
   const refCache: ImportRefCache = new Map();
-  const contradictionSideAUsage = new Map<string, number>();
-  const contradictionSideBUsage = new Map<string, number>();
 
   for (const [conversationIndex, conversation] of conversations.entries()) {
     try {
@@ -1275,8 +1287,8 @@ export async function importExtractedConversations({
 
           const fanoutFiltered = applyImportedContradictionFanoutGuard({
             detections: filteredDetections,
-            sideAUsage: contradictionSideAUsage,
-            sideBUsage: contradictionSideBUsage,
+            sideAUsage: fanoutState.sideAUsage,
+            sideBUsage: fanoutState.sideBUsage,
           });
           if (fanoutFiltered.rejected.length > 0 && diagnostics) {
             incrementReasonCodeCount(

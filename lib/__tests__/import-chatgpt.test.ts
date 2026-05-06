@@ -395,6 +395,61 @@ describe("applyImportedContradictionFanoutGuard", () => {
     expect(result.accepted).toHaveLength(4);
     expect(result.rejected).toHaveLength(0);
   });
+
+  it("caps repeated sideA across multiple guard calls with shared state", () => {
+    const sideAUsage = new Map<string, number>();
+    const sideBUsage = new Map<string, number>();
+
+    const first = applyImportedContradictionFanoutGuard({
+      detections: [
+        mkDetection("I must protect calm and coherence.", "I want honesty, but I avoid conflict."),
+        mkDetection("I must protect calm and coherence.", "I value independence, but I keep seeking approval."),
+      ],
+      sideAUsage,
+      sideBUsage,
+    });
+    const second = applyImportedContradictionFanoutGuard({
+      detections: [
+        mkDetection("I must protect calm and coherence.", "I want to simplify my life, but I keep adding more systems."),
+        mkDetection("I must protect calm and coherence.", "I want coherence, but I change direction whenever I feel uncertain."),
+      ],
+      sideAUsage,
+      sideBUsage,
+    });
+
+    expect(first.accepted).toHaveLength(2);
+    expect(second.accepted).toHaveLength(1);
+    expect(second.rejected).toHaveLength(1);
+    expect(second.rejected[0]?.reasons).toContain("contradiction_repeated_side_a");
+  });
+
+  it("caps repeated sideB across multiple guard calls with shared state", () => {
+    const sideAUsage = new Map<string, number>();
+    const sideBUsage = new Map<string, number>();
+
+    const sharedSideB = "I want honesty, but I avoid conflict.";
+    const first = applyImportedContradictionFanoutGuard({
+      detections: [
+        mkDetection("I must protect calm.", sharedSideB),
+        mkDetection("I must protect independence.", sharedSideB),
+      ],
+      sideAUsage,
+      sideBUsage,
+    });
+    const second = applyImportedContradictionFanoutGuard({
+      detections: [
+        mkDetection("I must protect simplicity.", sharedSideB),
+        mkDetection("I must protect coherence.", sharedSideB),
+      ],
+      sideAUsage,
+      sideBUsage,
+    });
+
+    expect(first.accepted).toHaveLength(2);
+    expect(second.accepted).toHaveLength(1);
+    expect(second.rejected).toHaveLength(1);
+    expect(second.rejected[0]?.reasons).toContain("contradiction_repeated_side_b");
+  });
 });
 
 describe("import-chatgpt validation", () => {

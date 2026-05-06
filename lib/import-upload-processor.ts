@@ -11,8 +11,10 @@ import yauzl from "yauzl";
 
 import { getChunkStorage, type ChunkStorage } from "./import-chunk-storage";
 import {
+  createImportedContradictionFanoutState,
   importExtractedConversations,
   parseConversationForImport,
+  type ImportedContradictionFanoutState,
   type ExtractedConversation,
 } from "./import-chatgpt";
 import {
@@ -152,6 +154,7 @@ async function ingestBatch({
   batch,
   errors,
   diagnostics,
+  fanoutState,
 }: {
   db: PrismaClient;
   userId: string;
@@ -159,6 +162,7 @@ async function ingestBatch({
   batch: ExtractedConversation[];
   errors: string[];
   diagnostics: ImportRunDiagnostics;
+  fanoutState: ImportedContradictionFanoutState;
 }) {
   if (batch.length === 0) {
     return;
@@ -169,6 +173,7 @@ async function ingestBatch({
     conversations: batch,
     db,
     diagnostics,
+    fanoutState,
   });
 
   const batchErrors = [...errors, ...imported.errors];
@@ -248,6 +253,7 @@ export async function processChatImportSession({
     session.contentType.toLowerCase().includes("zip");
 
   const processingFilePath = path.join(process.cwd(), ".tmp", "import-processing", `${session.id}.zip`);
+  const fanoutState = createImportedContradictionFanoutState();
 
   const flushBatch = async () => {
     await ingestBatch({
@@ -257,6 +263,7 @@ export async function processChatImportSession({
       batch,
       errors: parseErrors,
       diagnostics,
+      fanoutState,
     });
     batch = [];
   };
