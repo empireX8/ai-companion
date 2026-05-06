@@ -64,6 +64,13 @@ export const patternDetectorV1: PatternDetector = async ({
   // user messages are both excluded. contradiction_drift reads ContradictionNode
   // directly and is intentionally excluded from this filter.
   const behavioralEntries = filterBehavioralMessages(entries);
+  debugCollector?.recordDetectorInputCountsByFamily({
+    contradiction_drift: null,
+    trigger_condition: behavioralEntries.length,
+    inner_critic: behavioralEntries.length,
+    repetitive_loop: behavioralEntries.length,
+    recovery_stabilizer: behavioralEntries.length,
+  });
 
   // ── Collect clues from all five families ──────────────────────────────────
 

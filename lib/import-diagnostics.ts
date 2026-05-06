@@ -1,3 +1,5 @@
+import type { PatternRerunDebugDiagnostics } from "./pattern-rerun-debug";
+
 export const IMPORT_DIAGNOSTICS_RESULT_ERRORS_PREFIX = "__IMPORT_DIAGNOSTICS_V1__:";
 export const IMPORT_DIAGNOSTICS_UNAVAILABLE = "unavailable_without_refactor" as const;
 const DIAGNOSTIC_VERSION = "import_diagnostics_v1" as const;
@@ -71,6 +73,7 @@ export type ImportRunDiagnostics = {
   patternBehavioralAcceptedCount: MetricOrUnavailable;
   patternBehavioralRejectedCount: MetricOrUnavailable;
   topBehavioralRejectionReasons: ImportDiagnosticReasonCount[] | UnavailableWithoutRefactor;
+  patternRerunDiagnostics: PatternRerunDebugDiagnostics | UnavailableWithoutRefactor;
   patternClaimsCreatedCount: MetricOrUnavailable;
   patternClaimsSurfacedCount: MetricOrUnavailable;
   patternClaimsSuppressedCount: MetricOrUnavailable;
@@ -132,6 +135,14 @@ function normalizeReasonList(
   return result;
 }
 
+function normalizePatternRerunDiagnostics(
+  value: unknown
+): PatternRerunDebugDiagnostics | UnavailableWithoutRefactor {
+  if (value === IMPORT_DIAGNOSTICS_UNAVAILABLE) return IMPORT_DIAGNOSTICS_UNAVAILABLE;
+  if (!value || typeof value !== "object") return IMPORT_DIAGNOSTICS_UNAVAILABLE;
+  return value as PatternRerunDebugDiagnostics;
+}
+
 function normalizeSampleList(value: unknown): ImportDiagnosticSample[] {
   if (!Array.isArray(value)) return [];
   const samples: ImportDiagnosticSample[] = [];
@@ -173,6 +184,7 @@ export function createEmptyImportRunDiagnostics(): ImportRunDiagnostics {
     patternBehavioralAcceptedCount: IMPORT_DIAGNOSTICS_UNAVAILABLE,
     patternBehavioralRejectedCount: IMPORT_DIAGNOSTICS_UNAVAILABLE,
     topBehavioralRejectionReasons: IMPORT_DIAGNOSTICS_UNAVAILABLE,
+    patternRerunDiagnostics: IMPORT_DIAGNOSTICS_UNAVAILABLE,
     patternClaimsCreatedCount: IMPORT_DIAGNOSTICS_UNAVAILABLE,
     patternClaimsSurfacedCount: IMPORT_DIAGNOSTICS_UNAVAILABLE,
     patternClaimsSuppressedCount: IMPORT_DIAGNOSTICS_UNAVAILABLE,
@@ -216,6 +228,7 @@ export function reviveImportRunDiagnostics(raw: unknown): ImportRunDiagnostics |
       baseline.patternBehavioralRejectedCount
     ),
     topBehavioralRejectionReasons: normalizeReasonList(record.topBehavioralRejectionReasons),
+    patternRerunDiagnostics: normalizePatternRerunDiagnostics(record.patternRerunDiagnostics),
     patternClaimsCreatedCount: asMetricOrUnavailable(
       record.patternClaimsCreatedCount,
       baseline.patternClaimsCreatedCount

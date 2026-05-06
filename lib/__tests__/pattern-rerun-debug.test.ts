@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createPatternRerunDebugCollector } from "../pattern-rerun-debug";
+import { analyzeBehavioralEligibility } from "../behavioral-filter";
 import type { NormalizedHistoryEntry } from "../history-synthesis";
 
 function makeEntry(
@@ -53,6 +54,13 @@ describe("createPatternRerunDebugCollector", () => {
       repetitive_loop: 0,
       contradiction_drift: 0,
       recovery_stabilizer: 0,
+    });
+    collector.recordDetectorInputCountsByFamily({
+      contradiction_drift: null,
+      trigger_condition: 2,
+      inner_critic: 2,
+      repetitive_loop: 2,
+      recovery_stabilizer: 2,
     });
 
     collector.recordClaimUpsert({
@@ -126,6 +134,13 @@ describe("createPatternRerunDebugCollector", () => {
     expect(diagnostics.cluesEmittedByFamily.trigger_condition).toBe(1);
     expect(diagnostics.cluesEmittedByFamily.inner_critic).toBe(1);
     expect(diagnostics.clueCounts).toEqual(diagnostics.cluesEmittedByFamily);
+    expect(diagnostics.detectorInputCountsByFamily).toEqual({
+      contradiction_drift: null,
+      trigger_condition: 2,
+      inner_critic: 2,
+      repetitive_loop: 2,
+      recovery_stabilizer: 2,
+    });
 
     expect(diagnostics.claimsCreatedByFamily.trigger_condition).toBe(1);
     expect(diagnostics.claimsMatchedExisting).toBe(1);
@@ -236,5 +251,163 @@ describe("createPatternRerunDebugCollector", () => {
     expect(diagnostics.touchedClaimIds).toEqual(["c1", "c2"]);
     expect(diagnostics.touchedClaims.map((claim) => claim.id)).toEqual(["c1", "c2"]);
     expect(diagnostics.lifecycleAdvancedCount).toBe(2);
+  });
+
+  it("builds stratified rejection samples and origin splits for key rejection reasons", () => {
+    const collector = createPatternRerunDebugCollector();
+
+    collector.recordHistory([
+      makeEntry({
+        messageId: "accepted-app",
+        sessionId: "session-app",
+        sessionOrigin: "APP",
+        content: "I always end up overthinking and delaying the hard step.",
+      }),
+      makeEntry({
+        messageId: "accepted-import",
+        sessionId: "session-import",
+        sessionOrigin: "IMPORTED_ARCHIVE",
+        content: "I keep doubting myself when the plan gets ambiguous.",
+      }),
+      makeEntry({
+        messageId: "r-no-first-person",
+        sessionId: "session-no-first-person",
+        sessionOrigin: "IMPORTED_ARCHIVE",
+        content: "Need to update the model file in terminal before retrying",
+      }),
+      makeEntry({
+        messageId: "r-no-behavioral",
+        sessionId: "session-no-behavioral",
+        sessionOrigin: "APP",
+        content: "I feel tense in this workflow and I value clear sequencing.",
+      }),
+      makeEntry({
+        messageId: "r-assistant-directed",
+        sessionId: "session-assistant-directed",
+        sessionOrigin: "APP",
+        content: "you keep changing the process and I stop trusting the direction",
+      }),
+      makeEntry({
+        messageId: "r-question-like",
+        sessionId: "session-question-like",
+        sessionOrigin: "IMPORTED_ARCHIVE",
+        content: "do I need to do that in the terminal?",
+      }),
+      makeEntry({
+        sourceKind: "journal_entry",
+        messageId: null,
+        sessionId: null,
+        journalEntryId: "journal-too-short",
+        sessionOrigin: null,
+        sessionStartedAt: null,
+        content: "I panic",
+      }),
+    ]);
+
+    const diagnostics = collector.buildDiagnostics();
+
+    expect(diagnostics.userEntryCount).toBe(7);
+    expect(diagnostics.behavioralEntryCount).toBe(2);
+    expect(diagnostics.rejectedEntryCount).toBe(5);
+
+    expect(diagnostics.behavioralAcceptedByOrigin).toEqual({
+      IMPORTED_ARCHIVE: 1,
+      APP: 1,
+      journal: 0,
+      unknown: 0,
+    });
+    expect(diagnostics.behavioralRejectedByOrigin).toEqual({
+      IMPORTED_ARCHIVE: 2,
+      APP: 2,
+      journal: 1,
+      unknown: 0,
+    });
+
+    expect(diagnostics.rejectionSamplesByReason.no_first_person?.random).toHaveLength(1);
+    expect(diagnostics.rejectionSamplesByReason.no_behavioral_signal?.random).toHaveLength(1);
+    expect(diagnostics.rejectionSamplesByReason.assistant_directed?.random).toHaveLength(1);
+    expect(diagnostics.rejectionSamplesByReason.question_like?.random).toHaveLength(1);
+    expect(diagnostics.rejectionSamplesByReason.too_short?.random).toHaveLength(1);
+
+    const noBehavioralSample =
+      diagnostics.rejectionSamplesByReason.no_behavioral_signal?.random[0];
+    expect(noBehavioralSample).toMatchObject({
+      reasons: ["no_behavioral_signal"],
+      messageId: "r-no-behavioral",
+      sessionId: "session-no-behavioral",
+      origin: "APP",
+      sourceClass: "native",
+      role: "user",
+    });
+    expect(typeof noBehavioralSample?.createdAt).toBe("string");
+    expect(noBehavioralSample?.snippet.length ?? 0).toBeGreaterThan(0);
+
+    const noBehavioralSelfSignal =
+      diagnostics.rejectionSamplesByReason.no_behavioral_signal?.selfSignal;
+    expect(noBehavioralSelfSignal).toHaveLength(1);
+    expect(noBehavioralSelfSignal?.[0]?.messageId).toBe("r-no-behavioral");
+
+    const tooShortSample = diagnostics.rejectionSamplesByReason.too_short?.random[0];
+    expect(tooShortSample).toMatchObject({
+      messageId: null,
+      sessionId: null,
+      origin: "journal",
+      sourceClass: "journal",
+      role: "user",
+    });
+  });
+
+  it("collects rejection samples without changing behavioral eligibility accounting", () => {
+    const entries = [
+      makeEntry({
+        messageId: "m-accepted",
+        sessionId: "s-accepted",
+        content: "I always end up procrastinating when I'm overwhelmed.",
+      }),
+      makeEntry({
+        messageId: "m-rejected-q",
+        sessionId: "s-rejected-q",
+        content: "do I need to change that first?",
+      }),
+      makeEntry({
+        messageId: "m-rejected-no-first-person",
+        sessionId: "s-rejected-no-first-person",
+        content: "Need to run npm install and restart",
+      }),
+      makeEntry({
+        messageId: "m-rejected-no-signal",
+        sessionId: "s-rejected-no-signal",
+        content: "I feel uncertain about this direction right now.",
+      }),
+      makeEntry({
+        messageId: "m-assistant",
+        sessionId: "s-assistant",
+        role: "assistant",
+        content: "Try running npm run build.",
+      }),
+    ];
+
+    const expectedUserEntries = entries.filter((entry) => entry.role === "user");
+    const expectedBehavioral = expectedUserEntries.filter((entry) =>
+      analyzeBehavioralEligibility(entry.content).eligible
+    );
+    const expectedRejected = expectedUserEntries.length - expectedBehavioral.length;
+    const expectedReasonCounts: Record<string, number> = {};
+    for (const entry of expectedUserEntries) {
+      const analysis = analyzeBehavioralEligibility(entry.content);
+      if (analysis.eligible) continue;
+      for (const reason of analysis.reasons) {
+        expectedReasonCounts[reason] = (expectedReasonCounts[reason] ?? 0) + 1;
+      }
+    }
+
+    const collector = createPatternRerunDebugCollector();
+    collector.recordHistory(entries);
+    const diagnostics = collector.buildDiagnostics();
+
+    expect(diagnostics.userEntryCount).toBe(expectedUserEntries.length);
+    expect(diagnostics.behavioralEntryCount).toBe(expectedBehavioral.length);
+    expect(diagnostics.rejectedEntryCount).toBe(expectedRejected);
+    expect(diagnostics.rejectionReasonCounts).toEqual(expectedReasonCounts);
   });
 });

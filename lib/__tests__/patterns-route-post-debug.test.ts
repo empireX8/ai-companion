@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type DebugCollectorLike = {
   recordHistory: (entries: unknown[]) => void;
+  recordDetectorInputCountsByFamily: (
+    counts: Record<string, number | null>
+  ) => void;
   recordCluesEmittedByFamily: (counts: Record<string, number>) => void;
   recordClaimUpsert: (event: {
     claimId: string;
@@ -133,6 +136,13 @@ describe("POST /api/patterns debug instrumentation", () => {
           contradiction_drift: 2,
           recovery_stabilizer: 0,
         });
+        debugCollector.recordDetectorInputCountsByFamily({
+          trigger_condition: 2,
+          inner_critic: 2,
+          repetitive_loop: 2,
+          recovery_stabilizer: 2,
+          contradiction_drift: null,
+        });
 
         debugCollector.recordClaimUpsert({
           claimId: "claim-new",
@@ -208,6 +218,13 @@ describe("POST /api/patterns debug instrumentation", () => {
         repetitive_loop: 0,
         contradiction_drift: 2,
         recovery_stabilizer: 0,
+      },
+      detectorInputCountsByFamily: {
+        trigger_condition: 2,
+        inner_critic: 2,
+        repetitive_loop: 2,
+        recovery_stabilizer: 2,
+        contradiction_drift: null,
       },
       claimsCreatedByFamily: {
         trigger_condition: 1,

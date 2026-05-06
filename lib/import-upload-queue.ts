@@ -47,6 +47,7 @@ async function onImportComplete({
     patternDiagnostics.rejectionReasonCounts,
     5
   );
+  diagnostics.patternRerunDiagnostics = patternDiagnostics;
   diagnostics.patternClaimsCreatedCount = patternResult.claimsCreated;
   diagnostics.patternClaimsSurfacedCount = IMPORT_DIAGNOSTICS_UNAVAILABLE;
   diagnostics.patternClaimsSuppressedCount = IMPORT_DIAGNOSTICS_UNAVAILABLE;
