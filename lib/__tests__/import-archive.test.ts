@@ -346,4 +346,94 @@ describe("importExtractedConversations — import relevance gate", () => {
     expect(referenceCreate).not.toHaveBeenCalled();
     expect(contradictionFindMany).not.toHaveBeenCalled();
   });
+
+  it("skips profile/reference/contradiction extraction for low-context technical questions", async () => {
+    let messageCounter = 0;
+    const evidenceSpanFindUnique = vi.fn(async () => null);
+    const evidenceSpanCreate = vi.fn(async () => ({ id: "span_1" }));
+    const referenceFindMany = vi.fn(async () => []);
+    const referenceCreate = vi.fn(async () => ({}));
+    const contradictionFindMany = vi.fn(async () => []);
+
+    const tx = {
+      session: {
+        findUnique: async () => null,
+        create: async () => ({ id: "session_2" }),
+      },
+      message: {
+        create: async ({ data }: { data: { role: string; content: string } }) => {
+          messageCounter += 1;
+          return {
+            id: `msg_q_${messageCounter}`,
+            role: data.role,
+            content: data.content,
+          };
+        },
+      },
+    };
+
+    const db = {
+      $transaction: async (fn: (input: typeof tx) => Promise<unknown>) => fn(tx),
+      referenceItem: {
+        findMany: referenceFindMany,
+        create: referenceCreate,
+      },
+      contradictionNode: {
+        findMany: contradictionFindMany,
+      },
+      derivationRun: {
+        create: async () => ({ id: "run_2" }),
+        update: async () => ({}),
+      },
+      evidenceSpan: {
+        findUnique: evidenceSpanFindUnique,
+        create: evidenceSpanCreate,
+      },
+      derivationArtifact: {
+        create: async () => ({}),
+      },
+      artifactEvidenceLink: {
+        create: async () => ({}),
+      },
+      profileArtifact: {
+        findUnique: async () => null,
+        create: async () => ({ id: "artifact_2" }),
+        update: async () => ({}),
+      },
+      profileArtifactEvidenceLink: {
+        create: async () => ({}),
+      },
+    } as unknown as PrismaClient;
+
+    const diagnostics = createEmptyImportRunDiagnostics();
+    await importExtractedConversations({
+      userId: "user_1",
+      conversations: [
+        {
+          title: "task chatter",
+          externalId: "conv-task-1",
+          messages: [
+            {
+              role: "user",
+              content:
+                "do i need to do that in the terminal? i can do that myself in the finder",
+              createdAt: null,
+            },
+          ],
+        },
+      ],
+      db,
+      diagnostics,
+    });
+
+    expect(diagnostics.reasonCodeCounts.import_human_relevance_rejected).toBe(1);
+    expect(diagnostics.reasonCodeCounts.low_context_technical_question).toBe(1);
+    expect(diagnostics.candidateMessagesConsideredForReferenceExtraction).toBe(0);
+    expect(diagnostics.contradictionDetectionAttemptedCount).toBe(0);
+    expect(evidenceSpanFindUnique).not.toHaveBeenCalled();
+    expect(evidenceSpanCreate).not.toHaveBeenCalled();
+    expect(referenceFindMany).not.toHaveBeenCalled();
+    expect(referenceCreate).not.toHaveBeenCalled();
+    expect(contradictionFindMany).not.toHaveBeenCalled();
+  });
 });

@@ -55,6 +55,80 @@ describe("import-chatgpt extraction", () => {
 });
 
 describe("classifyImportHumanRelevance", () => {
+  it("rejects terminal/finder question chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "do i need to do that in the terminal? i can do that myself in the finder"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("low_context_technical_question");
+  });
+
+  it("rejects vector store retriever question chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "is there an intermediary i need to connect the vector store retriever and chatopen ai"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("low_context_technical_question");
+  });
+
+  it("rejects db seed command question chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "dont i need to do this first: \"db:seed\": \"node prisma/seed.cjs\""
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("low_context_technical_question");
+    expect(result.reasons).toContain("tutorial_or_setup_chatter");
+  });
+
+  it("rejects Codex result/form-submit workflow chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "bro wtf... I WANT TO SHOW CODEX THE RESULTS from the form-submit route before we continue."
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("codex_workflow_chatter");
+  });
+
+  it("rejects generic project-task conversion chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "it looks like i need to turn this into this"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("project_task_chatter");
+  });
+
+  it("rejects Codex delegation chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "Bruv codex needs to do half of this shit"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("codex_workflow_chatter");
+  });
+
+  it("rejects tutorial pace/debug coordination chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "we are following the tutorial and the form submit route is still failing during debugging."
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("tutorial_or_setup_chatter");
+    expect(result.reasons).toContain("implementation_debug_chatter");
+  });
+
+  it("rejects implementation status chatter", () => {
+    const result = classifyImportHumanRelevance(
+      "Memory governance hardened is complete."
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("implementation_debug_chatter");
+  });
+
   it("rejects terminal install output", () => {
     const result = classifyImportHumanRelevance(
       "user@macbook ~ % pip3 install openai requests python-dotenv\nCollecting openai"
@@ -91,36 +165,45 @@ describe("classifyImportHumanRelevance", () => {
     expect(result.reasons).toContain("technical_or_terminal_noise");
   });
 
-  it("accepts emotional self-disclosure", () => {
+  it("accepts emotionally meaningful project frustration", () => {
     const result = classifyImportHumanRelevance(
-      "I get frustrated when instructions are unclear and I spiral into overthinking."
+      "I get frustrated when instructions are unclear and I lose trust in the process."
     );
 
     expect(result.eligible).toBe(true);
     expect(result.reasons).toEqual(["import_human_relevance_accepted"]);
   });
 
-  it("accepts interpersonal/identity reflection", () => {
+  it("accepts sequential-process need", () => {
     const result = classifyImportHumanRelevance(
-      "I feel reactive when socializing and I keep second-guessing myself afterwards."
+      "I need the work to stay sequential because otherwise I cannot track what is happening."
     );
 
     expect(result.eligible).toBe(true);
     expect(result.reasons).toEqual(["import_human_relevance_accepted"]);
   });
 
-  it("accepts project-related statements with psychological self-understanding", () => {
+  it("accepts MindLab product thesis/value statement", () => {
     const result = classifyImportHumanRelevance(
-      "I keep overcomplicating projects when I feel uncertain."
+      "I want MindLab to reveal patterns and help me understand myself, not just manage tasks."
     );
 
     expect(result.eligible).toBe(true);
     expect(result.reasons).toEqual(["import_human_relevance_accepted"]);
   });
 
-  it("accepts MindLab thesis/value statements", () => {
+  it("accepts overcomplication-under-uncertainty statement", () => {
     const result = classifyImportHumanRelevance(
-      "I want the app to reveal patterns, not productivity tasks."
+      "I keep overcomplicating the project when I feel uncertain."
+    );
+
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual(["import_human_relevance_accepted"]);
+  });
+
+  it("accepts need for control/visibility statement", () => {
+    const result = classifyImportHumanRelevance(
+      "I need control and visibility over the process or I start reacting emotionally."
     );
 
     expect(result.eligible).toBe(true);

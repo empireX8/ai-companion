@@ -274,7 +274,12 @@ export type ImportHumanRelevanceReason =
   | "import_human_relevance_accepted"
   | "technical_or_terminal_noise"
   | "code_or_stacktrace_noise"
-  | "project_handoff_noise";
+  | "project_handoff_noise"
+  | "project_task_chatter"
+  | "codex_workflow_chatter"
+  | "low_context_technical_question"
+  | "implementation_debug_chatter"
+  | "tutorial_or_setup_chatter";
 
 export type ImportHumanRelevanceResult = {
   eligible: boolean;
@@ -282,8 +287,15 @@ export type ImportHumanRelevanceResult = {
 };
 
 const FIRST_PERSON_PATTERN = /\b(?:i|me|my|myself)\b/i;
-const DURABLE_HUMAN_SIGNAL_PATTERN =
-  /\b(?:i\s+feel\b|i\s+get\s+(?:frustrated|reactive|anxious|overwhelmed|stressed|upset|angry|sad)|i\s+lose\s+trust\b|i\s+value\b|important\s+to\s+me\b|matters\s+to\s+me\b|i\s+care\s+about\b|i\s+keep\s+\w+ing\b|i\s+tend\s+to\b|i\s+overcomplicat\w*\b|i\s+struggle\s+to\b|i\s+want\s+(?:the\s+)?(?:app|mindlab)\b.*\b(?:reveal|pattern|coherence|truth|insight|understand)\w*)/i;
+const DURABLE_HUMAN_SIGNAL_PATTERNS = [
+  /\b(?:i\s+feel\b|i\s+get\s+(?:frustrated|reactive|anxious|overwhelmed|stressed|upset|angry|sad)|i\s+lose\s+trust\b|i\s+value\b|important\s+to\s+me\b|matters\s+to\s+me\b|i\s+care\s+about\b|i\s+keep\s+\w+ing\b|i\s+tend\s+to\b|i\s+overcomplicat\w*\b|i\s+struggle\s+to\b|i\s+want\s+(?:the\s+)?(?:app|mindlab)\b.*\b(?:reveal|pattern|coherence|truth|insight|understand)\w*)/i,
+  /\bi\s+need\s+(?:the\s+)?(?:work|process)\s+to\s+stay\s+sequential\b/i,
+  /\bi\s+need\s+sequential\s+reasoning\b/i,
+  /\botherwise\s+i\s+(?:cannot|can't)\s+(?:track|follow)\b/i,
+  /\bi\s+need\s+control\s+and\s+visibility\b/i,
+  /\bi\s+start\s+reacting\s+emotionally\b/i,
+  /\bi\s+get\s+confused\s+when\s+tasks?\s+(?:are\s+)?mixed\b/i,
+] as const;
 
 const TERMINAL_OR_TECHNICAL_PATTERNS = [
   /(?:^|\n)\s*(?:\w+@[\w.-]+(?:[:~][^\n]*)?[$%#]|[$%#])\s*(?:pip3?|python3?|npm|npx|pnpm|yarn|git|docker|kubectl|brew|uv|poetry)\b/im,
@@ -310,6 +322,27 @@ const PROJECT_HANDOFF_DIRECTIVE_PATTERN =
   /^(?:you are|act as|implement|build|fix|add|update|refactor|debug|ship)\b/i;
 const PROJECT_ENGINEERING_TOKENS_PATTERN =
   /\b(?:typescript|javascript|tsx?|python|prisma|next(?:\.js)?|vite|api|schema|migration|repository|repo|pull request|commit|branch|frontend|backend|database|terminal|debug|build|deploy)\b/i;
+const TECHNICAL_CONTEXT_TOKENS_PATTERN =
+  /\b(?:terminal|finder|vector\s+store|retriever|chatopen\s*ai|chatopenai|form[-\s]?submit|code[-\s]?routing|route|routing|api|endpoint|middleware|schema|migration|db:seed|seed\.cjs|prisma|npm|npx|pnpm|yarn|package(?:\.json)?|build|deploy|debug(?:ging)?|repo|repository)\b/i;
+const LOW_CONTEXT_QUESTION_LEAD_PATTERN =
+  /^\s*(?:do\s+i\s+need\s+to|dont\s+i\s+need\s+to|don't\s+i\s+need\s+to|is\s+there\s+(?:an?|any)\b|should\s+i\b|can\s+i\b|how\s+do\s+i\b|what\s+do\s+i\s+need\s+to\b)\b/i;
+const LOW_CONTEXT_TECHNICAL_QUESTION_PHRASE_PATTERN =
+  /\b(?:intermediary|need\s+to\s+connect|need\s+to\s+do\s+this\s+first|turn\s+this\s+into\s+this)\b/i;
+const PROJECT_TASK_CHATTER_PATTERN =
+  /\b(?:it\s+looks\s+like\s+i\s+need\s+to|need\s+to\s+do\s+this\s+first|turn\s+this\s+into\s+this|implementation\s+planning|project\s+handoff|task\s+coordination|workflow\s+coordination)\b/i;
+const CODEX_WORKFLOW_TOKENS_PATTERN = /\bcodex\b/i;
+const CODEX_WORKFLOW_CHATTER_PATTERN =
+  /\b(?:show\b.*\bresults?\b|needs?\s+to\s+do|do\s+half\s+of\s+this|handoff|workflow|prompt|execute|run)\b/i;
+const IMPLEMENTATION_STATUS_PATTERN =
+  /\b(?:is\s+complete|completed|hardened|wired\s+up|hooked\s+up|implemented|refactored)\b/i;
+const IMPLEMENTATION_OBJECT_PATTERN =
+  /\b(?:memory\s+governance|form[-\s]?submit|route|routing|api|schema|migration|retriever|vector\s+store|codex)\b/i;
+const IMPLEMENTATION_DEBUG_PATTERN =
+  /\b(?:debug(?:ging)?|failing|broken|not\s+working|error)\b/i;
+const TUTORIAL_OR_SETUP_PATTERN =
+  /\b(?:tutorial|walkthrough|step[-\s]?by[-\s]?step|follow(?:ing)?\s+(?:the\s+)?(?:tutorial|docs?)|setup|set\s+up|configuration|configure|install|seed|db:seed)\b/i;
+const OPERATIONAL_TASK_VERBS_PATTERN =
+  /\b(?:connect|wire|hook|turn|seed|install|configure|setup|set\s+up|build|ship|deploy|debug|fix|submit|route|run|execute|implement|refactor|harden)\b/i;
 
 function isSourceCodeHeavy(text: string) {
   const lines = text.split("\n");
@@ -332,7 +365,8 @@ export function classifyImportHumanRelevance(content: string): ImportHumanReleva
   const normalized = content.replace(/\r\n/g, "\n").trim();
   const hasFirstPerson = FIRST_PERSON_PATTERN.test(normalized);
   const hasDurableHumanSignal =
-    hasFirstPerson && DURABLE_HUMAN_SIGNAL_PATTERN.test(normalized);
+    hasFirstPerson &&
+    DURABLE_HUMAN_SIGNAL_PATTERNS.some((pattern) => pattern.test(normalized));
 
   const technicalOrTerminalNoise = TERMINAL_OR_TECHNICAL_PATTERNS.some((pattern) =>
     pattern.test(normalized)
@@ -345,6 +379,28 @@ export function classifyImportHumanRelevance(content: string): ImportHumanReleva
       PROJECT_HANDOFF_INSTRUCTION_PATTERN.test(normalized) ||
       PROJECT_HANDOFF_DIRECTIVE_PATTERN.test(normalized)) &&
     PROJECT_ENGINEERING_TOKENS_PATTERN.test(normalized);
+  const lowContextTechnicalQuestion =
+    (LOW_CONTEXT_QUESTION_LEAD_PATTERN.test(normalized) &&
+      (TECHNICAL_CONTEXT_TOKENS_PATTERN.test(normalized) ||
+        LOW_CONTEXT_TECHNICAL_QUESTION_PHRASE_PATTERN.test(normalized))) ||
+    (normalized.endsWith("?") && TECHNICAL_CONTEXT_TOKENS_PATTERN.test(normalized));
+  const codexWorkflowChatter =
+    CODEX_WORKFLOW_TOKENS_PATTERN.test(normalized) &&
+    (CODEX_WORKFLOW_CHATTER_PATTERN.test(normalized) ||
+      OPERATIONAL_TASK_VERBS_PATTERN.test(normalized));
+  const projectTaskChatter =
+    PROJECT_TASK_CHATTER_PATTERN.test(normalized) ||
+    (/\b(?:task|tasks|handoff|workflow)\b/i.test(normalized) &&
+      OPERATIONAL_TASK_VERBS_PATTERN.test(normalized));
+  const implementationDebugChatter =
+    (IMPLEMENTATION_STATUS_PATTERN.test(normalized) &&
+      IMPLEMENTATION_OBJECT_PATTERN.test(normalized)) ||
+    (IMPLEMENTATION_DEBUG_PATTERN.test(normalized) &&
+      TECHNICAL_CONTEXT_TOKENS_PATTERN.test(normalized));
+  const tutorialOrSetupChatter =
+    TUTORIAL_OR_SETUP_PATTERN.test(normalized) &&
+    (TECHNICAL_CONTEXT_TOKENS_PATTERN.test(normalized) ||
+      OPERATIONAL_TASK_VERBS_PATTERN.test(normalized));
 
   if (hasDurableHumanSignal && !technicalOrTerminalNoise && !codeOrStacktraceNoise) {
     return {
@@ -362,6 +418,21 @@ export function classifyImportHumanRelevance(content: string): ImportHumanReleva
   }
   if (projectHandoffNoise) {
     rejectionReasons.push("project_handoff_noise");
+  }
+  if (projectTaskChatter) {
+    rejectionReasons.push("project_task_chatter");
+  }
+  if (codexWorkflowChatter) {
+    rejectionReasons.push("codex_workflow_chatter");
+  }
+  if (lowContextTechnicalQuestion) {
+    rejectionReasons.push("low_context_technical_question");
+  }
+  if (implementationDebugChatter) {
+    rejectionReasons.push("implementation_debug_chatter");
+  }
+  if (tutorialOrSetupChatter) {
+    rejectionReasons.push("tutorial_or_setup_chatter");
   }
 
   if (rejectionReasons.length > 0) {
