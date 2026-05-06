@@ -374,7 +374,7 @@ export default function ImportPage() {
       <SectionLabel>In progress</SectionLabel>
       {activeUpload ? (
         <div className="card-surfaced p-5 mb-8">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-3 min-w-0">
             {activeUpload.status === "failed" ? (
               <AlertTriangle className="h-4 w-4 text-[hsl(12_80%_64%)]" strokeWidth={1.5} />
             ) : activeUpload.status === "complete" ? (
@@ -382,16 +382,18 @@ export default function ImportPage() {
             ) : (
               <Loader2 className="h-4 w-4 text-cyan animate-spin" strokeWidth={1.5} />
             )}
-            <div className="flex-1">
-              <div className="text-[13.5px] truncate">{activeUpload.filename}</div>
-              <div className={`label-meta mt-0.5 ${uploadStatusColor(activeUpload.status)}`}>
+            <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+              <div className="text-[13.5px] truncate max-w-full">{activeUpload.filename}</div>
+              <div className={`label-meta mt-0.5 max-w-full whitespace-normal break-words ${uploadStatusColor(activeUpload.status)}`}>
                 {activeUpload.detail}
               </div>
               {activeUpload.error ? (
-                <div className="label-meta mt-1 text-[hsl(12_80%_64%)]">{activeUpload.error}</div>
+                <div className="label-meta mt-1 max-w-full whitespace-normal break-words text-[hsl(12_80%_64%)]">
+                  {activeUpload.error}
+                </div>
               ) : null}
             </div>
-            <div className="font-mono text-[12.5px] text-cyan">{activeUpload.progress}%</div>
+            <div className="shrink-0 font-mono text-[12.5px] text-cyan">{activeUpload.progress}%</div>
           </div>
           <div className="h-1 rounded-full bg-white/5 overflow-hidden">
             <div className="h-full bg-cyan transition-[width]" style={{ width: `${Math.max(0, Math.min(100, activeUpload.progress))}%` }} />
@@ -405,21 +407,21 @@ export default function ImportPage() {
       {historyLoading ? (
         <div className="card-standard p-4 mb-8 text-[13px] text-meta">Loading import history...</div>
       ) : historyError ? (
-        <div className="card-standard p-4 mb-8 text-[13px] text-[hsl(12_80%_64%)]">{historyError}</div>
+        <div className="card-standard p-4 mb-8 text-[13px] whitespace-normal break-words text-[hsl(12_80%_64%)]">{historyError}</div>
       ) : history.length === 0 ? (
         <div className="card-standard p-4 mb-8 text-[13px] text-meta">No imports yet.</div>
       ) : (
         <div className="card-standard divide-y divide-white/[0.05] mb-8">
           {history.map((item) => (
-            <div key={item.id} className="px-5 py-3.5 flex items-center gap-4">
+            <div key={item.id} className="px-5 py-3.5 flex items-center gap-4 min-w-0">
               <FileText className="h-4 w-4 text-meta" strokeWidth={1.5} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[13.5px] truncate">{item.filename}</div>
-                <div className="label-meta mt-0.5">
+              <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+                <div className="text-[13.5px] truncate max-w-full">{item.filename}</div>
+                <div className="label-meta mt-0.5 max-w-full whitespace-normal break-words">
                   {formatHistoryDate(item.createdAt)} · {item.messagesCreated.toLocaleString("en-GB")} messages
                 </div>
               </div>
-              <div className={`label-meta inline-flex items-center gap-1.5 ${uploadStatusColor(item.status)}`}>
+              <div className={`label-meta shrink-0 inline-flex items-center gap-1.5 ${uploadStatusColor(item.status)}`}>
                 {item.status === "complete" ? <Check className="h-3 w-3" strokeWidth={2} /> : null}
                 {uploadStatusLabel(item.status)}
               </div>
