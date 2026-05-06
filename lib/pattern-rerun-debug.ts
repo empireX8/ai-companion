@@ -60,6 +60,10 @@ export type PatternRerunDebugDiagnostics = {
   historyEntryCount: number;
   messageEntryCount: number;
   journalEntryCount: number;
+  importedPatternRelevanceAcceptedCount: number;
+  importedPatternRelevanceRejectedCount: number;
+  importedPatternRelevanceRejectionReasonCounts: Record<string, number>;
+  importedPatternRelevanceRejectedSamples: PatternRerunDebugRejectSample[];
   userEntryCount: number;
   behavioralEntryCount: number;
   rejectedEntryCount: number;
@@ -102,6 +106,12 @@ export type PatternRerunReceiptSourceKind = HistorySourceKind | "unknown";
 
 export type PatternRerunDebugCollector = {
   recordHistory: (entries: NormalizedHistoryEntry[]) => void;
+  recordImportedPatternRelevance: (input: {
+    acceptedCount: number;
+    rejectedCount: number;
+    rejectionReasonCounts: Record<string, number>;
+    rejected: Array<{ entry: NormalizedHistoryEntry; reasons: string[] }>;
+  }) => void;
   recordDetectorInputCountsByFamily: (
     counts: Partial<Record<PatternTypeValue, number | null>>
   ) => void;
@@ -302,6 +312,10 @@ export function createPatternRerunDebugCollector({
   let historyEntryCount = 0;
   let messageEntryCount = 0;
   let journalEntryCount = 0;
+  let importedPatternRelevanceAcceptedCount = 0;
+  let importedPatternRelevanceRejectedCount = 0;
+  let importedPatternRelevanceRejectionReasonCounts: Record<string, number> = {};
+  let importedPatternRelevanceRejectedSamples: PatternRerunDebugRejectSample[] = [];
   let userEntryCount = 0;
   let behavioralEntryCount = 0;
   let rejectedEntryCount = 0;
@@ -387,6 +401,28 @@ export function createPatternRerunDebugCollector({
       journalBehavioralEntryCount = journalBehavioral.length;
       journalRejectedEntryCount = journalRejected.length;
       journalRejectionReasonCounts = buildRejectionReasonCounts(journalRejected);
+    },
+
+    recordImportedPatternRelevance({
+      acceptedCount,
+      rejectedCount,
+      rejectionReasonCounts,
+      rejected,
+    }) {
+      importedPatternRelevanceAcceptedCount = safePositiveInt(acceptedCount);
+      importedPatternRelevanceRejectedCount = safePositiveInt(rejectedCount);
+
+      const nextReasonCounts: Record<string, number> = {};
+      for (const [reason, count] of Object.entries(rejectionReasonCounts)) {
+        const normalizedCount = safePositiveInt(count);
+        if (normalizedCount <= 0) continue;
+        nextReasonCounts[reason] = normalizedCount;
+      }
+      importedPatternRelevanceRejectionReasonCounts = nextReasonCounts;
+
+      importedPatternRelevanceRejectedSamples = rejected
+        .slice(0, 8)
+        .map((item) => toRejectSample(item.entry, item.reasons));
     },
 
     recordDetectorInputCountsByFamily(counts) {
@@ -485,6 +521,10 @@ export function createPatternRerunDebugCollector({
         historyEntryCount,
         messageEntryCount,
         journalEntryCount,
+        importedPatternRelevanceAcceptedCount,
+        importedPatternRelevanceRejectedCount,
+        importedPatternRelevanceRejectionReasonCounts,
+        importedPatternRelevanceRejectedSamples,
         userEntryCount,
         behavioralEntryCount,
         rejectedEntryCount,

@@ -556,7 +556,11 @@ function makeMockDb(messages: MessageRow[], journalEntries: JournalEntryRow[] = 
       },
     },
     _claims: claims,
-  } as unknown as PrismaClient & { _claims: ClaimRow[] };
+    _evidence: evidence,
+  } as unknown as PrismaClient & {
+    _claims: ClaimRow[];
+    _evidence: Array<Record<string, unknown>>;
+  };
 }
 
 function makeMsg(
@@ -727,5 +731,107 @@ describe("integration — legitimate behavioral messages pass through", () => {
     expect(count).toBeGreaterThanOrEqual(1);
     const tc = db._claims.find((c) => c.patternType === "trigger_condition");
     expect(tc).toBeDefined();
+  });
+});
+
+describe("integration — imported archive pattern relevance boundary", () => {
+  it("blocks imported technical/debug chatter from producing pattern evidence", async () => {
+    const db = makeMockDb([
+      makeMsg(
+        "I keep debugging the route in terminal and running npx prisma migrate reset.",
+        {
+          session: {
+            origin: "IMPORTED_ARCHIVE",
+            startedAt: new Date("2026-01-01"),
+          },
+        }
+      ),
+      makeMsg(
+        "I always end up changing the modelfile and rerunning db:seed in the terminal.",
+        {
+          sessionId: "s2",
+          session: {
+            origin: "IMPORTED_ARCHIVE",
+            startedAt: new Date("2026-01-02"),
+          },
+        }
+      ),
+      makeMsg(
+        "I notice I default to copying code blocks and patching the navbar component.",
+        {
+          sessionId: "s3",
+          session: {
+            origin: "IMPORTED_ARCHIVE",
+            startedAt: new Date("2026-01-03"),
+          },
+        }
+      ),
+    ]);
+
+    const count = await patternDetectorV1({
+      userId: "u1",
+      messageIds: [],
+      runId: "run1",
+      db,
+    });
+
+    expect(count).toBe(0);
+    expect(db._claims).toHaveLength(0);
+    expect(db._evidence).toHaveLength(0);
+  });
+
+  it("keeps imported self-reflective behavioral material eligible for derivation", async () => {
+    const importedA = makeMsg(
+      "Whenever I feel uncertain, I default to overcomplicating the project and avoiding decisions.",
+      {
+        id: "imported-a",
+        session: {
+          origin: "IMPORTED_ARCHIVE",
+          startedAt: new Date("2026-01-01"),
+        },
+      }
+    );
+    const importedB = makeMsg(
+      "When instructions change abruptly, I walk back my boundary and appease people.",
+      {
+        id: "imported-b",
+        sessionId: "s2",
+        session: {
+          origin: "IMPORTED_ARCHIVE",
+          startedAt: new Date("2026-01-02"),
+        },
+      }
+    );
+    const importedC = makeMsg(
+      "If I cannot see the sequence, I tend to react emotionally and shut down.",
+      {
+        id: "imported-c",
+        sessionId: "s3",
+        session: {
+          origin: "IMPORTED_ARCHIVE",
+          startedAt: new Date("2026-01-03"),
+        },
+      }
+    );
+
+    const db = makeMockDb([importedA, importedB, importedC]);
+    const count = await patternDetectorV1({
+      userId: "u1",
+      messageIds: [],
+      runId: "run1",
+      db,
+    });
+
+    expect(count).toBeGreaterThanOrEqual(1);
+    expect(db._claims.find((c) => c.patternType === "trigger_condition")).toBeDefined();
+
+    const allowedMessageIds = new Set(["imported-a", "imported-b", "imported-c"]);
+    const evidenceMessageIds = db._evidence
+      .map((row) => (typeof row.messageId === "string" ? row.messageId : null))
+      .filter((id): id is string => Boolean(id));
+    expect(evidenceMessageIds.length).toBeGreaterThan(0);
+    for (const messageId of evidenceMessageIds) {
+      expect(allowedMessageIds.has(messageId)).toBe(true);
+    }
   });
 });

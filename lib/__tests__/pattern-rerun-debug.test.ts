@@ -62,6 +62,24 @@ describe("createPatternRerunDebugCollector", () => {
       repetitive_loop: 2,
       recovery_stabilizer: 2,
     });
+    collector.recordImportedPatternRelevance({
+      acceptedCount: 1,
+      rejectedCount: 1,
+      rejectionReasonCounts: {
+        technical_or_terminal_noise: 1,
+      },
+      rejected: [
+        {
+          entry: makeEntry({
+            messageId: "import-noise-1",
+            sessionId: "import-session-1",
+            sessionOrigin: "IMPORTED_ARCHIVE",
+            content: "user@host % npx prisma migrate reset",
+          }),
+          reasons: ["technical_or_terminal_noise"],
+        },
+      ],
+    });
 
     collector.recordClaimUpsert({
       claimId: "claim-new",
@@ -140,6 +158,19 @@ describe("createPatternRerunDebugCollector", () => {
       inner_critic: 2,
       repetitive_loop: 2,
       recovery_stabilizer: 2,
+    });
+    expect(diagnostics.importedPatternRelevanceAcceptedCount).toBe(1);
+    expect(diagnostics.importedPatternRelevanceRejectedCount).toBe(1);
+    expect(diagnostics.importedPatternRelevanceRejectionReasonCounts).toEqual({
+      technical_or_terminal_noise: 1,
+    });
+    expect(diagnostics.importedPatternRelevanceRejectedSamples).toHaveLength(1);
+    expect(diagnostics.importedPatternRelevanceRejectedSamples[0]).toMatchObject({
+      messageId: "import-noise-1",
+      sessionId: "import-session-1",
+      origin: "IMPORTED_ARCHIVE",
+      sourceClass: "imported",
+      reasons: ["technical_or_terminal_noise"],
     });
 
     expect(diagnostics.claimsCreatedByFamily.trigger_condition).toBe(1);

@@ -55,6 +55,7 @@ vi.mock("@/lib/pattern-batch-orchestrator", () => ({
 vi.mock("@/lib/pattern-rerun-debug", () => ({
   createPatternRerunDebugCollector: vi.fn(() => ({
     recordHistory: vi.fn(),
+    recordImportedPatternRelevance: vi.fn(),
     recordCluesEmittedByFamily: vi.fn(),
     recordClaimUpsert: vi.fn(),
     recordReceiptMaterialization: vi.fn(),

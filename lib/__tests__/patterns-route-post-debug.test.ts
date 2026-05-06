@@ -2,6 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type DebugCollectorLike = {
   recordHistory: (entries: unknown[]) => void;
+  recordImportedPatternRelevance: (event: {
+    acceptedCount: number;
+    rejectedCount: number;
+    rejectionReasonCounts: Record<string, number>;
+    rejected: Array<{ entry: unknown; reasons: string[] }>;
+  }) => void;
   recordDetectorInputCountsByFamily: (
     counts: Record<string, number | null>
   ) => void;
@@ -128,6 +134,27 @@ describe("POST /api/patterns debug instrumentation", () => {
             createdAt: new Date("2026-01-02T00:00:00.000Z"),
           },
         ]);
+        debugCollector.recordImportedPatternRelevance({
+          acceptedCount: 1,
+          rejectedCount: 1,
+          rejectionReasonCounts: { technical_or_terminal_noise: 1 },
+          rejected: [
+            {
+              entry: {
+                sourceKind: "chat_message",
+                messageId: "m-noise",
+                sessionId: "s-noise",
+                journalEntryId: null,
+                sessionOrigin: "IMPORTED_ARCHIVE",
+                sessionStartedAt: new Date("2026-01-03T00:00:00.000Z"),
+                role: "user",
+                content: "user@host % npx prisma migrate reset",
+                createdAt: new Date("2026-01-03T00:00:00.000Z"),
+              },
+              reasons: ["technical_or_terminal_noise"],
+            },
+          ],
+        });
 
         debugCollector.recordCluesEmittedByFamily({
           trigger_condition: 1,
@@ -212,6 +239,11 @@ describe("POST /api/patterns debug instrumentation", () => {
       historyEntryCount: 2,
       messageEntryCount: 1,
       journalEntryCount: 1,
+      importedPatternRelevanceAcceptedCount: 1,
+      importedPatternRelevanceRejectedCount: 1,
+      importedPatternRelevanceRejectionReasonCounts: {
+        technical_or_terminal_noise: 1,
+      },
       cluesEmittedByFamily: {
         trigger_condition: 1,
         inner_critic: 0,
@@ -247,6 +279,13 @@ describe("POST /api/patterns debug instrumentation", () => {
       receiptsSkippedDuplicate: 1,
       lifecycleAdvancedCount: 1,
       touchedClaimIds: ["claim-new", "claim-existing"],
+    });
+    expect(payload.debug.importedPatternRelevanceRejectedSamples).toHaveLength(1);
+    expect(payload.debug.importedPatternRelevanceRejectedSamples[0]).toMatchObject({
+      messageId: "m-noise",
+      origin: "IMPORTED_ARCHIVE",
+      sourceClass: "imported",
+      reasons: ["technical_or_terminal_noise"],
     });
   });
 

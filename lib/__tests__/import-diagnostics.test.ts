@@ -19,6 +19,12 @@ describe("import diagnostics helpers", () => {
       historyEntryCount: 12,
       messageEntryCount: 10,
       journalEntryCount: 2,
+      importedPatternRelevanceAcceptedCount: 2,
+      importedPatternRelevanceRejectedCount: 1,
+      importedPatternRelevanceRejectionReasonCounts: {
+        technical_or_terminal_noise: 1,
+      },
+      importedPatternRelevanceRejectedSamples: [],
       userEntryCount: 9,
       behavioralEntryCount: 3,
       rejectedEntryCount: 6,

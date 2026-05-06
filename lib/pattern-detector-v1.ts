@@ -18,8 +18,9 @@ import type { PrismaClient } from "@prisma/client";
 
 import { deriveContradictionDriftClues } from "./contradiction-drift-adapter";
 import { filterBehavioralMessages } from "./behavioral-filter";
-import { synthesizeHistory } from "./history-synthesis";
+import { synthesizeHistory, type NormalizedHistoryEntry } from "./history-synthesis";
 import { detectInnerCriticClues } from "./inner-critic-adapter";
+import { classifyImportHumanRelevance } from "./import-chatgpt";
 import {
   materializeReceipt,
   materializeReceiptsFromEntries,
@@ -35,6 +36,63 @@ import { detectRecoveryStabilizerClues } from "./recovery-stabilizer-adapter";
 import { detectRepetitiveLoopClues } from "./repetitive-loop-adapter";
 import { detectTriggerConditionClues } from "./trigger-condition-detector";
 import type { PatternRerunDebugCollector } from "./pattern-rerun-debug";
+
+export type ImportedPatternRelevanceFilterResult = {
+  entries: NormalizedHistoryEntry[];
+  acceptedCount: number;
+  rejectedCount: number;
+  rejectionReasonCounts: Record<string, number>;
+  rejected: Array<{ entry: NormalizedHistoryEntry; reasons: string[] }>;
+};
+
+/**
+ * Import-only precision boundary for pattern derivation input.
+ * Filters IMPORTED_ARCHIVE user messages with the deterministic human-relevance
+ * gate already used by import extraction, while leaving APP and journal
+ * sources unchanged.
+ */
+export function applyImportedPatternRelevanceBoundary({
+  entries,
+}: {
+  entries: NormalizedHistoryEntry[];
+}): ImportedPatternRelevanceFilterResult {
+  const kept: NormalizedHistoryEntry[] = [];
+  let acceptedCount = 0;
+  let rejectedCount = 0;
+  const rejectionReasonCounts: Record<string, number> = {};
+  const rejected: Array<{ entry: NormalizedHistoryEntry; reasons: string[] }> = [];
+
+  for (const entry of entries) {
+    const isImportedUserEntry =
+      entry.role === "user" && entry.sessionOrigin === "IMPORTED_ARCHIVE";
+
+    if (!isImportedUserEntry) {
+      kept.push(entry);
+      continue;
+    }
+
+    const relevance = classifyImportHumanRelevance(entry.content);
+    if (relevance.eligible) {
+      acceptedCount += 1;
+      kept.push(entry);
+      continue;
+    }
+
+    rejectedCount += 1;
+    rejected.push({ entry, reasons: relevance.reasons });
+    for (const reason of relevance.reasons) {
+      rejectionReasonCounts[reason] = (rejectionReasonCounts[reason] ?? 0) + 1;
+    }
+  }
+
+  return {
+    entries: kept,
+    acceptedCount,
+    rejectedCount,
+    rejectionReasonCounts,
+    rejected,
+  };
+}
 
 /**
  * V1 implementation of PatternDetector.
@@ -57,7 +115,17 @@ export const patternDetectorV1: PatternDetector = async ({
   // Synthesize normalized history for rule-based detectors.
   // Includes chat messages and journal entries as source-aware units.
   // contradiction_drift reads ContradictionNode directly, not history text.
-  const entries = await synthesizeHistory({ userId, db });
+  const historyEntries = await synthesizeHistory({ userId, db });
+  const importedPatternRelevance = applyImportedPatternRelevanceBoundary({
+    entries: historyEntries,
+  });
+  const entries = importedPatternRelevance.entries;
+  debugCollector?.recordImportedPatternRelevance({
+    acceptedCount: importedPatternRelevance.acceptedCount,
+    rejectedCount: importedPatternRelevance.rejectedCount,
+    rejectionReasonCounts: importedPatternRelevance.rejectionReasonCounts,
+    rejected: importedPatternRelevance.rejected,
+  });
 
   // Phase 1: behavioral filter — produce a stream of exclusively eligible,
   // user-authored behavioral messages. Non-user messages and non-behavioral
