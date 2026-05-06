@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   ImportChatGptError,
+  IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP,
   ImportRefCache,
+  applyImportedContradictionFanoutGuard,
   MAX_IMPORT_FILE_BYTES,
   classifyImportHumanRelevance,
   classifyImportedContradictionPair,
@@ -303,6 +305,95 @@ describe("classifyImportedContradictionPair", () => {
 
     expect(result.eligible).toBe(true);
     expect(result.reasons).toEqual([]);
+  });
+});
+
+describe("applyImportedContradictionFanoutGuard", () => {
+  const mkDetection = (sideA: string, sideB: string) => ({
+    title: "Constraint conflict",
+    sideA,
+    sideB,
+    type: "constraint_conflict" as const,
+    confidence: "low" as const,
+  });
+
+  it("caps repeated sideA anchors", () => {
+    const detections = [
+      mkDetection("I must protect calm and coherence.", "I want honesty, but I avoid conflict."),
+      mkDetection("I must protect calm and coherence.", "I value independence, but I keep seeking approval."),
+      mkDetection("I must protect calm and coherence.", "I want to simplify my life, but I keep adding more systems."),
+      mkDetection("I must protect calm and coherence.", "I want coherence, but I change direction whenever I feel uncertain."),
+      mkDetection("I must protect calm and coherence.", "I want consistency, but I keep switching plans when anxious."),
+    ];
+
+    const result = applyImportedContradictionFanoutGuard({
+      detections,
+      sideAUsage: new Map(),
+      sideBUsage: new Map(),
+    });
+
+    expect(result.accepted).toHaveLength(IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP);
+    expect(result.rejected).toHaveLength(2);
+    for (const rejected of result.rejected) {
+      expect(rejected.reasons).toContain("contradiction_repeated_side_a");
+    }
+  });
+
+  it("caps repeated sideB anchors", () => {
+    const detections = [
+      mkDetection("I must protect calm and coherence.", "I want honesty, but I avoid conflict."),
+      mkDetection("I must protect independence.", "I want honesty, but I avoid conflict."),
+      mkDetection("I must protect simplicity.", "I want honesty, but I avoid conflict."),
+      mkDetection("I must protect trust.", "I want honesty, but I avoid conflict."),
+      mkDetection("I must protect focus.", "I want honesty, but I avoid conflict."),
+    ];
+
+    const result = applyImportedContradictionFanoutGuard({
+      detections,
+      sideAUsage: new Map(),
+      sideBUsage: new Map(),
+    });
+
+    expect(result.accepted).toHaveLength(IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP);
+    expect(result.rejected).toHaveLength(2);
+    for (const rejected of result.rejected) {
+      expect(rejected.reasons).toContain("contradiction_repeated_side_b");
+    }
+  });
+
+  it("allows first few repeated anchors up to cap", () => {
+    const detections = [
+      mkDetection("I must protect calm and coherence.", "I want honesty, but I avoid conflict."),
+      mkDetection("I must protect calm and coherence.", "I value independence, but I keep seeking approval."),
+      mkDetection("I must protect calm and coherence.", "I want to simplify my life, but I keep adding more systems."),
+    ];
+
+    const result = applyImportedContradictionFanoutGuard({
+      detections,
+      sideAUsage: new Map(),
+      sideBUsage: new Map(),
+    });
+
+    expect(result.accepted).toHaveLength(IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP);
+    expect(result.rejected).toHaveLength(0);
+  });
+
+  it("does not reject unique valid contradiction pairs", () => {
+    const detections = [
+      mkDetection("I must protect calm and coherence.", "I want honesty, but I avoid conflict."),
+      mkDetection("I must protect independence.", "I value independence, but I keep seeking approval."),
+      mkDetection("I must protect simplicity.", "I want to simplify my life, but I keep adding more systems."),
+      mkDetection("I must protect coherence.", "I want coherence, but I change direction whenever I feel uncertain."),
+    ];
+
+    const result = applyImportedContradictionFanoutGuard({
+      detections,
+      sideAUsage: new Map(),
+      sideBUsage: new Map(),
+    });
+
+    expect(result.accepted).toHaveLength(4);
+    expect(result.rejected).toHaveLength(0);
   });
 });
 

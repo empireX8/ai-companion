@@ -300,6 +300,18 @@ export type ImportedContradictionPairAssessment = {
   reasons: ImportedContradictionRejectionReason[];
 };
 
+export type ImportedContradictionFanoutRejectionReason =
+  | "contradiction_repeated_side_a"
+  | "contradiction_repeated_side_b";
+
+export type ImportedContradictionFanoutResult = {
+  accepted: DetectedContradiction[];
+  rejected: Array<{
+    detection: DetectedContradiction;
+    reasons: ImportedContradictionFanoutRejectionReason[];
+  }>;
+};
+
 const FIRST_PERSON_PATTERN = /\b(?:i|me|my|myself)\b/i;
 const DURABLE_HUMAN_SIGNAL_PATTERNS = [
   /\b(?:i\s+feel\b|i\s+get\s+(?:frustrated|reactive|anxious|overwhelmed|stressed|upset|angry|sad)|i\s+lose\s+trust\b|i\s+value\b|important\s+to\s+me\b|matters\s+to\s+me\b|i\s+care\s+about\b|i\s+keep\s+\w+ing\b|i\s+tend\s+to\b|i\s+overcomplicat\w*\b|i\s+struggle\s+to\b|i\s+want\s+(?:the\s+)?(?:app|mindlab)\b.*\b(?:reveal|pattern|coherence|truth|insight|understand)\w*)/i,
@@ -363,6 +375,7 @@ const CONTRADICTION_TECHNICAL_DOMAIN_PATTERN =
   /\b(?:stripe|telegram|mvp|payment|checkout|webhook|api|endpoint|route|routing|form[-\s]?submit|vector\s+store|retriever|setup|config|deploy|build|repo|codex|debug|implementation|migration|prisma)\b/i;
 const PASTED_PLAN_SECTION_PATTERN =
   /(?:^|\n)\s*(?:context|goal|scope|constraints|implementation requirements|required tests|required final output|acceptance criteria|steps?)\s*:/im;
+export const IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP = 3;
 
 const IMPORT_RELEVANCE_TECHNICAL_REASONS = new Set<ImportHumanRelevanceReason>([
   "technical_or_terminal_noise",
@@ -636,6 +649,55 @@ export function classifyImportedContradictionPair(
   }
 
   return { eligible: true, reasons: [] };
+}
+
+function normalizeContradictionSideAnchor(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function applyImportedContradictionFanoutGuard({
+  detections,
+  sideAUsage,
+  sideBUsage,
+  cap = IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP,
+}: {
+  detections: DetectedContradiction[];
+  sideAUsage: Map<string, number>;
+  sideBUsage: Map<string, number>;
+  cap?: number;
+}): ImportedContradictionFanoutResult {
+  const accepted: DetectedContradiction[] = [];
+  const rejected: ImportedContradictionFanoutResult["rejected"] = [];
+
+  for (const detection of detections) {
+    const sideAKey = normalizeContradictionSideAnchor(detection.sideA);
+    const sideBKey = normalizeContradictionSideAnchor(detection.sideB);
+    const sideACount = sideAUsage.get(sideAKey) ?? 0;
+    const sideBCount = sideBUsage.get(sideBKey) ?? 0;
+
+    const reasons: ImportedContradictionFanoutRejectionReason[] = [];
+    if (sideACount >= cap) {
+      reasons.push("contradiction_repeated_side_a");
+    }
+    if (sideBCount >= cap) {
+      reasons.push("contradiction_repeated_side_b");
+    }
+
+    if (reasons.length > 0) {
+      rejected.push({ detection, reasons });
+      continue;
+    }
+
+    accepted.push(detection);
+    sideAUsage.set(sideAKey, sideACount + 1);
+    sideBUsage.set(sideBKey, sideBCount + 1);
+  }
+
+  return { accepted, rejected };
 }
 
 const getConversationCandidates = (raw: unknown): unknown[] => {
@@ -994,6 +1056,8 @@ export async function importExtractedConversations({
   let contradictionsCreated = 0;
   const errors: string[] = [];
   const refCache: ImportRefCache = new Map();
+  const contradictionSideAUsage = new Map<string, number>();
+  const contradictionSideBUsage = new Map<string, number>();
 
   for (const [conversationIndex, conversation] of conversations.entries()) {
     try {
@@ -1209,9 +1273,36 @@ export async function importExtractedConversations({
             continue;
           }
 
+          const fanoutFiltered = applyImportedContradictionFanoutGuard({
+            detections: filteredDetections,
+            sideAUsage: contradictionSideAUsage,
+            sideBUsage: contradictionSideBUsage,
+          });
+          if (fanoutFiltered.rejected.length > 0 && diagnostics) {
+            incrementReasonCodeCount(
+              diagnostics,
+              "imported_contradiction_fanout_rejected",
+              fanoutFiltered.rejected.length
+            );
+            for (const rejected of fanoutFiltered.rejected) {
+              for (const reason of rejected.reasons) {
+                incrementReasonCodeCount(diagnostics, reason);
+              }
+              pushDiagnosticSample(diagnostics, "rejected", {
+                reason: "imported_contradiction_fanout_rejected",
+                snippet: `${rejected.detection.sideA} || ${rejected.detection.sideB}`,
+                sessionId: created.sessionId,
+                messageId: importedMessage.id,
+              });
+            }
+          }
+          if (fanoutFiltered.accepted.length === 0) {
+            continue;
+          }
+
           // Derivation scaffolding: store contradiction candidate artifacts.
           if (derivationRunId !== null) {
-            for (const detection of filteredDetections.slice(0, 2)) {
+            for (const detection of fanoutFiltered.accepted.slice(0, 2)) {
               try {
                 await createDerivationArtifact(
                   {
@@ -1237,7 +1328,7 @@ export async function importExtractedConversations({
 
           const materialized = await materializeContradictions({
             userId,
-            detections: filteredDetections,
+            detections: fanoutFiltered.accepted,
             sessionId: created.sessionId,
             messageId: importedMessage.id,
             quote: importedMessage.content,

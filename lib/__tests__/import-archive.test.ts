@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP,
   extractChatGptConversations,
   importExtractedConversations,
   type ExtractedConversation,
@@ -576,5 +577,229 @@ describe("importExtractedConversations — import relevance gate", () => {
       (diagnostics.reasonCodeCounts.imported_contradiction_rejected ?? 0) +
         (diagnostics.reasonCodeCounts.import_human_relevance_rejected ?? 0)
     ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("caps repeated sideA anchors and records fanout diagnostics", async () => {
+    let messageCounter = 0;
+    const referenceRows: Array<{
+      id: string;
+      userId: string;
+      type: string;
+      statement: string;
+      status: string;
+      confidence: string;
+      updatedAt: Date;
+    }> = [];
+    const contradictionNodes: Array<{
+      id: string;
+      userId: string;
+      title: string;
+      sideA: string;
+      sideB: string;
+      type: string;
+      status: string;
+      evidenceCount: number;
+      lastEvidenceAt: Date;
+      lastTouchedAt: Date;
+    }> = [];
+    const contradictionEvidenceRows: Array<{
+      nodeId: string;
+      sessionId: string | null;
+      messageId: string | null;
+      quote: string | null;
+    }> = [];
+
+    const tx = {
+      session: {
+        findUnique: async () => null,
+        create: async () => ({ id: "session_4" }),
+      },
+      message: {
+        create: async ({ data }: { data: { role: string; content: string } }) => {
+          messageCounter += 1;
+          return {
+            id: `msg_f_${messageCounter}`,
+            role: data.role,
+            content: data.content,
+          };
+        },
+      },
+      contradictionNode: {
+        findFirst: async ({ where }: { where: Record<string, unknown> }) => {
+          if (typeof where.id === "string") {
+            const byId = contradictionNodes.find((node) => node.id === where.id);
+            if (!byId) return null;
+            if (where.userId && byId.userId !== where.userId) return null;
+            if (where.status && typeof where.status === "object") {
+              const statusIn = (where.status as { in?: string[] }).in ?? [];
+              if (statusIn.length > 0 && !statusIn.includes(byId.status)) return null;
+            }
+            return { id: byId.id, status: byId.status };
+          }
+
+          const match = contradictionNodes.find(
+            (node) =>
+              node.userId === where.userId &&
+              node.title === where.title &&
+              node.sideA === where.sideA &&
+              node.sideB === where.sideB &&
+              node.type === where.type
+          );
+          if (!match) return null;
+          return { id: match.id, status: match.status };
+        },
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          const created = {
+            id: `node_${contradictionNodes.length + 1}`,
+            userId: data.userId as string,
+            title: data.title as string,
+            sideA: data.sideA as string,
+            sideB: data.sideB as string,
+            type: data.type as string,
+            status: data.status as string,
+            evidenceCount: (data.evidenceCount as number) ?? 1,
+            lastEvidenceAt: (data.lastEvidenceAt as Date) ?? new Date(),
+            lastTouchedAt: (data.lastTouchedAt as Date) ?? new Date(),
+          };
+          contradictionNodes.push(created);
+          return { id: created.id };
+        },
+        update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+          const node = contradictionNodes.find((entry) => entry.id === where.id);
+          if (!node) return null;
+          if (data.evidenceCount && typeof data.evidenceCount === "object") {
+            const increment = (data.evidenceCount as { increment?: number }).increment ?? 0;
+            node.evidenceCount += increment;
+          }
+          if (data.lastEvidenceAt instanceof Date) {
+            node.lastEvidenceAt = data.lastEvidenceAt;
+          }
+          if (data.lastTouchedAt instanceof Date) {
+            node.lastTouchedAt = data.lastTouchedAt;
+          }
+          return node;
+        },
+      },
+      contradictionEvidence: {
+        findFirst: async ({ where }: { where: { nodeId?: string; messageId?: string | null; sessionId?: string | null; quote?: string | null } }) => {
+          return (
+            contradictionEvidenceRows.find((row) => {
+              if (where.nodeId && row.nodeId !== where.nodeId) return false;
+              if ("messageId" in where && where.messageId !== undefined) {
+                if (row.messageId !== where.messageId) return false;
+              }
+              if ("sessionId" in where && where.sessionId !== undefined) {
+                if (row.sessionId !== where.sessionId) return false;
+              }
+              if ("quote" in where && where.quote !== undefined) {
+                if (row.quote !== where.quote) return false;
+              }
+              return true;
+            }) ?? null
+          );
+        },
+        create: async ({ data }: { data: { nodeId: string; sessionId: string | null; messageId: string | null; quote: string | null } }) => {
+          contradictionEvidenceRows.push(data);
+          return data;
+        },
+      },
+    };
+
+    const db = {
+      $transaction: async (input: unknown) => {
+        if (typeof input === "function") {
+          return (input as (arg: typeof tx) => Promise<unknown>)(tx);
+        }
+        return Promise.resolve([]);
+      },
+      referenceItem: {
+        findMany: async ({
+          where,
+        }: {
+          where?: { userId?: string; type?: string | { in?: string[] }; status?: { in?: string[] } };
+        }) => {
+          return referenceRows.filter((row) => {
+            if (where?.userId && row.userId !== where.userId) return false;
+            if (typeof where?.type === "string" && row.type !== where.type) return false;
+            if (typeof where?.type === "object" && Array.isArray(where.type?.in)) {
+              if (!where.type.in.includes(row.type)) return false;
+            }
+            if (where?.status?.in && !where.status.in.includes(row.status)) return false;
+            return true;
+          }).map((row) => ({
+            id: row.id,
+            type: row.type,
+            statement: row.statement,
+            updatedAt: row.updatedAt,
+            confidence: row.confidence,
+            status: row.status,
+          }));
+        },
+        create: async ({ data }: { data: { userId: string; type: string; statement: string; status: string; confidence: string } }) => {
+          referenceRows.push({
+            id: `ref_${referenceRows.length + 1}`,
+            userId: data.userId,
+            type: data.type,
+            statement: data.statement,
+            status: data.status,
+            confidence: data.confidence,
+            updatedAt: new Date(),
+          });
+          return data;
+        },
+      },
+      contradictionNode: {
+        findMany: async () => [],
+      },
+      derivationRun: {
+        create: async () => ({ id: "run_4" }),
+        update: async () => ({}),
+      },
+      evidenceSpan: {
+        findUnique: async () => null,
+        create: async () => ({ id: "span_4" }),
+      },
+      derivationArtifact: {
+        create: async () => ({}),
+      },
+      artifactEvidenceLink: {
+        create: async () => ({}),
+      },
+      profileArtifact: {
+        findUnique: async () => null,
+        create: async () => ({ id: "artifact_4" }),
+        update: async () => ({}),
+      },
+      profileArtifactEvidenceLink: {
+        create: async () => ({}),
+      },
+    } as unknown as PrismaClient;
+
+    const diagnostics = createEmptyImportRunDiagnostics();
+    const result = await importExtractedConversations({
+      userId: "user_1",
+      conversations: [
+        {
+          title: "fanout repetition",
+          externalId: "conv-fanout-1",
+          messages: [
+            { role: "user", content: "I must protect calm and coherence.", createdAt: null },
+            { role: "user", content: "I want honesty, but I avoid conflict.", createdAt: null },
+            { role: "user", content: "I value independence, but I keep seeking approval.", createdAt: null },
+            { role: "user", content: "I want to simplify my life, but I keep adding more systems.", createdAt: null },
+            { role: "user", content: "I want coherence, but I change direction whenever I feel uncertain.", createdAt: null },
+            { role: "user", content: "I want consistency, but I keep switching plans when anxious.", createdAt: null },
+          ],
+        },
+      ],
+      db,
+      diagnostics,
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.contradictionsCreated).toBe(IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP);
+    expect(contradictionNodes).toHaveLength(IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP);
+    expect(diagnostics.reasonCodeCounts.imported_contradiction_fanout_rejected).toBe(2);
+    expect(diagnostics.reasonCodeCounts.contradiction_repeated_side_a).toBe(2);
   });
 });
