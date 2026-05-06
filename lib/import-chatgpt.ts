@@ -270,6 +270,113 @@ export function parseConversationForImport(
   return parseConversation(rawConversation, index);
 }
 
+export type ImportHumanRelevanceReason =
+  | "import_human_relevance_accepted"
+  | "technical_or_terminal_noise"
+  | "code_or_stacktrace_noise"
+  | "project_handoff_noise";
+
+export type ImportHumanRelevanceResult = {
+  eligible: boolean;
+  reasons: ImportHumanRelevanceReason[];
+};
+
+const FIRST_PERSON_PATTERN = /\b(?:i|me|my|myself)\b/i;
+const DURABLE_HUMAN_SIGNAL_PATTERN =
+  /\b(?:i\s+feel\b|i\s+get\s+(?:frustrated|reactive|anxious|overwhelmed|stressed|upset|angry|sad)|i\s+lose\s+trust\b|i\s+value\b|important\s+to\s+me\b|matters\s+to\s+me\b|i\s+care\s+about\b|i\s+keep\s+\w+ing\b|i\s+tend\s+to\b|i\s+overcomplicat\w*\b|i\s+struggle\s+to\b|i\s+want\s+(?:the\s+)?(?:app|mindlab)\b.*\b(?:reveal|pattern|coherence|truth|insight|understand)\w*)/i;
+
+const TERMINAL_OR_TECHNICAL_PATTERNS = [
+  /(?:^|\n)\s*(?:\w+@[\w.-]+(?:[:~][^\n]*)?[$%#]|[$%#])\s*(?:pip3?|python3?|npm|npx|pnpm|yarn|git|docker|kubectl|brew|uv|poetry)\b/im,
+  /\b(?:pip3?\s+install|npm\s+install|npx\s+\w+|pnpm\s+\w+|yarn\s+(?:add|install|run)|brew\s+install)\b/i,
+  /(?:^|\n)\s*(?:collecting|installing|requirement already satisfied|successfully installed|added \d+ packages|audited \d+ packages|error:\s+command failed)\b/im,
+  /\b(?:telegram|polling|getupdates|webhook|offset=\d+|status code\s*\d{3}|response payload|request id)\b/i,
+  /\b(?:azure|msal|oauth|token|redirect_uri|callback|sign[- ]out|logout)\b/i,
+] as const;
+
+const CODE_OR_STACKTRACE_PATTERNS = [
+  /```/,
+  /\b(?:traceback \(most recent call last\)|typeerror|syntaxerror|referenceerror|prismaclient\w*error)\b/i,
+  /(?:^|\n)\s*at\s+\S+/m,
+  /(?:^|\n)\s*file\s+"[^"]+",\s+line\s+\d+/im,
+  /\b(?:import\s+\{?|export\s+(?:default|const|function|class)|const\s+\w+\s*=|let\s+\w+\s*=|function\s+\w+\s*\(|class\s+\w+|interface\s+\w+|type\s+\w+\s*=|return\s+<|<nav\b|<\/nav>)\b/i,
+  /(?:^|\n)\s*(?:src|app|lib|components|pages|api|prisma|node_modules)\/[^\s]+/m,
+] as const;
+
+const PROJECT_HANDOFF_SECTION_PATTERN =
+  /(?:^|\n)\s*(?:context|goal|scope|constraints|implementation requirements|required tests|required final output|do not change|verification commands)\s*:/im;
+const PROJECT_HANDOFF_INSTRUCTION_PATTERN =
+  /\b(?:step\s+\d+[a-z]?\b|required tests?\b|required final output\b|verification commands\b|do not change\b)\b/i;
+const PROJECT_HANDOFF_DIRECTIVE_PATTERN =
+  /^(?:you are|act as|implement|build|fix|add|update|refactor|debug|ship)\b/i;
+const PROJECT_ENGINEERING_TOKENS_PATTERN =
+  /\b(?:typescript|javascript|tsx?|python|prisma|next(?:\.js)?|vite|api|schema|migration|repository|repo|pull request|commit|branch|frontend|backend|database|terminal|debug|build|deploy)\b/i;
+
+function isSourceCodeHeavy(text: string) {
+  const lines = text.split("\n");
+  const codeLikeLines = lines.filter((line) =>
+    /[{}\[\];<>=]/.test(line) &&
+    /\b(?:const|let|var|function|import|export|return|class|interface|type|if|for|while|async|await|<\w+)/i.test(
+      line
+    )
+  ).length;
+
+  if (codeLikeLines >= 2) {
+    return true;
+  }
+
+  const symbolCount = (text.match(/[{}[\];<>]/g) ?? []).length;
+  return symbolCount >= 20 && symbolCount / Math.max(text.length, 1) >= 0.07;
+}
+
+export function classifyImportHumanRelevance(content: string): ImportHumanRelevanceResult {
+  const normalized = content.replace(/\r\n/g, "\n").trim();
+  const hasFirstPerson = FIRST_PERSON_PATTERN.test(normalized);
+  const hasDurableHumanSignal =
+    hasFirstPerson && DURABLE_HUMAN_SIGNAL_PATTERN.test(normalized);
+
+  const technicalOrTerminalNoise = TERMINAL_OR_TECHNICAL_PATTERNS.some((pattern) =>
+    pattern.test(normalized)
+  );
+  const codeOrStacktraceNoise =
+    CODE_OR_STACKTRACE_PATTERNS.some((pattern) => pattern.test(normalized)) ||
+    isSourceCodeHeavy(normalized);
+  const projectHandoffNoise =
+    (PROJECT_HANDOFF_SECTION_PATTERN.test(normalized) ||
+      PROJECT_HANDOFF_INSTRUCTION_PATTERN.test(normalized) ||
+      PROJECT_HANDOFF_DIRECTIVE_PATTERN.test(normalized)) &&
+    PROJECT_ENGINEERING_TOKENS_PATTERN.test(normalized);
+
+  if (hasDurableHumanSignal && !technicalOrTerminalNoise && !codeOrStacktraceNoise) {
+    return {
+      eligible: true,
+      reasons: ["import_human_relevance_accepted"],
+    };
+  }
+
+  const rejectionReasons: ImportHumanRelevanceReason[] = [];
+  if (technicalOrTerminalNoise) {
+    rejectionReasons.push("technical_or_terminal_noise");
+  }
+  if (codeOrStacktraceNoise) {
+    rejectionReasons.push("code_or_stacktrace_noise");
+  }
+  if (projectHandoffNoise) {
+    rejectionReasons.push("project_handoff_noise");
+  }
+
+  if (rejectionReasons.length > 0) {
+    return {
+      eligible: false,
+      reasons: rejectionReasons,
+    };
+  }
+
+  return {
+    eligible: true,
+    reasons: ["import_human_relevance_accepted"],
+  };
+}
+
 const getConversationCandidates = (raw: unknown): unknown[] => {
   if (Array.isArray(raw)) {
     return raw;
@@ -726,7 +833,31 @@ export async function importExtractedConversations({
       }
 
       for (const importedMessage of created.userMessagesForDetection) {
+        const relevance = classifyImportHumanRelevance(importedMessage.content);
+        if (!relevance.eligible) {
+          if (diagnostics) {
+            incrementReasonCodeCount(diagnostics, "import_human_relevance_rejected");
+            for (const reason of relevance.reasons) {
+              incrementReasonCodeCount(diagnostics, reason);
+            }
+            pushDiagnosticSample(diagnostics, "rejected", {
+              reason: "import_human_relevance_rejected",
+              snippet: importedMessage.content,
+              sessionId: created.sessionId,
+              messageId: importedMessage.id,
+            });
+          }
+          continue;
+        }
+
         if (diagnostics) {
+          incrementReasonCodeCount(diagnostics, "import_human_relevance_accepted");
+          pushDiagnosticSample(diagnostics, "accepted", {
+            reason: "import_human_relevance_accepted",
+            snippet: importedMessage.content,
+            sessionId: created.sessionId,
+            messageId: importedMessage.id,
+          });
           diagnostics.candidateMessagesConsideredForReferenceExtraction += 1;
         }
         // Profile derivation: create EvidenceSpan + extract claims (runs independently of

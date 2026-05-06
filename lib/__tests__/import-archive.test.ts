@@ -6,6 +6,7 @@ import {
   importExtractedConversations,
   type ExtractedConversation,
 } from "../import-chatgpt";
+import { createEmptyImportRunDiagnostics } from "../import-diagnostics";
 
 // ── extractChatGptConversations — externalId capture ─────────────────────────
 
@@ -249,5 +250,100 @@ describe("importExtractedConversations — importedSource", () => {
     expect(importedAt).toBeInstanceOf(Date);
     expect(importedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
     expect(importedAt.getTime()).toBeLessThanOrEqual(after.getTime());
+  });
+});
+
+describe("importExtractedConversations — import relevance gate", () => {
+  it("skips profile/reference/contradiction extraction for technical import noise", async () => {
+    let messageCounter = 0;
+    const evidenceSpanFindUnique = vi.fn(async () => null);
+    const evidenceSpanCreate = vi.fn(async () => ({ id: "span_1" }));
+    const referenceFindMany = vi.fn(async () => []);
+    const referenceCreate = vi.fn(async () => ({}));
+    const contradictionFindMany = vi.fn(async () => []);
+
+    const tx = {
+      session: {
+        findUnique: async () => null,
+        create: async () => ({ id: "session_1" }),
+      },
+      message: {
+        create: async ({ data }: { data: { role: string; content: string } }) => {
+          messageCounter += 1;
+          return {
+            id: `msg_${messageCounter}`,
+            role: data.role,
+            content: data.content,
+          };
+        },
+      },
+    };
+
+    const db = {
+      $transaction: async (fn: (input: typeof tx) => Promise<unknown>) => fn(tx),
+      referenceItem: {
+        findMany: referenceFindMany,
+        create: referenceCreate,
+      },
+      contradictionNode: {
+        findMany: contradictionFindMany,
+      },
+      derivationRun: {
+        create: async () => ({ id: "run_1" }),
+        update: async () => ({}),
+      },
+      evidenceSpan: {
+        findUnique: evidenceSpanFindUnique,
+        create: evidenceSpanCreate,
+      },
+      derivationArtifact: {
+        create: async () => ({}),
+      },
+      artifactEvidenceLink: {
+        create: async () => ({}),
+      },
+      profileArtifact: {
+        findUnique: async () => null,
+        create: async () => ({ id: "artifact_1" }),
+        update: async () => ({}),
+      },
+      profileArtifactEvidenceLink: {
+        create: async () => ({}),
+      },
+    } as unknown as PrismaClient;
+
+    const diagnostics = createEmptyImportRunDiagnostics();
+    const result = await importExtractedConversations({
+      userId: "user_1",
+      conversations: [
+        {
+          title: "technical logs",
+          externalId: "conv-tech-1",
+          messages: [
+            {
+              role: "user",
+              content:
+                "user@macbook ~ % pip3 install openai requests python-dotenv\nCollecting openai\nCollecting requests",
+              createdAt: null,
+            },
+          ],
+        },
+      ],
+      db,
+      diagnostics,
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.sessionsCreated).toBe(1);
+    expect(result.messagesCreated).toBe(1);
+    expect(diagnostics.reasonCodeCounts.import_human_relevance_rejected).toBe(1);
+    expect(diagnostics.reasonCodeCounts.technical_or_terminal_noise).toBe(1);
+    expect(diagnostics.candidateMessagesConsideredForReferenceExtraction).toBe(0);
+    expect(diagnostics.contradictionDetectionAttemptedCount).toBe(0);
+    expect(evidenceSpanFindUnique).not.toHaveBeenCalled();
+    expect(evidenceSpanCreate).not.toHaveBeenCalled();
+    expect(referenceFindMany).not.toHaveBeenCalled();
+    expect(referenceCreate).not.toHaveBeenCalled();
+    expect(contradictionFindMany).not.toHaveBeenCalled();
   });
 });

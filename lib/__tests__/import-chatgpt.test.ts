@@ -5,6 +5,7 @@ import {
   ImportChatGptError,
   ImportRefCache,
   MAX_IMPORT_FILE_BYTES,
+  classifyImportHumanRelevance,
   extractChatGptConversations,
   extractReferenceFromImportedMessage,
   importChatGptExport,
@@ -50,6 +51,80 @@ describe("import-chatgpt extraction", () => {
     const result = extractChatGptConversations([{}, ...SAMPLE_EXPORT]);
     expect(result.conversations).toHaveLength(1);
     expect(result.errors[0]).toContain("Conversation 1");
+  });
+});
+
+describe("classifyImportHumanRelevance", () => {
+  it("rejects terminal install output", () => {
+    const result = classifyImportHumanRelevance(
+      "user@macbook ~ % pip3 install openai requests python-dotenv\nCollecting openai"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("technical_or_terminal_noise");
+  });
+
+  it("rejects Telegram polling/API log output", () => {
+    const result = classifyImportHumanRelevance(
+      "[INFO] polling getUpdates offset=99331\nTelegram bot API response payload: {\"ok\":true,\"result\":[]}"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("technical_or_terminal_noise");
+  });
+
+  it("rejects source-code-heavy navbar snippets", () => {
+    const result = classifyImportHumanRelevance(
+      "const Navbar = () => {\n  return <nav className=\"w-full p-4\">Home</nav>;\n};\nexport default Navbar;"
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("code_or_stacktrace_noise");
+  });
+
+  it("rejects Azure sign-out debug-only messages", () => {
+    const result = classifyImportHumanRelevance(
+      "Azure sign-out redirect failed with status code 500. DEBUG: msal callback token mismatch."
+    );
+
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("technical_or_terminal_noise");
+  });
+
+  it("accepts emotional self-disclosure", () => {
+    const result = classifyImportHumanRelevance(
+      "I get frustrated when instructions are unclear and I spiral into overthinking."
+    );
+
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual(["import_human_relevance_accepted"]);
+  });
+
+  it("accepts interpersonal/identity reflection", () => {
+    const result = classifyImportHumanRelevance(
+      "I feel reactive when socializing and I keep second-guessing myself afterwards."
+    );
+
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual(["import_human_relevance_accepted"]);
+  });
+
+  it("accepts project-related statements with psychological self-understanding", () => {
+    const result = classifyImportHumanRelevance(
+      "I keep overcomplicating projects when I feel uncertain."
+    );
+
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual(["import_human_relevance_accepted"]);
+  });
+
+  it("accepts MindLab thesis/value statements", () => {
+    const result = classifyImportHumanRelevance(
+      "I want the app to reveal patterns, not productivity tasks."
+    );
+
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual(["import_human_relevance_accepted"]);
   });
 });
 

@@ -7,6 +7,11 @@ type UnavailableWithoutRefactor = typeof IMPORT_DIAGNOSTICS_UNAVAILABLE;
 export type ImportDiagnosticReasonCode =
   | "too_short"
   | "non_user_role"
+  | "import_human_relevance_rejected"
+  | "import_human_relevance_accepted"
+  | "technical_or_terminal_noise"
+  | "code_or_stacktrace_noise"
+  | "project_handoff_noise"
   | "question_like"
   | "assistant_directed"
   | "no_behavioral_signal"
