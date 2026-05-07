@@ -56,6 +56,18 @@ export type PatternRerunTouchedClaimSummary = {
   supportContainerSpread: number;
 };
 
+export type PatternRerunDebugImportedSupportEvidenceSample = {
+  reasons: string[];
+  snippet: string;
+  quote: string;
+  score: number;
+  messageId: string | null;
+  sessionId: string | null;
+  origin: PatternRerunDebugBehavioralOrigin;
+  sourceClass: PatternRerunDebugSourceClass;
+  createdAt: string;
+};
+
 export type PatternRerunDebugDiagnostics = {
   historyEntryCount: number;
   messageEntryCount: number;
@@ -64,6 +76,10 @@ export type PatternRerunDebugDiagnostics = {
   importedPatternRelevanceRejectedCount: number;
   importedPatternRelevanceRejectionReasonCounts: Record<string, number>;
   importedPatternRelevanceRejectedSamples: PatternRerunDebugRejectSample[];
+  importedSupportEntriesAcceptedForEvidenceQuality: number;
+  importedSupportEntriesRejectedForEvidenceQuality: number;
+  importedSupportEntriesEvidenceQualityRejectionReasonCounts: Record<string, number>;
+  importedSupportEntriesEvidenceQualityRejectedSamples: PatternRerunDebugImportedSupportEvidenceSample[];
   userEntryCount: number;
   behavioralEntryCount: number;
   rejectedEntryCount: number;
@@ -111,6 +127,25 @@ export type PatternRerunDebugCollector = {
     rejectedCount: number;
     rejectionReasonCounts: Record<string, number>;
     rejected: Array<{ entry: NormalizedHistoryEntry; reasons: string[] }>;
+  }) => void;
+  recordImportedSupportEntryEvidenceQuality?: (input: {
+    acceptedCount: number;
+    rejectedCount: number;
+    rejectionReasonCounts: Record<string, number>;
+    rejected: Array<{
+      entry: {
+        messageId: string | null;
+        sessionId: string | null;
+        sessionOrigin?: string | null;
+        sourceKind?: "chat_message" | "journal_entry";
+        journalEntryId?: string | null;
+        content: string;
+        timestamp: Date;
+      };
+      quote: string;
+      score: number;
+      reasons: string[];
+    }>;
   }) => void;
   recordDetectorInputCountsByFamily: (
     counts: Partial<Record<PatternTypeValue, number | null>>
@@ -224,6 +259,43 @@ function toRejectSample(entry: NormalizedHistoryEntry, reasons: string[]): Patte
   };
 }
 
+function toImportedSupportEvidenceSample(input: {
+  entry: {
+    messageId: string | null;
+    sessionId: string | null;
+    sessionOrigin?: string | null;
+    sourceKind?: "chat_message" | "journal_entry";
+    journalEntryId?: string | null;
+    content: string;
+    timestamp: Date;
+  };
+  quote: string;
+  score: number;
+  reasons: string[];
+}): PatternRerunDebugImportedSupportEvidenceSample {
+  const sourceKind =
+    input.entry.sourceKind ?? (input.entry.journalEntryId ? "journal_entry" : "chat_message");
+  const origin: PatternRerunDebugBehavioralOrigin =
+    sourceKind === "journal_entry"
+      ? "journal"
+      : input.entry.sessionOrigin === "IMPORTED_ARCHIVE"
+        ? "IMPORTED_ARCHIVE"
+        : input.entry.sessionOrigin === "APP"
+          ? "APP"
+          : "unknown";
+  return {
+    reasons: [...input.reasons],
+    snippet: truncateSnippet(input.entry.content),
+    quote: truncateSnippet(input.quote),
+    score: safePositiveInt(input.score),
+    messageId: input.entry.messageId ?? null,
+    sessionId: input.entry.sessionId ?? null,
+    origin,
+    sourceClass: toSourceClass(origin),
+    createdAt: input.entry.timestamp.toISOString(),
+  };
+}
+
 function buildRejectionSamplesByReason(
   entries: Array<{ entry: NormalizedHistoryEntry; reasons: string[] }>,
   sampleLimit = 4
@@ -316,6 +388,10 @@ export function createPatternRerunDebugCollector({
   let importedPatternRelevanceRejectedCount = 0;
   let importedPatternRelevanceRejectionReasonCounts: Record<string, number> = {};
   let importedPatternRelevanceRejectedSamples: PatternRerunDebugRejectSample[] = [];
+  let importedSupportEntriesAcceptedForEvidenceQuality = 0;
+  let importedSupportEntriesRejectedForEvidenceQuality = 0;
+  let importedSupportEntriesEvidenceQualityRejectionReasonCounts: Record<string, number> = {};
+  let importedSupportEntriesEvidenceQualityRejectedSamples: PatternRerunDebugImportedSupportEvidenceSample[] = [];
   let userEntryCount = 0;
   let behavioralEntryCount = 0;
   let rejectedEntryCount = 0;
@@ -425,6 +501,28 @@ export function createPatternRerunDebugCollector({
         .map((item) => toRejectSample(item.entry, item.reasons));
     },
 
+    recordImportedSupportEntryEvidenceQuality({
+      acceptedCount,
+      rejectedCount,
+      rejectionReasonCounts,
+      rejected,
+    }) {
+      importedSupportEntriesAcceptedForEvidenceQuality = safePositiveInt(acceptedCount);
+      importedSupportEntriesRejectedForEvidenceQuality = safePositiveInt(rejectedCount);
+
+      const nextReasonCounts: Record<string, number> = {};
+      for (const [reason, count] of Object.entries(rejectionReasonCounts)) {
+        const normalizedCount = safePositiveInt(count);
+        if (normalizedCount <= 0) continue;
+        nextReasonCounts[reason] = normalizedCount;
+      }
+      importedSupportEntriesEvidenceQualityRejectionReasonCounts = nextReasonCounts;
+
+      importedSupportEntriesEvidenceQualityRejectedSamples = rejected
+        .slice(0, 8)
+        .map((item) => toImportedSupportEvidenceSample(item));
+    },
+
     recordDetectorInputCountsByFamily(counts) {
       for (const family of PATTERN_TYPE_VALUES) {
         if (!(family in counts)) continue;
@@ -525,6 +623,10 @@ export function createPatternRerunDebugCollector({
         importedPatternRelevanceRejectedCount,
         importedPatternRelevanceRejectionReasonCounts,
         importedPatternRelevanceRejectedSamples,
+        importedSupportEntriesAcceptedForEvidenceQuality,
+        importedSupportEntriesRejectedForEvidenceQuality,
+        importedSupportEntriesEvidenceQualityRejectionReasonCounts,
+        importedSupportEntriesEvidenceQualityRejectedSamples,
         userEntryCount,
         behavioralEntryCount,
         rejectedEntryCount,

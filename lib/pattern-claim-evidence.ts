@@ -15,6 +15,11 @@ import type { PrismaClient } from "@prisma/client";
 
 import { analyzeBehavioralEligibility } from "./behavioral-filter";
 import type { HistorySourceKind } from "./history-synthesis";
+import {
+  MIN_QUOTE_SCORE,
+  scorePatternQuoteCandidate,
+  type QuoteRejectionReason,
+} from "./pattern-quote-selection";
 import type {
   PatternRerunDebugCollector,
   PatternRerunReceiptSourceKind,
@@ -135,6 +140,44 @@ export function extractQuote(content: string): string {
   return extractFallbackQuote(content);
 }
 
+export type PatternEvidenceQuoteQualityResult = {
+  quote: string;
+  accepted: boolean;
+  score: number;
+  reasons: QuoteRejectionReason[];
+};
+
+function quoteRejectionReasonsFromScore(score: ReturnType<typeof scorePatternQuoteCandidate>): QuoteRejectionReason[] {
+  const reasons: QuoteRejectionReason[] = [];
+  if (score.isRawSelfAttack) reasons.push("raw_self_attack");
+  if (score.isQuestion) reasons.push("question_like");
+  if (score.isAssistantDirected) reasons.push("assistant_directed");
+  if (score.isQuotedOrPasted) reasons.push("quoted_or_pasted");
+  if (score.isTooLong) reasons.push("too_long");
+  if (score.isTooShort) reasons.push("too_short");
+  if (score.isVague) reasons.push("vague_no_behavioral_signal");
+  if (score.score < MIN_QUOTE_SCORE && reasons.length === 0) {
+    reasons.push("below_score_threshold");
+  }
+  return reasons;
+}
+
+/**
+ * Score extracted evidence text against the same quality bar used by
+ * display-safe quote selection.
+ */
+export function assessPatternEvidenceQuoteQuality(content: string): PatternEvidenceQuoteQualityResult {
+  const quote = extractQuote(content);
+  const scored = scorePatternQuoteCandidate(quote);
+  const accepted = scored.score >= MIN_QUOTE_SCORE;
+  return {
+    quote,
+    accepted,
+    score: scored.score,
+    reasons: accepted ? [] : quoteRejectionReasonsFromScore(scored),
+  };
+}
+
 // ── Single receipt ────────────────────────────────────────────────────────────
 
 export type ReceiptInput = {
@@ -247,6 +290,8 @@ export type BulkReceiptEntry = {
   messageId?: string | null;
   sessionId?: string | null;
   journalEntryId?: string | null;
+  sessionOrigin?: string | null;
+  quote?: string;
   content: string;
   timestamp?: Date;
 };
@@ -278,7 +323,7 @@ export async function materializeReceiptsFromEntries({
       sourceKind === "chat_message" ? entry.messageId ?? undefined : undefined;
     const journalEntryId =
       sourceKind === "journal_entry" ? entry.journalEntryId ?? undefined : undefined;
-    const quote = extractQuote(entry.content);
+    const quote = entry.quote ?? extractQuote(entry.content);
     const result = await materializeReceipt({
       claimId,
       sessionId,

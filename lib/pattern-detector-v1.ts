@@ -22,8 +22,10 @@ import { synthesizeHistory, type NormalizedHistoryEntry } from "./history-synthe
 import { detectInnerCriticClues } from "./inner-critic-adapter";
 import { classifyImportHumanRelevance } from "./import-chatgpt";
 import {
+  assessPatternEvidenceQuoteQuality,
   materializeReceipt,
   materializeReceiptsFromEntries,
+  type BulkReceiptEntry,
 } from "./pattern-claim-evidence";
 import { patternClaimHooks } from "./pattern-claim-hooks";
 import {
@@ -44,6 +46,88 @@ export type ImportedPatternRelevanceFilterResult = {
   rejectionReasonCounts: Record<string, number>;
   rejected: Array<{ entry: NormalizedHistoryEntry; reasons: string[] }>;
 };
+
+type SupportEntry = NonNullable<PatternClue["supportEntries"]>[number];
+
+type ImportedSupportEvidenceFilterResult = {
+  entries: BulkReceiptEntry[];
+  acceptedCount: number;
+  rejectedCount: number;
+  rejectionReasonCounts: Record<string, number>;
+  rejected: Array<{
+    entry: SupportEntry;
+    quote: string;
+    score: number;
+    reasons: string[];
+  }>;
+};
+
+function resolveSupportEntrySourceKind(entry: SupportEntry): "chat_message" | "journal_entry" {
+  return entry.sourceKind ?? (entry.journalEntryId ? "journal_entry" : "chat_message");
+}
+
+/**
+ * Import-only pre-materialization quality boundary for support entries.
+ * Applies only to IMPORTED_ARCHIVE chat support entries; native APP and journal
+ * support entries retain existing behavior.
+ */
+export function applyImportedSupportEvidenceQualityBoundary({
+  entries,
+}: {
+  entries: SupportEntry[];
+}): ImportedSupportEvidenceFilterResult {
+  const kept: BulkReceiptEntry[] = [];
+  let acceptedCount = 0;
+  let rejectedCount = 0;
+  const rejectionReasonCounts: Record<string, number> = {};
+  const rejected: ImportedSupportEvidenceFilterResult["rejected"] = [];
+
+  for (const entry of entries) {
+    const sourceKind = resolveSupportEntrySourceKind(entry);
+    const isImportedChatSupport =
+      sourceKind === "chat_message" && entry.sessionOrigin === "IMPORTED_ARCHIVE";
+
+    if (!isImportedChatSupport) {
+      kept.push(entry);
+      continue;
+    }
+
+    const quality = assessPatternEvidenceQuoteQuality(entry.content);
+    const relevance = classifyImportHumanRelevance(quality.quote);
+    const relevanceRejections = relevance.reasons.filter(
+      (reason) => reason !== "import_human_relevance_accepted"
+    );
+    const reasons = Array.from(new Set([...quality.reasons, ...relevanceRejections]));
+
+    if (quality.accepted && relevanceRejections.length === 0) {
+      acceptedCount += 1;
+      kept.push({
+        ...entry,
+        quote: quality.quote,
+      });
+      continue;
+    }
+
+    rejectedCount += 1;
+    rejected.push({
+      entry,
+      quote: quality.quote,
+      score: quality.score,
+      reasons,
+    });
+    for (const reason of reasons) {
+      rejectionReasonCounts[reason] = (rejectionReasonCounts[reason] ?? 0) + 1;
+    }
+  }
+
+  return {
+    entries: kept,
+    acceptedCount,
+    rejectedCount,
+    rejectionReasonCounts,
+    rejected,
+  };
+}
 
 /**
  * Import-only precision boundary for pattern derivation input.
@@ -246,13 +330,22 @@ export async function materializeClueSupport({
 }): Promise<void> {
   if (clue.supportEntries && clue.supportEntries.length > 0) {
     debugCollector?.recordClueSupportEntries(clue.supportEntries);
+    const importedSupportEvidenceQuality = applyImportedSupportEvidenceQualityBoundary({
+      entries: clue.supportEntries,
+    });
+    debugCollector?.recordImportedSupportEntryEvidenceQuality?.({
+      acceptedCount: importedSupportEvidenceQuality.acceptedCount,
+      rejectedCount: importedSupportEvidenceQuality.rejectedCount,
+      rejectionReasonCounts: importedSupportEvidenceQuality.rejectionReasonCounts,
+      rejected: importedSupportEvidenceQuality.rejected,
+    });
     await materializeReceiptsFromEntries({
       claimId,
       // Persist the full support set, including the representative message.
       // The representative drives claim.summary; replay must be able to see its
       // extracted quote even when clue.quote points at a different display-safe
       // sentence.
-      entries: clue.supportEntries,
+      entries: importedSupportEvidenceQuality.entries,
       debugCollector,
       db,
     });

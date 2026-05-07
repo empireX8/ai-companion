@@ -101,6 +101,7 @@ export function buildRepetitiveLoopClueFromSessions(
       sessionId: cue.sessionId,
       messageId: cue.messageId,
       journalEntryId: cue.journalEntryId ?? null,
+      sessionOrigin: cue.sessionOrigin,
       timestamp: cue.createdAt,
       content: cue.content,
     })),

@@ -80,6 +80,29 @@ describe("createPatternRerunDebugCollector", () => {
         },
       ],
     });
+    collector.recordImportedSupportEntryEvidenceQuality?.({
+      acceptedCount: 1,
+      rejectedCount: 1,
+      rejectionReasonCounts: {
+        quoted_or_pasted: 1,
+      },
+      rejected: [
+        {
+          entry: {
+            sourceKind: "chat_message",
+            messageId: "import-noise-support-1",
+            sessionId: "import-session-2",
+            journalEntryId: null,
+            sessionOrigin: "IMPORTED_ARCHIVE",
+            content: "user@host % npx prisma migrate reset",
+            timestamp: new Date("2026-01-04T00:00:00.000Z"),
+          },
+          quote: "user@host % npx prisma migrate reset",
+          score: 0,
+          reasons: ["quoted_or_pasted"],
+        },
+      ],
+    });
 
     collector.recordClaimUpsert({
       claimId: "claim-new",
@@ -171,6 +194,19 @@ describe("createPatternRerunDebugCollector", () => {
       origin: "IMPORTED_ARCHIVE",
       sourceClass: "imported",
       reasons: ["technical_or_terminal_noise"],
+    });
+    expect(diagnostics.importedSupportEntriesAcceptedForEvidenceQuality).toBe(1);
+    expect(diagnostics.importedSupportEntriesRejectedForEvidenceQuality).toBe(1);
+    expect(diagnostics.importedSupportEntriesEvidenceQualityRejectionReasonCounts).toEqual({
+      quoted_or_pasted: 1,
+    });
+    expect(diagnostics.importedSupportEntriesEvidenceQualityRejectedSamples).toHaveLength(1);
+    expect(diagnostics.importedSupportEntriesEvidenceQualityRejectedSamples[0]).toMatchObject({
+      messageId: "import-noise-support-1",
+      origin: "IMPORTED_ARCHIVE",
+      sourceClass: "imported",
+      reasons: ["quoted_or_pasted"],
+      score: 0,
     });
 
     expect(diagnostics.claimsCreatedByFamily.trigger_condition).toBe(1);

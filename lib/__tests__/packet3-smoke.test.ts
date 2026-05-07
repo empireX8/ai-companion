@@ -254,6 +254,173 @@ function buildReplayableClaimFromDb(
   };
 }
 
+describe("Packet 3 smoke — imported support evidence quality gate", () => {
+  it("does not materialize imported technical/code/source-text support entries as receipts", async () => {
+    const db = makePipelineMockDb();
+    const clue = {
+      userId: "u1",
+      patternType: "repetitive_loop" as const,
+      summary: 'Repetitive loop pattern across sessions: "I keep repeating this pattern."',
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          sessionId: "import-s1",
+          messageId: "import-m1",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          content: "Again.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          sessionId: "import-s2",
+          messageId: "import-m2",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
+          content: "user@host % npx prisma migrate reset --force",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          sessionId: "import-s3",
+          messageId: "import-m3",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-03T00:00:00.000Z"),
+          content: "```ts\nconst handler = async () => {\n  return null;\n};\n```",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db });
+
+    expect(db._evidence.filter((row) => row.claimId === claimId)).toHaveLength(0);
+  });
+
+  it("still materializes clean imported behavioral support entries", async () => {
+    const db = makePipelineMockDb();
+    const clue = {
+      userId: "u1",
+      patternType: "trigger_condition" as const,
+      summary: 'Trigger-response pattern: "When pressure rises, I default to appeasing."',
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          sessionId: "import-s1",
+          messageId: "import-clean-1",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          content:
+            "When pressure rises, I default to appeasing people instead of staying direct.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          sessionId: "import-s2",
+          messageId: "import-clean-2",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
+          content:
+            "Whenever I feel uncertain, I tend to overthink and avoid committing.",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db });
+
+    const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
+    expect(claimEvidence).toHaveLength(2);
+    expect(claimEvidence.map((row) => row.messageId)).toEqual([
+      "import-clean-1",
+      "import-clean-2",
+    ]);
+  });
+
+  it("does not apply the quality gate to native APP support entries", async () => {
+    const db = makePipelineMockDb();
+    const clue = {
+      userId: "u1",
+      patternType: "repetitive_loop" as const,
+      summary: 'Repetitive loop pattern across sessions: "I keep doing this."',
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "APP",
+          sessionId: "app-s1",
+          messageId: "app-m1",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          content: "Again.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "APP",
+          sessionId: "app-s2",
+          messageId: "app-m2",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
+          content: "user@host % npx prisma migrate reset --force",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db });
+
+    const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
+    expect(claimEvidence).toHaveLength(2);
+    expect(claimEvidence.map((row) => row.messageId)).toEqual(["app-m1", "app-m2"]);
+  });
+
+  it("repetitive_loop: rejects weak imported loop support markers while keeping clean loop evidence", async () => {
+    const db = makePipelineMockDb();
+    const clue = {
+      userId: "u1",
+      patternType: "repetitive_loop" as const,
+      summary: 'Repetitive loop pattern across sessions: "I keep falling back into the same pattern."',
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          sessionId: "import-s1",
+          messageId: "import-valid-loop",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          content: "I keep falling back into the same pattern when stress spikes.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          sessionId: "import-s2",
+          messageId: "import-weak-again",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
+          content: "Again.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          sessionId: "import-s3",
+          messageId: "import-weak-code",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-03T00:00:00.000Z"),
+          content: "```bash\nnpm run build\n```",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db });
+
+    const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
+    expect(claimEvidence).toHaveLength(1);
+    expect(claimEvidence[0]?.messageId).toBe("import-valid-loop");
+  });
+});
+
 // ── Smoke tests ───────────────────────────────────────────────────────────────
 
 describe("Packet 3 smoke — trigger_condition full pipeline", () => {
