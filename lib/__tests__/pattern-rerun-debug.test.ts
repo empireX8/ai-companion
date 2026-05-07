@@ -62,6 +62,32 @@ describe("createPatternRerunDebugCollector", () => {
       repetitive_loop: 2,
       recovery_stabilizer: 2,
     });
+    collector.recordTriggerConditionSubgroupDiagnostics({
+      social_appeasement: {
+        candidateCount: 2,
+        sessionCount: 2,
+        samples: ["I default to people-pleasing when someone seems upset."],
+        topMatchedMarkers: ["default_to"],
+      },
+      overwhelm_state_shift: {
+        candidateCount: 1,
+        sessionCount: 1,
+        samples: ["When overwhelmed, my mode changes quickly."],
+        topMatchedMarkers: ["makes_me"],
+      },
+      coping_reactivity: {
+        candidateCount: 0,
+        sessionCount: 0,
+        samples: [],
+        topMatchedMarkers: [],
+      },
+      general: {
+        candidateCount: 0,
+        sessionCount: 0,
+        samples: [],
+        topMatchedMarkers: [],
+      },
+    });
     collector.recordImportedPatternRelevance({
       acceptedCount: 1,
       rejectedCount: 1,
@@ -202,6 +228,32 @@ describe("createPatternRerunDebugCollector", () => {
       inner_critic: 2,
       repetitive_loop: 2,
       recovery_stabilizer: 2,
+    });
+    expect(diagnostics.triggerConditionSubgroupDiagnostics).toEqual({
+      social_appeasement: {
+        candidateCount: 2,
+        sessionCount: 2,
+        samples: ["I default to people-pleasing when someone seems upset."],
+        topMatchedMarkers: ["default_to"],
+      },
+      overwhelm_state_shift: {
+        candidateCount: 1,
+        sessionCount: 1,
+        samples: ["When overwhelmed, my mode changes quickly."],
+        topMatchedMarkers: ["makes_me"],
+      },
+      coping_reactivity: {
+        candidateCount: 0,
+        sessionCount: 0,
+        samples: [],
+        topMatchedMarkers: [],
+      },
+      general: {
+        candidateCount: 0,
+        sessionCount: 0,
+        samples: [],
+        topMatchedMarkers: [],
+      },
     });
     expect(diagnostics.importedPatternRelevanceAcceptedCount).toBe(1);
     expect(diagnostics.importedPatternRelevanceRejectedCount).toBe(1);

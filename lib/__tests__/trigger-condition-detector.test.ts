@@ -5,6 +5,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildTriggerConditionSubgroupDiagnostics,
+  classifyTriggerConditionSubgroup,
   detectTriggerConditionClues,
   TC_MIN_MATCHES,
 } from "../trigger-condition-detector";
@@ -140,5 +142,116 @@ describe("detectTriggerConditionClues — marker coverage", () => {
       entries: [...fillers, matching],
     });
     expect(result).toHaveLength(1);
+  });
+});
+
+describe("trigger_condition subgroup diagnostics", () => {
+  it.each([
+    [
+      "social_appeasement",
+      "Whenever someone seems upset with me, I default to people-pleasing and walk back my boundary.",
+    ],
+    [
+      "overwhelm_state_shift",
+      "When I'm overwhelmed, my mode shifts and I feel like my identity changes under pressure.",
+    ],
+    [
+      "coping_reactivity",
+      "Every time stress rises I end up smoking weed, then tea and food become my default reset.",
+    ],
+    [
+      "general",
+      "Whenever this pattern appears, I notice that I keep reacting in the same old way.",
+    ],
+  ] as const)("classifies representative text into %s", (expected, content) => {
+    expect(classifyTriggerConditionSubgroup(content)).toBe(expected);
+  });
+
+  it("builds deterministic subgroup counts, session spread, and samples from trigger matches only", () => {
+    const entries = [
+      makeEntry(
+        "Whenever someone seems upset with me, I default to people-pleasing and walk back my boundary.",
+        { messageId: "social-1", sessionId: "social-session-1", createdAt: new Date("2026-01-10") }
+      ),
+      makeEntry(
+        "When I feel social pressure, I start appeasing people and over-explaining myself.",
+        { messageId: "social-2", sessionId: "social-session-2", createdAt: new Date("2026-01-11") }
+      ),
+      makeEntry(
+        "When I'm overwhelmed, I tend to feel my mode shift and my identity change under pressure.",
+        { messageId: "overwhelm-1", sessionId: "overwhelm-session-1", createdAt: new Date("2026-01-12") }
+      ),
+      makeEntry(
+        "Every time stress rises I end up smoking weed, then tea and food become my default reset.",
+        { messageId: "coping-1", sessionId: "coping-session-1", createdAt: new Date("2026-01-13") }
+      ),
+      makeEntry(
+        "Whenever this happens I tend to freeze up and lose momentum.",
+        { messageId: "general-1", sessionId: "general-session-1", createdAt: new Date("2026-01-14") }
+      ),
+      makeEntry("I finished my workout and read a chapter today.", {
+        messageId: "neutral-non-trigger",
+        sessionId: "neutral-session",
+        createdAt: new Date("2026-01-15"),
+      }),
+    ];
+
+    const diagnostics = buildTriggerConditionSubgroupDiagnostics(entries);
+
+    expect(diagnostics.social_appeasement.candidateCount).toBe(2);
+    expect(diagnostics.social_appeasement.sessionCount).toBe(2);
+    expect(diagnostics.social_appeasement.samples).toHaveLength(2);
+    expect(diagnostics.social_appeasement.topMatchedMarkers.length).toBeGreaterThan(0);
+
+    expect(diagnostics.overwhelm_state_shift.candidateCount).toBe(1);
+    expect(diagnostics.overwhelm_state_shift.sessionCount).toBe(1);
+    expect(diagnostics.coping_reactivity.candidateCount).toBe(1);
+    expect(diagnostics.coping_reactivity.sessionCount).toBe(1);
+    expect(diagnostics.general.candidateCount).toBe(1);
+    expect(diagnostics.general.sessionCount).toBe(1);
+  });
+
+  it("keeps trigger clue emission at one clue even when matches span multiple diagnostic subgroups", () => {
+    const entries = [
+      makeEntry("Whenever someone seems upset with me, I default to people-pleasing.", {
+        sessionId: "sess-social",
+      }),
+      makeEntry("When I'm overwhelmed, I tend to feel my mode shift and my identity feels unstable.", {
+        sessionId: "sess-overwhelm",
+      }),
+      makeEntry("Every time stress rises, I end up smoking weed and overeating.", {
+        sessionId: "sess-coping",
+      }),
+      makeEntry("Whenever this happens, I tend to freeze up.", {
+        sessionId: "sess-general",
+      }),
+    ];
+
+    const result = detectTriggerConditionClues({ userId: "u1", entries });
+    expect(result).toHaveLength(1);
+    expect(result[0]!.patternType).toBe("trigger_condition");
+  });
+
+  it("keeps supportEntries attached to all trigger matches (materialization path unchanged)", () => {
+    const entries = [
+      makeEntry("Whenever someone seems upset with me, I default to people-pleasing.", {
+        sessionId: "sess-social",
+        messageId: "msg-social",
+      }),
+      makeEntry("When I'm overwhelmed, I tend to feel my mode shift and my identity feels unstable.", {
+        sessionId: "sess-overwhelm",
+        messageId: "msg-overwhelm",
+      }),
+      makeEntry("Every time stress rises, I end up smoking weed and overeating.", {
+        sessionId: "sess-coping",
+        messageId: "msg-coping",
+      }),
+    ];
+
+    const clue = detectTriggerConditionClues({ userId: "u1", entries })[0]!;
+    expect(clue.supportEntries).toHaveLength(3);
+    expect(new Set(clue.supportEntries?.map((entry) => entry.messageId))).toEqual(
+      new Set(["msg-social", "msg-overwhelm", "msg-coping"])
+    );
   });
 });

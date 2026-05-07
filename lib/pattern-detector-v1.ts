@@ -40,7 +40,10 @@ import {
 import type { PatternDetector } from "./pattern-detection-executor";
 import { detectRecoveryStabilizerClues } from "./recovery-stabilizer-adapter";
 import { detectRepetitiveLoopClues } from "./repetitive-loop-adapter";
-import { detectTriggerConditionClues } from "./trigger-condition-detector";
+import {
+  buildTriggerConditionSubgroupDiagnostics,
+  detectTriggerConditionClues,
+} from "./trigger-condition-detector";
 import type { PatternRerunDebugCollector } from "./pattern-rerun-debug";
 
 export type ImportedPatternRelevanceFilterResult = {
@@ -693,6 +696,11 @@ export const patternDetectorV1: PatternDetector = async ({
 
   // P3-07: trigger_condition — rule-based on behavioral history only
   const triggerClues = detectTriggerConditionClues({ userId, entries: behavioralEntries });
+  const triggerConditionSubgroupDiagnostics =
+    buildTriggerConditionSubgroupDiagnostics(behavioralEntries);
+  debugCollector?.recordTriggerConditionSubgroupDiagnostics(
+    triggerConditionSubgroupDiagnostics
+  );
 
   // P3-08: remaining families — rule-based on behavioral history only
   const innerCriticClues = detectInnerCriticClues({ userId, entries: behavioralEntries });

@@ -63,6 +63,7 @@ describe("import diagnostics helpers", () => {
         repetitive_loop: 3,
         recovery_stabilizer: 3,
       },
+      triggerConditionSubgroupDiagnostics: null,
       journalBehavioralEntryCount: 0,
       journalRejectedEntryCount: 1,
       journalRejectionReasonCounts: { too_short: 1 },

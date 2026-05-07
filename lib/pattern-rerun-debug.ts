@@ -6,6 +6,7 @@ import {
   type PatternTypeValue,
   type StrengthLevelValue,
 } from "./pattern-claim-boundary";
+import type { TriggerConditionSubgroupDiagnostics } from "./trigger-condition-detector";
 
 export type PatternRerunDebugFamilyCounts = Record<PatternTypeValue, number>;
 export type PatternRerunDebugFamilyInputCounts = Record<PatternTypeValue, number | null>;
@@ -110,6 +111,8 @@ export type PatternRerunDebugDiagnostics = {
   behavioralRejectedByOrigin: Record<PatternRerunDebugBehavioralOrigin, number>;
   rejectionSamplesByReason: PatternRerunDebugRejectSamplesByReason;
   detectorInputCountsByFamily: PatternRerunDebugFamilyInputCounts;
+  /** Trigger-only diagnostic subgroup rollup (does not affect clue emission). */
+  triggerConditionSubgroupDiagnostics: TriggerConditionSubgroupDiagnostics | null;
   /** How many journal-sourced user entries pass the behavioral filter */
   journalBehavioralEntryCount: number;
   /** How many journal-sourced user entries are rejected by the behavioral filter */
@@ -190,6 +193,9 @@ export type PatternRerunDebugCollector = {
   }) => void;
   recordDetectorInputCountsByFamily: (
     counts: Partial<Record<PatternTypeValue, number | null>>
+  ) => void;
+  recordTriggerConditionSubgroupDiagnostics: (
+    diagnostics: TriggerConditionSubgroupDiagnostics
   ) => void;
   /** Record all supportEntries from one clue before receipt materialization. */
   recordClueSupportEntries: (
@@ -489,6 +495,7 @@ export function createPatternRerunDebugCollector({
   let behavioralAcceptedByOrigin = emptyOriginCounts();
   let behavioralRejectedByOrigin = emptyOriginCounts();
   let rejectionSamplesByReason: PatternRerunDebugRejectSamplesByReason = {};
+  let triggerConditionSubgroupDiagnostics: TriggerConditionSubgroupDiagnostics | null = null;
   let journalBehavioralEntryCount = 0;
   let journalRejectedEntryCount = 0;
   let journalRejectionReasonCounts: Record<string, number> = {};
@@ -647,6 +654,31 @@ export function createPatternRerunDebugCollector({
       }
     },
 
+    recordTriggerConditionSubgroupDiagnostics(diagnostics) {
+      triggerConditionSubgroupDiagnostics = {
+        social_appeasement: {
+          ...diagnostics.social_appeasement,
+          samples: [...diagnostics.social_appeasement.samples],
+          topMatchedMarkers: [...diagnostics.social_appeasement.topMatchedMarkers],
+        },
+        overwhelm_state_shift: {
+          ...diagnostics.overwhelm_state_shift,
+          samples: [...diagnostics.overwhelm_state_shift.samples],
+          topMatchedMarkers: [...diagnostics.overwhelm_state_shift.topMatchedMarkers],
+        },
+        coping_reactivity: {
+          ...diagnostics.coping_reactivity,
+          samples: [...diagnostics.coping_reactivity.samples],
+          topMatchedMarkers: [...diagnostics.coping_reactivity.topMatchedMarkers],
+        },
+        general: {
+          ...diagnostics.general,
+          samples: [...diagnostics.general.samples],
+          topMatchedMarkers: [...diagnostics.general.topMatchedMarkers],
+        },
+      };
+    },
+
     recordClueSupportEntries(entries) {
       for (const entry of entries) {
         supportEntriesTotal += 1;
@@ -752,6 +784,7 @@ export function createPatternRerunDebugCollector({
         behavioralRejectedByOrigin,
         rejectionSamplesByReason,
         detectorInputCountsByFamily,
+        triggerConditionSubgroupDiagnostics,
         journalBehavioralEntryCount,
         journalRejectedEntryCount,
         journalRejectionReasonCounts,

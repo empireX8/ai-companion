@@ -997,6 +997,43 @@ describe("Packet 3 smoke — trigger_condition full pipeline", () => {
     expect(db._evidence.some((e) => e.claimId === tc!.id)).toBe(true);
   });
 
+  it("keeps trigger evidence materialization aligned with matched trigger messages", async () => {
+    const db = makePipelineMockDb({
+      messages: [
+        makeMessage("Whenever someone seems upset with me, I default to people-pleasing.", {
+          id: "tc-msg-1",
+          sessionId: "tc-sess-1",
+        }),
+        makeMessage("When pressure rises, I start appeasing people instead of staying direct.", {
+          id: "tc-msg-2",
+          sessionId: "tc-sess-2",
+        }),
+        makeMessage("Every time conflict starts, I walk back my boundary.", {
+          id: "tc-msg-3",
+          sessionId: "tc-sess-3",
+        }),
+      ],
+    });
+
+    await patternDetectorV1({
+      userId: "u1",
+      messageIds: [],
+      runId: "run1",
+      db,
+    });
+
+    const tc = db._claims.find((claim) => claim.patternType === "trigger_condition");
+    expect(tc).toBeDefined();
+
+    const evidenceMessageIds = new Set(
+      db._evidence
+        .filter((row) => row.claimId === tc!.id)
+        .map((row) => row.messageId)
+        .filter((messageId): messageId is string => Boolean(messageId))
+    );
+    expect(evidenceMessageIds).toEqual(new Set(["tc-msg-1", "tc-msg-2", "tc-msg-3"]));
+  });
+
   it("persists enough support to replay a non-null canonical summary", async () => {
     const db = makePipelineMockDb();
     const clue = {
