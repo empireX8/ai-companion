@@ -408,6 +408,84 @@ function classifyImportedSupportResidualEvidenceRejections(
   return reasons;
 }
 
+function isImportedUserChatHistoryEntry(entry: NormalizedHistoryEntry): boolean {
+  if (resolveHistoryEntrySourceKind(entry) !== "chat_message") return false;
+  if (entry.sessionOrigin !== "IMPORTED_ARCHIVE") return false;
+  if (entry.role !== null && entry.role !== "user") return false;
+  return true;
+}
+
+function isImportedUserChatSupportEntry(entry: SupportEntry): boolean {
+  if (resolveSupportEntrySourceKind(entry) !== "chat_message") return false;
+  if ((entry.sessionOrigin ?? null) !== "IMPORTED_ARCHIVE") return false;
+  if (entry.role !== undefined && entry.role !== null && entry.role !== "user") return false;
+  return true;
+}
+
+function shouldGateClueQuoteAsImportedSupportEvidence({
+  clue,
+  historyLookup,
+}: {
+  clue: PatternClue;
+  historyLookup?: SupportEntryHistoryLookup;
+}): boolean {
+  const clueSourceKind =
+    clue.sourceKind ?? (clue.journalEntryId ? "journal_entry" : "chat_message");
+  if (clueSourceKind !== "chat_message") return false;
+
+  if (clue.messageId && historyLookup) {
+    const matched = historyLookup.byMessageId.get(clue.messageId);
+    if (matched) {
+      return isImportedUserChatHistoryEntry(matched);
+    }
+  }
+
+  if (clue.messageId && clue.supportEntries) {
+    const matched = clue.supportEntries.find((entry) => entry.messageId === clue.messageId);
+    if (matched) {
+      return isImportedUserChatSupportEntry(matched);
+    }
+  }
+
+  if (clue.sessionId && historyLookup) {
+    const candidates = historyLookup.bySessionId.get(clue.sessionId) ?? [];
+    const matched = candidates.find((entry) => resolveHistoryEntrySourceKind(entry) === "chat_message");
+    if (matched) {
+      return isImportedUserChatHistoryEntry(matched);
+    }
+  }
+
+  if (clue.sessionId && clue.supportEntries) {
+    const matched = clue.supportEntries.find(
+      (entry) => entry.sessionId === clue.sessionId && resolveSupportEntrySourceKind(entry) === "chat_message"
+    );
+    if (matched) {
+      return isImportedUserChatSupportEntry(matched);
+    }
+  }
+
+  return false;
+}
+
+function importedSupportEvidenceQuotePassesQualityBoundary({
+  quote,
+  patternType,
+}: {
+  quote: string;
+  patternType: PatternClue["patternType"];
+}): boolean {
+  const quality = assessPatternEvidenceQuoteQuality(quote);
+  const relevance = classifyImportHumanRelevance(quality.quote);
+  const relevanceRejections = relevance.reasons.filter(
+    (reason) => reason !== "import_human_relevance_accepted"
+  );
+  const residualRejections = classifyImportedSupportResidualEvidenceRejections(
+    quality.quote,
+    patternType
+  );
+  return quality.accepted && relevanceRejections.length === 0 && residualRejections.length === 0;
+}
+
 /**
  * Import-only pre-materialization quality boundary for support entries.
  * Applies only to IMPORTED_ARCHIVE chat support entries; native APP and journal
@@ -754,12 +832,28 @@ export async function materializeClueSupport({
     clue.messageId !== undefined ||
     clue.journalEntryId !== undefined
   ) {
+    const shouldGateImportedClueQuote =
+      typeof clue.quote === "string" &&
+      clue.quote.trim().length > 0 &&
+      shouldGateClueQuoteAsImportedSupportEvidence({
+        clue,
+        historyLookup: supportEntryHistoryLookup,
+      });
+    const clueQuote =
+      shouldGateImportedClueQuote &&
+      !importedSupportEvidenceQuotePassesQualityBoundary({
+        quote: clue.quote!,
+        patternType: clue.patternType,
+      })
+        ? undefined
+        : clue.quote;
+
     await materializeReceipt({
       claimId,
       sessionId: clue.sessionId ?? undefined,
       messageId: clue.messageId ?? undefined,
       journalEntryId: clue.journalEntryId ?? undefined,
-      quote: clue.quote,
+      quote: clueQuote,
       sourceKind: clue.sourceKind,
       debugCollector,
       db,

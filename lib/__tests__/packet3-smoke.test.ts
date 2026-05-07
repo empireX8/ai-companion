@@ -662,6 +662,50 @@ describe("Packet 3 smoke — imported support evidence quality gate", () => {
     });
   });
 
+  it("recovery_stabilizer: does not persist a bad imported clue quote when the same message has a clean gated support quote", async () => {
+    const db = makePipelineMockDb();
+    const clue = {
+      userId: "u1",
+      patternType: "recovery_stabilizer" as const,
+      summary: 'Recovery/stabilization pattern: "We are making progress."',
+      sourceKind: "chat_message" as const,
+      sessionId: "import-mixed-s1",
+      messageId: "import-mixed-m1",
+      quote:
+        "thanks i got 10 plus views and then i lost my channel started rebuilding but left it because thats the channel imusuing to show my video editing quality with unlisted videos, it has about 4 k subs",
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-mixed-s1",
+          messageId: "import-mixed-m1",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-13T00:00:00.000Z"),
+          content:
+            "Like, unless I entertained myself with the room, and I was able to do that unwaveringly, I don't know. thanks i got 10 plus views and then i lost my channel started rebuilding but left it because thats the channel imusuing to show my video editing quality with unlisted videos, it has about 4 k subs",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db });
+
+    const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
+    expect(claimEvidence).toHaveLength(1);
+    expect(claimEvidence[0]?.messageId).toBe("import-mixed-m1");
+    expect(claimEvidence[0]?.quote).toBe(
+      "Like, unless I entertained myself with the room, and I was able to do that unwaveringly, I don't know."
+    );
+    expect(
+      claimEvidence.some(
+        (row) =>
+          row.quote ===
+          "thanks i got 10 plus views and then i lost my channel started rebuilding but left it because thats the channel imusuing to show my video editing quality with unlisted videos, it has about 4 k subs"
+      )
+    ).toBe(false);
+  });
+
   it("keeps clean imported behavioral support evidence materialized", async () => {
     const db = makePipelineMockDb();
     const clue = {
