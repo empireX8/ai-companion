@@ -20,8 +20,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   RL_MIN_SESSIONS,
+  RL_MAX_CLUES,
   detectRepetitiveLoopCueMessages,
   groupLoopCuesBySession,
+  buildRepetitiveLoopCluesFromCues,
   buildRepetitiveLoopClueFromSessions,
 } from "../repetitive-loop-aggregation";
 import {
@@ -47,6 +49,23 @@ function makeEntry(
     content,
     createdAt: new Date("2026-01-01"),
     ...overrides,
+  };
+}
+
+function makeJournalEntry(
+  content: string,
+  journalEntryId = `j_rl_${++seq}`
+): NormalizedHistoryEntry {
+  return {
+    sourceKind: "journal_entry",
+    messageId: null,
+    sessionId: null,
+    journalEntryId,
+    sessionOrigin: null,
+    sessionStartedAt: null,
+    role: "user",
+    content,
+    createdAt: new Date("2026-01-01"),
   };
 }
 
@@ -247,6 +266,93 @@ describe("evidence linkage — sessionId and messageId", () => {
     const clue = detectRepetitiveLoopClues({ userId: "u1", entries })[0]!;
     expect(clue.sessionId).toBeDefined();
     expect(clue.messageId).toBeDefined();
+  });
+});
+
+describe("multi-clue subgroup emission", () => {
+  it("emits multiple clues when distinct recurring loop subgroups independently meet session threshold", () => {
+    const entries = [
+      makeEntry("I keep going back to smoking whenever I feel pressure", { sessionId: "substanceA" }),
+      makeEntry("I keep slipping back to weed after short breaks", { sessionId: "substanceB" }),
+      makeEntry("I keep overthinking and ending up in the same place mentally", { sessionId: "cognitiveA" }),
+      makeEntry("I keep getting overstimulated and running into the same loop", { sessionId: "cognitiveB" }),
+    ];
+
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+
+    expect(result.length).toBeGreaterThanOrEqual(2);
+    expect(result.every((clue) => clue.patternType === "repetitive_loop")).toBe(true);
+    expect(new Set(result.map((clue) => clue.summary)).size).toBe(result.length);
+  });
+
+  it("caps emitted repetitive_loop clues at RL_MAX_CLUES", () => {
+    const entries = [
+      makeEntry("I keep going back to smoking when stress spikes", { sessionId: "subA" }),
+      makeEntry("I keep slipping back to weed after a few days", { sessionId: "subB" }),
+
+      makeEntry("I keep overthinking and ending up in the same place mentally", { sessionId: "cogA" }),
+      makeEntry("I keep getting overstimulated and stuck in this loop", { sessionId: "cogB" }),
+
+      makeEntry("I keep asking codex to update the project and hitting the same loop", { sessionId: "assistA" }),
+      makeEntry("I keep reworking the same prompt in this assistant flow", { sessionId: "assistB" }),
+
+      makeEntry("I keep crashing out and calming down then doing this again", { sessionId: "emoA" }),
+      makeEntry("I keep trying to accept reality and move forward but ending up back here", { sessionId: "emoB" }),
+
+      makeEntry("I keep ending up in the same pattern at work", { sessionId: "generalA" }),
+      makeEntry("I keep going back to the same routine again", { sessionId: "generalB" }),
+    ];
+
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+
+    expect(result).toHaveLength(RL_MAX_CLUES);
+  });
+
+  it("keeps supportEntries scoped to each subgroup", () => {
+    const cues = [
+      makeEntry("I keep going back to smoking when pressure rises", { sessionId: "subA" }),
+      makeEntry("I keep slipping back to weed after short breaks", { sessionId: "subB" }),
+      makeEntry("I keep overthinking and ending up in the same place mentally", { sessionId: "cogA" }),
+      makeEntry("I keep getting overstimulated and running into the same loop", { sessionId: "cogB" }),
+      makeJournalEntry("I keep slipping back to nicotine when stress rises."),
+      makeJournalEntry("I keep overthinking this and my brain loops until I feel mentally overloaded."),
+    ];
+
+    const result = buildRepetitiveLoopCluesFromCues({
+      userId: "u1",
+      cues,
+      maxClues: RL_MAX_CLUES,
+    });
+
+    const substanceClue = result.find((clue) => clue.summary.includes("substance/relapse loop"));
+    const cognitiveClue = result.find((clue) => clue.summary.includes("cognitive overload loop"));
+
+    expect(substanceClue).toBeDefined();
+    expect(cognitiveClue).toBeDefined();
+
+    expect(
+      substanceClue!.supportEntries!.every((entry) =>
+        /\b(?:weed|smok\w*|nicotine)\b/i.test(entry.content)
+      )
+    ).toBe(true);
+    expect(
+      cognitiveClue!.supportEntries!.every((entry) =>
+        /\b(?:overthink\w*|overstim\w*|brain|mental(?:ly)?)\b/i.test(entry.content)
+      )
+    ).toBe(true);
+  });
+
+  it("preserves one-clue behavior when only one subgroup independently meets session threshold", () => {
+    const entries = [
+      makeEntry("I keep slipping back to smoking when stressed", { sessionId: "substanceA" }),
+      makeEntry("I keep going back to weed after I calm down", { sessionId: "substanceB" }),
+      makeEntry("I keep overthinking this same issue", { sessionId: "singleCognitiveSessionOnly" }),
+    ];
+
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.summary).toContain("substance/relapse loop");
   });
 });
 

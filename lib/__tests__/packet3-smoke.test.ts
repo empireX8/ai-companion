@@ -1177,6 +1177,50 @@ describe("Packet 3 smoke — repetitive_loop full pipeline", () => {
     );
     expect(replay.completeness.supportBundleComplete).toBe(true);
   });
+
+  it("re-run does not duplicate repetitive_loop claims when subgroup summaries are stable", async () => {
+    const db = makePipelineMockDb({
+      messages: [
+        makeMessage("I keep going back to smoking whenever stress spikes", {
+          id: "rl_sub_1",
+          sessionId: "rl_sub_s1",
+        }),
+        makeMessage("I keep slipping back to weed after short breaks", {
+          id: "rl_sub_2",
+          sessionId: "rl_sub_s2",
+        }),
+        makeMessage("I keep overthinking and ending up in the same place mentally", {
+          id: "rl_cog_1",
+          sessionId: "rl_cog_s1",
+        }),
+        makeMessage("I keep getting overstimulated and running into the same loop", {
+          id: "rl_cog_2",
+          sessionId: "rl_cog_s2",
+        }),
+      ],
+    });
+
+    const firstRunCreated = await patternDetectorV1({
+      userId: "u1",
+      messageIds: [],
+      runId: "run1",
+      db,
+    });
+    const secondRunCreated = await patternDetectorV1({
+      userId: "u1",
+      messageIds: [],
+      runId: "run2",
+      db,
+    });
+
+    const repetitiveLoopClaims = db._claims.filter((claim) => claim.patternType === "repetitive_loop");
+    expect(repetitiveLoopClaims.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(repetitiveLoopClaims.map((claim) => claim.summaryNorm)).size).toBe(
+      repetitiveLoopClaims.length
+    );
+    expect(firstRunCreated).toBeGreaterThan(0);
+    expect(secondRunCreated).toBe(0);
+  });
 });
 
 describe("Packet 3 smoke — single receipt claims remain incomplete when support is real", () => {

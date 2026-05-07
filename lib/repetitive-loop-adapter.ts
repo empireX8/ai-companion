@@ -7,9 +7,9 @@
  *   Scans entries for loop-language markers ("I keep…", "same pattern", etc.).
  *   Matching messages are candidate evidence only.
  *
- * Stage 2 — session-level aggregation (lib/repetitive-loop-aggregation):
- *   Emits a PatternClue only when loop cues appear across at least
- *   RL_MIN_SESSIONS distinct sessions.
+ * Stage 2 — session-level subgroup aggregation (lib/repetitive-loop-aggregation):
+ *   Emits one or more PatternClues only when a subgroup's loop cues appear
+ *   across at least RL_MIN_SESSIONS distinct sessions.
  *   A single session, no matter how many loop-like messages it contains,
  *   never triggers a claim.
  *
@@ -21,11 +21,11 @@ import type { NormalizedHistoryEntry } from "./history-synthesis";
 import type { PatternClue } from "./pattern-claim-lifecycle";
 import {
   detectRepetitiveLoopCueMessages,
-  groupLoopCuesBySession,
-  buildRepetitiveLoopClueFromSessions,
+  buildRepetitiveLoopCluesFromCues,
+  RL_MAX_CLUES,
 } from "./repetitive-loop-aggregation";
 
-export { RL_MIN_SESSIONS } from "./repetitive-loop-aggregation";
+export { RL_MIN_SESSIONS, RL_MAX_CLUES } from "./repetitive-loop-aggregation";
 
 // ── Markers ───────────────────────────────────────────────────────────────────
 
@@ -57,8 +57,8 @@ export const REPETITIVE_LOOP_MARKERS: RegExp[] = [
  * Detect repetitive_loop patterns from a user's normalized history.
  *
  * Wraps the two-stage pipeline: cue detection → session aggregation.
- * Returns one PatternClue when loop cues appear across ≥ RL_MIN_SESSIONS
- * distinct sessions; empty otherwise.
+ * Returns up to RL_MAX_CLUES PatternClues when distinct loop subgroups each
+ * appear across ≥ RL_MIN_SESSIONS distinct sessions; empty otherwise.
  */
 export function detectRepetitiveLoopClues({
   userId,
@@ -68,29 +68,9 @@ export function detectRepetitiveLoopClues({
   entries: NormalizedHistoryEntry[];
 }): PatternClue[] {
   const cues = detectRepetitiveLoopCueMessages(entries, REPETITIVE_LOOP_MARKERS);
-  const sessionGroups = groupLoopCuesBySession(cues);
-  const clue = buildRepetitiveLoopClueFromSessions(userId, sessionGroups);
-  if (!clue) return [];
-
-  // Journal-backed cues (no sessionId) are excluded from the cross-session gate
-  // so they never inflate session spread. Once the gate passes via message sessions,
-  // append journal cues to supportEntries so they receive journal-backed receipts.
-  const journalCues = cues.filter((c) => !c.sessionId);
-  if (journalCues.length > 0) {
-    clue.supportEntries = [
-      ...clue.supportEntries!,
-      ...journalCues.map((c) => ({
-        sourceKind: (c.sourceKind ?? (c.journalEntryId ? "journal_entry" : "chat_message")) as "chat_message" | "journal_entry",
-        sessionId: c.sessionId,
-        messageId: c.messageId,
-        journalEntryId: c.journalEntryId ?? null,
-        sessionOrigin: c.sessionOrigin,
-        role: c.role,
-        timestamp: c.createdAt,
-        content: c.content,
-      })),
-    ];
-  }
-
-  return [clue];
+  return buildRepetitiveLoopCluesFromCues({
+    userId,
+    cues,
+    maxClues: RL_MAX_CLUES,
+  });
 }
