@@ -173,6 +173,17 @@ const SOCIAL_APPEASEMENT_SUMMARY_ADJACENT_MARKERS: RegExp[] = [
   /\bburden\b/i,
 ];
 
+const SOCIAL_APPEASEMENT_SUPPORT_STRONG_MARKERS: RegExp[] = [
+  ...SOCIAL_APPEASEMENT_SUMMARY_STRONG_MARKERS,
+  /\bfamily\b/i,
+];
+
+const SOCIAL_APPEASEMENT_SUPPORT_SUBSTANCE_LOOP_MARKERS: RegExp[] = [
+  ...COPING_REACTIVITY_MARKERS,
+  /\bgoing\s+back\b/i,
+  /\bon\s+and\s+off\b/i,
+];
+
 function matchesAnyPattern(content: string, patterns: RegExp[]): boolean {
   return patterns.some((pattern) => pattern.test(content));
 }
@@ -228,6 +239,54 @@ function filterThemeLocalizedSummaryMatches(
   return matches;
 }
 
+function isLikelySubstanceLoopContent(content: string): boolean {
+  return matchesAnyPattern(content, SOCIAL_APPEASEMENT_SUPPORT_SUBSTANCE_LOOP_MARKERS);
+}
+
+function filterThemeLocalizedSupportMatches(
+  matches: NormalizedHistoryEntry[],
+  subgroup: TriggerConditionSubgroup
+): NormalizedHistoryEntry[] {
+  if (subgroup === "overwhelm_state_shift") {
+    const themed = matches.filter((entry) =>
+      matchesAnyPattern(entry.content, OVERWHELM_SUMMARY_MARKERS)
+    );
+    return countDistinctSessions(themed) >= TC_MIN_MATCHES ? themed : matches;
+  }
+
+  if (subgroup === "social_appeasement") {
+    const strong = matches.filter((entry) =>
+      matchesAnyPattern(entry.content, SOCIAL_APPEASEMENT_SUMMARY_STRONG_MARKERS)
+    );
+    const strongWithoutSubstanceLoop = strong.filter(
+      (entry) => !isLikelySubstanceLoopContent(entry.content)
+    );
+    if (countDistinctSessions(strongWithoutSubstanceLoop) >= TC_MIN_MATCHES) {
+      return strongWithoutSubstanceLoop;
+    }
+    if (countDistinctSessions(strong) >= TC_MIN_MATCHES) {
+      return strong;
+    }
+
+    const adjacent = matches.filter(
+      (entry) =>
+        matchesAnyPattern(entry.content, SOCIAL_APPEASEMENT_SUPPORT_STRONG_MARKERS) ||
+        matchesAnyPattern(entry.content, SOCIAL_APPEASEMENT_SUMMARY_ADJACENT_MARKERS)
+    );
+    const adjacentWithoutSubstanceLoop = adjacent.filter(
+      (entry) => !isLikelySubstanceLoopContent(entry.content)
+    );
+    if (countDistinctSessions(adjacentWithoutSubstanceLoop) >= TC_MIN_MATCHES) {
+      return adjacentWithoutSubstanceLoop;
+    }
+    if (countDistinctSessions(adjacent) >= TC_MIN_MATCHES) {
+      return adjacent;
+    }
+  }
+
+  return matches;
+}
+
 function getTriggerSummaryPrefix(subgroup: TriggerConditionSubgroup): string {
   if (subgroup === "social_appeasement") {
     return "Trigger-response pattern (social appeasement)";
@@ -271,6 +330,8 @@ function buildTriggerConditionClue(
     selectBestDisplayQuote(localizedMatches) ??
     selectBestDisplayQuote(matches) ??
     undefined;
+  const supportMatches =
+    subgroup != null ? filterThemeLocalizedSupportMatches(matches, subgroup) : matches;
 
   return {
     userId,
@@ -283,7 +344,7 @@ function buildTriggerConditionClue(
     messageId: representative.messageId,
     journalEntryId: representative.journalEntryId ?? null,
     quote,
-    supportEntries: matches.map(mapTriggerSupportEntry),
+    supportEntries: supportMatches.map(mapTriggerSupportEntry),
   };
 }
 
