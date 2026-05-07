@@ -94,6 +94,7 @@ export function detectInnerCriticClues({
       messageId: match.messageId,
       journalEntryId: match.journalEntryId ?? null,
       sessionOrigin: match.sessionOrigin,
+      role: match.role,
       timestamp: match.createdAt,
       content: match.content,
     })),

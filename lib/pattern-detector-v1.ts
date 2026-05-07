@@ -18,7 +18,11 @@ import type { PrismaClient } from "@prisma/client";
 
 import { deriveContradictionDriftClues } from "./contradiction-drift-adapter";
 import { filterBehavioralMessages } from "./behavioral-filter";
-import { synthesizeHistory, type NormalizedHistoryEntry } from "./history-synthesis";
+import {
+  synthesizeHistory,
+  type HistorySourceKind,
+  type NormalizedHistoryEntry,
+} from "./history-synthesis";
 import { detectInnerCriticClues } from "./inner-critic-adapter";
 import { classifyImportHumanRelevance } from "./import-chatgpt";
 import {
@@ -49,21 +53,145 @@ export type ImportedPatternRelevanceFilterResult = {
 
 type SupportEntry = NonNullable<PatternClue["supportEntries"]>[number];
 
+type SupportEntrySkipReason =
+  | "non_chat_source_kind"
+  | "non_imported_session_origin"
+  | "missing_session_origin"
+  | "non_user_role";
+
+type SupportEntryMetadataResolutionSource =
+  | "direct"
+  | "message_lookup"
+  | "session_lookup"
+  | "unresolved";
+
+export type SupportEntryHistoryLookup = {
+  byMessageId: Map<string, NormalizedHistoryEntry>;
+  bySessionId: Map<string, NormalizedHistoryEntry[]>;
+};
+
+type EnrichedSupportEntry = SupportEntry & {
+  sourceKind: HistorySourceKind;
+  sessionOrigin: string | null;
+  role: string | null;
+  metadataResolutionSource: SupportEntryMetadataResolutionSource;
+};
+
 type ImportedSupportEvidenceFilterResult = {
   entries: BulkReceiptEntry[];
+  evaluatedCount: number;
   acceptedCount: number;
   rejectedCount: number;
   rejectionReasonCounts: Record<string, number>;
+  skippedCount: number;
+  skippedReasonCounts: Record<string, number>;
   rejected: Array<{
-    entry: SupportEntry;
+    entry: EnrichedSupportEntry;
     quote: string;
     score: number;
     reasons: string[];
+  }>;
+  skipped: Array<{
+    entry: EnrichedSupportEntry;
+    reasons: SupportEntrySkipReason[];
   }>;
 };
 
 function resolveSupportEntrySourceKind(entry: SupportEntry): "chat_message" | "journal_entry" {
   return entry.sourceKind ?? (entry.journalEntryId ? "journal_entry" : "chat_message");
+}
+
+function resolveHistoryEntrySourceKind(entry: NormalizedHistoryEntry): HistorySourceKind {
+  return entry.sourceKind ?? (entry.journalEntryId ? "journal_entry" : "chat_message");
+}
+
+export function buildSupportEntryHistoryLookup(
+  entries: NormalizedHistoryEntry[]
+): SupportEntryHistoryLookup {
+  const byMessageId = new Map<string, NormalizedHistoryEntry>();
+  const bySessionId = new Map<string, NormalizedHistoryEntry[]>();
+
+  for (const entry of entries) {
+    if (entry.messageId) {
+      byMessageId.set(entry.messageId, entry);
+    }
+    if (entry.sessionId) {
+      const existing = bySessionId.get(entry.sessionId) ?? [];
+      existing.push(entry);
+      bySessionId.set(entry.sessionId, existing);
+    }
+  }
+
+  return { byMessageId, bySessionId };
+}
+
+function resolveSupportEntryBySessionLookup(
+  entry: SupportEntry,
+  lookup: SupportEntryHistoryLookup
+): NormalizedHistoryEntry | null {
+  if (!entry.sessionId) return null;
+  const candidates = lookup.bySessionId.get(entry.sessionId);
+  if (!candidates || candidates.length === 0) return null;
+
+  const messageCandidates = candidates.filter(
+    (candidate) => resolveHistoryEntrySourceKind(candidate) === "chat_message"
+  );
+  if (messageCandidates.length === 0) return null;
+
+  const byContent = messageCandidates.filter(
+    (candidate) => candidate.content.trim() === entry.content.trim()
+  );
+  const pool = byContent.length > 0 ? byContent : messageCandidates;
+  const targetTime = entry.timestamp.getTime();
+
+  return pool
+    .slice()
+    .sort((left, right) => {
+      const leftDelta = Math.abs(left.createdAt.getTime() - targetTime);
+      const rightDelta = Math.abs(right.createdAt.getTime() - targetTime);
+      if (leftDelta !== rightDelta) return leftDelta - rightDelta;
+      return left.createdAt.getTime() - right.createdAt.getTime();
+    })[0] ?? null;
+}
+
+function enrichSupportEntry({
+  entry,
+  historyLookup,
+}: {
+  entry: SupportEntry;
+  historyLookup?: SupportEntryHistoryLookup;
+}): EnrichedSupportEntry {
+  let matched: NormalizedHistoryEntry | null = null;
+  let metadataResolutionSource: SupportEntryMetadataResolutionSource = "direct";
+
+  if (historyLookup && entry.messageId) {
+    matched = historyLookup.byMessageId.get(entry.messageId) ?? null;
+    if (matched) metadataResolutionSource = "message_lookup";
+  }
+
+  if (!matched && historyLookup) {
+    matched = resolveSupportEntryBySessionLookup(entry, historyLookup);
+    if (matched) metadataResolutionSource = "session_lookup";
+  }
+
+  if (!matched && historyLookup) {
+    metadataResolutionSource = "unresolved";
+  }
+
+  const resolvedSourceKind = matched
+    ? resolveHistoryEntrySourceKind(matched)
+    : resolveSupportEntrySourceKind(entry);
+
+  return {
+    ...entry,
+    sourceKind: resolvedSourceKind,
+    sessionId: matched?.sessionId ?? entry.sessionId,
+    messageId: matched?.messageId ?? entry.messageId,
+    journalEntryId: matched?.journalEntryId ?? entry.journalEntryId,
+    sessionOrigin: matched?.sessionOrigin ?? entry.sessionOrigin ?? null,
+    role: matched?.role ?? entry.role ?? null,
+    metadataResolutionSource,
+  };
 }
 
 /**
@@ -73,25 +201,54 @@ function resolveSupportEntrySourceKind(entry: SupportEntry): "chat_message" | "j
  */
 export function applyImportedSupportEvidenceQualityBoundary({
   entries,
+  historyLookup,
 }: {
   entries: SupportEntry[];
+  historyLookup?: SupportEntryHistoryLookup;
 }): ImportedSupportEvidenceFilterResult {
   const kept: BulkReceiptEntry[] = [];
+  let evaluatedCount = 0;
   let acceptedCount = 0;
   let rejectedCount = 0;
+  let skippedCount = 0;
   const rejectionReasonCounts: Record<string, number> = {};
+  const skippedReasonCounts: Record<string, number> = {};
   const rejected: ImportedSupportEvidenceFilterResult["rejected"] = [];
+  const skipped: ImportedSupportEvidenceFilterResult["skipped"] = [];
 
-  for (const entry of entries) {
-    const sourceKind = resolveSupportEntrySourceKind(entry);
-    const isImportedChatSupport =
-      sourceKind === "chat_message" && entry.sessionOrigin === "IMPORTED_ARCHIVE";
+  for (const originalEntry of entries) {
+    const entry = enrichSupportEntry({
+      entry: originalEntry,
+      historyLookup,
+    });
 
-    if (!isImportedChatSupport) {
+    const skipReasons: SupportEntrySkipReason[] = [];
+    if (entry.sourceKind !== "chat_message") {
+      skipReasons.push("non_chat_source_kind");
+    }
+    if (entry.role !== null && entry.role !== "user") {
+      skipReasons.push("non_user_role");
+    }
+    if (entry.sessionOrigin === null) {
+      skipReasons.push("missing_session_origin");
+    } else if (entry.sessionOrigin !== "IMPORTED_ARCHIVE") {
+      skipReasons.push("non_imported_session_origin");
+    }
+
+    if (skipReasons.length > 0) {
+      skippedCount += 1;
+      skipped.push({
+        entry,
+        reasons: skipReasons,
+      });
+      for (const reason of skipReasons) {
+        skippedReasonCounts[reason] = (skippedReasonCounts[reason] ?? 0) + 1;
+      }
       kept.push(entry);
       continue;
     }
 
+    evaluatedCount += 1;
     const quality = assessPatternEvidenceQuoteQuality(entry.content);
     const relevance = classifyImportHumanRelevance(quality.quote);
     const relevanceRejections = relevance.reasons.filter(
@@ -122,10 +279,14 @@ export function applyImportedSupportEvidenceQualityBoundary({
 
   return {
     entries: kept,
+    evaluatedCount,
     acceptedCount,
     rejectedCount,
     rejectionReasonCounts,
+    skippedCount,
+    skippedReasonCounts,
     rejected,
+    skipped,
   };
 }
 
@@ -200,6 +361,7 @@ export const patternDetectorV1: PatternDetector = async ({
   // Includes chat messages and journal entries as source-aware units.
   // contradiction_drift reads ContradictionNode directly, not history text.
   const historyEntries = await synthesizeHistory({ userId, db });
+  const supportEntryHistoryLookup = buildSupportEntryHistoryLookup(historyEntries);
   const importedPatternRelevance = applyImportedPatternRelevanceBoundary({
     entries: historyEntries,
   });
@@ -279,7 +441,13 @@ export const patternDetectorV1: PatternDetector = async ({
       });
     }
 
-    await materializeClueSupport({ claimId, clue, db, debugCollector });
+    await materializeClueSupport({
+      claimId,
+      clue,
+      db,
+      debugCollector,
+      supportEntryHistoryLookup,
+    });
 
     // P3-06: advance lifecycle based on accumulated evidence
     const lifecycle = await advanceClaimLifecycle({ claimId, db });
@@ -322,22 +490,29 @@ export async function materializeClueSupport({
   clue,
   db,
   debugCollector,
+  supportEntryHistoryLookup,
 }: {
   claimId: string;
   clue: PatternClue;
   db: PrismaClient;
   debugCollector?: PatternRerunDebugCollector;
+  supportEntryHistoryLookup?: SupportEntryHistoryLookup;
 }): Promise<void> {
   if (clue.supportEntries && clue.supportEntries.length > 0) {
     debugCollector?.recordClueSupportEntries(clue.supportEntries);
     const importedSupportEvidenceQuality = applyImportedSupportEvidenceQualityBoundary({
       entries: clue.supportEntries,
+      historyLookup: supportEntryHistoryLookup,
     });
     debugCollector?.recordImportedSupportEntryEvidenceQuality?.({
+      evaluatedCount: importedSupportEvidenceQuality.evaluatedCount,
       acceptedCount: importedSupportEvidenceQuality.acceptedCount,
       rejectedCount: importedSupportEvidenceQuality.rejectedCount,
       rejectionReasonCounts: importedSupportEvidenceQuality.rejectionReasonCounts,
       rejected: importedSupportEvidenceQuality.rejected,
+      skippedCount: importedSupportEvidenceQuality.skippedCount,
+      skippedReasonCounts: importedSupportEvidenceQuality.skippedReasonCounts,
+      skipped: importedSupportEvidenceQuality.skipped,
     });
     await materializeReceiptsFromEntries({
       claimId,

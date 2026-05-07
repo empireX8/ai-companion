@@ -82,6 +82,7 @@ export type PatternClue = {
     messageId: string | null;
     journalEntryId: string | null;
     sessionOrigin?: string | null;
+    role?: string | null;
     timestamp: Date;
     content: string;
   }>;

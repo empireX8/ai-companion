@@ -85,6 +85,7 @@ export function detectRepetitiveLoopClues({
         messageId: c.messageId,
         journalEntryId: c.journalEntryId ?? null,
         sessionOrigin: c.sessionOrigin,
+        role: c.role,
         timestamp: c.createdAt,
         content: c.content,
       })),

@@ -81,6 +81,7 @@ describe("createPatternRerunDebugCollector", () => {
       ],
     });
     collector.recordImportedSupportEntryEvidenceQuality?.({
+      evaluatedCount: 2,
       acceptedCount: 1,
       rejectedCount: 1,
       rejectionReasonCounts: {
@@ -100,6 +101,26 @@ describe("createPatternRerunDebugCollector", () => {
           quote: "user@host % npx prisma migrate reset",
           score: 0,
           reasons: ["quoted_or_pasted"],
+        },
+      ],
+      skippedCount: 1,
+      skippedReasonCounts: {
+        missing_session_origin: 1,
+      },
+      skipped: [
+        {
+          entry: {
+            sourceKind: "chat_message",
+            messageId: "import-unknown-origin-1",
+            sessionId: "import-session-3",
+            journalEntryId: null,
+            sessionOrigin: null,
+            role: "user",
+            metadataResolutionSource: "unresolved",
+            content: "I keep falling into the same cycle.",
+            timestamp: new Date("2026-01-05T00:00:00.000Z"),
+          },
+          reasons: ["missing_session_origin"],
         },
       ],
     });
@@ -195,6 +216,7 @@ describe("createPatternRerunDebugCollector", () => {
       sourceClass: "imported",
       reasons: ["technical_or_terminal_noise"],
     });
+    expect(diagnostics.importedSupportEntriesEvaluatedForEvidenceQuality).toBe(2);
     expect(diagnostics.importedSupportEntriesAcceptedForEvidenceQuality).toBe(1);
     expect(diagnostics.importedSupportEntriesRejectedForEvidenceQuality).toBe(1);
     expect(diagnostics.importedSupportEntriesEvidenceQualityRejectionReasonCounts).toEqual({
@@ -207,6 +229,19 @@ describe("createPatternRerunDebugCollector", () => {
       sourceClass: "imported",
       reasons: ["quoted_or_pasted"],
       score: 0,
+    });
+    expect(diagnostics.supportEntriesSkippedEvidenceQualityGateCount).toBe(1);
+    expect(diagnostics.supportEntriesSkippedEvidenceQualityGateReasonCounts).toEqual({
+      missing_session_origin: 1,
+    });
+    expect(diagnostics.supportEntriesSkippedEvidenceQualityGateSamples).toHaveLength(1);
+    expect(diagnostics.supportEntriesSkippedEvidenceQualityGateSamples[0]).toMatchObject({
+      messageId: "import-unknown-origin-1",
+      sourceKind: "chat_message",
+      sessionOrigin: null,
+      role: "user",
+      metadataResolutionSource: "unresolved",
+      reasons: ["missing_session_origin"],
     });
 
     expect(diagnostics.claimsCreatedByFamily.trigger_condition).toBe(1);

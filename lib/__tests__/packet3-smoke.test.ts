@@ -16,7 +16,11 @@ import type { PrismaClient } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 
 import { patternClaimHooks } from "../pattern-claim-hooks";
-import { materializeClueSupport, patternDetectorV1 } from "../pattern-detector-v1";
+import {
+  buildSupportEntryHistoryLookup,
+  materializeClueSupport,
+  patternDetectorV1,
+} from "../pattern-detector-v1";
 import { replayPersistedPatternClaim } from "../pattern-claim-replay";
 import { materializeReceipt } from "../pattern-claim-evidence";
 import { upsertPatternClaimFromClue } from "../pattern-claim-lifecycle";
@@ -289,6 +293,16 @@ describe("Packet 3 smoke — imported support evidence quality gate", () => {
           timestamp: new Date("2026-01-03T00:00:00.000Z"),
           content: "```ts\nconst handler = async () => {\n  return null;\n};\n```",
         },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          sessionId: "import-s4",
+          messageId: "import-m4",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-04T00:00:00.000Z"),
+          content:
+            "I need to coordinate Codex tasks and wire the Pinecone index setup before the next pass.",
+        },
       ],
     };
 
@@ -418,6 +432,97 @@ describe("Packet 3 smoke — imported support evidence quality gate", () => {
     const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
     expect(claimEvidence).toHaveLength(1);
     expect(claimEvidence[0]?.messageId).toBe("import-valid-loop");
+  });
+
+  it("gates imported support entries with missing direct origin metadata via history lookup", async () => {
+    const db = makePipelineMockDb();
+    const clue = {
+      userId: "u1",
+      patternType: "trigger_condition" as const,
+      summary: 'Trigger-response pattern: "When pressure rises, I default to appeasing."',
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionId: "import-s1",
+          messageId: "import-lookup-clean",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          content:
+            "When pressure rises, I default to appeasing people instead of staying direct.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionId: "import-s2",
+          messageId: "import-lookup-noise",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
+          content: "user@host % npx prisma migrate reset --force",
+        },
+      ],
+    };
+
+    const lookup = buildSupportEntryHistoryLookup([
+      {
+        sourceKind: "chat_message",
+        messageId: "import-lookup-clean",
+        sessionId: "import-s1",
+        journalEntryId: null,
+        sessionOrigin: "IMPORTED_ARCHIVE",
+        sessionStartedAt: new Date("2026-01-01T00:00:00.000Z"),
+        role: "user",
+        content: "When pressure rises, I default to appeasing people instead of staying direct.",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+      {
+        sourceKind: "chat_message",
+        messageId: "import-lookup-noise",
+        sessionId: "import-s2",
+        journalEntryId: null,
+        sessionOrigin: "IMPORTED_ARCHIVE",
+        sessionStartedAt: new Date("2026-01-02T00:00:00.000Z"),
+        role: "user",
+        content: "user@host % npx prisma migrate reset --force",
+        createdAt: new Date("2026-01-02T00:00:00.000Z"),
+      },
+    ]);
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({
+      claimId,
+      clue,
+      db,
+      supportEntryHistoryLookup: lookup,
+    });
+
+    const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
+    expect(claimEvidence).toHaveLength(1);
+    expect(claimEvidence[0]?.messageId).toBe("import-lookup-clean");
+  });
+
+  it("does not apply the import-only gate to journal support entries", async () => {
+    const db = makePipelineMockDb();
+    const clue = {
+      userId: "u1",
+      patternType: "repetitive_loop" as const,
+      summary: 'Repetitive loop pattern across sessions: "I keep looping."',
+      supportEntries: [
+        {
+          sourceKind: "journal_entry" as const,
+          sessionId: null,
+          messageId: null,
+          journalEntryId: "journal-entry-1",
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          content: "Again.",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db });
+
+    const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
+    expect(claimEvidence).toHaveLength(1);
+    expect(claimEvidence[0]?.journalEntryId).toBe("journal-entry-1");
   });
 });
 

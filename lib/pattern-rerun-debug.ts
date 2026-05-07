@@ -65,6 +65,24 @@ export type PatternRerunDebugImportedSupportEvidenceSample = {
   sessionId: string | null;
   origin: PatternRerunDebugBehavioralOrigin;
   sourceClass: PatternRerunDebugSourceClass;
+  sourceKind: PatternRerunReceiptSourceKind;
+  sessionOrigin: string | null;
+  role: string | null;
+  metadataResolutionSource?: string;
+  createdAt: string;
+};
+
+export type PatternRerunDebugSupportEntryGateSkipSample = {
+  reasons: string[];
+  snippet: string;
+  messageId: string | null;
+  sessionId: string | null;
+  origin: PatternRerunDebugBehavioralOrigin;
+  sourceClass: PatternRerunDebugSourceClass;
+  sourceKind: PatternRerunReceiptSourceKind;
+  sessionOrigin: string | null;
+  role: string | null;
+  metadataResolutionSource?: string;
   createdAt: string;
 };
 
@@ -76,10 +94,14 @@ export type PatternRerunDebugDiagnostics = {
   importedPatternRelevanceRejectedCount: number;
   importedPatternRelevanceRejectionReasonCounts: Record<string, number>;
   importedPatternRelevanceRejectedSamples: PatternRerunDebugRejectSample[];
+  importedSupportEntriesEvaluatedForEvidenceQuality: number;
   importedSupportEntriesAcceptedForEvidenceQuality: number;
   importedSupportEntriesRejectedForEvidenceQuality: number;
   importedSupportEntriesEvidenceQualityRejectionReasonCounts: Record<string, number>;
   importedSupportEntriesEvidenceQualityRejectedSamples: PatternRerunDebugImportedSupportEvidenceSample[];
+  supportEntriesSkippedEvidenceQualityGateCount: number;
+  supportEntriesSkippedEvidenceQualityGateReasonCounts: Record<string, number>;
+  supportEntriesSkippedEvidenceQualityGateSamples: PatternRerunDebugSupportEntryGateSkipSample[];
   userEntryCount: number;
   behavioralEntryCount: number;
   rejectedEntryCount: number;
@@ -129,6 +151,7 @@ export type PatternRerunDebugCollector = {
     rejected: Array<{ entry: NormalizedHistoryEntry; reasons: string[] }>;
   }) => void;
   recordImportedSupportEntryEvidenceQuality?: (input: {
+    evaluatedCount: number;
     acceptedCount: number;
     rejectedCount: number;
     rejectionReasonCounts: Record<string, number>;
@@ -139,11 +162,29 @@ export type PatternRerunDebugCollector = {
         sessionOrigin?: string | null;
         sourceKind?: "chat_message" | "journal_entry";
         journalEntryId?: string | null;
+        role?: string | null;
+        metadataResolutionSource?: string;
         content: string;
         timestamp: Date;
       };
       quote: string;
       score: number;
+      reasons: string[];
+    }>;
+    skippedCount: number;
+    skippedReasonCounts: Record<string, number>;
+    skipped: Array<{
+      entry: {
+        messageId: string | null;
+        sessionId: string | null;
+        sessionOrigin?: string | null;
+        sourceKind?: "chat_message" | "journal_entry";
+        journalEntryId?: string | null;
+        role?: string | null;
+        metadataResolutionSource?: string;
+        content: string;
+        timestamp: Date;
+      };
       reasons: string[];
     }>;
   }) => void;
@@ -266,6 +307,8 @@ function toImportedSupportEvidenceSample(input: {
     sessionOrigin?: string | null;
     sourceKind?: "chat_message" | "journal_entry";
     journalEntryId?: string | null;
+    role?: string | null;
+    metadataResolutionSource?: string;
     content: string;
     timestamp: Date;
   };
@@ -292,6 +335,49 @@ function toImportedSupportEvidenceSample(input: {
     sessionId: input.entry.sessionId ?? null,
     origin,
     sourceClass: toSourceClass(origin),
+    sourceKind,
+    sessionOrigin: input.entry.sessionOrigin ?? null,
+    role: input.entry.role ?? null,
+    metadataResolutionSource: input.entry.metadataResolutionSource,
+    createdAt: input.entry.timestamp.toISOString(),
+  };
+}
+
+function toSupportEntryGateSkipSample(input: {
+  entry: {
+    messageId: string | null;
+    sessionId: string | null;
+    sessionOrigin?: string | null;
+    sourceKind?: "chat_message" | "journal_entry";
+    journalEntryId?: string | null;
+    role?: string | null;
+    metadataResolutionSource?: string;
+    content: string;
+    timestamp: Date;
+  };
+  reasons: string[];
+}): PatternRerunDebugSupportEntryGateSkipSample {
+  const sourceKind =
+    input.entry.sourceKind ?? (input.entry.journalEntryId ? "journal_entry" : "chat_message");
+  const origin: PatternRerunDebugBehavioralOrigin =
+    sourceKind === "journal_entry"
+      ? "journal"
+      : input.entry.sessionOrigin === "IMPORTED_ARCHIVE"
+        ? "IMPORTED_ARCHIVE"
+        : input.entry.sessionOrigin === "APP"
+          ? "APP"
+          : "unknown";
+  return {
+    reasons: [...input.reasons],
+    snippet: truncateSnippet(input.entry.content),
+    messageId: input.entry.messageId ?? null,
+    sessionId: input.entry.sessionId ?? null,
+    origin,
+    sourceClass: toSourceClass(origin),
+    sourceKind,
+    sessionOrigin: input.entry.sessionOrigin ?? null,
+    role: input.entry.role ?? null,
+    metadataResolutionSource: input.entry.metadataResolutionSource,
     createdAt: input.entry.timestamp.toISOString(),
   };
 }
@@ -388,10 +474,14 @@ export function createPatternRerunDebugCollector({
   let importedPatternRelevanceRejectedCount = 0;
   let importedPatternRelevanceRejectionReasonCounts: Record<string, number> = {};
   let importedPatternRelevanceRejectedSamples: PatternRerunDebugRejectSample[] = [];
+  let importedSupportEntriesEvaluatedForEvidenceQuality = 0;
   let importedSupportEntriesAcceptedForEvidenceQuality = 0;
   let importedSupportEntriesRejectedForEvidenceQuality = 0;
   let importedSupportEntriesEvidenceQualityRejectionReasonCounts: Record<string, number> = {};
   let importedSupportEntriesEvidenceQualityRejectedSamples: PatternRerunDebugImportedSupportEvidenceSample[] = [];
+  let supportEntriesSkippedEvidenceQualityGateCount = 0;
+  let supportEntriesSkippedEvidenceQualityGateReasonCounts: Record<string, number> = {};
+  let supportEntriesSkippedEvidenceQualityGateSamples: PatternRerunDebugSupportEntryGateSkipSample[] = [];
   let userEntryCount = 0;
   let behavioralEntryCount = 0;
   let rejectedEntryCount = 0;
@@ -502,11 +592,16 @@ export function createPatternRerunDebugCollector({
     },
 
     recordImportedSupportEntryEvidenceQuality({
+      evaluatedCount,
       acceptedCount,
       rejectedCount,
       rejectionReasonCounts,
       rejected,
+      skippedCount,
+      skippedReasonCounts,
+      skipped,
     }) {
+      importedSupportEntriesEvaluatedForEvidenceQuality = safePositiveInt(evaluatedCount);
       importedSupportEntriesAcceptedForEvidenceQuality = safePositiveInt(acceptedCount);
       importedSupportEntriesRejectedForEvidenceQuality = safePositiveInt(rejectedCount);
 
@@ -521,6 +616,18 @@ export function createPatternRerunDebugCollector({
       importedSupportEntriesEvidenceQualityRejectedSamples = rejected
         .slice(0, 8)
         .map((item) => toImportedSupportEvidenceSample(item));
+
+      supportEntriesSkippedEvidenceQualityGateCount = safePositiveInt(skippedCount);
+      const nextSkippedReasonCounts: Record<string, number> = {};
+      for (const [reason, count] of Object.entries(skippedReasonCounts)) {
+        const normalizedCount = safePositiveInt(count);
+        if (normalizedCount <= 0) continue;
+        nextSkippedReasonCounts[reason] = normalizedCount;
+      }
+      supportEntriesSkippedEvidenceQualityGateReasonCounts = nextSkippedReasonCounts;
+      supportEntriesSkippedEvidenceQualityGateSamples = skipped
+        .slice(0, 8)
+        .map((item) => toSupportEntryGateSkipSample(item));
     },
 
     recordDetectorInputCountsByFamily(counts) {
@@ -623,10 +730,14 @@ export function createPatternRerunDebugCollector({
         importedPatternRelevanceRejectedCount,
         importedPatternRelevanceRejectionReasonCounts,
         importedPatternRelevanceRejectedSamples,
+        importedSupportEntriesEvaluatedForEvidenceQuality,
         importedSupportEntriesAcceptedForEvidenceQuality,
         importedSupportEntriesRejectedForEvidenceQuality,
         importedSupportEntriesEvidenceQualityRejectionReasonCounts,
         importedSupportEntriesEvidenceQualityRejectedSamples,
+        supportEntriesSkippedEvidenceQualityGateCount,
+        supportEntriesSkippedEvidenceQualityGateReasonCounts,
+        supportEntriesSkippedEvidenceQualityGateSamples,
         userEntryCount,
         behavioralEntryCount,
         rejectedEntryCount,
