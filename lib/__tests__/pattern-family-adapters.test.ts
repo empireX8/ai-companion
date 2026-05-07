@@ -282,6 +282,47 @@ describe("detectRecoveryStabilizerClues — clue production", () => {
     expect(result[0]!.patternType).toBe("recovery_stabilizer");
   });
 
+  it("prefers explicit progress/stabilization text over broad spiritual self-narrative for summary selection", () => {
+    const result = detectRecoveryStabilizerClues({
+      userId: "u1",
+      entries: [
+        makeEntry("We're making progress though.", {
+          sessionId: "sess1",
+          messageId: "progress_msg",
+        }),
+        makeEntry(
+          "Interesting, interesting. I hear you. I feel the God in me alive, and I'm working through this.",
+          {
+            sessionId: "sess2",
+            messageId: "spiritual_msg",
+          }
+        ),
+      ],
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.summary).toContain("We're making progress though.");
+  });
+
+  it("falls back to current representative behavior when no stronger stabilization text exists", () => {
+    const result = detectRecoveryStabilizerClues({
+      userId: "u1",
+      entries: [
+        makeEntry("I've been doing a better job of sticking to routines.", {
+          sessionId: "sess1",
+          messageId: "fallback_1",
+        }),
+        makeEntry("I've been keeping at it through the week.", {
+          sessionId: "sess2",
+          messageId: "fallback_2",
+        }),
+      ],
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.summary).toContain("I've been keeping at it through the week.");
+  });
+
   it("detects native progress phrasing like doing a better job and stabilizing faster", () => {
     const result = detectRecoveryStabilizerClues({
       userId: "u1",
@@ -298,7 +339,7 @@ describe("detectRecoveryStabilizerClues — clue production", () => {
   });
 
   it("summary is stable across runs", () => {
-    const stableRepresentative = "I'm getting better now that I'm resting";
+    const stableRepresentative = "I'm making real progress now that I'm resting";
     const s1 = detectRecoveryStabilizerClues({
       userId: "u1",
       entries: [

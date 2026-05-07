@@ -47,6 +47,35 @@ export const RECOVERY_STABILIZER_MARKERS: RegExp[] = [
   /\b(?:things?\s+(?:went|worked\s+out)|it\s+(?:went|worked)\s+(?:well|out))\b/i,
 ];
 
+const RECOVERY_SUMMARY_STABILIZATION_MARKERS: RegExp[] = [
+  /\b(?:making|made|seeing|noticing)\s+(?:real\s+)?progress\b/i,
+  /\bprogress\s+though\b/i,
+  /\bgot\s+through\s+it\b/i,
+  /\bcalm(?:ed)?\s+down\b/i,
+  /\bground(?:ed|ing)\b/i,
+  /\breset\b/i,
+  /\brecover(?:ed|ing)?\b/i,
+  /\b(?:feel|felt)\s+better\b/i,
+  /\bgot\s+rid\s+of\s+it\b/i,
+  /\bhelp(?:ed|s)?\s+me\s+stabiliz\w*\b/i,
+  /\bstabiliz\w+\b/i,
+  /\b(?:prayed?|meditat\w+)\b.{0,40}\b(?:stabiliz\w+|calm(?:ed)?\s+down|better|got\s+rid\s+of\s+it|recover\w*)\b/i,
+  /\b(?:stabiliz\w+|calm(?:ed)?\s+down|better|recover\w*|got\s+rid\s+of\s+it)\b.{0,40}\b(?:prayed?|meditat\w+)\b/i,
+];
+
+function matchesAnyRecoveryPattern(content: string, patterns: RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(content));
+}
+
+function filterRecoverySummaryMatches(
+  matches: NormalizedHistoryEntry[]
+): NormalizedHistoryEntry[] {
+  const themed = matches.filter((entry) =>
+    matchesAnyRecoveryPattern(entry.content, RECOVERY_SUMMARY_STABILIZATION_MARKERS)
+  );
+  return themed.length > 0 ? themed : matches;
+}
+
 // ── Adapter ───────────────────────────────────────────────────────────────────
 
 /**
@@ -69,15 +98,20 @@ export function detectRecoveryStabilizerClues({
 
   if (matches.length < RS_MIN_MATCHES) return [];
 
+  const localizedMatches = filterRecoverySummaryMatches(matches);
+
   // Classification: representative drives sessionId/messageId and summary dedup key.
-  const representative = selectEvidenceRepresentative(matches);
+  const representative = selectEvidenceRepresentative(localizedMatches);
   if (!representative) return [];
 
   const summaryQuote = representative.content.slice(0, 100).trim();
   const summary = `Recovery pattern: "${summaryQuote}"`;
 
   // Display: stricter quote-ranking path — null when no candidate is display-safe.
-  const quote = selectBestDisplayQuote(matches) ?? undefined;
+  const quote =
+    selectBestDisplayQuote(localizedMatches) ??
+    selectBestDisplayQuote(matches) ??
+    undefined;
 
   return [
     {
