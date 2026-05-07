@@ -8,6 +8,7 @@ import {
   buildTriggerConditionSubgroupDiagnostics,
   classifyTriggerConditionSubgroup,
   detectTriggerConditionClues,
+  TC_MAX_SUBGROUP_CLUES,
   TC_MIN_MATCHES,
 } from "../trigger-condition-detector";
 import type { NormalizedHistoryEntry } from "../history-synthesis";
@@ -123,6 +124,137 @@ describe("detectTriggerConditionClues — clue production", () => {
     const clue = detectTriggerConditionClues({ userId: "u1", entries })[0]!;
     expect(clue.sessionId).toBe("sess_late");
     expect(clue.messageId).toBe("msg_late");
+  });
+});
+
+describe("detectTriggerConditionClues — subgroup pilot emission", () => {
+  it("emits two subgroup-local clues when social_appeasement and overwhelm_state_shift both meet spread", () => {
+    const entries = [
+      makeEntry(
+        "Whenever someone seems upset with me, I default to people-pleasing and walk back my boundary.",
+        { sessionId: "social-1", messageId: "social-msg-1", createdAt: new Date("2026-01-01") }
+      ),
+      makeEntry(
+        "When social pressure rises, I start appeasing people and over-explaining myself.",
+        { sessionId: "social-2", messageId: "social-msg-2", createdAt: new Date("2026-01-02") }
+      ),
+      makeEntry(
+        "If I think someone might be disappointed, I walk back my boundary to smooth it over.",
+        { sessionId: "social-3", messageId: "social-msg-3", createdAt: new Date("2026-01-03") }
+      ),
+      makeEntry(
+        "When I'm overwhelmed, I tend to feel my mode shift and my identity wobble under pressure.",
+        { sessionId: "overwhelm-1", messageId: "overwhelm-msg-1", createdAt: new Date("2026-01-04") }
+      ),
+      makeEntry(
+        "Every time this state hits, it triggers my emotional mode shift.",
+        { sessionId: "overwhelm-2", messageId: "overwhelm-msg-2", createdAt: new Date("2026-01-05") }
+      ),
+      makeEntry(
+        "When pressure builds, I usually feel that same state change again.",
+        { sessionId: "overwhelm-3", messageId: "overwhelm-msg-3", createdAt: new Date("2026-01-06") }
+      ),
+      makeEntry(
+        "When stress spikes, I end up smoking and making tea as a reset.",
+        { sessionId: "coping-1", messageId: "coping-msg-1", createdAt: new Date("2026-01-07") }
+      ),
+      makeEntry(
+        "Whenever this pattern repeats, I notice that I lose momentum.",
+        { sessionId: "general-1", messageId: "general-msg-1", createdAt: new Date("2026-01-08") }
+      ),
+    ];
+
+    const clues = detectTriggerConditionClues({ userId: "u1", entries });
+    expect(clues).toHaveLength(2);
+    expect(clues.length).toBeLessThanOrEqual(TC_MAX_SUBGROUP_CLUES);
+
+    const social = clues.find((clue) =>
+      clue.summary.startsWith("Trigger-response pattern (social appeasement): ")
+    );
+    const overwhelm = clues.find((clue) =>
+      clue.summary.startsWith("Trigger-response pattern (overwhelm/state shift): ")
+    );
+
+    expect(social).toBeDefined();
+    expect(overwhelm).toBeDefined();
+    expect(
+      social?.supportEntries?.every((entry) => entry.messageId?.startsWith("social-msg-"))
+    ).toBe(true);
+    expect(
+      overwhelm?.supportEntries?.every((entry) => entry.messageId?.startsWith("overwhelm-msg-"))
+    ).toBe(true);
+  });
+
+  it("does not emit coping_reactivity as its own clue when coping spread is below gate", () => {
+    const entries = [
+      makeEntry("Whenever someone seems upset with me, I default to people-pleasing.", {
+        sessionId: "social-1",
+        messageId: "social-msg-1",
+      }),
+      makeEntry("When social pressure rises, I start appeasing people and over-explaining.", {
+        sessionId: "social-2",
+        messageId: "social-msg-2",
+      }),
+      makeEntry("If tension shows up, I walk back my boundary.", {
+        sessionId: "social-3",
+        messageId: "social-msg-3",
+      }),
+      makeEntry("When stress spikes, I end up smoking and making tea as a reset.", {
+        sessionId: "coping-1",
+        messageId: "coping-msg-1",
+      }),
+    ];
+
+    const clues = detectTriggerConditionClues({ userId: "u1", entries });
+    expect(clues).toHaveLength(1);
+    expect(clues[0]?.summary.startsWith("Trigger-response pattern (coping reactivity): ")).toBe(
+      false
+    );
+  });
+
+  it("does not emit general as a subgroup clue even when general messages dominate", () => {
+    const entries = [
+      makeEntry("Whenever I hit this pattern, I tend to freeze up.", {
+        sessionId: "general-1",
+      }),
+      makeEntry("Every time this cycle appears, I always lose momentum.", {
+        sessionId: "general-2",
+      }),
+      makeEntry("When this comes up, I usually shut down and stall.", {
+        sessionId: "general-3",
+      }),
+      makeEntry("Whenever this pattern repeats, I notice I fall behind.", {
+        sessionId: "general-4",
+      }),
+    ];
+
+    const clues = detectTriggerConditionClues({ userId: "u1", entries });
+    expect(clues).toHaveLength(1);
+    expect(clues[0]?.summary.startsWith("Trigger-response pattern: ")).toBe(true);
+  });
+
+  it("falls back to one broad trigger clue when no subgroup meets session spread gate", () => {
+    const entries = [
+      makeEntry("Whenever someone seems upset with me, I default to people-pleasing.", {
+        sessionId: "social-only",
+        messageId: "msg-social",
+      }),
+      makeEntry("When I'm overwhelmed, I tend to feel my mode shift.", {
+        sessionId: "overwhelm-only",
+        messageId: "msg-overwhelm",
+      }),
+      makeEntry("Every time stress rises, I end up smoking and making tea.", {
+        sessionId: "coping-only",
+        messageId: "msg-coping",
+      }),
+    ];
+
+    const clues = detectTriggerConditionClues({ userId: "u1", entries });
+    expect(clues).toHaveLength(1);
+    expect(clues[0]?.summary.startsWith("Trigger-response pattern: ")).toBe(true);
+    expect(new Set(clues[0]?.supportEntries?.map((entry) => entry.messageId))).toEqual(
+      new Set(["msg-social", "msg-overwhelm", "msg-coping"])
+    );
   });
 });
 

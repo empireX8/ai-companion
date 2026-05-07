@@ -1344,6 +1344,59 @@ describe("Packet 3 smoke — re-run deduplication", () => {
     expect(first).toBeGreaterThan(0); // first run created it
     expect(second).toBe(0); // second run found existing, created=false
   });
+
+  it("second run does not duplicate multi-clue trigger subgroup claims", async () => {
+    const db = makePipelineMockDb({
+      messages: [
+        makeMessage("Whenever someone seems upset with me, I default to people-pleasing.", {
+          id: "social-msg-1",
+          sessionId: "social-1",
+        }),
+        makeMessage("When social pressure rises, I start appeasing people and over-explaining.", {
+          id: "social-msg-2",
+          sessionId: "social-2",
+        }),
+        makeMessage("If tension starts, I walk back my boundary and soften my stance.", {
+          id: "social-msg-3",
+          sessionId: "social-3",
+        }),
+        makeMessage("When I'm overwhelmed, I tend to feel my mode shift under pressure.", {
+          id: "overwhelm-msg-1",
+          sessionId: "overwhelm-1",
+        }),
+        makeMessage("Every time that state lands, it triggers my identity wobble.", {
+          id: "overwhelm-msg-2",
+          sessionId: "overwhelm-2",
+        }),
+        makeMessage("When pressure builds, I usually hit the same emotional state change.", {
+          id: "overwhelm-msg-3",
+          sessionId: "overwhelm-3",
+        }),
+      ],
+    });
+
+    const first = await patternDetectorV1({
+      userId: "u1",
+      messageIds: [],
+      runId: "run1",
+      db,
+    });
+
+    const tcClaimsAfterFirst = db._claims.filter((c) => c.patternType === "trigger_condition");
+    expect(tcClaimsAfterFirst).toHaveLength(2);
+
+    const second = await patternDetectorV1({
+      userId: "u1",
+      messageIds: [],
+      runId: "run2",
+      db,
+    });
+
+    const tcClaimsAfterSecond = db._claims.filter((c) => c.patternType === "trigger_condition");
+    expect(tcClaimsAfterSecond).toHaveLength(2);
+    expect(first).toBeGreaterThan(0);
+    expect(second).toBe(0);
+  });
 });
 
 describe("Packet 3 smoke — evidence deduplication on re-run", () => {

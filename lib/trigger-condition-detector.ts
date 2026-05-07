@@ -8,7 +8,7 @@
  * stimulus-response relationship ("whenever X happens, I tend to Y").
  *
  * Rule-based, no LLM call. Uses heuristic marker patterns on user messages.
- * Returns a single PatternClue when the minimum match threshold is met.
+ * Returns one or more PatternClues when the minimum match threshold is met.
  *
  * Summary is content-stable across re-runs so dedup via summaryNorm works.
  */
@@ -22,6 +22,7 @@ import { selectBestDisplayQuote } from "./pattern-quote-selection";
 
 /** Minimum user messages with trigger markers before a clue is emitted. */
 export const TC_MIN_MATCHES = 3;
+export const TC_MAX_SUBGROUP_CLUES = 2;
 
 // ── Trigger-response markers ──────────────────────────────────────────────────
 
@@ -96,6 +97,12 @@ const TRIGGER_SUBGROUP_ORDER: TriggerConditionSubgroup[] = [
   "general",
 ];
 
+const TRIGGER_SUBGROUP_EMIT_ORDER: TriggerConditionSubgroup[] = [
+  "social_appeasement",
+  "overwhelm_state_shift",
+  "coping_reactivity",
+];
+
 const SOCIAL_APPEASEMENT_MARKERS: RegExp[] = [
   /\bpeople[-\s]?pleas\w*\b/i,
   /\bappeas\w*\b/i,
@@ -151,6 +158,73 @@ function truncateDiagnosticSample(content: string, maxLength = 140): string {
 function countDistinctSessions(entries: NormalizedHistoryEntry[]): number {
   return new Set(entries.map((entry) => entry.sessionId).filter((sessionId): sessionId is string => Boolean(sessionId)))
     .size;
+}
+
+function mapTriggerSupportEntry(match: NormalizedHistoryEntry) {
+  return {
+    sourceKind:
+      match.sourceKind ?? (match.journalEntryId ? "journal_entry" : "chat_message"),
+    sessionId: match.sessionId,
+    messageId: match.messageId,
+    journalEntryId: match.journalEntryId ?? null,
+    sessionOrigin: match.sessionOrigin,
+    role: match.role,
+    timestamp: match.createdAt,
+    content: match.content,
+  };
+}
+
+function getTriggerSummaryPrefix(subgroup: TriggerConditionSubgroup): string {
+  if (subgroup === "social_appeasement") {
+    return "Trigger-response pattern (social appeasement)";
+  }
+  if (subgroup === "overwhelm_state_shift") {
+    return "Trigger-response pattern (overwhelm/state shift)";
+  }
+  if (subgroup === "coping_reactivity") {
+    return "Trigger-response pattern (coping reactivity)";
+  }
+  return "Trigger-response pattern";
+}
+
+function groupTriggerMatchesBySubgroup(
+  matches: NormalizedHistoryEntry[]
+): Map<TriggerConditionSubgroup, NormalizedHistoryEntry[]> {
+  const groupedBySubgroup = new Map<TriggerConditionSubgroup, NormalizedHistoryEntry[]>();
+  for (const entry of matches) {
+    const subgroup = classifyTriggerConditionSubgroup(entry.content);
+    const existingEntries = groupedBySubgroup.get(subgroup);
+    if (existingEntries) existingEntries.push(entry);
+    else groupedBySubgroup.set(subgroup, [entry]);
+  }
+  return groupedBySubgroup;
+}
+
+function buildTriggerConditionClue(
+  userId: string,
+  matches: NormalizedHistoryEntry[],
+  summaryPrefix: string
+): PatternClue | null {
+  const representative = selectEvidenceRepresentative(matches);
+  if (!representative) return null;
+
+  const summaryQuote = representative.content.slice(0, 100).trim();
+  const summary = `${summaryPrefix}: "${summaryQuote}"`;
+  const quote = selectBestDisplayQuote(matches) ?? undefined;
+
+  return {
+    userId,
+    patternType: "trigger_condition",
+    summary,
+    sourceKind:
+      representative.sourceKind ??
+      (representative.journalEntryId ? "journal_entry" : "chat_message"),
+    sessionId: representative.sessionId,
+    messageId: representative.messageId,
+    journalEntryId: representative.journalEntryId ?? null,
+    quote,
+    supportEntries: matches.map(mapTriggerSupportEntry),
+  };
 }
 
 function getMatchedTriggerMarkerLabels(content: string): string[] {
@@ -214,22 +288,18 @@ export function buildTriggerConditionSubgroupDiagnostics(
   entries: NormalizedHistoryEntry[]
 ): TriggerConditionSubgroupDiagnostics {
   const matches = getTriggerConditionMatches(entries);
-  const groupedBySubgroup = new Map<TriggerConditionSubgroup, NormalizedHistoryEntry[]>();
+  const groupedBySubgroup = groupTriggerMatchesBySubgroup(matches);
   const markerCountsBySubgroup = new Map<TriggerConditionSubgroup, Map<string, number>>();
 
-  for (const entry of matches) {
-    const subgroup = classifyTriggerConditionSubgroup(entry.content);
-    const existingEntries = groupedBySubgroup.get(subgroup);
-    if (existingEntries) existingEntries.push(entry);
-    else groupedBySubgroup.set(subgroup, [entry]);
-
-    const subgroupMarkerCounts =
-      markerCountsBySubgroup.get(subgroup) ?? new Map<string, number>();
-    for (const markerLabel of getMatchedTriggerMarkerLabels(entry.content)) {
-      subgroupMarkerCounts.set(
-        markerLabel,
-        (subgroupMarkerCounts.get(markerLabel) ?? 0) + 1
-      );
+  for (const [subgroup, subgroupEntries] of groupedBySubgroup.entries()) {
+    const subgroupMarkerCounts = new Map<string, number>();
+    for (const entry of subgroupEntries) {
+      for (const markerLabel of getMatchedTriggerMarkerLabels(entry.content)) {
+        subgroupMarkerCounts.set(
+          markerLabel,
+          (subgroupMarkerCounts.get(markerLabel) ?? 0) + 1
+        );
+      }
     }
     markerCountsBySubgroup.set(subgroup, subgroupMarkerCounts);
   }
@@ -263,7 +333,7 @@ export type TriggerConditionInput = {
  * Detect trigger_condition patterns from a user's normalized history.
  *
  * Scans user-role messages for trigger-response language markers.
- * Returns one PatternClue when TC_MIN_MATCHES is met, empty otherwise.
+ * Returns one or more PatternClues when TC_MIN_MATCHES is met, empty otherwise.
  *
  * Evidence context is taken from the most recent matching message.
  */
@@ -277,37 +347,35 @@ export function detectTriggerConditionClues({
     return [];
   }
 
-  // Classification: representative drives sessionId/messageId and summary dedup key.
-  const representative = selectEvidenceRepresentative(matches);
-  if (!representative) return [];
+  const groupedBySubgroup = groupTriggerMatchesBySubgroup(matches);
+  const subgroupClues: PatternClue[] = [];
 
-  const summaryQuote = representative.content.slice(0, 100).trim();
-  const summary = `Trigger-response pattern: "${summaryQuote}"`;
+  for (const subgroup of TRIGGER_SUBGROUP_EMIT_ORDER) {
+    const subgroupMatches = groupedBySubgroup.get(subgroup) ?? [];
+    const subgroupSessionCount = countDistinctSessions(subgroupMatches);
+    if (subgroupSessionCount < TC_MIN_MATCHES) continue;
 
-  // Display: stricter quote-ranking path — null when no candidate is display-safe.
-  const quote = selectBestDisplayQuote(matches) ?? undefined;
+    const clue = buildTriggerConditionClue(
+      userId,
+      subgroupMatches,
+      getTriggerSummaryPrefix(subgroup)
+    );
+    if (!clue) continue;
+    subgroupClues.push(clue);
 
-  return [{
+    if (subgroupClues.length >= TC_MAX_SUBGROUP_CLUES) {
+      break;
+    }
+  }
+
+  if (subgroupClues.length > 0) {
+    return subgroupClues;
+  }
+
+  const fallbackClue = buildTriggerConditionClue(
     userId,
-    patternType: "trigger_condition",
-    summary,
-    sourceKind:
-      representative.sourceKind ??
-      (representative.journalEntryId ? "journal_entry" : "chat_message"),
-    sessionId: representative.sessionId,
-    messageId: representative.messageId,
-    journalEntryId: representative.journalEntryId ?? null,
-    quote,
-    supportEntries: matches.map((match) => ({
-      sourceKind:
-        match.sourceKind ?? (match.journalEntryId ? "journal_entry" : "chat_message"),
-      sessionId: match.sessionId,
-      messageId: match.messageId,
-      journalEntryId: match.journalEntryId ?? null,
-      sessionOrigin: match.sessionOrigin,
-      role: match.role,
-      timestamp: match.createdAt,
-      content: match.content,
-    })),
-  }];
+    matches,
+    "Trigger-response pattern"
+  );
+  return fallbackClue ? [fallbackClue] : [];
 }
