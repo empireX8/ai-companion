@@ -97,6 +97,13 @@ type ImportedSupportEvidenceFilterResult = {
   }>;
 };
 
+type ImportedSupportResidualEvidenceRejectionReason =
+  | "imported_low_context_confusion_snippet"
+  | "imported_codex_project_coordination_chatter"
+  | "imported_tooling_setup_chatter"
+  | "imported_source_text_drafting_snippet"
+  | "imported_recovery_metrics_or_biography_snippet";
+
 function resolveSupportEntrySourceKind(entry: SupportEntry): "chat_message" | "journal_entry" {
   return entry.sourceKind ?? (entry.journalEntryId ? "journal_entry" : "chat_message");
 }
@@ -194,6 +201,204 @@ function enrichSupportEntry({
   };
 }
 
+function normalizeImportedSupportResidualText(text: string): string {
+  return text
+    .replace(/[’`]/g, "'")
+    .toLowerCase()
+    .replace(/[^a-z0-9'\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function containsAnyPhrase(normalizedText: string, phrases: readonly string[]): boolean {
+  return phrases.some((phrase) => normalizedText.includes(phrase));
+}
+
+function isImportedLowContextConfusionSnippet(normalizedText: string): boolean {
+  const hasSameThing = containsAnyPhrase(normalizedText, ["same thing", "same thing as"]);
+  const hasConfusionLead = containsAnyPhrase(normalizedText, [
+    "i'm guessing",
+    "im guessing",
+    "i m guessing",
+    "just checking",
+    "was just checking",
+    "is that",
+  ]);
+  const hasReceivingMismatch = containsAnyPhrase(normalizedText, [
+    "recieving the same thing",
+    "receiving the same thing",
+    "recieving same thing",
+    "receiving same thing",
+  ]);
+  const hasEnvMarker = containsAnyPhrase(normalizedText, [
+    "env star",
+    ".env",
+    " env ",
+  ]);
+  const hasLevelMarker = normalizedText.includes("at this level");
+
+  return (
+    (hasSameThing && (hasConfusionLead || hasReceivingMismatch || hasLevelMarker)) ||
+    (hasEnvMarker && (hasSameThing || hasConfusionLead || hasLevelMarker))
+  );
+}
+
+function isImportedCodexProjectCoordinationChatter(normalizedText: string): boolean {
+  const hasCoordinationActor = containsAnyPhrase(normalizedText, [
+    "codex",
+    "project",
+    "codebase",
+    "repo",
+    "repository",
+    "task",
+    "tasks",
+    "workflow",
+    "handoff",
+  ]);
+  const hasCoordinationVerb = containsAnyPhrase(normalizedText, [
+    "talk to codex",
+    "command it",
+    "command codex",
+    "strategically",
+    "do stuff",
+    "coordinate",
+    "handoff",
+    "before the next pass",
+    "open pinecone",
+  ]);
+
+  return hasCoordinationActor && hasCoordinationVerb;
+}
+
+function isImportedToolingSetupChatter(normalizedText: string): boolean {
+  const hasToolingSubject = containsAnyPhrase(normalizedText, [
+    "pinecone",
+    "supabase",
+    "firebase",
+    "index called",
+    "vector index",
+    "database index",
+  ]);
+  const hasSetupAction = containsAnyPhrase(normalizedText, [
+    "open",
+    "set up",
+    "setup",
+    "already have",
+    "called",
+    "configure",
+    "configured",
+    "connect",
+    "connected",
+    "wire",
+    "wired",
+    "create",
+    "created",
+  ]);
+
+  return hasToolingSubject && hasSetupAction;
+}
+
+function isImportedSourceTextDraftingSnippet(normalizedText: string): boolean {
+  const hasDraftingLead = containsAnyPhrase(normalizedText, [
+    "before i send it",
+    "is this expressed well",
+    "is this worded well",
+    "is this phrased well",
+    "how does this sound before i send",
+  ]);
+  const hasSourceTextTopic = containsAnyPhrase(normalizedText, [
+    "garvey",
+    "douglass",
+    "tubman",
+    "caribbean labour",
+    "caribbean labor",
+    "black excellence",
+    "constitutional principle",
+    "funded europe s rise",
+    "funded europe's rise",
+  ]);
+  const hasClaimQuoteLead = containsAnyPhrase(normalizedText, [
+    "people always deny this",
+    "when i claim it",
+  ]);
+
+  return hasDraftingLead || (hasSourceTextTopic && hasClaimQuoteLead);
+}
+
+function isImportedRecoveryMetricsOrBiographySnippet(normalizedText: string): boolean {
+  const hasChannelMetric = containsAnyPhrase(normalizedText, [
+    "views",
+    "channel",
+    "subscribers",
+    "followers",
+    "watch time",
+  ]);
+  const hasChannelMetricMovement = containsAnyPhrase(normalizedText, [
+    "got ",
+    "lost ",
+    "started rebuilding",
+    "start rebuilding",
+    "rebuilding",
+  ]);
+
+  if (hasChannelMetric && hasChannelMetricMovement) {
+    return true;
+  }
+
+  const hasBiographyFrame = containsAnyPhrase(normalizedText, [
+    "since a child",
+    "as a child",
+    "since childhood",
+    "when i was a child",
+    "growing up",
+  ]);
+  const hasStaticTraitLabel = containsAnyPhrase(normalizedText, [
+    "considered shy",
+    "shy person",
+    "quiet person",
+    "timid",
+    "reserved",
+  ]);
+  const hasExplicitRecoverySignal = containsAnyPhrase(normalizedText, [
+    "stabilize",
+    "stabilizing",
+    "recovery",
+    "recover",
+    "relapse",
+    "fall back",
+    "crash out",
+    "ground myself",
+    "reset myself",
+  ]);
+
+  return hasBiographyFrame && hasStaticTraitLabel && !hasExplicitRecoverySignal;
+}
+
+function classifyImportedSupportResidualEvidenceRejections(
+  text: string
+): ImportedSupportResidualEvidenceRejectionReason[] {
+  const normalizedText = normalizeImportedSupportResidualText(text);
+  const reasons: ImportedSupportResidualEvidenceRejectionReason[] = [];
+
+  if (isImportedLowContextConfusionSnippet(normalizedText)) {
+    reasons.push("imported_low_context_confusion_snippet");
+  }
+  if (isImportedCodexProjectCoordinationChatter(normalizedText)) {
+    reasons.push("imported_codex_project_coordination_chatter");
+  }
+  if (isImportedToolingSetupChatter(normalizedText)) {
+    reasons.push("imported_tooling_setup_chatter");
+  }
+  if (isImportedSourceTextDraftingSnippet(normalizedText)) {
+    reasons.push("imported_source_text_drafting_snippet");
+  }
+  if (isImportedRecoveryMetricsOrBiographySnippet(normalizedText)) {
+    reasons.push("imported_recovery_metrics_or_biography_snippet");
+  }
+
+  return reasons;
+}
+
 /**
  * Import-only pre-materialization quality boundary for support entries.
  * Applies only to IMPORTED_ARCHIVE chat support entries; native APP and journal
@@ -254,9 +459,12 @@ export function applyImportedSupportEvidenceQualityBoundary({
     const relevanceRejections = relevance.reasons.filter(
       (reason) => reason !== "import_human_relevance_accepted"
     );
-    const reasons = Array.from(new Set([...quality.reasons, ...relevanceRejections]));
+    const residualRejections = classifyImportedSupportResidualEvidenceRejections(quality.quote);
+    const reasons = Array.from(
+      new Set([...quality.reasons, ...relevanceRejections, ...residualRejections])
+    );
 
-    if (quality.accepted && relevanceRejections.length === 0) {
+    if (quality.accepted && relevanceRejections.length === 0 && residualRejections.length === 0) {
       acceptedCount += 1;
       kept.push({
         ...entry,

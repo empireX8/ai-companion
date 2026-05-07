@@ -435,6 +435,273 @@ describe("Packet 3 smoke — imported support evidence quality gate", () => {
     expect(claimEvidence[0]?.messageId).toBe("import-valid-loop");
   });
 
+  it("repetitive_loop: rejects residual imported low-context/project/tooling/source-text leakage", async () => {
+    const db = makePipelineMockDb();
+    const debugCollector = createPatternRerunDebugCollector();
+    const clue = {
+      userId: "u1",
+      patternType: "repetitive_loop" as const,
+      summary: 'Repetitive loop pattern across sessions: "I keep looping into the same pattern."',
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-s1",
+          messageId: "import-low-context-env",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          content: "env star and is i'm guessing is that the same thing as .",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-s2",
+          messageId: "import-low-context-receiving",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
+          content: "Okay, I was just checking we are recieving the same thing he is at this level",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-s3",
+          messageId: "import-codex-coordination",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-03T00:00:00.000Z"),
+          content:
+            "Bruv i keep telling you yalk to codex and strategically not just command it do stuff...",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-s4",
+          messageId: "import-pinecone-setup",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-04T00:00:00.000Z"),
+          content: "I'll open Pinecone, and I already have an index called Companion.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-s5",
+          messageId: "import-source-drafting",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-05T00:00:00.000Z"),
+          content:
+            "Is this expressed well before I send it: Black excellence is individualistic, Garvey believed...",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-s6",
+          messageId: "import-source-claim",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-06T00:00:00.000Z"),
+          content:
+            "People always deny this when I claim it \"Caribbean labour funded Europe's rise.\"",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-s7",
+          messageId: "import-clean-loop",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-07T00:00:00.000Z"),
+          content: "I always end up going back to the same pattern when the pressure spikes.",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db, debugCollector });
+
+    const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
+    expect(claimEvidence).toHaveLength(1);
+    expect(claimEvidence[0]?.messageId).toBe("import-clean-loop");
+
+    const diagnostics = debugCollector.buildDiagnostics();
+    expect(diagnostics.importedSupportEntriesEvaluatedForEvidenceQuality).toBe(7);
+    expect(diagnostics.importedSupportEntriesAcceptedForEvidenceQuality).toBe(1);
+    expect(diagnostics.importedSupportEntriesRejectedForEvidenceQuality).toBe(6);
+    expect(diagnostics.supportEntriesSkippedEvidenceQualityGateCount).toBe(0);
+    expect(
+      diagnostics.importedSupportEntriesEvaluatedForEvidenceQuality +
+        diagnostics.supportEntriesSkippedEvidenceQualityGateCount
+    ).toBe(diagnostics.supportEntriesTotal);
+    expect(diagnostics.importedSupportEntriesEvidenceQualityRejectionReasonCounts).toMatchObject({
+      imported_low_context_confusion_snippet: 2,
+      imported_codex_project_coordination_chatter: 1,
+      imported_tooling_setup_chatter: 1,
+      imported_source_text_drafting_snippet: 2,
+    });
+  });
+
+  it("recovery_stabilizer: rejects imported channel-metric and biography snippets when stabilization signal is absent", async () => {
+    const db = makePipelineMockDb();
+    const debugCollector = createPatternRerunDebugCollector();
+    const clue = {
+      userId: "u1",
+      patternType: "recovery_stabilizer" as const,
+      summary: 'Recovery/stabilization pattern: "I am learning to regain balance."',
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-r1",
+          messageId: "import-channel-metric",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          content:
+            "thanks i got 10 plus views and then i lost my channel started rebuilding...",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-r2",
+          messageId: "import-biography",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
+          content: "But since a child, I've always been considered shy, so...",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-r3",
+          messageId: "import-clean-recovery",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-03T00:00:00.000Z"),
+          content:
+            "Well said and I don't want to crash out and fall back just to feel motivated again...",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db, debugCollector });
+
+    const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
+    expect(claimEvidence).toHaveLength(1);
+    expect(claimEvidence[0]?.messageId).toBe("import-clean-recovery");
+
+    const diagnostics = debugCollector.buildDiagnostics();
+    expect(diagnostics.importedSupportEntriesEvaluatedForEvidenceQuality).toBe(3);
+    expect(diagnostics.importedSupportEntriesAcceptedForEvidenceQuality).toBe(1);
+    expect(diagnostics.importedSupportEntriesRejectedForEvidenceQuality).toBe(2);
+    expect(diagnostics.importedSupportEntriesEvidenceQualityRejectionReasonCounts).toMatchObject({
+      imported_recovery_metrics_or_biography_snippet: 2,
+    });
+  });
+
+  it("keeps clean imported behavioral support evidence materialized", async () => {
+    const db = makePipelineMockDb();
+    const clue = {
+      userId: "u1",
+      patternType: "trigger_condition" as const,
+      summary: 'Trigger-response pattern: "When stress rises, familiar coping patterns trigger."',
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-c1",
+          messageId: "import-clean-people-pleaser",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          content: "I notice I am definitely a people pleaser.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-c2",
+          messageId: "import-clean-loop",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
+          content: "I always end up going back to the same pattern.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-c3",
+          messageId: "import-clean-overwhelmed",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-03T00:00:00.000Z"),
+          content: "when I'm overwhelmed it triggers my internal hood identity.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-c4",
+          messageId: "import-clean-learning-pace",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-04T00:00:00.000Z"),
+          content:
+            "I wish I could learn at the pace I could think, and I keep getting frustrated when I can't.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-c5",
+          messageId: "import-clean-reposition-reality",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-05T00:00:00.000Z"),
+          content:
+            "My brain can just reposition itself to accept reality, but I keep spiraling before I finally calm down.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-c6",
+          messageId: "import-clean-crash-out",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-06T00:00:00.000Z"),
+          content:
+            "Well said and I don't want to crash out and fall back just to feel motivated again...",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-c7",
+          messageId: "import-clean-progress",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-07T00:00:00.000Z"),
+          content: "We're making progress though.",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db });
+
+    const claimEvidence = db._evidence
+      .filter((row) => row.claimId === claimId)
+      .map((row) => row.messageId);
+    expect(claimEvidence).toEqual([
+      "import-clean-people-pleaser",
+      "import-clean-loop",
+      "import-clean-overwhelmed",
+      "import-clean-learning-pace",
+      "import-clean-reposition-reality",
+      "import-clean-crash-out",
+      "import-clean-progress",
+    ]);
+  });
+
   it("gates imported support entries with missing direct origin metadata via history lookup", async () => {
     const db = makePipelineMockDb();
     const clue = {
