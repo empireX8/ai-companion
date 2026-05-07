@@ -602,6 +602,66 @@ describe("Packet 3 smoke — imported support evidence quality gate", () => {
     });
   });
 
+  it("recovery_stabilizer: rejects exact residual channel metric quote and preserves clean recovery lines", async () => {
+    const db = makePipelineMockDb();
+    const debugCollector = createPatternRerunDebugCollector();
+    const clue = {
+      userId: "u1",
+      patternType: "recovery_stabilizer" as const,
+      summary: 'Recovery/stabilization pattern: "I am learning to regain balance."',
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-rx-1",
+          messageId: "import-rx-channel-metric",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-10T00:00:00.000Z"),
+          content:
+            "thanks i got 10 plus views and then i lost my channel started rebuilding but left it because thats the channel imusuing to show my video editing quality with unlisted videos, it has about 4 k subs",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-rx-2",
+          messageId: "import-rx-clean-progress",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-11T00:00:00.000Z"),
+          content: "We're making progress though.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-rx-3",
+          messageId: "import-rx-clean-room",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-12T00:00:00.000Z"),
+          content:
+            "Like, unless I entertained myself with the room, and I was able to do that unwaveringly, I don't know.",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db, debugCollector });
+
+    const claimEvidence = db._evidence
+      .filter((row) => row.claimId === claimId)
+      .map((row) => row.messageId);
+    expect(claimEvidence).toEqual(["import-rx-clean-progress", "import-rx-clean-room"]);
+
+    const diagnostics = debugCollector.buildDiagnostics();
+    expect(diagnostics.importedSupportEntriesEvaluatedForEvidenceQuality).toBe(3);
+    expect(diagnostics.importedSupportEntriesAcceptedForEvidenceQuality).toBe(2);
+    expect(diagnostics.importedSupportEntriesRejectedForEvidenceQuality).toBe(1);
+    expect(diagnostics.importedSupportEntriesEvidenceQualityRejectionReasonCounts).toMatchObject({
+      imported_recovery_metrics_or_biography_snippet: 1,
+    });
+  });
+
   it("keeps clean imported behavioral support evidence materialized", async () => {
     const db = makePipelineMockDb();
     const clue = {

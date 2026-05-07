@@ -329,6 +329,11 @@ function isImportedRecoveryMetricsOrBiographySnippet(normalizedText: string): bo
   const hasChannelMetric = containsAnyPhrase(normalizedText, [
     "views",
     "channel",
+    "subs",
+    "sub",
+    "k subs",
+    "unlisted videos",
+    "video editing quality",
     "subscribers",
     "followers",
     "watch time",
@@ -375,7 +380,8 @@ function isImportedRecoveryMetricsOrBiographySnippet(normalizedText: string): bo
 }
 
 function classifyImportedSupportResidualEvidenceRejections(
-  text: string
+  text: string,
+  patternType?: PatternClue["patternType"]
 ): ImportedSupportResidualEvidenceRejectionReason[] {
   const normalizedText = normalizeImportedSupportResidualText(text);
   const reasons: ImportedSupportResidualEvidenceRejectionReason[] = [];
@@ -392,7 +398,10 @@ function classifyImportedSupportResidualEvidenceRejections(
   if (isImportedSourceTextDraftingSnippet(normalizedText)) {
     reasons.push("imported_source_text_drafting_snippet");
   }
-  if (isImportedRecoveryMetricsOrBiographySnippet(normalizedText)) {
+  if (
+    patternType === "recovery_stabilizer" &&
+    isImportedRecoveryMetricsOrBiographySnippet(normalizedText)
+  ) {
     reasons.push("imported_recovery_metrics_or_biography_snippet");
   }
 
@@ -407,9 +416,11 @@ function classifyImportedSupportResidualEvidenceRejections(
 export function applyImportedSupportEvidenceQualityBoundary({
   entries,
   historyLookup,
+  patternType,
 }: {
   entries: SupportEntry[];
   historyLookup?: SupportEntryHistoryLookup;
+  patternType?: PatternClue["patternType"];
 }): ImportedSupportEvidenceFilterResult {
   const kept: BulkReceiptEntry[] = [];
   let evaluatedCount = 0;
@@ -459,7 +470,10 @@ export function applyImportedSupportEvidenceQualityBoundary({
     const relevanceRejections = relevance.reasons.filter(
       (reason) => reason !== "import_human_relevance_accepted"
     );
-    const residualRejections = classifyImportedSupportResidualEvidenceRejections(quality.quote);
+    const residualRejections = classifyImportedSupportResidualEvidenceRejections(
+      quality.quote,
+      patternType
+    );
     const reasons = Array.from(
       new Set([...quality.reasons, ...relevanceRejections, ...residualRejections])
     );
@@ -711,6 +725,7 @@ export async function materializeClueSupport({
     const importedSupportEvidenceQuality = applyImportedSupportEvidenceQualityBoundary({
       entries: clue.supportEntries,
       historyLookup: supportEntryHistoryLookup,
+      patternType: clue.patternType,
     });
     debugCollector?.recordImportedSupportEntryEvidenceQuality?.({
       evaluatedCount: importedSupportEvidenceQuality.evaluatedCount,
