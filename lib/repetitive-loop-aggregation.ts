@@ -24,6 +24,8 @@ import { selectBestDisplayQuote } from "./pattern-quote-selection";
 export const RL_MIN_SESSIONS = 2;
 /** Pilot cap for multi-clue emission within repetitive_loop. */
 export const RL_MAX_CLUES = 3;
+/** Minimum localized support score used for repetitive_loop support-entry narrowing. */
+const RL_SUPPORT_LOCALIZATION_MIN_SCORE = 4;
 
 type RepetitiveLoopTheme =
   | "substance_relapse"
@@ -196,6 +198,56 @@ function selectThemeLocalizedCuePool({
     .map((item) => item.cue);
 }
 
+function selectThemeLocalizedSupportCuePool({
+  cues,
+  theme,
+}: {
+  cues: NormalizedHistoryEntry[];
+  theme: RepetitiveLoopTheme;
+}): NormalizedHistoryEntry[] {
+  return cues
+    .map((cue) => ({
+      cue,
+      score: computeThemeLocalizedCueScore({ theme, content: cue.content }),
+    }))
+    .filter((item) => item.score >= RL_SUPPORT_LOCALIZATION_MIN_SCORE)
+    .map((item) => item.cue);
+}
+
+function selectSupportCuePoolForTheme({
+  cues,
+  theme,
+}: {
+  cues: NormalizedHistoryEntry[];
+  theme: RepetitiveLoopTheme;
+}): NormalizedHistoryEntry[] {
+  if (cues.length === 0) return cues;
+
+  const localizedSupport = selectThemeLocalizedSupportCuePool({ cues, theme });
+  const localizedSessionCount = groupLoopCuesBySession(localizedSupport).size;
+  if (localizedSessionCount >= RL_MIN_SESSIONS) {
+    return localizedSupport;
+  }
+
+  return cues;
+}
+
+function cueMatchesRepresentative({
+  cue,
+  clue,
+}: {
+  cue: NormalizedHistoryEntry;
+  clue: PatternClue;
+}): boolean {
+  if (clue.messageId != null && cue.messageId != null) {
+    return cue.messageId === clue.messageId;
+  }
+  if (clue.journalEntryId != null && cue.journalEntryId != null) {
+    return cue.journalEntryId === clue.journalEntryId;
+  }
+  return false;
+}
+
 /**
  * Stage 1: Return user messages that contain at least one loop-language marker.
  * The caller supplies the marker list so marker definitions stay in one place.
@@ -286,12 +338,15 @@ function buildRepetitiveLoopClueFromCues({
   const clue = buildRepetitiveLoopClueFromSessions(userId, sessionGroups, { theme });
   if (!clue) return null;
 
-  // Session-less cues (journal/no-session imports) never influence session spread.
-  // Once the subgroup passes via message sessions, keep these cues as support.
-  const sessionlessCues = cues.filter((cue) => !cue.sessionId);
-  if (sessionlessCues.length > 0) {
-    clue.supportEntries = [...clue.supportEntries!, ...sessionlessCues.map(toSupportEntry)];
+  const supportPool = selectSupportCuePoolForTheme({ cues, theme });
+  let supportCues = supportPool;
+
+  // Keep representative provenance in support for replay consistency.
+  const representativeCue = cues.find((cue) => cueMatchesRepresentative({ cue, clue }));
+  if (representativeCue && !supportCues.some((cue) => cueMatchesRepresentative({ cue, clue }))) {
+    supportCues = [...supportCues, representativeCue];
   }
+  clue.supportEntries = supportCues.map(toSupportEntry);
 
   return clue;
 }

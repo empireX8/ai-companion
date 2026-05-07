@@ -431,6 +431,151 @@ describe("multi-clue subgroup emission", () => {
     expect(clue!.summary).toContain("codebase tooling");
     expect(clue!.sessionId).toBe("assistFallbackB");
   });
+
+  it("assistant_process support filtering excludes generic project chatter when stronger reassurance/friction cues span sessions", () => {
+    const entries = [
+      makeEntry(
+        "I keep updating the project prompt again before sending the email and then I restart it.",
+        { sessionId: "assistWeakA", messageId: "assistWeakA" }
+      ),
+      makeEntry(
+        "I keep rebuilding the codebase again before the build and then I start over.",
+        { sessionId: "assistWeakB", messageId: "assistWeakB" }
+      ),
+      makeEntry(
+        "I keep checking with codex for reassurance because I keep getting stuck in this process.",
+        { sessionId: "assistStrongC", messageId: "assistStrongC" }
+      ),
+      makeEntry(
+        "I keep watching the course video and then I skip tasks again when this assistant flow confuses me.",
+        { sessionId: "assistStrongD", messageId: "assistStrongD" }
+      ),
+    ];
+
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+    const clue = result.find((item) => item.summary.includes("assistant/process loop"));
+    expect(clue).toBeDefined();
+
+    const supportMessageIds = new Set(clue!.supportEntries!.map((entry) => entry.messageId));
+    expect(supportMessageIds.has("assistStrongC")).toBe(true);
+    expect(supportMessageIds.has("assistStrongD")).toBe(true);
+    expect(supportMessageIds.has("assistWeakA")).toBe(false);
+    expect(supportMessageIds.has("assistWeakB")).toBe(false);
+  });
+
+  it("cognitive_overload support filtering excludes generic context chatter when stronger overload cues span sessions", () => {
+    const entries = [
+      makeEntry(
+        "I keep learning this again but I am still not sure the context helps right now.",
+        { sessionId: "cogWeakA", messageId: "cogWeakA" }
+      ),
+      makeEntry(
+        "I keep thinking about pace again and I still feel unsure about the context.",
+        { sessionId: "cogWeakB", messageId: "cogWeakB" }
+      ),
+      makeEntry(
+        "I keep getting overwhelmed because there is too much to process and my brain keeps overloading.",
+        { sessionId: "cogStrongC", messageId: "cogStrongC" }
+      ),
+      makeEntry(
+        "I keep overthinking and my mental load spikes every time I try to learn at pace.",
+        { sessionId: "cogStrongD", messageId: "cogStrongD" }
+      ),
+    ];
+
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+    const clue = result.find((item) => item.summary.includes("cognitive overload loop"));
+    expect(clue).toBeDefined();
+
+    const supportMessageIds = new Set(clue!.supportEntries!.map((entry) => entry.messageId));
+    expect(supportMessageIds.has("cogStrongC")).toBe(true);
+    expect(supportMessageIds.has("cogStrongD")).toBe(true);
+    expect(supportMessageIds.has("cogWeakA")).toBe(false);
+    expect(supportMessageIds.has("cogWeakB")).toBe(false);
+  });
+
+  it("general support filtering prefers strong recurrence cues over weak routine/planning cues", () => {
+    const entries = [
+      makeEntry("I keep planning routine notes again before bed and then stop there.", {
+        sessionId: "generalWeakA",
+        messageId: "generalWeakA",
+      }),
+      makeEntry("I keep sorting routine tasks again and then I drop them.", {
+        sessionId: "generalWeakB",
+        messageId: "generalWeakB",
+      }),
+      makeEntry("I keep doing this again and again.", {
+        sessionId: "generalStrongC",
+        messageId: "generalStrongC",
+      }),
+      makeEntry("I always end up back to square one over and over.", {
+        sessionId: "generalStrongD",
+        messageId: "generalStrongD",
+      }),
+    ];
+
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+    const clue = result.find((item) => item.summary.startsWith("Repetitive loop pattern across sessions"));
+    expect(clue).toBeDefined();
+
+    const supportMessageIds = new Set(clue!.supportEntries!.map((entry) => entry.messageId));
+    expect(supportMessageIds.has("generalStrongC")).toBe(true);
+    expect(supportMessageIds.has("generalStrongD")).toBe(true);
+    expect(supportMessageIds.has("generalWeakA")).toBe(false);
+    expect(supportMessageIds.has("generalWeakB")).toBe(false);
+  });
+
+  it("falls back to existing subgroup support when localized support pool does not meet RL_MIN_SESSIONS", () => {
+    const entries = [
+      makeEntry(
+        "I keep checking with codex for reassurance because I keep getting stuck in this process.",
+        { sessionId: "assistFallbackStrongA", messageId: "assistFallbackStrongA" }
+      ),
+      makeEntry(
+        "I keep updating the project prompt again before sending the email and then I restart it.",
+        { sessionId: "assistFallbackWeakB", messageId: "assistFallbackWeakB" }
+      ),
+    ];
+
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+    const clue = result.find((item) => item.summary.includes("assistant/process loop"));
+    expect(clue).toBeDefined();
+
+    const supportMessageIds = new Set(clue!.supportEntries!.map((entry) => entry.messageId));
+    expect(supportMessageIds.has("assistFallbackStrongA")).toBe(true);
+    expect(supportMessageIds.has("assistFallbackWeakB")).toBe(true);
+    expect(clue!.supportEntries).toHaveLength(2);
+  });
+
+  it("multi-clue cardinality remains capped and stable across repeated runs", () => {
+    const entries = [
+      makeEntry("I keep going back to smoking when stress spikes", { sessionId: "stableSubA" }),
+      makeEntry("I keep slipping back to weed after a few days", { sessionId: "stableSubB" }),
+      makeEntry("I keep getting overwhelmed and stuck in this loop", { sessionId: "stableCogA" }),
+      makeEntry("I keep overthinking and hitting the same mental loop", { sessionId: "stableCogB" }),
+      makeEntry(
+        "I keep checking with codex for reassurance because I keep getting stuck in this process",
+        { sessionId: "stableAssistA" }
+      ),
+      makeEntry(
+        "I keep watching the course video and then I skip tasks again when this assistant flow confuses me",
+        { sessionId: "stableAssistB" }
+      ),
+      makeEntry("I keep crashing out then calming down and doing this again", { sessionId: "stableEmoA" }),
+      makeEntry("I keep trying to accept reality and move forward then ending up back here", {
+        sessionId: "stableEmoB",
+      }),
+      makeEntry("I keep ending up in the same pattern at work", { sessionId: "stableGeneralA" }),
+      makeEntry("I keep going back to the same routine again", { sessionId: "stableGeneralB" }),
+    ];
+
+    const run1 = detectRepetitiveLoopClues({ userId: "u1", entries });
+    const run2 = detectRepetitiveLoopClues({ userId: "u1", entries });
+
+    expect(run1).toHaveLength(RL_MAX_CLUES);
+    expect(run2).toHaveLength(RL_MAX_CLUES);
+    expect(run1.map((clue) => clue.summary)).toEqual(run2.map((clue) => clue.summary));
+  });
 });
 
 // ── Helper unit tests ─────────────────────────────────────────────────────────
