@@ -243,6 +243,10 @@ describe("createPatternRerunDebugCollector", () => {
       metadataResolutionSource: "unresolved",
       reasons: ["missing_session_origin"],
     });
+    expect(
+      diagnostics.importedSupportEntriesEvaluatedForEvidenceQuality +
+        diagnostics.supportEntriesSkippedEvidenceQualityGateCount
+    ).toBe(diagnostics.supportEntriesTotal);
 
     expect(diagnostics.claimsCreatedByFamily.trigger_condition).toBe(1);
     expect(diagnostics.claimsMatchedExisting).toBe(1);
@@ -511,5 +515,127 @@ describe("createPatternRerunDebugCollector", () => {
     expect(diagnostics.behavioralEntryCount).toBe(expectedBehavioral.length);
     expect(diagnostics.rejectedEntryCount).toBe(expectedRejected);
     expect(diagnostics.rejectionReasonCounts).toEqual(expectedReasonCounts);
+  });
+
+  it("accumulates imported support gate accounting across multiple clues", () => {
+    const collector = createPatternRerunDebugCollector();
+
+    collector.recordClueSupportEntries([
+      { sourceKind: "chat_message" },
+      { sourceKind: "chat_message" },
+      { sourceKind: "chat_message" },
+      { sourceKind: "chat_message" },
+      { sourceKind: "chat_message" },
+      { sourceKind: "chat_message" },
+      { sourceKind: "chat_message" },
+      { sourceKind: "chat_message" },
+      { sourceKind: "chat_message" },
+      { sourceKind: "chat_message" },
+    ]);
+
+    collector.recordImportedSupportEntryEvidenceQuality?.({
+      evaluatedCount: 4,
+      acceptedCount: 3,
+      rejectedCount: 1,
+      rejectionReasonCounts: { quoted_or_pasted: 1 },
+      rejected: [
+        {
+          entry: {
+            sourceKind: "chat_message",
+            messageId: "m-rejected-1",
+            sessionId: "s-import-1",
+            sessionOrigin: "IMPORTED_ARCHIVE",
+            content: "user@host % npx prisma migrate reset",
+            timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          },
+          quote: "user@host % npx prisma migrate reset",
+          score: 0,
+          reasons: ["quoted_or_pasted"],
+        },
+      ],
+      skippedCount: 2,
+      skippedReasonCounts: { missing_session_origin: 2 },
+      skipped: [
+        {
+          entry: {
+            sourceKind: "chat_message",
+            messageId: "m-skipped-1",
+            sessionId: "s-missing-1",
+            sessionOrigin: null,
+            content: "I keep repeating this.",
+            timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          },
+          reasons: ["missing_session_origin"],
+        },
+        {
+          entry: {
+            sourceKind: "chat_message",
+            messageId: "m-skipped-2",
+            sessionId: "s-missing-2",
+            sessionOrigin: null,
+            content: "I keep repeating this too.",
+            timestamp: new Date("2026-01-02T00:00:00.000Z"),
+          },
+          reasons: ["missing_session_origin"],
+        },
+      ],
+    });
+
+    collector.recordImportedSupportEntryEvidenceQuality?.({
+      evaluatedCount: 3,
+      acceptedCount: 2,
+      rejectedCount: 1,
+      rejectionReasonCounts: { no_behavioral_signal: 1 },
+      rejected: [
+        {
+          entry: {
+            sourceKind: "chat_message",
+            messageId: "m-rejected-2",
+            sessionId: "s-import-2",
+            sessionOrigin: "IMPORTED_ARCHIVE",
+            content: "I need to coordinate Codex tasks and Pinecone setup.",
+            timestamp: new Date("2026-01-03T00:00:00.000Z"),
+          },
+          quote: "I need to coordinate Codex tasks and Pinecone setup.",
+          score: 0,
+          reasons: ["no_behavioral_signal"],
+        },
+      ],
+      skippedCount: 1,
+      skippedReasonCounts: { non_imported_session_origin: 1 },
+      skipped: [
+        {
+          entry: {
+            sourceKind: "chat_message",
+            messageId: "m-native",
+            sessionId: "s-native",
+            sessionOrigin: "APP",
+            content: "Again.",
+            timestamp: new Date("2026-01-03T00:00:00.000Z"),
+          },
+          reasons: ["non_imported_session_origin"],
+        },
+      ],
+    });
+
+    const diagnostics = collector.buildDiagnostics();
+
+    expect(diagnostics.supportEntriesTotal).toBe(10);
+    expect(diagnostics.importedSupportEntriesEvaluatedForEvidenceQuality).toBe(7);
+    expect(diagnostics.importedSupportEntriesAcceptedForEvidenceQuality).toBe(5);
+    expect(diagnostics.importedSupportEntriesRejectedForEvidenceQuality).toBe(2);
+    expect(diagnostics.supportEntriesSkippedEvidenceQualityGateCount).toBe(3);
+    expect(diagnostics.importedSupportEntriesEvidenceQualityRejectionReasonCounts).toEqual({
+      quoted_or_pasted: 1,
+      no_behavioral_signal: 1,
+    });
+    expect(diagnostics.supportEntriesSkippedEvidenceQualityGateReasonCounts).toEqual({
+      missing_session_origin: 2,
+      non_imported_session_origin: 1,
+    });
+    expect(
+      diagnostics.importedSupportEntriesEvaluatedForEvidenceQuality +
+        diagnostics.supportEntriesSkippedEvidenceQualityGateCount
+    ).toBe(diagnostics.supportEntriesTotal);
   });
 });

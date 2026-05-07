@@ -25,6 +25,7 @@ import { replayPersistedPatternClaim } from "../pattern-claim-replay";
 import { materializeReceipt } from "../pattern-claim-evidence";
 import { upsertPatternClaimFromClue } from "../pattern-claim-lifecycle";
 import type { PatternClaimEvent } from "../pattern-claim-hooks";
+import { createPatternRerunDebugCollector } from "../pattern-rerun-debug";
 
 // ── Full pipeline mock DB ─────────────────────────────────────────────────────
 
@@ -523,6 +524,74 @@ describe("Packet 3 smoke — imported support evidence quality gate", () => {
     const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
     expect(claimEvidence).toHaveLength(1);
     expect(claimEvidence[0]?.journalEntryId).toBe("journal-entry-1");
+  });
+
+  it("accounts every support entry as evaluated or skipped on the runtime materialization path", async () => {
+    const db = makePipelineMockDb();
+    const debugCollector = createPatternRerunDebugCollector();
+    const clue = {
+      userId: "u1",
+      patternType: "trigger_condition" as const,
+      summary: 'Trigger-response pattern: "When pressure rises, I default to appeasing."',
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-s1",
+          messageId: "import-ok",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          content:
+            "When pressure rises, I default to appeasing people instead of staying direct.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "IMPORTED_ARCHIVE",
+          role: "user",
+          sessionId: "import-s2",
+          messageId: "import-reject",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
+          content: "user@host % npx prisma migrate reset --force",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionOrigin: "APP",
+          role: "user",
+          sessionId: "app-s1",
+          messageId: "app-skip",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-03T00:00:00.000Z"),
+          content: "Again.",
+        },
+        {
+          sourceKind: "journal_entry" as const,
+          role: "user",
+          sessionId: null,
+          messageId: null,
+          journalEntryId: "journal-skip",
+          timestamp: new Date("2026-01-04T00:00:00.000Z"),
+          content: "Again.",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db, debugCollector });
+
+    const diagnostics = debugCollector.buildDiagnostics();
+    expect(diagnostics.supportEntriesTotal).toBe(4);
+    expect(diagnostics.importedSupportEntriesEvaluatedForEvidenceQuality).toBe(2);
+    expect(diagnostics.supportEntriesSkippedEvidenceQualityGateCount).toBe(2);
+    expect(
+      diagnostics.importedSupportEntriesEvaluatedForEvidenceQuality +
+        diagnostics.supportEntriesSkippedEvidenceQualityGateCount
+    ).toBe(diagnostics.supportEntriesTotal);
+
+    const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
+    expect(claimEvidence).toHaveLength(3);
+    expect(claimEvidence.some((row) => row.messageId === "import-reject")).toBe(false);
   });
 });
 

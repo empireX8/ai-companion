@@ -477,11 +477,11 @@ export function createPatternRerunDebugCollector({
   let importedSupportEntriesEvaluatedForEvidenceQuality = 0;
   let importedSupportEntriesAcceptedForEvidenceQuality = 0;
   let importedSupportEntriesRejectedForEvidenceQuality = 0;
-  let importedSupportEntriesEvidenceQualityRejectionReasonCounts: Record<string, number> = {};
-  let importedSupportEntriesEvidenceQualityRejectedSamples: PatternRerunDebugImportedSupportEvidenceSample[] = [];
+  const importedSupportEntriesEvidenceQualityRejectionReasonCounts: Record<string, number> = {};
+  const importedSupportEntriesEvidenceQualityRejectedSamples: PatternRerunDebugImportedSupportEvidenceSample[] = [];
   let supportEntriesSkippedEvidenceQualityGateCount = 0;
-  let supportEntriesSkippedEvidenceQualityGateReasonCounts: Record<string, number> = {};
-  let supportEntriesSkippedEvidenceQualityGateSamples: PatternRerunDebugSupportEntryGateSkipSample[] = [];
+  const supportEntriesSkippedEvidenceQualityGateReasonCounts: Record<string, number> = {};
+  const supportEntriesSkippedEvidenceQualityGateSamples: PatternRerunDebugSupportEntryGateSkipSample[] = [];
   let userEntryCount = 0;
   let behavioralEntryCount = 0;
   let rejectedEntryCount = 0;
@@ -601,33 +601,39 @@ export function createPatternRerunDebugCollector({
       skippedReasonCounts,
       skipped,
     }) {
-      importedSupportEntriesEvaluatedForEvidenceQuality = safePositiveInt(evaluatedCount);
-      importedSupportEntriesAcceptedForEvidenceQuality = safePositiveInt(acceptedCount);
-      importedSupportEntriesRejectedForEvidenceQuality = safePositiveInt(rejectedCount);
+      importedSupportEntriesEvaluatedForEvidenceQuality += safePositiveInt(evaluatedCount);
+      importedSupportEntriesAcceptedForEvidenceQuality += safePositiveInt(acceptedCount);
+      importedSupportEntriesRejectedForEvidenceQuality += safePositiveInt(rejectedCount);
 
-      const nextReasonCounts: Record<string, number> = {};
       for (const [reason, count] of Object.entries(rejectionReasonCounts)) {
         const normalizedCount = safePositiveInt(count);
         if (normalizedCount <= 0) continue;
-        nextReasonCounts[reason] = normalizedCount;
+        importedSupportEntriesEvidenceQualityRejectionReasonCounts[reason] =
+          (importedSupportEntriesEvidenceQualityRejectionReasonCounts[reason] ?? 0) +
+          normalizedCount;
       }
-      importedSupportEntriesEvidenceQualityRejectionReasonCounts = nextReasonCounts;
 
-      importedSupportEntriesEvidenceQualityRejectedSamples = rejected
-        .slice(0, 8)
-        .map((item) => toImportedSupportEvidenceSample(item));
+      if (importedSupportEntriesEvidenceQualityRejectedSamples.length < 8) {
+        const remaining = 8 - importedSupportEntriesEvidenceQualityRejectedSamples.length;
+        importedSupportEntriesEvidenceQualityRejectedSamples.push(
+          ...rejected.slice(0, remaining).map((item) => toImportedSupportEvidenceSample(item))
+        );
+      }
 
-      supportEntriesSkippedEvidenceQualityGateCount = safePositiveInt(skippedCount);
-      const nextSkippedReasonCounts: Record<string, number> = {};
+      supportEntriesSkippedEvidenceQualityGateCount += safePositiveInt(skippedCount);
       for (const [reason, count] of Object.entries(skippedReasonCounts)) {
         const normalizedCount = safePositiveInt(count);
         if (normalizedCount <= 0) continue;
-        nextSkippedReasonCounts[reason] = normalizedCount;
+        supportEntriesSkippedEvidenceQualityGateReasonCounts[reason] =
+          (supportEntriesSkippedEvidenceQualityGateReasonCounts[reason] ?? 0) + normalizedCount;
       }
-      supportEntriesSkippedEvidenceQualityGateReasonCounts = nextSkippedReasonCounts;
-      supportEntriesSkippedEvidenceQualityGateSamples = skipped
-        .slice(0, 8)
-        .map((item) => toSupportEntryGateSkipSample(item));
+
+      if (supportEntriesSkippedEvidenceQualityGateSamples.length < 8) {
+        const remaining = 8 - supportEntriesSkippedEvidenceQualityGateSamples.length;
+        supportEntriesSkippedEvidenceQualityGateSamples.push(
+          ...skipped.slice(0, remaining).map((item) => toSupportEntryGateSkipSample(item))
+        );
+      }
     },
 
     recordDetectorInputCountsByFamily(counts) {
