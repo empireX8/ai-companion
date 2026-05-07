@@ -212,6 +212,91 @@ describe("detectTriggerConditionClues — subgroup pilot emission", () => {
     );
   });
 
+  it("prefers a strong overwhelm/identity-trigger quote over vague generic trigger text for subgroup summary", () => {
+    const entries = [
+      makeEntry(
+        "I'm thinking double has to be the time, and every time there's an emotional moment it gets noisy.",
+        { sessionId: "overwhelm-1", messageId: "overwhelm-weak-1", createdAt: new Date("2026-01-01") }
+      ),
+      makeEntry(
+        "When I'm overwhelmed, I tend to feel my identity get triggered and my state shifts quickly.",
+        { sessionId: "overwhelm-2", messageId: "overwhelm-strong-1", createdAt: new Date("2026-01-02") }
+      ),
+      makeEntry(
+        "Every time this state hits, I start to feel my brain bubbling and my identity gets triggered.",
+        { sessionId: "overwhelm-3", messageId: "overwhelm-strong-2", createdAt: new Date("2026-01-03") }
+      ),
+    ];
+
+    const clues = detectTriggerConditionClues({ userId: "u1", entries });
+    expect(clues).toHaveLength(1);
+    expect(clues[0]?.summary.startsWith("Trigger-response pattern (overwhelm/state shift): ")).toBe(
+      true
+    );
+    expect(clues[0]?.summary).not.toContain("I'm thinking double has to be the time");
+    expect(clues[0]?.summary).toMatch(/overwhelm|identity|mode|state|brain/i);
+  });
+
+  it("prefers people-pleaser/social-pressure summary text over weaker adjacent social burden text", () => {
+    const entries = [
+      makeEntry("When social expectations stack up, it makes me feel doom and competency burden.", {
+        sessionId: "social-1",
+        messageId: "social-weak-1",
+        createdAt: new Date("2026-01-01"),
+      }),
+      makeEntry("I notice I am definitely a people pleaser.", {
+        sessionId: "social-2",
+        messageId: "social-strong-1",
+        createdAt: new Date("2026-01-02"),
+      }),
+      makeEntry("When social pressure rises, I start appeasing people instead of being direct.", {
+        sessionId: "social-3",
+        messageId: "social-strong-2",
+        createdAt: new Date("2026-01-03"),
+      }),
+      makeEntry("When social expectations stack up, it makes me feel doom and competency burden.", {
+        sessionId: "social-4",
+        messageId: "social-weak-2",
+        createdAt: new Date("2026-01-04"),
+      }),
+    ];
+
+    const clues = detectTriggerConditionClues({ userId: "u1", entries });
+    expect(clues).toHaveLength(1);
+    expect(clues[0]?.summary.startsWith("Trigger-response pattern (social appeasement): ")).toBe(
+      true
+    );
+    expect(clues[0]?.summary).not.toMatch(/doom|competen/i);
+    expect(clues[0]?.summary).toMatch(/people\s*pleaser|social pressure|appeasing/i);
+  });
+
+  it("falls back to current representative selection when no better theme-local quote exists", () => {
+    const entries = [
+      makeEntry("When pressure rises, I always pause and overthink the same way.", {
+        sessionId: "overwhelm-1",
+        messageId: "overwhelm-fallback-1",
+        createdAt: new Date("2026-01-01"),
+      }),
+      makeEntry("If pressure keeps climbing, I tend to loop mentally for hours.", {
+        sessionId: "overwhelm-2",
+        messageId: "overwhelm-fallback-2",
+        createdAt: new Date("2026-01-02"),
+      }),
+      makeEntry("Whenever pressure is high, I usually end up freezing in place.", {
+        sessionId: "overwhelm-3",
+        messageId: "overwhelm-fallback-3",
+        createdAt: new Date("2026-01-03"),
+      }),
+    ];
+
+    const clues = detectTriggerConditionClues({ userId: "u1", entries });
+    expect(clues).toHaveLength(1);
+    expect(clues[0]?.summary.startsWith("Trigger-response pattern (overwhelm/state shift): ")).toBe(
+      true
+    );
+    expect(clues[0]?.summary).toContain("Whenever pressure is high, I usually end up freezing in place.");
+  });
+
   it("does not emit general as a subgroup clue even when general messages dominate", () => {
     const entries = [
       makeEntry("Whenever I hit this pattern, I tend to freeze up.", {

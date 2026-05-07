@@ -145,6 +145,34 @@ const COPING_REACTIVITY_MARKERS: RegExp[] = [
   /\bsomatic\b/i,
 ];
 
+const OVERWHELM_SUMMARY_MARKERS: RegExp[] = [
+  /\boverwhelm\w*\b/i,
+  /\btrigger\w*\b.{0,24}\bidentity\b/i,
+  /\bidentity\b.{0,24}\btrigger\w*\b/i,
+  /\bmode\b/i,
+  /\bstate\s+shift\b/i,
+  /\bbrain\b.{0,24}\bbubbl\w*\b/i,
+  /\bfeel\s+this\s+way\s+in\s+this\s+mode\b/i,
+  /\bemotional\s+activat\w*\b/i,
+];
+
+const SOCIAL_APPEASEMENT_SUMMARY_STRONG_MARKERS: RegExp[] = [
+  /\bpeople[-\s]?pleas\w*\b/i,
+  /\bappeas\w*\b/i,
+  /\bsocial\s+pressure\b/i,
+  /\bshy(?:ness)?\b/i,
+  /\bsocial\s+influenc\w*\b/i,
+  /\bfamily\s+(?:conditioning|influenc\w*)\b/i,
+];
+
+const SOCIAL_APPEASEMENT_SUMMARY_ADJACENT_MARKERS: RegExp[] = [
+  /\bjustify\w*\b/i,
+  /\bjudg(?:e|ment)\b/i,
+  /\bcompeten\w*\b/i,
+  /\bdoom\b/i,
+  /\bburden\b/i,
+];
+
 function matchesAnyPattern(content: string, patterns: RegExp[]): boolean {
   return patterns.some((pattern) => pattern.test(content));
 }
@@ -172,6 +200,32 @@ function mapTriggerSupportEntry(match: NormalizedHistoryEntry) {
     timestamp: match.createdAt,
     content: match.content,
   };
+}
+
+function filterThemeLocalizedSummaryMatches(
+  matches: NormalizedHistoryEntry[],
+  subgroup: TriggerConditionSubgroup
+): NormalizedHistoryEntry[] {
+  if (subgroup === "overwhelm_state_shift") {
+    const themed = matches.filter((entry) =>
+      matchesAnyPattern(entry.content, OVERWHELM_SUMMARY_MARKERS)
+    );
+    return themed.length > 0 ? themed : matches;
+  }
+
+  if (subgroup === "social_appeasement") {
+    const strong = matches.filter((entry) =>
+      matchesAnyPattern(entry.content, SOCIAL_APPEASEMENT_SUMMARY_STRONG_MARKERS)
+    );
+    if (strong.length > 0) return strong;
+
+    const adjacent = matches.filter((entry) =>
+      matchesAnyPattern(entry.content, SOCIAL_APPEASEMENT_SUMMARY_ADJACENT_MARKERS)
+    );
+    return adjacent.length > 0 ? adjacent : matches;
+  }
+
+  return matches;
 }
 
 function getTriggerSummaryPrefix(subgroup: TriggerConditionSubgroup): string {
@@ -203,14 +257,20 @@ function groupTriggerMatchesBySubgroup(
 function buildTriggerConditionClue(
   userId: string,
   matches: NormalizedHistoryEntry[],
-  summaryPrefix: string
+  summaryPrefix: string,
+  subgroup?: TriggerConditionSubgroup
 ): PatternClue | null {
-  const representative = selectEvidenceRepresentative(matches);
+  const localizedMatches =
+    subgroup != null ? filterThemeLocalizedSummaryMatches(matches, subgroup) : matches;
+  const representative = selectEvidenceRepresentative(localizedMatches);
   if (!representative) return null;
 
   const summaryQuote = representative.content.slice(0, 100).trim();
   const summary = `${summaryPrefix}: "${summaryQuote}"`;
-  const quote = selectBestDisplayQuote(matches) ?? undefined;
+  const quote =
+    selectBestDisplayQuote(localizedMatches) ??
+    selectBestDisplayQuote(matches) ??
+    undefined;
 
   return {
     userId,
@@ -358,7 +418,8 @@ export function detectTriggerConditionClues({
     const clue = buildTriggerConditionClue(
       userId,
       subgroupMatches,
-      getTriggerSummaryPrefix(subgroup)
+      getTriggerSummaryPrefix(subgroup),
+      subgroup
     );
     if (!clue) continue;
     subgroupClues.push(clue);
