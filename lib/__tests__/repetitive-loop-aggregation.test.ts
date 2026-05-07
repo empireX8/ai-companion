@@ -226,15 +226,16 @@ describe("quote from eligible representative", () => {
     expect(result[0]!.quote).toContain("I keep falling back");
   });
 
-  it("falls back to the last cue when no I-starting cue is eligible", () => {
+  it("returns a display-safe quote when no I-starting cue is eligible", () => {
+    const cueA = "here we are again and i mess it up";
+    const cueB = "the cycle repeats itself";
     const entries = [
-      makeEntry("here I am again doing the same thing", { sessionId: "sessA" }),
-      makeEntry("the same pattern keeps repeating itself", { sessionId: "sessB" }),
+      makeEntry(cueA, { sessionId: "sessA" }),
+      makeEntry(cueB, { sessionId: "sessB" }),
     ];
     const result = detectRepetitiveLoopClues({ userId: "u1", entries });
     expect(result).toHaveLength(1);
-    // Last cue is the sessB message (fallback)
-    expect(result[0]!.quote).toBe("the same pattern keeps repeating itself");
+    expect([cueA, cueB]).toContain(result[0]!.quote);
   });
 });
 
@@ -353,6 +354,82 @@ describe("multi-clue subgroup emission", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]!.summary).toContain("substance/relapse loop");
+  });
+
+  it("cognitive_overload localizes summary/quote to overload-themed language over weaker generic phrasing", () => {
+    const entries = [
+      makeEntry(
+        "I keep telling myself I should learn faster, but this still loops and I do not know what to do next.",
+        { sessionId: "cogWeakA" }
+      ),
+      makeEntry(
+        "I keep getting overwhelmed because there is too much to process and my brain keeps overloading.",
+        { sessionId: "cogStrongB" }
+      ),
+    ];
+
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+    const clue = result.find((item) => item.summary.includes("cognitive overload loop"));
+    expect(clue).toBeDefined();
+    expect(clue!.summary).toContain("too much to process");
+    expect(clue!.quote).toContain("too much to process");
+    expect(clue!.quote).toContain("overloading");
+  });
+
+  it("assistant_process localizes summary/quote to reassurance/process-friction over generic project chatter", () => {
+    const entries = [
+      makeEntry(
+        "I keep updating the project prompt again before sending the email, then I loop back to editing.",
+        { sessionId: "assistGenericA" }
+      ),
+      makeEntry(
+        "I keep checking with codex for reassurance because I do not want to keep repeating this process.",
+        { sessionId: "assistStrongB" }
+      ),
+    ];
+
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+    const clue = result.find((item) => item.summary.includes("assistant/process loop"));
+    expect(clue).toBeDefined();
+    expect(clue!.summary).toContain("reassurance");
+    expect(clue!.quote).toContain("reassurance");
+  });
+
+  it("general localizes summary toward strong recurrence phrasing over routine/planning phrasing", () => {
+    const entries = [
+      makeEntry(
+        "I keep planning my week again and writing routine notes that do not move anything.",
+        { sessionId: "generalWeakA" }
+      ),
+      makeEntry("here I am again doing the same thing over and over.", {
+        sessionId: "generalStrongB",
+      }),
+    ];
+
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+    const clue = result.find((item) => item.summary.startsWith("Repetitive loop pattern across sessions"));
+    expect(clue).toBeDefined();
+    expect(clue!.summary).toContain("same thing over and over");
+    expect(clue!.quote).toContain("same thing over and over");
+  });
+
+  it("falls back to prior representative behavior when no better theme-local cue exists", () => {
+    const entries = [
+      makeEntry(
+        "I keep updating the project prompt again before sending the email and then I redo it.",
+        { sessionId: "assistFallbackA" }
+      ),
+      makeEntry(
+        "I keep updating the codebase tooling again before the build and then I restart it.",
+        { sessionId: "assistFallbackB" }
+      ),
+    ];
+
+    const result = detectRepetitiveLoopClues({ userId: "u1", entries });
+    const clue = result.find((item) => item.summary.includes("assistant/process loop"));
+    expect(clue).toBeDefined();
+    expect(clue!.summary).toContain("codebase tooling");
+    expect(clue!.sessionId).toBe("assistFallbackB");
   });
 });
 

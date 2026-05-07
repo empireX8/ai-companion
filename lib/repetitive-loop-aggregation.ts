@@ -65,6 +65,138 @@ const EMOTIONAL_RESET_THEME_MARKERS: RegExp[] = [
 ];
 
 /**
+ * Theme-aware localization markers (Step 5E):
+ * tighten representative/quote selection within already-selected subgroup cues.
+ */
+const REPETITIVE_LOOP_RECURRENCE_LOCALIZATION_MARKERS: RegExp[] = [
+  /\bover\s+and\s+over\b/i,
+  /\bagain\s+and\s+again\b/i,
+  /\bhere\s+i\s+am\s+again\b/i,
+  /\b(?:same\s+(?:pattern|cycle|thing|mistake|loop))\b/i,
+  /\b(?:always\s+end\s+up|every\s+time)\b/i,
+  /\bkeep\s+(?:doing\s+this|ending\s+up|going\s+back|running\s+into|hitting\s+the\s+same)\b/i,
+  /\bback\s+to\s+square\s+one\b/i,
+  /\bkeeps?\s+happening\b/i,
+  /\b(?:again|once\s+again|yet\s+again).{0,20}\b(?:i|the\s+same|back)\b/i,
+  /\bi\s+keep\s+(?:\w+ing|doing|going\s+back)\b/i,
+];
+
+const GENERAL_STRONG_RECURRENCE_MARKERS: RegExp[] = [
+  /\bover\s+and\s+over\b/i,
+  /\bagain\s+and\s+again\b/i,
+  /\bsame\s+thing\s+again\b/i,
+  /\bkeep\s+doing\s+this\b/i,
+  /\balways\s+end\s+up\b/i,
+  /\bevery\s+time\b/i,
+  /\b(?:same\s+(?:pattern|cycle|loop|thing|mistake))\b/i,
+  /\bhere\s+i\s+am\s+again\b/i,
+  /\bback\s+to\s+square\s+one\b/i,
+];
+
+const COGNITIVE_OVERLOAD_LOCALIZATION_STRONG_MARKERS: RegExp[] = [
+  /\boverwhelm\w*\b/i,
+  /\boverstim\w*\b/i,
+  /\boverload\w*\b/i,
+  /\bmental\s+load\b/i,
+  /\btoo\s+much\s+to\s+(?:process|handle)\b/i,
+  /\bpace\s+i\s+could\s+think\b/i,
+  /\bthought\s+speed\b/i,
+  /\borganis(?:e|ing|ation|ational)\b/i,
+];
+
+const COGNITIVE_OVERLOAD_LOCALIZATION_WEAK_MARKERS: RegExp[] = [
+  /\bbrain\b/i,
+  /\bmind\b/i,
+  /\bmental(?:ly)?\b/i,
+  /\blearn(?:ing)?\b/i,
+  /\bpace\b/i,
+];
+
+const ASSISTANT_PROCESS_CONTEXT_MARKERS: RegExp[] = [
+  /\b(?:assistant|codex|chatgpt|project|prompt|email|pc|watch(?:ing)?|course|video|task|instruction|process|build(?:ing)?|codebase|tooling)\b/i,
+];
+
+const ASSISTANT_PROCESS_FRICTION_MARKERS: RegExp[] = [
+  /\b(?:check(?:ing)?|confirm|follow[-\s]?up|repeat(?:ing|ed)?|frustrat\w*|confus\w*|skip(?:ping|ped)?|later)\b/i,
+  /\bkeep\s+(?:asking|watching)\b/i,
+];
+
+const ASSISTANT_PROCESS_REASSURANCE_MARKERS: RegExp[] = [
+  /\breassur\w*\b/i,
+  /\bseek(?:ing)?\s+reassurance\b/i,
+];
+
+function countPatternMatches(content: string, patterns: RegExp[]): number {
+  return patterns.reduce((count, pattern) => count + (pattern.test(content) ? 1 : 0), 0);
+}
+
+function computeRecurrenceLocalizationScore(content: string): number {
+  const recurrence = countPatternMatches(content, REPETITIVE_LOOP_RECURRENCE_LOCALIZATION_MARKERS);
+  if (recurrence === 0) return 0;
+  const strongRecurrence = countPatternMatches(content, GENERAL_STRONG_RECURRENCE_MARKERS);
+  return recurrence + strongRecurrence * 2;
+}
+
+function computeThemeSemanticLocalizationScore(theme: RepetitiveLoopTheme, content: string): number {
+  if (theme === "general") {
+    return countPatternMatches(content, GENERAL_STRONG_RECURRENCE_MARKERS);
+  }
+  if (theme === "substance_relapse") {
+    return countPatternMatches(content, SUBSTANCE_RELAPSE_THEME_MARKERS);
+  }
+  if (theme === "cognitive_overload") {
+    const strong = countPatternMatches(content, COGNITIVE_OVERLOAD_LOCALIZATION_STRONG_MARKERS);
+    const weak = countPatternMatches(content, COGNITIVE_OVERLOAD_LOCALIZATION_WEAK_MARKERS);
+    return strong * 2 + weak;
+  }
+  if (theme === "assistant_process") {
+    const reassurance = countPatternMatches(content, ASSISTANT_PROCESS_REASSURANCE_MARKERS);
+    if (reassurance > 0) {
+      return reassurance * 3;
+    }
+    const context = countPatternMatches(content, ASSISTANT_PROCESS_CONTEXT_MARKERS);
+    const friction = countPatternMatches(content, ASSISTANT_PROCESS_FRICTION_MARKERS);
+    if (context === 0 || friction === 0) return 0;
+    return context + friction * 2;
+  }
+  return countPatternMatches(content, EMOTIONAL_RESET_THEME_MARKERS);
+}
+
+function computeThemeLocalizedCueScore({
+  theme,
+  content,
+}: {
+  theme: RepetitiveLoopTheme;
+  content: string;
+}): number {
+  const recurrenceScore = computeRecurrenceLocalizationScore(content);
+  if (recurrenceScore === 0) return 0;
+
+  const semanticScore = computeThemeSemanticLocalizationScore(theme, content);
+  if (semanticScore === 0) return 0;
+
+  return recurrenceScore + semanticScore;
+}
+
+function selectThemeLocalizedCuePool({
+  cues,
+  theme,
+}: {
+  cues: NormalizedHistoryEntry[];
+  theme: RepetitiveLoopTheme;
+}): NormalizedHistoryEntry[] {
+  const scored = cues.map((cue) => ({
+    cue,
+    score: computeThemeLocalizedCueScore({ theme, content: cue.content }),
+  }));
+  const maxScore = scored.reduce((max, item) => Math.max(max, item.score), 0);
+  if (maxScore <= 0) return [];
+  return scored
+    .filter((item) => item.score === maxScore)
+    .map((item) => item.cue);
+}
+
+/**
  * Stage 1: Return user messages that contain at least one loop-language marker.
  * The caller supplies the marker list so marker definitions stay in one place.
  */
@@ -246,11 +378,16 @@ export function buildRepetitiveLoopClueFromSessions(
   if (sessionGroups.size < RL_MIN_SESSIONS) return null;
 
   const allCues = [...sessionGroups.values()].flat();
+  const theme = options?.theme ?? "general";
+  const localizedCuePool = selectThemeLocalizedCuePool({
+    cues: allCues,
+    theme,
+  });
+  const representativePool = localizedCuePool.length > 0 ? localizedCuePool : allCues;
 
   // Classification: representative drives sessionId/messageId and summary dedup key.
-  const representative = selectEvidenceRepresentative(allCues)!;
+  const representative = selectEvidenceRepresentative(representativePool)!;
   const summaryQuote = representative.content.slice(0, 100).trim();
-  const theme = options?.theme ?? "general";
   const summaryPrefix =
     theme === "general"
       ? "Repetitive loop pattern across sessions"
@@ -258,7 +395,10 @@ export function buildRepetitiveLoopClueFromSessions(
   const summary = `${summaryPrefix}: "${summaryQuote}"`;
 
   // Display: stricter quote-ranking path — null when no candidate is display-safe.
-  const quote = selectBestDisplayQuote(allCues) ?? undefined;
+  const quote =
+    selectBestDisplayQuote(localizedCuePool.length > 0 ? localizedCuePool : allCues) ??
+    selectBestDisplayQuote(allCues) ??
+    undefined;
 
   return {
     userId,
