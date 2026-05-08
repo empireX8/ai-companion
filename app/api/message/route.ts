@@ -24,8 +24,10 @@ import {
 import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
 import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
 import { triggerNativeDerivationIfDue } from "@/lib/native-derivation-trigger";
+import { processMessageForProfile } from "@/lib/profile-derivation";
 
 type GovernedType = "preference" | "goal" | "constraint";
+const NATIVE_PROFILE_SURFACE_TYPES = new Set(["journal_chat", "explore_chat"]);
 
 const toSingleLine = (value: string) => value.replace(/\s+/g, " ").trim();
 const truncateForPrompt = (value: string, maxLength = 240) => {
@@ -62,6 +64,53 @@ const buildTopContradictionsBlock = (
 
   return lines.join("\n");
 };
+
+export function shouldDeriveNativeProfileForSession(session: {
+  origin: string | null;
+  surfaceType: string | null;
+}) {
+  return (
+    session.origin === "APP" &&
+    !!session.surfaceType &&
+    NATIVE_PROFILE_SURFACE_TYPES.has(session.surfaceType)
+  );
+}
+
+export async function processNativeUserMessageForProfile({
+  userId,
+  messageId,
+  content,
+  sessionOrigin,
+  sessionSurfaceType,
+  reqId,
+}: {
+  userId: string;
+  messageId: string;
+  content: string;
+  sessionOrigin: string | null;
+  sessionSurfaceType: string | null;
+  reqId: string;
+}) {
+  if (
+    !shouldDeriveNativeProfileForSession({
+      origin: sessionOrigin,
+      surfaceType: sessionSurfaceType,
+    })
+  ) {
+    return;
+  }
+
+  try {
+    await processMessageForProfile({
+      userId,
+      messageId,
+      content,
+      db: prismadb,
+    });
+  } catch (error) {
+    console.error(`[MESSAGE_PROFILE_BG_ERROR][${reqId}]`, error);
+  }
+}
 
 export async function POST(req: Request) {
   const tServer = Date.now();
@@ -115,7 +164,7 @@ export async function POST(req: Request) {
     console.debug(tag, "session_lookup_start", Date.now() - tServer);
     const session = await prismadb.session.findFirst({
       where: { id: sessionId, userId },
-      select: { id: true },
+      select: { id: true, origin: true, surfaceType: true },
     });
     console.debug(tag, "session_lookup_done", Date.now() - tServer);
 
@@ -219,6 +268,14 @@ export async function POST(req: Request) {
         }
 
         await ensureWeeklyAuditForCurrentWeek(userId, new Date());
+        await processNativeUserMessageForProfile({
+          userId,
+          messageId: userMessage.id,
+          content: normalizedContent,
+          sessionOrigin: session.origin,
+          sessionSurfaceType: session.surfaceType,
+          reqId,
+        });
 
         // Contradiction detection (LLM call) — moved off critical path
         console.debug(tag, "contradiction_detection_start (async)", Date.now() - tServer);

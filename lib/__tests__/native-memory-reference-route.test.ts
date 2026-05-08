@@ -9,6 +9,7 @@ const getTop3WithOptionalSurfacingMock = vi.fn();
 const getRelevantReferenceMemoryMock = vi.fn();
 const ensureWeeklyAuditForCurrentWeekMock = vi.fn();
 const triggerNativeDerivationIfDueMock = vi.fn();
+const processMessageForProfileMock = vi.fn();
 const appendToTranscriptMock = vi.fn();
 const upsertVectorMock = vi.fn();
 const readTranscriptMock = vi.fn();
@@ -18,6 +19,7 @@ type SessionRow = {
   id: string;
   userId: string;
   origin: string;
+  surfaceType: string | null;
 };
 
 type MessageRow = {
@@ -311,6 +313,10 @@ vi.mock("@/lib/native-derivation-trigger", () => ({
   triggerNativeDerivationIfDue: triggerNativeDerivationIfDueMock,
 }));
 
+vi.mock("@/lib/profile-derivation", () => ({
+  processMessageForProfile: processMessageForProfileMock,
+}));
+
 const flushAsyncWork = async () => {
   await Promise.resolve();
   await Promise.resolve();
@@ -321,7 +327,7 @@ describe("native chat memory/reference capture", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     idSeq = 0;
-    sessions = [{ id: "sess1", userId: "u1", origin: "APP" }];
+    sessions = [{ id: "sess1", userId: "u1", origin: "APP", surfaceType: "journal_chat" }];
     messages = [];
     references = [];
 
@@ -351,6 +357,7 @@ describe("native chat memory/reference capture", () => {
       triggered: true,
       runId: "run_native_1",
     });
+    processMessageForProfileMock.mockResolvedValue(null);
     appendToTranscriptMock.mockResolvedValue(undefined);
     upsertVectorMock.mockResolvedValue(undefined);
     readTranscriptMock.mockResolvedValue("");
@@ -395,6 +402,13 @@ describe("native chat memory/reference capture", () => {
       prismaMock,
       patternBatchOrchestratorMock
     );
+    expect(processMessageForProfileMock).toHaveBeenCalledTimes(1);
+    expect(processMessageForProfileMock).toHaveBeenCalledWith({
+      userId: "u1",
+      messageId: "msg_1",
+      content: "Remember this for future chats: I prefer concrete, step-by-step advice.",
+      db: prismaMock,
+    });
 
     const pendingResponse = await pendingRoute.GET(
       new Request("http://localhost/api/reference/pending?sessionId=sess1")
@@ -474,6 +488,100 @@ describe("native chat memory/reference capture", () => {
     expect(triggerNativeDerivationIfDueMock).toHaveBeenCalledTimes(1);
   });
 
+  it("does not call profile processing for assistant messages", async () => {
+    streamTextMock.mockImplementation((args: { onFinish?: (result: { text: string }) => unknown }) => {
+      void args.onFinish?.({ text: "Assistant reply body." });
+      return {
+        toTextStreamResponse: () => new Response("ok"),
+      };
+    });
+
+    const route = await import("../../app/api/message/route");
+    const request = new Request("http://localhost/api/message", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-request-id": "native-memory-assistant-profile-1",
+      },
+      body: JSON.stringify({
+        sessionId: "sess1",
+        content: "My goal is to build a stable writing routine.",
+      }),
+    });
+
+    const response = await route.POST(request);
+    expect(response.status).toBe(200);
+
+    await flushAsyncWork();
+
+    expect(messages.map((message) => message.role)).toEqual(["user", "assistant"]);
+    expect(processMessageForProfileMock).toHaveBeenCalledTimes(1);
+    expect(processMessageForProfileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messageId: "msg_1",
+      })
+    );
+    expect(processMessageForProfileMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        messageId: "msg_2",
+      })
+    );
+  });
+
+  it("does not call profile processing for imported-archive sessions in this route", async () => {
+    sessions = [{ id: "sess1", userId: "u1", origin: "IMPORTED_ARCHIVE", surfaceType: null }];
+
+    const route = await import("../../app/api/message/route");
+    const request = new Request("http://localhost/api/message", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-request-id": "native-memory-imported-session-profile-1",
+      },
+      body: JSON.stringify({
+        sessionId: "sess1",
+        content: "My goal is to build a stable writing routine.",
+      }),
+    });
+
+    const response = await route.POST(request);
+    expect(response.status).toBe(200);
+
+    await flushAsyncWork();
+    expect(processMessageForProfileMock).not.toHaveBeenCalled();
+    expect(triggerNativeDerivationIfDueMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps message creation and native derivation alive when profile processing fails", async () => {
+    processMessageForProfileMock.mockRejectedValueOnce(new Error("profile boom"));
+
+    const route = await import("../../app/api/message/route");
+    const request = new Request("http://localhost/api/message", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-request-id": "native-memory-profile-failure-1",
+      },
+      body: JSON.stringify({
+        sessionId: "sess1",
+        content: "I value objectivity and I care about accuracy.",
+      }),
+    });
+
+    const response = await route.POST(request);
+    expect(response.status).toBe(200);
+
+    await flushAsyncWork();
+
+    expect(messages[0]).toMatchObject({
+      role: "user",
+      content: "I value objectivity and I care about accuracy.",
+    });
+    expect(processMessageForProfileMock).toHaveBeenCalledTimes(1);
+    expect(detectContradictionsMock).toHaveBeenCalledTimes(1);
+    expect(triggerNativeDerivationIfDueMock).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps manual memory saving behavior unchanged", async () => {
     const route = await import("../../app/api/reference/route");
 
@@ -521,7 +629,12 @@ describe("native chat memory/reference capture", () => {
     // Seed a reference that looks exactly like what extractReferenceFromImportedMessage creates:
     // status=candidate, sourceSessionId pointing to a non-current session.
     const importedSessionId = "sess_import_99";
-    sessions.push({ id: importedSessionId, userId: "u1", origin: "IMPORTED_ARCHIVE" });
+    sessions.push({
+      id: importedSessionId,
+      userId: "u1",
+      origin: "IMPORTED_ARCHIVE",
+      surfaceType: null,
+    });
 
     references.push({
       id: "ref_imported_1",
