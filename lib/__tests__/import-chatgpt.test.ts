@@ -916,3 +916,292 @@ describe("extractReferenceFromImportedMessage — lifecycle status", () => {
     expect(rows[0]!.confidence).toBe("low");
   });
 });
+
+// ── Precision gate tests ──────────────────────────────────────────────────────
+//
+// Verifies that extractReferenceFromImportedMessage rejects low-quality import
+// candidates and keeps clean personal statements, matching the native write path
+// precision standards.
+
+describe("extractReferenceFromImportedMessage — precision gates (reject cases)", () => {
+  const args = { userId: "u_precision", sessionId: "sess_precision" };
+
+  it("rejects a question-form candidate ('dont i need to run the new code in VSC first?')", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "pg_r1", content: "dont i need to run the new code in VSC first?" },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects a non-first-person-start candidate ('the custom instruction box said i need to limit it to 1500')", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "pg_r2", content: "the custom instruction box said i need to limit it to 1500" },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects CLI/system output with no reference intent ('>>> Hello, how are you?...')", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "pg_r3", content: ">>> Hello, how are you? I can help you with your questions today." },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects a transient task ('I need to send this block in 2 parts.')", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "pg_r4", content: "I need to send this block in 2 parts." },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects a vague preference with only one meaningful content token ('I dont like this structure.')", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "pg_r5", content: "I dont like this structure." },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects an overlong raw message fragment (> 250 chars)", async () => {
+    const longContent =
+      "I think I want to work on my health and I know nutrition is important and I have been neglecting it for a while now and I really should make better choices about what I eat each day going forward but honestly it has been quite difficult to stick to a plan because there are so many temptations around me every single day";
+    expect(longContent.length).toBeGreaterThan(250);
+
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "pg_r6", content: longContent },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+});
+
+describe("extractReferenceFromImportedMessage — precision gates (keep cases)", () => {
+  const args = { userId: "u_precision_keep", sessionId: "sess_precision_keep" };
+
+  it("keeps a clear goal: 'My goal is peak body nutrition.'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "pg_k1", content: "My goal is peak body nutrition." },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(true);
+    const rows = (db as unknown as { _created: FullReferenceRow[] })._created;
+    expect(rows[0]!.type).toBe("goal");
+  });
+
+  it("keeps a clear learning goal: 'I need to review after I read to retain better.'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "pg_k2", content: "I need to review after I read to retain better." },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(true);
+    const rows = (db as unknown as { _created: FullReferenceRow[] })._created;
+    expect(rows[0]!.type).toBe("goal");
+  });
+
+  it("keeps a clear food preference: 'I prefer chicken burgers to beef burgers.'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "pg_k3", content: "I prefer chicken burgers to beef burgers." },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(true);
+    const rows = (db as unknown as { _created: FullReferenceRow[] })._created;
+    expect(rows[0]!.type).toBe("preference");
+  });
+
+  it("keeps a clear constraint: 'I can\\'t work effectively when I\\'m switching between too many tasks.'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: {
+        id: "pg_k4",
+        content: "I can't work effectively when I'm switching between too many tasks.",
+      },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(true);
+    const rows = (db as unknown as { _created: FullReferenceRow[] })._created;
+    expect(rows[0]!.type).toBe("constraint");
+  });
+
+  it("keeps and extracts statement from a memory phrase: 'Remember that I prefer concise responses.'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "pg_k5", content: "Remember that I prefer concise responses." },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(true);
+    const rows = (db as unknown as { _created: FullReferenceRow[] })._created;
+    expect(rows[0]!.type).toBe("preference");
+    // The stored statement must be the extracted version, not the raw "Remember that..." content.
+    expect(rows[0]!.statement).toBe("I prefer concise responses.");
+    expect(rows[0]!.statement).not.toContain("Remember");
+  });
+});
+
+// ── Residual noise guard tests ────────────────────────────────────────────────
+//
+// The 8 cases below passed all prior guards (first-person, length, transient-op)
+// but are semantically task-like, stale-dated, or conversational noise that
+// should not become durable ReferenceItem candidates.
+
+describe("extractReferenceFromImportedMessage — residual noise guard (reject cases)", () => {
+  const args = { userId: "u_residual", sessionId: "sess_residual" };
+
+  it("rejects chat/session manipulation task: 'I want to start a new chat…'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: {
+        id: "rn_r1",
+        content:
+          "I want to start a new chat i fucking hate this chat, can you draw up a prompt of work flow with examples so i can hand it off in a new chat",
+      },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects watch-video lookup task: 'i must be able to watch the video somewhere'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "rn_r2", content: "i must be able to watch the video somewhere" },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects Codex/option-picking task: 'I like B maybe we can tell codex to do it…'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: {
+        id: "rn_r3",
+        content:
+          "I like B maybe we can tell codex to do it, we need to also evaluate what can go wrong everytime we make changes",
+      },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects stale dated delivery chatter: 'I hope to start. content by feb lol…'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: {
+        id: "rn_r4",
+        content: "I hope to start. content by feb lol but i agree good time line",
+      },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects UI/folder operational instruction: 'I do have it but it seems i have another UI components folder…'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: {
+        id: "rn_r5",
+        content:
+          "I do have it but it seems i have another UI components folder! I guess thats the issue, shall i like drag them files into the other ui components folder and delete the folders",
+      },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects vague collective goal: 'I want to do what needs to be done for us'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: { id: "rn_r6", content: "I want to do what needs to be done for us" },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects passive reading-list task fragment: 'i was told i need to include Baltasar Gracián…'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: {
+        id: "rn_r7",
+        content: "i was told i need to include Baltasar Gracián art of worldy wisdom",
+      },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+
+  it("rejects conversational filler opener masking a constraint: 'I mean, how complicated is the infrared thing?…'", async () => {
+    const db = makeMockDbWithCapture();
+    const created = await extractReferenceFromImportedMessage({
+      ...args,
+      message: {
+        id: "rn_r8",
+        content:
+          "I mean, how complicated is the infrared thing? Because I can't code, but you can, so... You can answer the questions when it has them.",
+      },
+      db,
+      refCache: new Map(),
+    });
+    expect(created).toBe(false);
+    expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+});

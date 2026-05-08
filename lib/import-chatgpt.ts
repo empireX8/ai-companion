@@ -16,7 +16,7 @@ import {
   createDerivationArtifact,
   createDerivationRun,
 } from "./derivation-layer";
-import { detectReferenceIntentType, pickBestPreferenceMatch } from "./memory-governance";
+import { detectReferenceIntentType, extractMemoryStatement, pickBestPreferenceMatch, tokenizeMeaningful } from "./memory-governance";
 import { processMessageForProfile } from "./profile-derivation";
 import prismadb from "./prismadb";
 
@@ -952,6 +952,40 @@ export async function importChatGptExport({
 export type GovernedReferenceType = "goal" | "preference" | "constraint";
 export type ImportRefCache = Map<GovernedReferenceType, string[]>;
 
+// Rejects transient operational tasks that act on session-proximal objects.
+// "I need to send this block in 2 parts" is ephemeral, not a durable reference.
+const IMPORT_TRANSIENT_OP_PATTERN =
+  /\b(?:send|split|divide|copy|paste|attach|upload|forward)\s+(?:this|these)\b/i;
+
+// Rejects residual noise categories that pass the basic first-person / length /
+// transient-op guards but are semantically task-like, stale, or non-durable:
+//   • chat/session manipulation tasks ("new chat", "draw up a prompt")
+//   • watch-video lookup tasks ("watch the video")
+//   • Codex/AI instruction tasks ("tell codex to do it")
+//   • single-letter option-picking ("I like B maybe…")
+//   • stale dated delivery chatter ("by feb lol")
+//   • UI/file/folder operational instructions ("UI components folder", "drag them files")
+//   • vague collective goals ("what needs to be done for us")
+//   • passive instruction fragments ("I was told I need to include…")
+//   • conversational filler openers ("I mean, how complicated is…")
+function isImportResidualNoise(statement: string): boolean {
+  if (/\bnew\s+chat\b|\bdraw\s+up\s+a\s+prompt\b/i.test(statement)) return true;
+  if (/\bwatch\s+(?:the\s+)?video\b/i.test(statement)) return true;
+  if (/\b(?:tell|ask)\s+codex\b/i.test(statement)) return true;
+  if (/\bi\s+like\s+[a-d]\b/i.test(statement)) return true;
+  if (
+    /\bby\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(statement) &&
+    /\blol\b/i.test(statement)
+  )
+    return true;
+  if (/\bui\s+components?\s*folder\b|\bdrag\s+(?:the\s+)?(?:them\s+)?files?\b/i.test(statement))
+    return true;
+  if (/\bneeds\s+to\s+be\s+done\s+for\s+us\b/i.test(statement)) return true;
+  if (/^i\s+was\s+told\b/i.test(statement)) return true;
+  if (/^i\s+mean[,\s]/i.test(statement)) return true;
+  return false;
+}
+
 export async function extractReferenceFromImportedMessage({
   userId,
   message,
@@ -1000,8 +1034,90 @@ export async function extractReferenceFromImportedMessage({
     return false;
   }
 
+  // Extract a clean statement: strips "remember that..." / "remember this:" prefixes.
+  // This is the same extraction step used by the native message path.
+  const extracted = extractMemoryStatement(message.content);
+
+  // Max-length guard: raw transcript fragments have no memory-capture prefix to strip,
+  // so their extracted length equals nearly the full message. 250 chars is generous for
+  // any real personal statement.
+  if (extracted.length > 250) {
+    if (diagnostics) {
+      diagnostics.referenceCandidatesRejected += 1;
+      incrementReasonCodeCount(diagnostics, "reference_too_long");
+      pushDiagnosticSample(diagnostics, "rejected", {
+        reason: "reference_too_long",
+        snippet: message.content.slice(0, 100),
+        sessionId,
+        messageId: message.id,
+      });
+    }
+    return false;
+  }
+
+  // Writeability gates (mirrors isWriteableMemoryStatement checks, with a more lenient
+  // word-count threshold that accommodates short but valid extracted phrases like
+  // "I prefer concise responses" that would fail the native 5-word minimum).
+  const isQuestion = extracted.endsWith("?");
+  const isFirstPerson =
+    /^(?:i\b|my\b|i'|i'm\b|i've\b|i'll\b|i'd\b|(?:when|if)\s+(?:i\b|my\b|i'|i'm\b))/i.test(
+      extracted
+    );
+  const contentTokenCount = tokenizeMeaningful(extracted).length;
+
+  if (isQuestion || !isFirstPerson || contentTokenCount < 2) {
+    if (diagnostics) {
+      diagnostics.referenceCandidatesRejected += 1;
+      const reason = isQuestion
+        ? "reference_question_form"
+        : !isFirstPerson
+          ? "reference_no_first_person"
+          : "reference_insufficient_content";
+      incrementReasonCodeCount(diagnostics, reason);
+      pushDiagnosticSample(diagnostics, "rejected", {
+        reason,
+        snippet: message.content,
+        sessionId,
+        messageId: message.id,
+      });
+    }
+    return false;
+  }
+
+  // Transient task guard: operational verbs acting on session-proximal demonstratives
+  // ("send this block", "copy these files") signal ephemeral actions, not durable refs.
+  if (IMPORT_TRANSIENT_OP_PATTERN.test(extracted)) {
+    if (diagnostics) {
+      diagnostics.referenceCandidatesRejected += 1;
+      incrementReasonCodeCount(diagnostics, "reference_transient_task");
+      pushDiagnosticSample(diagnostics, "rejected", {
+        reason: "reference_transient_task",
+        snippet: message.content,
+        sessionId,
+        messageId: message.id,
+      });
+    }
+    return false;
+  }
+
+  // Residual noise guard: task-like, stale-dated, and conversational fragments
+  // that pass the length / first-person / transient-op checks above.
+  if (isImportResidualNoise(extracted)) {
+    if (diagnostics) {
+      diagnostics.referenceCandidatesRejected += 1;
+      incrementReasonCodeCount(diagnostics, "reference_residual_noise");
+      pushDiagnosticSample(diagnostics, "rejected", {
+        reason: "reference_residual_noise",
+        snippet: message.content.slice(0, 100),
+        sessionId,
+        messageId: message.id,
+      });
+    }
+    return false;
+  }
+
   const type = intentType as GovernedReferenceType;
-  const statement = message.content.replace(/\s+/g, " ").trim();
+  const statement = extracted;
 
   if (!refCache.has(type)) {
     const existing = await db.referenceItem.findMany({
