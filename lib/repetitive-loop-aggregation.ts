@@ -18,7 +18,7 @@
 import type { NormalizedHistoryEntry } from "./history-synthesis";
 import type { PatternClue } from "./pattern-claim-lifecycle";
 import { selectEvidenceRepresentative } from "./behavioral-filter";
-import { selectBestDisplayQuote } from "./pattern-quote-selection";
+import { selectBestDisplayQuoteWithSource } from "./pattern-quote-selection";
 
 /** Minimum distinct sessions with loop cues required before a clue is emitted. */
 export const RL_MIN_SESSIONS = 2;
@@ -450,10 +450,12 @@ export function buildRepetitiveLoopClueFromSessions(
   const summary = `${summaryPrefix}: "${summaryQuote}"`;
 
   // Display: stricter quote-ranking path — null when no candidate is display-safe.
-  const quote =
-    selectBestDisplayQuote(localizedCuePool.length > 0 ? localizedCuePool : allCues) ??
-    selectBestDisplayQuote(allCues) ??
-    undefined;
+  const displayQuoteSelection =
+    selectBestDisplayQuoteWithSource(
+      localizedCuePool.length > 0 ? localizedCuePool : allCues
+    ) ?? selectBestDisplayQuoteWithSource(allCues);
+  const quote = displayQuoteSelection?.quote ?? undefined;
+  const quoteSource = displayQuoteSelection?.candidate;
 
   return {
     userId,
@@ -466,6 +468,12 @@ export function buildRepetitiveLoopClueFromSessions(
     messageId: representative.messageId,
     journalEntryId: representative.journalEntryId ?? null,
     quote,
+    quoteSourceKind: quoteSource
+      ? quoteSource.sourceKind ?? (quoteSource.journalEntryId ? "journal_entry" : "chat_message")
+      : undefined,
+    quoteSessionId: quoteSource?.sessionId,
+    quoteMessageId: quoteSource?.messageId,
+    quoteJournalEntryId: quoteSource?.journalEntryId ?? null,
     supportEntries: allCues.map((cue) => toSupportEntry(cue)),
   };
 }

@@ -23,6 +23,7 @@ import {
   scorePatternQuoteCandidate,
   isDisplaySafePatternQuote,
   selectBestDisplayQuote,
+  selectBestDisplayQuoteWithSource,
   MAX_QUOTE_LENGTH,
   MIN_QUOTE_SCORE,
 } from "../pattern-quote-selection";
@@ -159,6 +160,14 @@ describe("Case 1 — better quote chosen over weaker", () => {
       makeCandidate(shortMsg),
     ]);
     expect(result).toBe(shortMsg);
+  });
+
+  it("returns quote plus originating candidate provenance", () => {
+    const weak = { content: "every time stress hits I tend to avoid tasks", id: "msg_weak" };
+    const strong = { content: "I keep falling back into the same pattern", id: "msg_strong" };
+    const result = selectBestDisplayQuoteWithSource([weak, strong]);
+    expect(result?.quote).toBe("I keep falling back into the same pattern");
+    expect(result?.candidate.id).toBe("msg_strong");
   });
 });
 

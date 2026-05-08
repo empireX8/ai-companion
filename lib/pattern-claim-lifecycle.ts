@@ -73,6 +73,12 @@ export type PatternClue = {
   messageId?: string | null;
   journalEntryId?: string | null;
   quote?: string;
+  // Optional clue-level quote provenance. When present, this source should
+  // back clue.quote during clue-level receipt materialization.
+  quoteSourceKind?: "chat_message" | "journal_entry";
+  quoteSessionId?: string | null;
+  quoteMessageId?: string | null;
+  quoteJournalEntryId?: string | null;
   // Optional deterministic replay-support entries. These preserve additional
   // source quotes already available at detection time so persisted replay can
   // reconstruct the same canonical visible-summary path later.

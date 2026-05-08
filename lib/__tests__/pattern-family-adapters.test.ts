@@ -369,6 +369,33 @@ describe("detectRecoveryStabilizerClues — clue production", () => {
     expect(result[0]!.summary).toContain("I've been keeping at it through the week.");
   });
 
+  it("recovery fallback tracks quote provenance when display quote differs from representative", () => {
+    const conciseDisplaySource = makeEntry("I've been keeping at it through the week.", {
+      sessionId: "sess_quote",
+      messageId: "msg_quote",
+    });
+    const representative = makeEntry(
+      "I've been doing a better job of sticking to routines even when pressure rises and I keep trying to stay consistent.",
+      {
+        sessionId: "sess_rep",
+        messageId: "msg_rep",
+      }
+    );
+
+    const result = detectRecoveryStabilizerClues({
+      userId: "u1",
+      entries: [conciseDisplaySource, representative],
+    });
+
+    expect(result).toHaveLength(1);
+    const clue = result[0]!;
+    expect(clue.messageId).toBe("msg_rep");
+    expect(clue.sessionId).toBe("sess_rep");
+    expect(clue.quote).toBe(conciseDisplaySource.content);
+    expect(clue.quoteMessageId).toBe("msg_quote");
+    expect(clue.quoteSessionId).toBe("sess_quote");
+  });
+
   it("detects native progress phrasing like doing a better job and stabilizing faster", () => {
     const result = detectRecoveryStabilizerClues({
       userId: "u1",

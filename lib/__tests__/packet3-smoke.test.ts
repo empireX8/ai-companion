@@ -1093,7 +1093,7 @@ describe("Packet 3 smoke — trigger_condition full pipeline", () => {
     expect(replay.completeness.supportBundleComplete).toBe(true);
   });
 
-  it("preserves the representative support sentence even when clue.quote differs", async () => {
+  it("realigns clue-level quote provenance to the quote-bearing message when clue.quote differs", async () => {
     const db = makePipelineMockDb();
     const clue = {
       userId: "u1",
@@ -1128,9 +1128,16 @@ describe("Packet 3 smoke — trigger_condition full pipeline", () => {
     await materializeClueSupport({ claimId, clue, db });
 
     const claimEvidence = db._evidence.filter((e) => e.claimId === claimId);
-    expect(claimEvidence).toHaveLength(3);
+    expect(claimEvidence).toHaveLength(2);
     expect(
       claimEvidence.some((e) => e.messageId === "m1" && e.quote === "I notice I am definitely a people pleaser.")
+    ).toBe(true);
+    expect(
+      claimEvidence.some(
+        (e) =>
+          e.messageId === "m2" &&
+          e.quote === "When pressure rises, I start appeasing people instead of staying honest"
+      )
     ).toBe(true);
     expect(
       claimEvidence.some(
@@ -1138,7 +1145,118 @@ describe("Packet 3 smoke — trigger_condition full pipeline", () => {
           e.messageId === "m1" &&
           e.quote === "When pressure rises, I start appeasing people instead of staying honest"
       )
+    ).toBe(false);
+  });
+
+  it("skips clue-level receipt when quote cannot be aligned to any source message", async () => {
+    const db = makePipelineMockDb();
+    const clue = {
+      userId: "u1",
+      patternType: "trigger_condition" as const,
+      summary: 'Trigger-response pattern: "I notice I am definitely a people pleaser"',
+      sourceKind: "chat_message" as const,
+      sessionId: "s1",
+      messageId: "m1",
+      journalEntryId: null,
+      quote: "I keep saying I will start early, then drift into tabs and feel behind again.",
+      supportEntries: [
+        {
+          sourceKind: "chat_message" as const,
+          sessionId: "s1",
+          messageId: "m1",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-01T00:00:00.000Z"),
+          content: "I notice I am definitely a people pleaser. I apologize immediately.",
+        },
+        {
+          sourceKind: "chat_message" as const,
+          sessionId: "s2",
+          messageId: "m2",
+          journalEntryId: null,
+          timestamp: new Date("2026-01-02T00:00:00.000Z"),
+          content: "When pressure rises, I start appeasing people instead of staying honest",
+        },
+      ],
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db });
+
+    const claimEvidence = db._evidence.filter((e) => e.claimId === claimId);
+    expect(claimEvidence).toHaveLength(2);
+    expect(
+      claimEvidence.some(
+        (row) =>
+          row.quote ===
+          "I keep saying I will start early, then drift into tabs and feel behind again."
+      )
+    ).toBe(false);
+  });
+
+  it("mixed imported/native repetitive_loop history persists quote/message pairs that match content", async () => {
+    const importedRepresentative = makeMessage(
+      "I keep ending up in this same loop again and again, and I keep circling it for too many reasons at once right now.",
+      {
+        id: "imp_rep",
+        sessionId: "imp_s1",
+        createdAt: new Date("2026-01-03T00:00:00.000Z"),
+        session: { origin: "IMPORTED_ARCHIVE", startedAt: new Date("2026-01-01T00:00:00.000Z") },
+      }
+    );
+    const appQuoteSource = makeMessage("I keep falling back into the same pattern.", {
+      id: "app_quote",
+      sessionId: "app_s1",
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      session: { origin: "APP", startedAt: new Date("2026-01-01T00:00:00.000Z") },
+    });
+    const appSupport = makeMessage("Every time this happens I keep circling back to the same loop.", {
+      id: "app_support",
+      sessionId: "app_s2",
+      createdAt: new Date("2026-01-02T00:00:00.000Z"),
+      session: { origin: "APP", startedAt: new Date("2026-01-01T00:00:00.000Z") },
+    });
+
+    const db = makePipelineMockDb({
+      messages: [appQuoteSource, appSupport, importedRepresentative],
+    });
+
+    await patternDetectorV1({ userId: "u1", messageIds: [], runId: "run1", db });
+
+    const claim = db._claims.find((row) => row.patternType === "repetitive_loop");
+    expect(claim).toBeDefined();
+
+    const messageById = new Map(
+      [appQuoteSource, appSupport, importedRepresentative].map((message) => [
+        message.id,
+        message.content,
+      ])
+    );
+    const normalize = (text: string) =>
+      text
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const receipts = db._evidence.filter(
+      (row) =>
+        row.claimId === claim!.id &&
+        typeof row.messageId === "string" &&
+        typeof row.quote === "string"
+    );
+    expect(receipts.length).toBeGreaterThan(0);
+    expect(
+      receipts.some(
+        (receipt) =>
+          receipt.quote === "I keep falling back into the same pattern." &&
+          receipt.messageId === "app_quote"
+      )
     ).toBe(true);
+
+    for (const receipt of receipts) {
+      const content = messageById.get(receipt.messageId!);
+      expect(content).toBeDefined();
+      expect(normalize(content!)).toContain(normalize(receipt.quote!));
+    }
   });
 });
 

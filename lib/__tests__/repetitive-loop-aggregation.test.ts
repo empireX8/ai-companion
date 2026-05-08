@@ -268,6 +268,31 @@ describe("evidence linkage — sessionId and messageId", () => {
     expect(clue.sessionId).toBeDefined();
     expect(clue.messageId).toBeDefined();
   });
+
+  it("tracks quote provenance separately when display quote is not from the representative", () => {
+    const conciseQuote = "I keep falling back into the same pattern";
+    const longerRepresentative = [
+      "I keep ending up in this same loop again and again, and I keep circling it for too many reasons at once right now,",
+      "I keep revisiting the same thoughts, repeating the same steps, and returning to the same delay pattern over and over whenever pressure builds.",
+    ].join(" ");
+    const entries = [
+      makeEntry(conciseQuote, {
+        sessionId: "quoteSess",
+        messageId: "quoteMsg",
+      }),
+      makeEntry(longerRepresentative, {
+        sessionId: "repSess",
+        messageId: "repMsg",
+      }),
+    ];
+
+    const clue = detectRepetitiveLoopClues({ userId: "u1", entries })[0]!;
+    expect(clue.messageId).toBe("repMsg");
+    expect(clue.sessionId).toBe("repSess");
+    expect(clue.quote).toBe(conciseQuote);
+    expect(clue.quoteMessageId).toBe("quoteMsg");
+    expect(clue.quoteSessionId).toBe("quoteSess");
+  });
 });
 
 describe("multi-clue subgroup emission", () => {

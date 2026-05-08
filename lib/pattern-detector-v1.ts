@@ -432,35 +432,40 @@ function shouldGateClueQuoteAsImportedSupportEvidence({
   clue: PatternClue;
   historyLookup?: SupportEntryHistoryLookup;
 }): boolean {
+  const clueMessageId = clue.quoteMessageId ?? clue.messageId;
+  const clueSessionId = clue.quoteSessionId ?? clue.sessionId;
+  const clueJournalEntryId = clue.quoteJournalEntryId ?? clue.journalEntryId;
   const clueSourceKind =
-    clue.sourceKind ?? (clue.journalEntryId ? "journal_entry" : "chat_message");
+    clue.quoteSourceKind ??
+    clue.sourceKind ??
+    (clueJournalEntryId ? "journal_entry" : "chat_message");
   if (clueSourceKind !== "chat_message") return false;
 
-  if (clue.messageId && historyLookup) {
-    const matched = historyLookup.byMessageId.get(clue.messageId);
+  if (clueMessageId && historyLookup) {
+    const matched = historyLookup.byMessageId.get(clueMessageId);
     if (matched) {
       return isImportedUserChatHistoryEntry(matched);
     }
   }
 
-  if (clue.messageId && clue.supportEntries) {
-    const matched = clue.supportEntries.find((entry) => entry.messageId === clue.messageId);
+  if (clueMessageId && clue.supportEntries) {
+    const matched = clue.supportEntries.find((entry) => entry.messageId === clueMessageId);
     if (matched) {
       return isImportedUserChatSupportEntry(matched);
     }
   }
 
-  if (clue.sessionId && historyLookup) {
-    const candidates = historyLookup.bySessionId.get(clue.sessionId) ?? [];
+  if (clueSessionId && historyLookup) {
+    const candidates = historyLookup.bySessionId.get(clueSessionId) ?? [];
     const matched = candidates.find((entry) => resolveHistoryEntrySourceKind(entry) === "chat_message");
     if (matched) {
       return isImportedUserChatHistoryEntry(matched);
     }
   }
 
-  if (clue.sessionId && clue.supportEntries) {
+  if (clueSessionId && clue.supportEntries) {
     const matched = clue.supportEntries.find(
-      (entry) => entry.sessionId === clue.sessionId && resolveSupportEntrySourceKind(entry) === "chat_message"
+      (entry) => entry.sessionId === clueSessionId && resolveSupportEntrySourceKind(entry) === "chat_message"
     );
     if (matched) {
       return isImportedUserChatSupportEntry(matched);
@@ -487,6 +492,144 @@ function importedSupportEvidenceQuotePassesQualityBoundary({
     patternType
   );
   return quality.accepted && relevanceRejections.length === 0 && residualRejections.length === 0;
+}
+
+type ClueQuoteProvenanceEntry = {
+  sourceKind: HistorySourceKind;
+  sessionId: string | null;
+  messageId: string | null;
+  journalEntryId: string | null;
+  content: string;
+  timestamp: Date;
+};
+
+function normalizeQuoteContainmentText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function quoteContainedInContent(content: string, quote: string): boolean {
+  const normalizedContent = normalizeQuoteContainmentText(content);
+  const normalizedQuote = normalizeQuoteContainmentText(quote);
+  if (normalizedQuote.length === 0) return false;
+  return normalizedContent.includes(normalizedQuote);
+}
+
+function toClueQuoteProvenanceEntryFromSupportEntry(
+  entry: SupportEntry
+): ClueQuoteProvenanceEntry {
+  const sourceKind = resolveSupportEntrySourceKind(entry);
+  return {
+    sourceKind,
+    sessionId: entry.sessionId ?? null,
+    messageId: entry.messageId ?? null,
+    journalEntryId: entry.journalEntryId ?? null,
+    content: entry.content,
+    timestamp: entry.timestamp,
+  };
+}
+
+function toClueQuoteProvenanceEntryFromHistoryEntry(
+  entry: NormalizedHistoryEntry
+): ClueQuoteProvenanceEntry {
+  const sourceKind = resolveHistoryEntrySourceKind(entry);
+  return {
+    sourceKind,
+    sessionId: entry.sessionId ?? null,
+    messageId: entry.messageId ?? null,
+    journalEntryId: entry.journalEntryId ?? null,
+    content: entry.content,
+    timestamp: entry.createdAt,
+  };
+}
+
+function collectClueQuoteProvenanceEntries({
+  clue,
+  historyLookup,
+}: {
+  clue: PatternClue;
+  historyLookup?: SupportEntryHistoryLookup;
+}): ClueQuoteProvenanceEntry[] {
+  const collected: ClueQuoteProvenanceEntry[] = [];
+  const seen = new Set<string>();
+  const pushUnique = (candidate: ClueQuoteProvenanceEntry) => {
+    const key = [
+      candidate.sourceKind,
+      candidate.sessionId ?? "",
+      candidate.messageId ?? "",
+      candidate.journalEntryId ?? "",
+      candidate.content,
+      candidate.timestamp.getTime().toString(),
+    ].join("|");
+    if (seen.has(key)) return;
+    seen.add(key);
+    collected.push(candidate);
+  };
+
+  for (const entry of clue.supportEntries ?? []) {
+    pushUnique(toClueQuoteProvenanceEntryFromSupportEntry(entry));
+  }
+
+  if (historyLookup) {
+    for (const entry of historyLookup.byMessageId.values()) {
+      pushUnique(toClueQuoteProvenanceEntryFromHistoryEntry(entry));
+    }
+  }
+
+  return collected;
+}
+
+function findMatchingClueQuoteProvenanceEntry({
+  entries,
+  sourceKind,
+  sessionId,
+  messageId,
+  journalEntryId,
+}: {
+  entries: ClueQuoteProvenanceEntry[];
+  sourceKind: HistorySourceKind;
+  sessionId: string | null;
+  messageId: string | null;
+  journalEntryId: string | null;
+}): ClueQuoteProvenanceEntry | null {
+  if (sourceKind === "chat_message" && messageId) {
+    return entries.find((entry) => entry.sourceKind === "chat_message" && entry.messageId === messageId) ?? null;
+  }
+  if (sourceKind === "journal_entry" && journalEntryId) {
+    return entries.find((entry) => entry.sourceKind === "journal_entry" && entry.journalEntryId === journalEntryId) ?? null;
+  }
+  if (sourceKind === "chat_message" && sessionId) {
+    const sorted = entries
+      .filter((entry) => entry.sourceKind === "chat_message" && entry.sessionId === sessionId)
+      .sort((left, right) => left.timestamp.getTime() - right.timestamp.getTime());
+    return sorted.length > 0 ? sorted[sorted.length - 1]! : null;
+  }
+  return null;
+}
+
+function findLastClueQuoteProvenanceEntryContainingQuote({
+  entries,
+  quote,
+  preferredSourceKind,
+}: {
+  entries: ClueQuoteProvenanceEntry[];
+  quote: string;
+  preferredSourceKind?: HistorySourceKind;
+}): ClueQuoteProvenanceEntry | null {
+  const filteredByQuote = entries.filter((entry) => quoteContainedInContent(entry.content, quote));
+  if (filteredByQuote.length === 0) return null;
+
+  const preferred = preferredSourceKind
+    ? filteredByQuote.filter((entry) => entry.sourceKind === preferredSourceKind)
+    : filteredByQuote;
+  const pool = preferred.length > 0 ? preferred : filteredByQuote;
+
+  const sorted = pool
+    .slice()
+    .sort((left, right) => left.timestamp.getTime() - right.timestamp.getTime());
+  return sorted.length > 0 ? sorted[sorted.length - 1]! : null;
 }
 
 /**
@@ -838,8 +981,33 @@ export async function materializeClueSupport({
   if (
     clue.sessionId !== undefined ||
     clue.messageId !== undefined ||
-    clue.journalEntryId !== undefined
+    clue.journalEntryId !== undefined ||
+    clue.quoteSessionId !== undefined ||
+    clue.quoteMessageId !== undefined ||
+    clue.quoteJournalEntryId !== undefined
   ) {
+    const hasExplicitQuoteProvenance =
+      clue.quoteSourceKind !== undefined ||
+      clue.quoteSessionId !== undefined ||
+      clue.quoteMessageId !== undefined ||
+      clue.quoteJournalEntryId !== undefined;
+    let clueReceiptSourceKind: HistorySourceKind =
+      clue.quoteSourceKind ??
+      clue.sourceKind ??
+      ((clue.quoteJournalEntryId ?? clue.journalEntryId) ? "journal_entry" : "chat_message");
+    let clueReceiptSessionId =
+      clue.quoteSessionId !== undefined ? clue.quoteSessionId : (clue.sessionId ?? null);
+    let clueReceiptMessageId =
+      clue.quoteMessageId !== undefined ? clue.quoteMessageId : (clue.messageId ?? null);
+    let clueReceiptJournalEntryId =
+      clue.quoteJournalEntryId !== undefined ? clue.quoteJournalEntryId : (clue.journalEntryId ?? null);
+
+    if (clueReceiptJournalEntryId) {
+      clueReceiptSourceKind = "journal_entry";
+    } else if (clueReceiptMessageId) {
+      clueReceiptSourceKind = "chat_message";
+    }
+
     const shouldGateImportedClueQuote =
       typeof clue.quote === "string" &&
       clue.quote.trim().length > 0 &&
@@ -856,13 +1024,66 @@ export async function materializeClueSupport({
         ? undefined
         : clue.quote;
 
+    if (typeof clueQuote === "string" && clueQuote.trim().length > 0) {
+      const provenanceEntries = collectClueQuoteProvenanceEntries({
+        clue,
+        historyLookup: supportEntryHistoryLookup,
+      });
+      if (provenanceEntries.length > 0) {
+        const currentProvenanceEntry = findMatchingClueQuoteProvenanceEntry({
+          entries: provenanceEntries,
+          sourceKind: clueReceiptSourceKind,
+          sessionId: clueReceiptSessionId ?? null,
+          messageId: clueReceiptMessageId ?? null,
+          journalEntryId: clueReceiptJournalEntryId ?? null,
+        });
+        if (currentProvenanceEntry) {
+          if (!quoteContainedInContent(currentProvenanceEntry.content, clueQuote)) {
+            const alignedProvenanceEntry = findLastClueQuoteProvenanceEntryContainingQuote({
+              entries: provenanceEntries,
+              quote: clueQuote,
+              preferredSourceKind: clueReceiptSourceKind,
+            });
+            if (!alignedProvenanceEntry) {
+              return;
+            }
+            clueReceiptSourceKind = alignedProvenanceEntry.sourceKind;
+            clueReceiptSessionId = alignedProvenanceEntry.sessionId;
+            clueReceiptMessageId = alignedProvenanceEntry.messageId;
+            clueReceiptJournalEntryId = alignedProvenanceEntry.journalEntryId;
+          }
+        } else if (hasExplicitQuoteProvenance) {
+          const alignedProvenanceEntry = findLastClueQuoteProvenanceEntryContainingQuote({
+            entries: provenanceEntries,
+            quote: clueQuote,
+            preferredSourceKind: clueReceiptSourceKind,
+          });
+          if (alignedProvenanceEntry) {
+            clueReceiptSourceKind = alignedProvenanceEntry.sourceKind;
+            clueReceiptSessionId = alignedProvenanceEntry.sessionId;
+            clueReceiptMessageId = alignedProvenanceEntry.messageId;
+            clueReceiptJournalEntryId = alignedProvenanceEntry.journalEntryId;
+          }
+        }
+      }
+    }
+
     await materializeReceipt({
       claimId,
-      sessionId: clue.sessionId ?? undefined,
-      messageId: clue.messageId ?? undefined,
-      journalEntryId: clue.journalEntryId ?? undefined,
+      sessionId:
+        clueReceiptSourceKind === "chat_message"
+          ? clueReceiptSessionId ?? undefined
+          : undefined,
+      messageId:
+        clueReceiptSourceKind === "chat_message"
+          ? clueReceiptMessageId ?? undefined
+          : undefined,
+      journalEntryId:
+        clueReceiptSourceKind === "journal_entry"
+          ? clueReceiptJournalEntryId ?? undefined
+          : undefined,
       quote: clueQuote,
-      sourceKind: clue.sourceKind,
+      sourceKind: clueReceiptSourceKind,
       debugCollector,
       db,
     });

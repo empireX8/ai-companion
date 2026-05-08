@@ -47,6 +47,11 @@ export type QuoteRejectionReason =
   | "vague_no_behavioral_signal"
   | "below_score_threshold";
 
+export type DisplayQuoteSelection<T extends { content: string }> = {
+  quote: string;
+  candidate: T;
+};
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 /** Maximum character length for a display quote. Over this → disqualified. */
@@ -212,7 +217,14 @@ export function isDisplaySafePatternQuote(text: string): boolean {
 export function selectBestDisplayQuote<T extends { content: string }>(
   candidates: T[]
 ): string | null {
-  let best: string | null = null;
+  const selection = selectBestDisplayQuoteWithSource(candidates);
+  return selection?.quote ?? null;
+}
+
+export function selectBestDisplayQuoteWithSource<T extends { content: string }>(
+  candidates: T[]
+): DisplayQuoteSelection<T> | null {
+  let best: DisplayQuoteSelection<T> | null = null;
   let bestScore = MIN_QUOTE_SCORE - 1;
 
   for (const candidate of candidates) {
@@ -220,7 +232,10 @@ export function selectBestDisplayQuote<T extends { content: string }>(
     const { score } = scorePatternQuoteCandidate(originalText);
     // Use >= so that later candidates win ties (recency as tie-breaker)
     if (score >= MIN_QUOTE_SCORE && score >= bestScore) {
-      best = originalText.slice(0, MAX_QUOTE_LENGTH);
+      best = {
+        quote: originalText.slice(0, MAX_QUOTE_LENGTH),
+        candidate,
+      };
       bestScore = score;
     }
   }

@@ -16,7 +16,7 @@
 import type { NormalizedHistoryEntry } from "./history-synthesis";
 import type { PatternClue } from "./pattern-claim-lifecycle";
 import { selectEvidenceRepresentative } from "./behavioral-filter";
-import { selectBestDisplayQuote } from "./pattern-quote-selection";
+import { selectBestDisplayQuoteWithSource } from "./pattern-quote-selection";
 
 // ── Thresholds ────────────────────────────────────────────────────────────────
 
@@ -326,10 +326,11 @@ function buildTriggerConditionClue(
 
   const summaryQuote = representative.content.slice(0, 100).trim();
   const summary = `${summaryPrefix}: "${summaryQuote}"`;
-  const quote =
-    selectBestDisplayQuote(localizedMatches) ??
-    selectBestDisplayQuote(matches) ??
-    undefined;
+  const displayQuoteSelection =
+    selectBestDisplayQuoteWithSource(localizedMatches) ??
+    selectBestDisplayQuoteWithSource(matches);
+  const quote = displayQuoteSelection?.quote ?? undefined;
+  const quoteSource = displayQuoteSelection?.candidate;
   const supportMatches =
     subgroup != null ? filterThemeLocalizedSupportMatches(matches, subgroup) : matches;
 
@@ -344,6 +345,12 @@ function buildTriggerConditionClue(
     messageId: representative.messageId,
     journalEntryId: representative.journalEntryId ?? null,
     quote,
+    quoteSourceKind: quoteSource
+      ? quoteSource.sourceKind ?? (quoteSource.journalEntryId ? "journal_entry" : "chat_message")
+      : undefined,
+    quoteSessionId: quoteSource?.sessionId,
+    quoteMessageId: quoteSource?.messageId,
+    quoteJournalEntryId: quoteSource?.journalEntryId ?? null,
     supportEntries: supportMatches.map(mapTriggerSupportEntry),
   };
 }

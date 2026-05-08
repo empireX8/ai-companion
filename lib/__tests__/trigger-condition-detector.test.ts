@@ -125,6 +125,41 @@ describe("detectTriggerConditionClues — clue production", () => {
     expect(clue.sessionId).toBe("sess_late");
     expect(clue.messageId).toBe("msg_late");
   });
+
+  it("tracks quote provenance separately when display quote is selected from a different message", () => {
+    const conciseDisplaySource = makeEntry(
+      "I notice I am definitely a people pleaser when someone seems upset with me.",
+      {
+        sessionId: "sess_quote",
+        messageId: "msg_quote",
+        createdAt: new Date("2026-01-01"),
+      }
+    );
+    const filler = makeEntry("When tension rises, I tend to walk back my boundary.", {
+      sessionId: "sess_fill",
+      messageId: "msg_fill",
+      createdAt: new Date("2026-01-02"),
+    });
+    const representative = makeEntry(
+      "I usually default to appeasing people whenever pressure spikes, and then I end up over-explaining and staying stuck in the same social loop for hours.",
+      {
+        sessionId: "sess_rep",
+        messageId: "msg_rep",
+        createdAt: new Date("2026-01-03"),
+      }
+    );
+
+    const clue = detectTriggerConditionClues({
+      userId: "u1",
+      entries: [conciseDisplaySource, filler, representative],
+    })[0]!;
+
+    expect(clue.messageId).toBe("msg_rep");
+    expect(clue.sessionId).toBe("sess_rep");
+    expect(clue.quote).toBe(conciseDisplaySource.content);
+    expect(clue.quoteMessageId).toBe("msg_quote");
+    expect(clue.quoteSessionId).toBe("sess_quote");
+  });
 });
 
 describe("detectTriggerConditionClues — subgroup pilot emission", () => {

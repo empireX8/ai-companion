@@ -17,7 +17,10 @@ import type { NormalizedHistoryEntry } from "./history-synthesis";
 import type { PatternClue } from "./pattern-claim-lifecycle";
 import { selectEvidenceRepresentative } from "./behavioral-filter";
 import { extractQuote } from "./pattern-claim-evidence";
-import { selectBestDisplayQuote } from "./pattern-quote-selection";
+import {
+  selectBestDisplayQuote,
+  selectBestDisplayQuoteWithSource,
+} from "./pattern-quote-selection";
 
 // ── Thresholds ────────────────────────────────────────────────────────────────
 
@@ -128,6 +131,7 @@ type RecoverySummarySelection = {
   representative: NormalizedHistoryEntry;
   summaryQuote: string;
   displayQuote?: string;
+  displayQuoteEntry?: NormalizedHistoryEntry;
 };
 
 function selectRecoverySummaryCandidate(
@@ -158,6 +162,7 @@ function selectRecoverySummaryCandidate(
         representative,
         summaryQuote: selectedQuote,
         displayQuote: selectedQuote,
+        displayQuoteEntry: representative,
       };
     }
 
@@ -175,14 +180,15 @@ function selectRecoverySummaryCandidate(
   const representative = selectEvidenceRepresentative(localizedMatches);
   if (!representative) return null;
 
-  const legacyDisplayQuote =
-    selectBestDisplayQuote(localizedMatches) ??
-    selectBestDisplayQuote(fallbackMatches) ??
-    undefined;
+  const legacyDisplayQuoteSelection =
+    selectBestDisplayQuoteWithSource(localizedMatches) ??
+    selectBestDisplayQuoteWithSource(fallbackMatches);
+  const legacyDisplayQuote = legacyDisplayQuoteSelection?.quote ?? undefined;
   return {
     representative,
     summaryQuote: representative.content.slice(0, 100).trim(),
     displayQuote: legacyDisplayQuote,
+    displayQuoteEntry: legacyDisplayQuoteSelection?.candidate,
   };
 }
 
@@ -217,6 +223,7 @@ export function detectRecoveryStabilizerClues({
   const summary = `Recovery pattern: "${summaryQuote}"`;
 
   const quote = selected.displayQuote;
+  const quoteSource = selected.displayQuoteEntry;
 
   return [
     {
@@ -230,6 +237,12 @@ export function detectRecoveryStabilizerClues({
       messageId: representative.messageId,
       journalEntryId: representative.journalEntryId ?? null,
       quote,
+      quoteSourceKind: quoteSource
+        ? quoteSource.sourceKind ?? (quoteSource.journalEntryId ? "journal_entry" : "chat_message")
+        : undefined,
+      quoteSessionId: quoteSource?.sessionId,
+      quoteMessageId: quoteSource?.messageId,
+      quoteJournalEntryId: quoteSource?.journalEntryId ?? null,
       supportEntries: matches.map((match) => ({
         sourceKind:
           match.sourceKind ?? (match.journalEntryId ? "journal_entry" : "chat_message"),

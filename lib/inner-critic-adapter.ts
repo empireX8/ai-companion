@@ -13,7 +13,7 @@
 import type { NormalizedHistoryEntry } from "./history-synthesis";
 import type { PatternClue } from "./pattern-claim-lifecycle";
 import { selectEvidenceRepresentative } from "./behavioral-filter";
-import { selectBestDisplayQuote } from "./pattern-quote-selection";
+import { selectBestDisplayQuoteWithSource } from "./pattern-quote-selection";
 
 // ── Thresholds ────────────────────────────────────────────────────────────────
 
@@ -74,7 +74,9 @@ export function detectInnerCriticClues({
   const summary = `Self-critical pattern: "${summaryQuote}"`;
 
   // Display: stricter quote-ranking path — null when no candidate is display-safe.
-  const quote = selectBestDisplayQuote(matches) ?? undefined;
+  const displayQuoteSelection = selectBestDisplayQuoteWithSource(matches);
+  const quote = displayQuoteSelection?.quote ?? undefined;
+  const quoteSource = displayQuoteSelection?.candidate;
 
   return [{
     userId,
@@ -87,6 +89,12 @@ export function detectInnerCriticClues({
     messageId: representative.messageId,
     journalEntryId: representative.journalEntryId ?? null,
     quote,
+    quoteSourceKind: quoteSource
+      ? quoteSource.sourceKind ?? (quoteSource.journalEntryId ? "journal_entry" : "chat_message")
+      : undefined,
+    quoteSessionId: quoteSource?.sessionId,
+    quoteMessageId: quoteSource?.messageId,
+    quoteJournalEntryId: quoteSource?.journalEntryId ?? null,
     supportEntries: matches.map((match) => ({
       sourceKind:
         match.sourceKind ?? (match.journalEntryId ? "journal_entry" : "chat_message"),
