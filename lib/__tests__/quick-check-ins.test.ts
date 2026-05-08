@@ -6,6 +6,7 @@ import {
 } from "../quick-check-ins";
 
 const authMock = vi.fn();
+const triggerNativeDerivationIfDueMock = vi.fn();
 
 const prismaMock = {
   quickCheckIn: {
@@ -20,6 +21,10 @@ vi.mock("@clerk/nextjs/server", () => ({
 
 vi.mock("@/lib/prismadb", () => ({
   default: prismaMock,
+}));
+
+vi.mock("@/lib/native-derivation-trigger", () => ({
+  triggerNativeDerivationIfDue: triggerNativeDerivationIfDueMock,
 }));
 
 describe("createQuickCheckInSchema", () => {
@@ -69,6 +74,10 @@ describe("/api/check-ins", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ userId: "user-1" });
+    triggerNativeDerivationIfDueMock.mockResolvedValue({
+      triggered: true,
+      runId: "run_native_unused",
+    });
   });
 
   it("returns unauthorized when no user is signed in", async () => {
@@ -203,5 +212,6 @@ describe("/api/check-ins", () => {
       createdAt: "2026-04-17T12:00:00.000Z",
       updatedAt: "2026-04-17T12:00:00.000Z",
     });
+    expect(triggerNativeDerivationIfDueMock).not.toHaveBeenCalled();
   });
 });

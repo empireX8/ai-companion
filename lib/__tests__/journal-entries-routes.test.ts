@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMock = vi.fn();
+const triggerNativeDerivationIfDueMock = vi.fn();
+const patternBatchOrchestratorMock = { runForUser: vi.fn() };
 
 const prismaMock = {
   journalEntry: {
@@ -20,10 +22,22 @@ vi.mock("@/lib/prismadb", () => ({
   default: prismaMock,
 }));
 
+vi.mock("@/lib/native-derivation-trigger", () => ({
+  triggerNativeDerivationIfDue: triggerNativeDerivationIfDueMock,
+}));
+
+vi.mock("@/lib/pattern-batch-orchestrator", () => ({
+  patternBatchOrchestrator: patternBatchOrchestratorMock,
+}));
+
 describe("/api/journal/entries routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ userId: "user-1" });
+    triggerNativeDerivationIfDueMock.mockResolvedValue({
+      triggered: true,
+      runId: "run_native_journal_1",
+    });
   });
 
   it("creates an entry", async () => {
@@ -64,6 +78,12 @@ describe("/api/journal/entries routes", () => {
         updatedAt: true,
       },
     });
+    expect(triggerNativeDerivationIfDueMock).toHaveBeenCalledTimes(1);
+    expect(triggerNativeDerivationIfDueMock).toHaveBeenCalledWith(
+      { userId: "user-1" },
+      prismaMock,
+      patternBatchOrchestratorMock
+    );
     await expect(response.json()).resolves.toEqual({
       id: "entry-1",
       title: "Morning",
@@ -72,6 +92,42 @@ describe("/api/journal/entries routes", () => {
       createdAt: "2026-04-28T10:00:00.000Z",
       updatedAt: "2026-04-28T10:00:00.000Z",
     });
+  });
+
+  it("does not fail create when pattern derivation trigger fails", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    triggerNativeDerivationIfDueMock.mockRejectedValueOnce(new Error("derivation failed"));
+    prismaMock.journalEntry.create.mockResolvedValueOnce({
+      id: "entry-failure-tolerant",
+      title: "Morning",
+      body: "I keep slipping into the same loop when pressure rises.",
+      authoredAt: null,
+      createdAt: new Date("2026-04-29T10:00:00.000Z"),
+      updatedAt: new Date("2026-04-29T10:00:00.000Z"),
+    });
+
+    const route = await import("../../app/api/journal/entries/route");
+    const response = await route.POST(
+      new Request("http://localhost/api/journal/entries", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: "Morning",
+          body: "I keep slipping into the same loop when pressure rises.",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(prismaMock.journalEntry.create).toHaveBeenCalledTimes(1);
+    expect(triggerNativeDerivationIfDueMock).toHaveBeenCalledTimes(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[JOURNAL_ENTRY_PATTERN_DERIVATION_ERROR]",
+      "user-1",
+      expect.any(Error)
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 
   it("lists entries newest-first with default limit", async () => {

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
+import { triggerNativeDerivationIfDue } from "@/lib/native-derivation-trigger";
+import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
 import prismadb from "@/lib/prismadb";
 import {
   createJournalEntrySchema,
@@ -18,6 +20,22 @@ const JOURNAL_ENTRY_SELECT = {
 } as const;
 
 export const dynamic = "force-dynamic";
+
+export async function triggerJournalEntryPatternDerivation({
+  userId,
+}: {
+  userId: string;
+}) {
+  try {
+    await triggerNativeDerivationIfDue(
+      { userId },
+      prismadb,
+      patternBatchOrchestrator
+    );
+  } catch (error) {
+    console.error("[JOURNAL_ENTRY_PATTERN_DERIVATION_ERROR]", userId, error);
+  }
+}
 
 export async function GET(req: Request) {
   const { userId } = await auth();
@@ -77,6 +95,8 @@ export async function POST(req: Request) {
       },
       select: JOURNAL_ENTRY_SELECT,
     });
+
+    void triggerJournalEntryPatternDerivation({ userId });
 
     return NextResponse.json(toJournalEntryView(entry), { status: 201 });
   } catch (error) {
