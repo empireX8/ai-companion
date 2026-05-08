@@ -304,6 +304,52 @@ describe("detectRecoveryStabilizerClues — clue production", () => {
     expect(result[0]!.summary).toContain("We're making progress though.");
   });
 
+  it("does not use shyness/biography lead-in as recovery summary when explicit progress exists in the same pool", () => {
+    const result = detectRecoveryStabilizerClues({
+      userId: "u1",
+      entries: [
+        makeEntry(
+          "Yeah, I'm interested in some feedback. I do think my shyness has largely been exacerbated by my life story. We're making progress though.",
+          {
+            sessionId: "sess1",
+            messageId: "bio_progress_1",
+          }
+        ),
+        makeEntry("We're making progress though.", {
+          sessionId: "sess2",
+          messageId: "progress_clean_1",
+        }),
+      ],
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.summary).toContain("We're making progress though.");
+    expect(result[0]!.summary).not.toContain("shyness has largely been exacerbated");
+  });
+
+  it("emits a non-empty recovery clue quote when explicit progress evidence exists", () => {
+    const result = detectRecoveryStabilizerClues({
+      userId: "u1",
+      entries: [
+        makeEntry(
+          "Yeah, I'm interested in some feedback. I do think my shyness has largely been exacerbated by my life story. We're making progress though.",
+          {
+            sessionId: "sess1",
+            messageId: "bio_progress_2",
+          }
+        ),
+        makeEntry("We're making progress though.", {
+          sessionId: "sess2",
+          messageId: "progress_clean_2",
+        }),
+      ],
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.quote).toBeDefined();
+    expect(result[0]!.quote?.trim().length).toBeGreaterThan(0);
+  });
+
   it("falls back to current representative behavior when no stronger stabilization text exists", () => {
     const result = detectRecoveryStabilizerClues({
       userId: "u1",

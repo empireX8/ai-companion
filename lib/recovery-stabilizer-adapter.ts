@@ -16,6 +16,7 @@
 import type { NormalizedHistoryEntry } from "./history-synthesis";
 import type { PatternClue } from "./pattern-claim-lifecycle";
 import { selectEvidenceRepresentative } from "./behavioral-filter";
+import { extractQuote } from "./pattern-claim-evidence";
 import { selectBestDisplayQuote } from "./pattern-quote-selection";
 
 // ── Thresholds ────────────────────────────────────────────────────────────────
@@ -63,6 +64,21 @@ const RECOVERY_SUMMARY_STABILIZATION_MARKERS: RegExp[] = [
   /\b(?:stabiliz\w+|calm(?:ed)?\s+down|better|recover\w*|got\s+rid\s+of\s+it)\b.{0,40}\b(?:prayed?|meditat\w+)\b/i,
 ];
 
+const RECOVERY_SUMMARY_BIOGRAPHY_MARKERS: RegExp[] = [
+  /\bshy(?:ness)?\b/i,
+  /\blife\s+story\b/i,
+  /\bexacerbat\w*\b/i,
+  /\bsince\s+a\s+child\b/i,
+  /\bas\s+a\s+child\b/i,
+  /\bgrowing\s+up\b/i,
+  /\bconsidered\s+shy\b/i,
+];
+
+type RecoveryQuoteCandidate = {
+  entry: NormalizedHistoryEntry;
+  quote: string;
+};
+
 function matchesAnyRecoveryPattern(content: string, patterns: RegExp[]): boolean {
   return patterns.some((pattern) => pattern.test(content));
 }
@@ -74,6 +90,100 @@ function filterRecoverySummaryMatches(
     matchesAnyRecoveryPattern(entry.content, RECOVERY_SUMMARY_STABILIZATION_MARKERS)
   );
   return themed.length > 0 ? themed : matches;
+}
+
+function buildRecoveryQuoteCandidates(
+  matches: NormalizedHistoryEntry[]
+): RecoveryQuoteCandidate[] {
+  const candidates: RecoveryQuoteCandidate[] = [];
+  for (const entry of matches) {
+    const quote = extractQuote(entry.content).trim();
+    if (quote.length === 0) continue;
+    candidates.push({ entry, quote });
+  }
+  return candidates;
+}
+
+function selectRecoveryQuoteFromCandidates(
+  candidates: RecoveryQuoteCandidate[]
+): string | null {
+  return selectBestDisplayQuote(
+    candidates.map((candidate) => ({ content: candidate.quote }))
+  );
+}
+
+function findLastEntryForQuote(
+  candidates: RecoveryQuoteCandidate[],
+  quote: string
+): NormalizedHistoryEntry | null {
+  for (let index = candidates.length - 1; index >= 0; index -= 1) {
+    if (candidates[index]?.quote === quote) {
+      return candidates[index]!.entry;
+    }
+  }
+  return null;
+}
+
+type RecoverySummarySelection = {
+  representative: NormalizedHistoryEntry;
+  summaryQuote: string;
+  displayQuote?: string;
+};
+
+function selectRecoverySummaryCandidate(
+  localizedMatches: NormalizedHistoryEntry[],
+  fallbackMatches: NormalizedHistoryEntry[]
+): RecoverySummarySelection | null {
+  const quoteCandidates = buildRecoveryQuoteCandidates(localizedMatches);
+  const explicitRecoveryCandidates = quoteCandidates.filter((candidate) =>
+    matchesAnyRecoveryPattern(candidate.quote, RECOVERY_SUMMARY_STABILIZATION_MARKERS)
+  );
+  const explicitRecoveryNonBiographyCandidates = explicitRecoveryCandidates.filter(
+    (candidate) =>
+      !matchesAnyRecoveryPattern(candidate.quote, RECOVERY_SUMMARY_BIOGRAPHY_MARKERS)
+  );
+  const prioritizedCandidates =
+    explicitRecoveryNonBiographyCandidates.length > 0
+      ? explicitRecoveryNonBiographyCandidates
+      : explicitRecoveryCandidates;
+
+  if (prioritizedCandidates.length > 0) {
+    const selectedQuote = selectRecoveryQuoteFromCandidates(prioritizedCandidates);
+    if (selectedQuote) {
+      const representative =
+        findLastEntryForQuote(prioritizedCandidates, selectedQuote) ??
+        selectEvidenceRepresentative(prioritizedCandidates.map((candidate) => candidate.entry));
+      if (!representative) return null;
+      return {
+        representative,
+        summaryQuote: selectedQuote,
+        displayQuote: selectedQuote,
+      };
+    }
+
+    const representative = selectEvidenceRepresentative(
+      prioritizedCandidates.map((candidate) => candidate.entry)
+    );
+    if (!representative) return null;
+    const extracted = extractQuote(representative.content).trim();
+    return {
+      representative,
+      summaryQuote: extracted.length > 0 ? extracted : representative.content.slice(0, 100).trim(),
+    };
+  }
+
+  const representative = selectEvidenceRepresentative(localizedMatches);
+  if (!representative) return null;
+
+  const legacyDisplayQuote =
+    selectBestDisplayQuote(localizedMatches) ??
+    selectBestDisplayQuote(fallbackMatches) ??
+    undefined;
+  return {
+    representative,
+    summaryQuote: representative.content.slice(0, 100).trim(),
+    displayQuote: legacyDisplayQuote,
+  };
 }
 
 // ── Adapter ───────────────────────────────────────────────────────────────────
@@ -100,18 +210,13 @@ export function detectRecoveryStabilizerClues({
 
   const localizedMatches = filterRecoverySummaryMatches(matches);
 
-  // Classification: representative drives sessionId/messageId and summary dedup key.
-  const representative = selectEvidenceRepresentative(localizedMatches);
-  if (!representative) return [];
-
-  const summaryQuote = representative.content.slice(0, 100).trim();
+  const selected = selectRecoverySummaryCandidate(localizedMatches, matches);
+  if (!selected) return [];
+  const representative = selected.representative;
+  const summaryQuote = selected.summaryQuote.slice(0, 100).trim();
   const summary = `Recovery pattern: "${summaryQuote}"`;
 
-  // Display: stricter quote-ranking path — null when no candidate is display-safe.
-  const quote =
-    selectBestDisplayQuote(localizedMatches) ??
-    selectBestDisplayQuote(matches) ??
-    undefined;
+  const quote = selected.displayQuote;
 
   return [
     {
