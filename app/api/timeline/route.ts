@@ -5,6 +5,7 @@ import prismadb from "@/lib/prismadb";
 import { type SessionSurfaceTypeValue } from "../../../lib/session-surface-type";
 import { toQuickCheckInView } from "../../../lib/quick-check-ins";
 import {
+  buildTimelineStateSummary,
   getWindowStartDate,
   resolveTimelineWindow,
   type ImportedConversationActivityItem,
@@ -266,10 +267,16 @@ export async function GET(req: Request) {
           ...journalEntriesWithoutAuthoredAt,
         ])
       : undefined;
+    const checkInViews = checkIns.map(toQuickCheckInView);
+    const stateSummary = buildTimelineStateSummary({
+      window,
+      checkIns: checkInViews,
+    });
 
     return NextResponse.json({
-      checkIns: checkIns.map(toQuickCheckInView),
+      checkIns: checkInViews,
       importedActivity,
+      stateSummary,
       ...(includeAppActivity ? { appActivity } : {}),
       ...(includeJournalEntries ? { journalEntries } : {}),
     });

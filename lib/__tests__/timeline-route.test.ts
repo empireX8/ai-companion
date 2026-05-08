@@ -5,6 +5,7 @@ const authMock = vi.fn();
 const prismaMock = {
   quickCheckIn: {
     findMany: vi.fn(),
+    create: vi.fn(),
   },
   session: {
     findMany: vi.fn(),
@@ -87,6 +88,25 @@ describe("/api/timeline", () => {
         messageCount: 4,
       },
     ]);
+    expect(payload.stateSummary).toEqual({
+      window: "90d",
+      totalCheckIns: 0,
+      rhythms: {
+        totalCount: 0,
+        topStateTags: [],
+        topEventTags: [],
+        lastCheckInAt: null,
+      },
+      repeatedSignals: {
+        repeatedStateTags: [],
+        repeatedEventTags: [],
+        repeatedPairs: [],
+        rankedItems: [],
+      },
+      links: [],
+      recentStates: [],
+      topEventTags: [],
+    });
     expect(payload).not.toHaveProperty("appActivity");
     expect(payload).not.toHaveProperty("journalEntries");
     expect(prismaMock.journalEntry.findMany).not.toHaveBeenCalled();
@@ -188,6 +208,10 @@ describe("/api/timeline", () => {
         surfaceType: "explore_chat",
       },
     ]);
+    expect(payload.stateSummary).toMatchObject({
+      window: "30d",
+      totalCheckIns: 0,
+    });
     expect(payload).not.toHaveProperty("journalEntries");
     expect(prismaMock.journalEntry.findMany).not.toHaveBeenCalled();
   });
@@ -276,6 +300,10 @@ describe("/api/timeline", () => {
       },
     });
     expect(payload.importedActivity).toEqual([]);
+    expect(payload.stateSummary).toMatchObject({
+      window: "30d",
+      totalCheckIns: 0,
+    });
     expect(payload.journalEntries).toEqual([
       {
         id: "created-newest",
@@ -330,6 +358,122 @@ describe("/api/timeline", () => {
     expect(prismaMock.journalEntry.findMany).toHaveBeenCalledTimes(2);
     expect(payload).toHaveProperty("journalEntries");
     expect(payload.journalEntries).toEqual([]);
+    expect(payload.stateSummary).toMatchObject({
+      window: "30d",
+      totalCheckIns: 0,
+    });
+  });
+
+  it("builds stateSummary from check-ins and includes possible links when repeated patterns exist", async () => {
+    prismaMock.quickCheckIn.findMany.mockResolvedValue([
+      {
+        id: "ci-4",
+        stateTag: "overloaded",
+        eventTags: ["pressure"],
+        note: "hit a wall",
+        createdAt: new Date("2026-04-18T06:00:00.000Z"),
+        updatedAt: new Date("2026-04-18T06:00:00.000Z"),
+      },
+      {
+        id: "ci-3",
+        stateTag: "stressed",
+        eventTags: ["pressure"],
+        note: "still tense",
+        createdAt: new Date("2026-04-18T04:00:00.000Z"),
+        updatedAt: new Date("2026-04-18T04:00:00.000Z"),
+      },
+      {
+        id: "ci-2",
+        stateTag: "overloaded",
+        eventTags: ["pressure"],
+        note: null,
+        createdAt: new Date("2026-04-18T02:00:00.000Z"),
+        updatedAt: new Date("2026-04-18T02:00:00.000Z"),
+      },
+      {
+        id: "ci-1",
+        stateTag: "stressed",
+        eventTags: ["pressure"],
+        note: "deadline sprint",
+        createdAt: new Date("2026-04-18T00:00:00.000Z"),
+        updatedAt: new Date("2026-04-18T00:00:00.000Z"),
+      },
+    ]);
+
+    const route = await import("../../app/api/timeline/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/timeline?window=30d")
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.stateSummary.window).toBe("30d");
+    expect(payload.stateSummary.totalCheckIns).toBe(4);
+    expect(payload.stateSummary.rhythms.totalCount).toBe(4);
+    expect(payload.stateSummary.rhythms.topStateTags[0]).toEqual({
+      tag: "overloaded",
+      count: 2,
+    });
+    expect(payload.stateSummary.topEventTags[0]).toEqual({
+      tag: "pressure",
+      count: 4,
+    });
+    expect(payload.stateSummary.repeatedSignals.repeatedStateTags).toEqual([
+      { tag: "overloaded", count: 2 },
+      { tag: "stressed", count: 2 },
+    ]);
+    expect(payload.stateSummary.links).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "event_state",
+          eventTag: "pressure",
+          stateTag: "overloaded",
+        }),
+        expect.objectContaining({
+          kind: "event_state",
+          eventTag: "pressure",
+          stateTag: "stressed",
+        }),
+        expect.objectContaining({
+          kind: "state_transition",
+          fromState: "stressed",
+          toState: "overloaded",
+          count: 2,
+        }),
+      ])
+    );
+    expect(payload.stateSummary.recentStates).toEqual([
+      {
+        id: "ci-4",
+        createdAt: "2026-04-18T06:00:00.000Z",
+        stateTag: "overloaded",
+        eventTags: ["pressure"],
+        note: "hit a wall",
+      },
+      {
+        id: "ci-3",
+        createdAt: "2026-04-18T04:00:00.000Z",
+        stateTag: "stressed",
+        eventTags: ["pressure"],
+        note: "still tense",
+      },
+      {
+        id: "ci-2",
+        createdAt: "2026-04-18T02:00:00.000Z",
+        stateTag: "overloaded",
+        eventTags: ["pressure"],
+        note: null,
+      },
+      {
+        id: "ci-1",
+        createdAt: "2026-04-18T00:00:00.000Z",
+        stateTag: "stressed",
+        eventTags: ["pressure"],
+        note: "deadline sprint",
+      },
+    ]);
+    expect(prismaMock.quickCheckIn.findMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.quickCheckIn.create).not.toHaveBeenCalled();
   });
 
   it("returns unauthorized when no user is signed in", async () => {

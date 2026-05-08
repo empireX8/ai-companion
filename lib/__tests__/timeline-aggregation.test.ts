@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { QuickCheckInView } from "../quick-check-ins";
 import {
   computeImportedConversationSummary,
+  buildTimelineStateSummary,
   getWindowStartDate,
   computeRhythms,
   computeRepeatedSignals,
@@ -372,6 +373,90 @@ describe("computeRepeatedSignals — rankedItems", () => {
 
     expect(pairIdx).toBeGreaterThan(stateIdx);
     expect(pairIdx).toBeGreaterThan(eventIdx);
+  });
+});
+
+describe("buildTimelineStateSummary", () => {
+  it("returns a safe empty summary for empty check-ins", () => {
+    expect(
+      buildTimelineStateSummary({
+        window: "30d",
+        checkIns: [],
+      })
+    ).toEqual({
+      window: "30d",
+      totalCheckIns: 0,
+      rhythms: {
+        totalCount: 0,
+        topStateTags: [],
+        topEventTags: [],
+        lastCheckInAt: null,
+      },
+      repeatedSignals: {
+        repeatedStateTags: [],
+        repeatedEventTags: [],
+        repeatedPairs: [],
+        rankedItems: [],
+      },
+      links: [],
+      recentStates: [],
+      topEventTags: [],
+    });
+  });
+
+  it("includes links when repeated event/state and transition signals exist", () => {
+    const checkIns = [
+      makeCheckIn({
+        id: "ci-4",
+        createdAt: "2024-04-17T06:00:00Z",
+        stateTag: "overloaded",
+        eventTags: ["pressure"],
+        note: "hit a wall",
+      }),
+      makeCheckIn({
+        id: "ci-3",
+        createdAt: "2024-04-17T04:00:00Z",
+        stateTag: "stressed",
+        eventTags: ["pressure"],
+      }),
+      makeCheckIn({
+        id: "ci-2",
+        createdAt: "2024-04-17T02:00:00Z",
+        stateTag: "overloaded",
+        eventTags: ["pressure"],
+      }),
+      makeCheckIn({
+        id: "ci-1",
+        createdAt: "2024-04-17T00:00:00Z",
+        stateTag: "stressed",
+        eventTags: ["pressure"],
+      }),
+    ];
+
+    const summary = buildTimelineStateSummary({
+      window: "14d",
+      checkIns,
+    });
+
+    expect(summary.window).toBe("14d");
+    expect(summary.totalCheckIns).toBe(4);
+    expect(summary.topEventTags[0]).toEqual({ tag: "pressure", count: 4 });
+    expect(summary.links).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "state_transition",
+          fromState: "stressed",
+          toState: "overloaded",
+          count: 2,
+        }),
+      ])
+    );
+    expect(summary.recentStates.map((item) => item.id)).toEqual([
+      "ci-4",
+      "ci-3",
+      "ci-2",
+      "ci-1",
+    ]);
   });
 });
 

@@ -12,6 +12,10 @@ import {
   type QuickCheckInStateTag,
   type QuickCheckInView,
 } from "./quick-check-ins";
+import {
+  computeTimelineLinks,
+  type TimelineLink,
+} from "./timeline-links";
 
 // ── Time windows ──────────────────────────────────────────────────────────────
 
@@ -131,6 +135,24 @@ export type RepeatedSignals = {
   rankedItems: RepeatedSignalItem[];
 };
 
+export type TimelineStateSummaryRecentState = {
+  id: string;
+  createdAt: string;
+  stateTag: QuickCheckInStateTag | null;
+  eventTags: QuickCheckInEventTag[];
+  note: string | null;
+};
+
+export type TimelineStateSummary = {
+  window: TimelineWindow;
+  totalCheckIns: number;
+  rhythms: TimelineRhythms;
+  repeatedSignals: RepeatedSignals;
+  links: TimelineLink[];
+  recentStates: TimelineStateSummaryRecentState[];
+  topEventTags: TagCount<QuickCheckInEventTag>[];
+};
+
 export type RepeatedSignalItem =
   | {
       kind: "state";
@@ -161,6 +183,7 @@ const MAX_REPEATED_STATES = 3;
 const MAX_REPEATED_EVENTS = 3;
 const MAX_REPEATED_PAIRS = 5;
 export const MAX_RANKED_REPEATED_ITEMS = 6;
+export const MAX_RECENT_STATES = 6;
 
 function compareIsoDesc(left: string, right: string): number {
   return right.localeCompare(left);
@@ -378,6 +401,35 @@ export function computeRepeatedSignals(
     repeatedEventTags,
     repeatedPairs,
     rankedItems,
+  };
+}
+
+export function buildTimelineStateSummary({
+  window,
+  checkIns,
+}: {
+  window: TimelineWindow;
+  checkIns: QuickCheckInView[];
+}): TimelineStateSummary {
+  const rhythms = computeRhythms(checkIns);
+  const repeatedSignals = computeRepeatedSignals(checkIns);
+  const { links } = computeTimelineLinks(checkIns);
+  const recentStates = checkIns.slice(0, MAX_RECENT_STATES).map((checkIn) => ({
+    id: checkIn.id,
+    createdAt: checkIn.createdAt,
+    stateTag: checkIn.stateTag,
+    eventTags: checkIn.eventTags,
+    note: checkIn.note,
+  }));
+
+  return {
+    window,
+    totalCheckIns: checkIns.length,
+    rhythms,
+    repeatedSignals,
+    links,
+    recentStates,
+    topEventTags: rhythms.topEventTags,
   };
 }
 
