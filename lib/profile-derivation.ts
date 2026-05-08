@@ -21,10 +21,10 @@ type PatternRule = {
 };
 
 const RULES: PatternRule[] = [
-  // GOAL
+  // GOAL — "I'm trying to" removed (fires on conversational filler constantly)
   {
     type: "GOAL",
-    pattern: /\b(I want to|I need to|I'?m trying to|I hope to|I plan to|I aim to|I'?m working on|my goal is|I wish I could|I'?d like to|I'?m going to)\b/i,
+    pattern: /\b(I want to|I need to|I hope to|I plan to|I aim to|I'?m working on|my goal is|I wish I could|I'?d like to|I'?m going to)\b/i,
     confidence: 0.7,
   },
   // FEAR / EMOTIONAL
@@ -51,16 +51,17 @@ const RULES: PatternRule[] = [
     pattern: /\b(I value|I care about|what matters to me|important to me|I prioritize|I believe in|means a lot to me)\b/i,
     confidence: 0.7,
   },
-  // HABIT
+  // HABIT — "I never" removed (fires on corrections: "I never said that")
   {
     type: "HABIT",
-    pattern: /\b(I always|I never|I usually|I tend to|I often|every time I|I keep (doing|making|forgetting)|I can'?t stop|I consistently|I repeatedly)\b/i,
+    pattern: /\b(I always|I usually|I tend to|I often|every time I|I keep (doing|making|forgetting)|I can'?t stop|I consistently|I repeatedly)\b/i,
     confidence: 0.6,
   },
-  // TRAIT
+  // TRAIT — broad hedging branches removed (I'm pretty/very/basically/naturally/inherently ___);
+  // "I see myself as" added alongside IDENTITY for explicit trait self-descriptions
   {
     type: "TRAIT",
-    pattern: /\b((?:I a|I')m (someone who|the type of person|naturally|inherently|basically)|I'?ve always (been|had)|my nature is|(?:I a|I')m (very|quite|extremely|pretty) \w+)\b/i,
+    pattern: /\b((?:I a|I')m (someone who|the type of person)|I'?ve always (been|had)|my nature is|I see myself as)\b/i,
     confidence: 0.55,
   },
   // EMOTIONAL_PATTERN
@@ -76,6 +77,76 @@ const RULES: PatternRule[] = [
     confidence: 0.6,
   },
 ];
+
+// ── Quality gates ─────────────────────────────────────────────────────────────
+
+// Weak GOAL triggers that need filler verification
+const GOAL_WEAK_TRIGGER_RE = /^(I want to|I need to|I'?d like to|I'?m going to)\s+/i;
+
+// Filler verbs/phrases that follow a weak GOAL trigger without adding substance
+const GOAL_FILLER_CONTINUATION_RE =
+  /^(know|say|ask|think|make sure|remember|understand|figure|check|tell|be honest|be clear|be fair|go ahead|see|look|get|show|do that|do this|just (?:say|ask|know|check|want|think))\b/i;
+
+// Same filler pattern checked anywhere in the claim (catches mid-sentence triggers)
+const GOAL_FILLER_ANYWHERE_RE =
+  /\b(I want to|I need to|I'?d like to|I'?m going to)\s+(know|say|ask|think|make sure|remember|understand|figure|check|tell|be honest|be clear|be fair|go ahead|see|look|get|show|do that|do this|just (?:say|ask|know|check|want|think))\b/i;
+
+/**
+ * Returns true when a GOAL claim is conversational filler rather than a real goal.
+ * Only applied to weak triggers (I want to / I need to / I'd like to / I'm going to).
+ */
+export function isGoalFiller(claim: string): boolean {
+  const trimmed = claim.trim();
+
+  // Check trigger at start of claim: too-short remainder or filler continuation
+  const startMatch = GOAL_WEAK_TRIGGER_RE.exec(trimmed);
+  if (startMatch) {
+    const afterTrigger = trimmed.slice(startMatch[0].length).trim();
+    if (afterTrigger.length < 12) return true;
+    if (GOAL_FILLER_CONTINUATION_RE.test(afterTrigger)) return true;
+  }
+
+  // Catch mid-sentence patterns like "That's what I need to know" or
+  // "So yeah, I want to say that it was fine"
+  return GOAL_FILLER_ANYWHERE_RE.test(trimmed);
+}
+
+/**
+ * Returns true when a BELIEF claim is a short conversational affirmation
+ * ("I think that would be good", "I think that makes sense") rather than a
+ * substantive belief. Threshold is 50 chars — all genuine beliefs in practice
+ * are longer.
+ */
+export function isBeliefFiller(claim: string): boolean {
+  return claim.trim().length < 50;
+}
+
+/**
+ * Returns true when a VALUE claim is a vague referential statement with no
+ * explicit value object ("That's something I value", "That's really important
+ * to me for some reason") or is phrased as a question.
+ */
+export function isVagueValueClaim(claim: string): boolean {
+  const trimmed = claim.trim();
+  if (trimmed.endsWith("?")) return true;
+  return /^(?:that'?s|it'?s|this\s+is|those\s+are)\s+/i.test(trimmed);
+}
+
+/**
+ * Type-aware quality gate called after sentence extraction.
+ * Returns false if the claim should be dropped as noise.
+ */
+export function isSubstantiveProfileClaim(
+  type: ProfileArtifactType,
+  claim: string
+): boolean {
+  switch (type) {
+    case "GOAL":   return !isGoalFiller(claim);
+    case "BELIEF": return !isBeliefFiller(claim);
+    case "VALUE":  return !isVagueValueClaim(claim);
+    default:       return true;
+  }
+}
 
 // ── Claim normalization (for dedup) ───────────────────────────────────────────
 
@@ -134,6 +205,9 @@ export function extractProfileClaims(text: string): ExtractedClaim[] {
     if (!match) continue;
 
     const claim = extractSentence(text, match.index);
+
+    if (!isSubstantiveProfileClaim(rule.type, claim)) continue;
+
     const claimNorm = normalizeClaimForDedup(claim);
 
     const dedupeKey = `${rule.type}:${claimNorm}`;

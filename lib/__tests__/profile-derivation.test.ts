@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   extractProfileClaims,
+  isBeliefFiller,
+  isGoalFiller,
+  isSubstantiveProfileClaim,
+  isVagueValueClaim,
   normalizeClaimForDedup,
   processMessageForProfile,
   upsertProfileClaims,
@@ -424,5 +428,275 @@ describe("processMessageForProfile", () => {
     });
 
     expect(result).toBeNull();
+  });
+});
+
+// ── isGoalFiller ──────────────────────────────────────────────────────────────
+
+describe("isGoalFiller", () => {
+  it("rejects 'I want to make sure'", () => {
+    expect(isGoalFiller("I want to make sure")).toBe(true);
+  });
+
+  it("rejects 'I want to say that'", () => {
+    expect(isGoalFiller("I want to say that")).toBe(true);
+  });
+
+  it("rejects 'I need to know'", () => {
+    expect(isGoalFiller("I need to know")).toBe(true);
+  });
+
+  it("rejects mid-sentence 'I want to say that it was fine'", () => {
+    expect(isGoalFiller("So yeah, I want to say that it was fine.")).toBe(true);
+  });
+
+  it("rejects mid-sentence 'That's what I need to know'", () => {
+    expect(isGoalFiller("That's what I need to know.")).toBe(true);
+  });
+
+  it("rejects 'I want to think' continuation", () => {
+    expect(isGoalFiller("I want to think about this.")).toBe(true);
+  });
+
+  it("keeps 'I want to build a business someday'", () => {
+    expect(isGoalFiller("I want to build a business someday.")).toBe(false);
+  });
+
+  it("keeps 'I need to finish this book'", () => {
+    expect(isGoalFiller("I need to finish this book.")).toBe(false);
+  });
+
+  it("keeps 'I want to become a better leader'", () => {
+    expect(isGoalFiller("I want to become a better leader and achieve more.")).toBe(false);
+  });
+
+  it("keeps 'My goal is to finish the book' (strong trigger, not weak)", () => {
+    expect(isGoalFiller("My goal is to finish the book this month.")).toBe(false);
+  });
+
+  it("keeps 'I'm working on building a stable writing routine' (strong trigger)", () => {
+    expect(isGoalFiller("I'm working on building a stable writing routine.")).toBe(false);
+  });
+});
+
+// ── isBeliefFiller ────────────────────────────────────────────────────────────
+
+describe("isBeliefFiller", () => {
+  it("rejects short affirmation 'I think that would be good'", () => {
+    expect(isBeliefFiller("I think that would be good.")).toBe(true);
+  });
+
+  it("rejects short affirmation 'I think that was everything'", () => {
+    expect(isBeliefFiller("I think that was everything.")).toBe(true);
+  });
+
+  it("rejects 'I think that makes sense'", () => {
+    expect(isBeliefFiller("I think that makes sense.")).toBe(true);
+  });
+
+  it("rejects 'Right, I think that's right'", () => {
+    expect(isBeliefFiller("Right, I think that's right.")).toBe(true);
+  });
+
+  it("keeps 'I believe that discipline matters more than motivation'", () => {
+    expect(isBeliefFiller("I believe that discipline matters more than motivation.")).toBe(false);
+  });
+
+  it("keeps 'In my opinion, institutions shape behaviour more than intentions'", () => {
+    expect(isBeliefFiller(
+      "In my opinion, institutions shape behaviour more than individual intentions."
+    )).toBe(false);
+  });
+
+  it("keeps 'I believe that hard work always pays off eventually'", () => {
+    expect(isBeliefFiller("I believe that hard work always pays off eventually.")).toBe(false);
+  });
+});
+
+// ── isVagueValueClaim ─────────────────────────────────────────────────────────
+
+describe("isVagueValueClaim", () => {
+  it("rejects 'That's something I value'", () => {
+    expect(isVagueValueClaim("That's something I value.")).toBe(true);
+  });
+
+  it("rejects 'That's really important to me for some reason'", () => {
+    expect(isVagueValueClaim("That's really important to me for some reason.")).toBe(true);
+  });
+
+  it("rejects 'It's something I care about'", () => {
+    expect(isVagueValueClaim("It's something I care about.")).toBe(true);
+  });
+
+  it("rejects questions like 'Would you say I believe in god?'", () => {
+    expect(isVagueValueClaim("Would you say I believe in god?")).toBe(true);
+  });
+
+  it("keeps 'I value objectivity'", () => {
+    expect(isVagueValueClaim("I value objectivity.")).toBe(false);
+  });
+
+  it("keeps 'I care about accuracy and honesty'", () => {
+    expect(isVagueValueClaim("I care about accuracy and honesty.")).toBe(false);
+  });
+
+  it("keeps 'I value objectivity above all else in my work'", () => {
+    expect(isVagueValueClaim("I value objectivity above all else in my work.")).toBe(false);
+  });
+});
+
+// ── isSubstantiveProfileClaim ─────────────────────────────────────────────────
+
+describe("isSubstantiveProfileClaim", () => {
+  it("delegates GOAL to isGoalFiller", () => {
+    expect(isSubstantiveProfileClaim("GOAL", "I want to make sure")).toBe(false);
+    expect(isSubstantiveProfileClaim("GOAL", "I want to build a company.")).toBe(true);
+  });
+
+  it("delegates BELIEF to isBeliefFiller", () => {
+    expect(isSubstantiveProfileClaim("BELIEF", "I think that's fine.")).toBe(false);
+    expect(isSubstantiveProfileClaim("BELIEF", "I believe that structure leads to better outcomes over time.")).toBe(true);
+  });
+
+  it("delegates VALUE to isVagueValueClaim", () => {
+    expect(isSubstantiveProfileClaim("VALUE", "That's something I value.")).toBe(false);
+    expect(isSubstantiveProfileClaim("VALUE", "I value honesty above all.")).toBe(true);
+  });
+
+  it("passes FEAR, HABIT, TRAIT, IDENTITY, EMOTIONAL_PATTERN unconditionally", () => {
+    expect(isSubstantiveProfileClaim("FEAR", "I'm afraid of failure.")).toBe(true);
+    expect(isSubstantiveProfileClaim("HABIT", "I tend to overthink.")).toBe(true);
+    expect(isSubstantiveProfileClaim("TRAIT", "I've always been shy.")).toBe(true);
+    expect(isSubstantiveProfileClaim("IDENTITY", "I'm a builder.")).toBe(true);
+    expect(isSubstantiveProfileClaim("EMOTIONAL_PATTERN", "I get anxious when overwhelmed.")).toBe(true);
+  });
+});
+
+// ── extractProfileClaims — precision gates ────────────────────────────────────
+
+describe("extractProfileClaims — precision gates", () => {
+  // ── GOAL ────────────────────────────────────────────────────────────────────
+  it("does not extract GOAL from 'I want to make sure everything is okay'", () => {
+    const claims = extractProfileClaims("I want to make sure everything is okay.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(false);
+  });
+
+  it("does not extract GOAL from 'I want to say that right now'", () => {
+    const claims = extractProfileClaims("So yeah, I want to say that it was totally fine.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(false);
+  });
+
+  it("does not extract GOAL from 'I'm trying to' (trigger removed)", () => {
+    const claims = extractProfileClaims("I'm trying to think about this differently now.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(false);
+  });
+
+  it("extracts GOAL from 'my goal is to finish the book this month'", () => {
+    const claims = extractProfileClaims("My goal is to finish the book this month.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(true);
+  });
+
+  it("extracts GOAL from 'I'm working on building a stable writing routine'", () => {
+    const claims = extractProfileClaims("I'm working on building a stable writing routine.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(true);
+  });
+
+  // ── HABIT ────────────────────────────────────────────────────────────────────
+  it("does not extract HABIT from 'I never said that' (trigger removed)", () => {
+    const claims = extractProfileClaims("I never said that to him or anyone else.");
+    expect(claims.some((c) => c.type === "HABIT")).toBe(false);
+  });
+
+  it("does not extract HABIT from 'I never said anything about a minor'", () => {
+    const claims = extractProfileClaims("I never said anything about a minor or that topic.");
+    expect(claims.some((c) => c.type === "HABIT")).toBe(false);
+  });
+
+  it("extracts HABIT from 'I tend to avoid difficult calls when I feel overwhelmed'", () => {
+    const claims = extractProfileClaims(
+      "I tend to avoid difficult calls when I feel overwhelmed."
+    );
+    expect(claims.some((c) => c.type === "HABIT")).toBe(true);
+  });
+
+  it("extracts HABIT from 'Every time I get stressed, I open more tabs'", () => {
+    const claims = extractProfileClaims("Every time I get stressed, I open more tabs.");
+    expect(claims.some((c) => c.type === "HABIT")).toBe(true);
+  });
+
+  // ── TRAIT ────────────────────────────────────────────────────────────────────
+  it("does not extract TRAIT from hedge 'I'm pretty sure that defines direct democracy'", () => {
+    const claims = extractProfileClaims("I'm pretty sure that defines direct democracy.");
+    expect(claims.some((c) => c.type === "TRAIT")).toBe(false);
+  });
+
+  it("does not extract TRAIT from hedge 'I'm basically tied to it now'", () => {
+    const claims = extractProfileClaims("I'm basically tied to it now, right?");
+    expect(claims.some((c) => c.type === "TRAIT")).toBe(false);
+  });
+
+  it("does not extract TRAIT from 'I'm very much doubting that this can even work'", () => {
+    const claims = extractProfileClaims("I'm very much doubting that this can even work.");
+    expect(claims.some((c) => c.type === "TRAIT")).toBe(false);
+  });
+
+  it("extracts TRAIT from 'I've always been considered shy'", () => {
+    const claims = extractProfileClaims(
+      "But since a child, I've always been considered shy, so that's part of it."
+    );
+    expect(claims.some((c) => c.type === "TRAIT")).toBe(true);
+  });
+
+  it("extracts TRAIT from 'I see myself as someone who needs structure'", () => {
+    const claims = extractProfileClaims(
+      "I see myself as someone who needs structure to function well."
+    );
+    expect(claims.some((c) => c.type === "TRAIT")).toBe(true);
+  });
+
+  // ── BELIEF ───────────────────────────────────────────────────────────────────
+  it("does not extract BELIEF from short affirmation 'I think that would be good'", () => {
+    const claims = extractProfileClaims("I think that would be good for everyone.");
+    expect(claims.some((c) => c.type === "BELIEF")).toBe(false);
+  });
+
+  it("does not extract BELIEF from short affirmation 'I think that was everything'", () => {
+    const claims = extractProfileClaims("I think that was everything I needed to say.");
+    expect(claims.some((c) => c.type === "BELIEF")).toBe(false);
+  });
+
+  it("extracts BELIEF from substantive 'I believe that discipline matters'", () => {
+    const claims = extractProfileClaims(
+      "I believe that discipline matters more than motivation in the long run."
+    );
+    expect(claims.some((c) => c.type === "BELIEF")).toBe(true);
+  });
+
+  it("extracts BELIEF from 'in my opinion, institutions shape behaviour'", () => {
+    const claims = extractProfileClaims(
+      "In my opinion, institutions shape behaviour more than individual intentions do."
+    );
+    expect(claims.some((c) => c.type === "BELIEF")).toBe(true);
+  });
+
+  // ── VALUE ────────────────────────────────────────────────────────────────────
+  it("keeps explicit 'I value objectivity above all else'", () => {
+    const claims = extractProfileClaims("I value objectivity above all else in my work.");
+    expect(claims.some((c) => c.type === "VALUE")).toBe(true);
+  });
+
+  it("keeps 'I care about accuracy and honesty'", () => {
+    const claims = extractProfileClaims("I care about accuracy and honesty in everything I do.");
+    expect(claims.some((c) => c.type === "VALUE")).toBe(true);
+  });
+
+  it("does not extract VALUE from vague 'That's something I value'", () => {
+    const claims = extractProfileClaims("That's something I value in a conversation.");
+    expect(claims.some((c) => c.type === "VALUE")).toBe(false);
+  });
+
+  it("does not extract VALUE from question form 'Would you say I believe in god?'", () => {
+    const claims = extractProfileClaims("Would you say I believe in god?");
+    expect(claims.some((c) => c.type === "VALUE")).toBe(false);
   });
 });
