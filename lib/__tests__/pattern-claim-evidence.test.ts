@@ -73,11 +73,31 @@ type EvidenceRow = {
   source?: string;
 };
 
-function makeMockDb(opts: { existingRow?: EvidenceRow | null } = {}) {
+function makeMockDb(opts: {
+  existingRow?: EvidenceRow | null;
+  messagesById?: Record<string, string>;
+  journalsById?: Record<string, string>;
+} = {}) {
   const rows: EvidenceRow[] = opts.existingRow ? [opts.existingRow] : [];
   let lastCreated: Partial<EvidenceRow> | null = null;
+  const messagesById = opts.messagesById ?? {};
+  const journalsById = opts.journalsById ?? {};
 
   const db = {
+    message: {
+      findUnique: async ({ where }: { where: { id: string } }) => {
+        const content = messagesById[where.id];
+        if (typeof content !== "string") return null;
+        return { content };
+      },
+    },
+    journalEntry: {
+      findUnique: async ({ where }: { where: { id: string } }) => {
+        const body = journalsById[where.id];
+        if (typeof body !== "string") return null;
+        return { body };
+      },
+    },
     patternClaimEvidence: {
       findFirst: async () => (rows.length > 0 ? rows[0] : null),
       create: async ({ data }: { data: Record<string, unknown>; select: unknown }) => {
@@ -142,20 +162,32 @@ describe("materializeReceipt", () => {
 
   it("uses 'derivation' as default source", async () => {
     const db = makeMockDb();
-    await materializeReceipt({ claimId: "claim1", db });
+    await materializeReceipt({
+      claimId: "claim1",
+      messageId: "msg-default-source",
+      quote: "I keep avoiding this.",
+      db,
+    });
     expect(db._state.lastCreated?.source).toBe("derivation");
   });
 
   it("accepts user_input as source", async () => {
     const db = makeMockDb();
-    await materializeReceipt({ claimId: "claim1", source: "user_input", db });
+    await materializeReceipt({
+      claimId: "claim1",
+      source: "user_input",
+      messageId: "msg-user-input",
+      quote: "I keep avoiding this.",
+      db,
+    });
     expect(db._state.lastCreated?.source).toBe("user_input");
   });
 
-  it("creates record when neither messageId nor quote is supplied (no dedup check)", async () => {
+  it("skips persistence when neither messageId nor quote is supplied", async () => {
     const db = makeMockDb();
     const result = await materializeReceipt({ claimId: "claim1", db });
-    expect(result.created).toBe(true);
+    expect(result.created).toBe(false);
+    expect(db._state.rows).toHaveLength(0);
   });
 
   it("stores journalEntryId provenance on journal-backed receipts", async () => {
@@ -170,6 +202,60 @@ describe("materializeReceipt", () => {
     expect(result.created).toBe(true);
     expect(db._state.lastCreated?.journalEntryId).toBe("journal-entry-1");
     expect(db._state.lastCreated?.messageId).toBeNull();
+  });
+
+  it("extracts quote from referenced message when messageId exists and quote is missing", async () => {
+    const db = makeMockDb({
+      messagesById: {
+        msg_source:
+          "Context first. When pressure rises, I start appeasing people instead of staying honest.",
+      },
+    });
+
+    const result = await materializeReceipt({
+      claimId: "claim1",
+      messageId: "msg_source",
+      sessionId: "sess_source",
+      db,
+    });
+
+    expect(result.created).toBe(true);
+    expect(db._state.lastCreated?.quote).toBe(
+      "When pressure rises, I start appeasing people instead of staying honest."
+    );
+  });
+
+  it("extracts quote from referenced journal entry when journalEntryId exists and quote is missing", async () => {
+    const db = makeMockDb({
+      journalsById: {
+        journal_source:
+          "For reflection only. I keep falling back into the same pattern when I feel rushed.",
+      },
+    });
+
+    const result = await materializeReceipt({
+      claimId: "claim1",
+      journalEntryId: "journal_source",
+      db,
+    });
+
+    expect(result.created).toBe(true);
+    expect(db._state.lastCreated?.quote).toBe(
+      "I keep falling back into the same pattern when I feel rushed."
+    );
+  });
+
+  it("skips persistence when quote is whitespace and no source text can be resolved", async () => {
+    const db = makeMockDb();
+    const result = await materializeReceipt({
+      claimId: "claim1",
+      messageId: "missing_msg",
+      quote: "   ",
+      db,
+    });
+
+    expect(result.created).toBe(false);
+    expect(db._state.rows).toHaveLength(0);
   });
 
   it("emits created/duplicate debug materialization events", async () => {

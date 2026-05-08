@@ -197,6 +197,60 @@ export type ReceiptResult = {
   created: boolean;
 };
 
+function normalizePersistableQuote(quote?: string): string | undefined {
+  if (typeof quote !== "string") return undefined;
+  const trimmed = quote.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+async function resolveQuoteFromSource({
+  messageId,
+  journalEntryId,
+  db,
+}: {
+  messageId?: string;
+  journalEntryId?: string;
+  db: PrismaClient;
+}): Promise<string | undefined> {
+  const maybeMessage = (db as unknown as {
+    message?: {
+      findUnique?: (args: {
+        where: { id: string };
+        select: { content: true };
+      }) => Promise<{ content: string } | null>;
+    };
+  }).message;
+  if (messageId && maybeMessage?.findUnique) {
+    const message = await maybeMessage.findUnique({
+      where: { id: messageId },
+      select: { content: true },
+    });
+    if (message?.content) {
+      return normalizePersistableQuote(extractQuote(message.content));
+    }
+  }
+
+  const maybeJournalEntry = (db as unknown as {
+    journalEntry?: {
+      findUnique?: (args: {
+        where: { id: string };
+        select: { body: true };
+      }) => Promise<{ body: string } | null>;
+    };
+  }).journalEntry;
+  if (journalEntryId && maybeJournalEntry?.findUnique) {
+    const journalEntry = await maybeJournalEntry.findUnique({
+      where: { id: journalEntryId },
+      select: { body: true },
+    });
+    if (journalEntry?.body) {
+      return normalizePersistableQuote(extractQuote(journalEntry.body));
+    }
+  }
+
+  return undefined;
+}
+
 function resolveReceiptSourceKind({
   sourceKind,
   messageId,
@@ -220,8 +274,9 @@ function resolveReceiptSourceKind({
  * - message-backed: (claimId, messageId, quote)
  * - journal-backed: (claimId, journalEntryId, quote)
  *
- * When neither messageId nor quote is supplied, no dedup check is performed
- * and a new record is always created (bare provenance receipt).
+ * Guardrail: never persists null/empty/whitespace quotes.
+ * If quote is missing, attempts source quote extraction from referenced message
+ * or journal entry. If still empty, skips persistence.
  */
 export async function materializeReceipt({
   claimId,
@@ -239,18 +294,34 @@ export async function materializeReceipt({
     messageId,
     journalEntryId,
   });
+  const normalizedInputQuote = normalizePersistableQuote(quote);
+  const resolvedQuote =
+    normalizedInputQuote ??
+    (await resolveQuoteFromSource({
+      messageId,
+      journalEntryId,
+      db,
+    }));
+
+  if (!resolvedQuote) {
+    debugCollector?.recordReceiptMaterialization({
+      created: false,
+      sourceKind: debugSourceKind,
+    });
+    return { evidenceId: "", created: false };
+  }
 
   if (
     messageId !== undefined ||
     journalEntryId !== undefined ||
-    quote !== undefined
+    resolvedQuote !== undefined
   ) {
     const existing = await db.patternClaimEvidence.findFirst({
       where: {
         claimId,
         ...(messageId !== undefined ? { messageId } : {}),
         ...(journalEntryId !== undefined ? { journalEntryId } : {}),
-        ...(quote !== undefined ? { quote } : {}),
+        ...(resolvedQuote !== undefined ? { quote: resolvedQuote } : {}),
       },
       select: { id: true },
     });
@@ -270,7 +341,7 @@ export async function materializeReceipt({
       sessionId: sessionId ?? null,
       messageId: messageId ?? null,
       journalEntryId: journalEntryId ?? null,
-      quote: quote ?? null,
+      quote: resolvedQuote,
     },
     select: { id: true },
   });
@@ -323,7 +394,9 @@ export async function materializeReceiptsFromEntries({
       sourceKind === "chat_message" ? entry.messageId ?? undefined : undefined;
     const journalEntryId =
       sourceKind === "journal_entry" ? entry.journalEntryId ?? undefined : undefined;
-    const quote = entry.quote ?? extractQuote(entry.content);
+    const quote =
+      normalizePersistableQuote(entry.quote) ??
+      normalizePersistableQuote(extractQuote(entry.content));
     const result = await materializeReceipt({
       claimId,
       sessionId,

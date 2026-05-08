@@ -88,9 +88,17 @@ function makePipelineMockDb(opts: {
     // history-synthesis
     message: {
       findMany: async () => messages,
+      findUnique: async ({ where }: { where: { id: string } }) => {
+        const row = messages.find((message) => message.id === where.id) ?? null;
+        return row ? { content: row.content } : null;
+      },
     },
     journalEntry: {
       findMany: async () => journalEntries,
+      findUnique: async ({ where }: { where: { id: string } }) => {
+        const row = journalEntries.find((entry) => entry.id === where.id) ?? null;
+        return row ? { body: row.body } : null;
+      },
     },
     // contradiction-drift-adapter (return empty — no contradictions in smoke tests)
     contradictionNode: {
@@ -388,6 +396,37 @@ describe("Packet 3 smoke — imported support evidence quality gate", () => {
     const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
     expect(claimEvidence).toHaveLength(2);
     expect(claimEvidence.map((row) => row.messageId)).toEqual(["app-m1", "app-m2"]);
+  });
+
+  it("message-backed repetitive_loop clue does not persist a null quote when clue.quote is missing", async () => {
+    const db = makePipelineMockDb({
+      messages: [
+        makeMessage("I keep falling back into the same pattern whenever pressure spikes.", {
+          id: "rl-msg-no-quote",
+          sessionId: "rl-sess-no-quote",
+        }),
+      ],
+    });
+    const clue = {
+      userId: "u1",
+      patternType: "repetitive_loop" as const,
+      summary:
+        'Repetitive loop pattern across sessions: "I keep falling back into the same pattern whenever pressure spikes."',
+      sourceKind: "chat_message" as const,
+      sessionId: "rl-sess-no-quote",
+      messageId: "rl-msg-no-quote",
+      journalEntryId: null,
+      quote: undefined,
+    };
+
+    const { claimId } = await upsertPatternClaimFromClue({ clue, db });
+    await materializeClueSupport({ claimId, clue, db });
+
+    const claimEvidence = db._evidence.filter((row) => row.claimId === claimId);
+    expect(claimEvidence).toHaveLength(1);
+    expect(claimEvidence[0]?.messageId).toBe("rl-msg-no-quote");
+    expect(claimEvidence[0]?.quote).toBeTruthy();
+    expect(claimEvidence[0]?.quote?.trim().length).toBeGreaterThan(0);
   });
 
   it("repetitive_loop: rejects weak imported loop support markers while keeping clean loop evidence", async () => {
