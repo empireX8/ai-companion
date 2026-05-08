@@ -82,6 +82,8 @@ const RULES: PatternRule[] = [
 
 // Weak GOAL triggers that need filler verification
 const GOAL_WEAK_TRIGGER_RE = /^(I want to|I need to|I'?d like to|I'?m going to)\s+/i;
+const GOAL_WEAK_CUE_ANYWHERE_RE =
+  /\b(I want to|I need to|I'?d like to|I'?m going to|I wish I could)\b/i;
 
 // Filler verbs/phrases that follow a weak GOAL trigger without adding substance
 const GOAL_FILLER_CONTINUATION_RE =
@@ -90,6 +92,35 @@ const GOAL_FILLER_CONTINUATION_RE =
 // Same filler pattern checked anywhere in the claim (catches mid-sentence triggers)
 const GOAL_FILLER_ANYWHERE_RE =
   /\b(I want to|I need to|I'?d like to|I'?m going to)\s+(know|say|ask|think|make sure|remember|understand|figure|check|tell|be honest|be clear|be fair|go ahead|see|look|get|show|do that|do this|just (?:say|ask|know|check|want|think))\b/i;
+
+// Goal cues we expect to survive sentence extraction for GOAL claims
+const GOAL_CUE_RE =
+  /\b(I want to|I need to|I hope to|I plan to|I aim to|I'?m working on|my goal is|I wish I could|I'?d like to|I'?m going to)\b/i;
+
+// Short-horizon operational phrasing that should not be promoted as durable goals
+const GOAL_SHORT_HORIZON_TASK_RE =
+  /\b(I want to|I need to|I'?d like to|I'?m going to)\s+(?:actually\s+)?(?:just\s+)?(?:send|share|post|reply|respond|message|ask|check|write|copy|read|review|watch|open|close|switch|move on|go back|continue|upload|download|run|install|debug|fix|set up|setup)\b/i;
+
+const GOAL_SHORT_HORIZON_MARKER_RE =
+  /\b(today|tonight|tomorrow|right now|later|next (?:message|step)|for now|this (?:chat|thread|block)|in \d+\s+parts?)\b/i;
+
+const GOAL_HAVE_TO_OPERATION_RE =
+  /\bI(?:'m|\s+am)\s+going\s+to\s+(?:actually\s+)?have\s+to\b/i;
+
+// Project/process wording frequently seen in handoff/setup chatter
+const GOAL_PROJECT_PROCESS_LEXICON_RE =
+  /\b(chat|codex|prompt|handoff|hand off|thread|message|block|tutorial|video|repo|repository|code|script|document|copy)\b/i;
+
+// Strategic project goals we still want to keep
+const GOAL_STRATEGIC_PROJECT_RE =
+  /\b(build|create|develop|design|launch|scale|grow|establish|optimi[sz]e)\b[\s\S]{0,120}\b(business|company|product|platform|app|startup|brand|system|framework|strategy|workflow|routine)\b/i;
+
+// Durable self-development signals (kept even when phrasing is conversational)
+const GOAL_DURABLE_SIGNAL_RE =
+  /\b(become|develop|build|grow|improve|strengthen|stabilize|maintain|establish|cultivate|learn|study|master|practice|heal|recover|focus|discipline|consistent|consistency|routine|habit|mindset|confidence|public speaking|epistemolog(?:y|ical)|literacy|grounding|identity)\b/i;
+
+const GOAL_EXPLICIT_SELF_CHANGE_RE =
+  /\bif\s+i\s+can\b[\s\S]{0,80}\b(let\s+go|free\s+my\s+mind|become|develop|improve|grow|heal|focus)\b/i;
 
 /**
  * Returns true when a GOAL claim is conversational filler rather than a real goal.
@@ -109,6 +140,81 @@ export function isGoalFiller(claim: string): boolean {
   // Catch mid-sentence patterns like "That's what I need to know" or
   // "So yeah, I want to say that it was fine"
   return GOAL_FILLER_ANYWHERE_RE.test(trimmed);
+}
+
+export function hasRecognizableGoalCue(claim: string): boolean {
+  return GOAL_CUE_RE.test(claim.trim());
+}
+
+export function hasDurableGoalSignal(claim: string): boolean {
+  const trimmed = claim.trim();
+  return (
+    GOAL_DURABLE_SIGNAL_RE.test(trimmed) ||
+    GOAL_STRATEGIC_PROJECT_RE.test(trimmed) ||
+    GOAL_EXPLICIT_SELF_CHANGE_RE.test(trimmed)
+  );
+}
+
+export function isShortHorizonGoalTask(claim: string): boolean {
+  const trimmed = claim.trim();
+
+  if (GOAL_SHORT_HORIZON_TASK_RE.test(trimmed)) return true;
+  if (GOAL_HAVE_TO_OPERATION_RE.test(trimmed)) return true;
+
+  if (
+    GOAL_SHORT_HORIZON_MARKER_RE.test(trimmed) &&
+    /\b(send|share|reply|respond|message|ask|check|write|copy|read|review|watch|continue|move on|go back|upload|download)\b/i.test(
+      trimmed
+    )
+  ) {
+    return true;
+  }
+
+  if (/\b(read|check|review|write|send|ask)\s+(?:this|that|it)\b/i.test(trimmed)) {
+    return true;
+  }
+
+  return false;
+}
+
+export function isProjectProcessGoal(claim: string): boolean {
+  const trimmed = claim.trim();
+
+  if (!GOAL_PROJECT_PROCESS_LEXICON_RE.test(trimmed)) return false;
+  if (GOAL_STRATEGIC_PROJECT_RE.test(trimmed)) return false;
+
+  return (
+    /\b(send|share|reply|respond|message|ask|check|write|copy|read|review|watch|continue|move on|go back|upload|download|handoff|hand off|setup|set up)\b/i.test(
+      trimmed
+    ) || GOAL_SHORT_HORIZON_MARKER_RE.test(trimmed)
+  );
+}
+
+export function isSubstantiveGoalClaim(claim: string): boolean {
+  const trimmed = claim.trim();
+  if (trimmed.length === 0) return false;
+  if (isGoalFiller(trimmed)) return false;
+  if (isShortHorizonGoalTask(trimmed)) return false;
+  if (isProjectProcessGoal(trimmed)) return false;
+
+  // Weak-goal forms must carry a durable signal, otherwise they are typically
+  // short-lived process chatter rather than stable profile goals.
+  if (GOAL_WEAK_CUE_ANYWHERE_RE.test(trimmed) && !hasDurableGoalSignal(trimmed)) {
+    return false;
+  }
+
+  if (!hasRecognizableGoalCue(trimmed) && !hasDurableGoalSignal(trimmed)) {
+    return false;
+  }
+
+  // Long transcript fragments with no durable signal should not pass as GOAL claims.
+  const transcriptFillerHits =
+    trimmed.match(/\b(you know|i mean|um|uh|like)\b/gi)?.length ?? 0;
+  if (trimmed.length > 170 && transcriptFillerHits >= 2 && !hasDurableGoalSignal(trimmed)) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -141,7 +247,7 @@ export function isSubstantiveProfileClaim(
   claim: string
 ): boolean {
   switch (type) {
-    case "GOAL":   return !isGoalFiller(claim);
+    case "GOAL":   return isSubstantiveGoalClaim(claim);
     case "BELIEF": return !isBeliefFiller(claim);
     case "VALUE":  return !isVagueValueClaim(claim);
     default:       return true;

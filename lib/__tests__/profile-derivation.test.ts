@@ -3,8 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   extractProfileClaims,
+  hasDurableGoalSignal,
+  hasRecognizableGoalCue,
   isBeliefFiller,
   isGoalFiller,
+  isProjectProcessGoal,
+  isShortHorizonGoalTask,
+  isSubstantiveGoalClaim,
   isSubstantiveProfileClaim,
   isVagueValueClaim,
   normalizeClaimForDedup,
@@ -479,6 +484,45 @@ describe("isGoalFiller", () => {
   });
 });
 
+describe("GOAL precision helpers", () => {
+  it("detects recognizable goal cues", () => {
+    expect(hasRecognizableGoalCue("I want to become more consistent with public speaking.")).toBe(
+      true
+    );
+    expect(hasRecognizableGoalCue("Interesting thought about books and time.")).toBe(false);
+  });
+
+  it("detects durable goal signals", () => {
+    expect(hasDurableGoalSignal("I need to develop a stronger epistemology.")).toBe(true);
+    expect(hasDurableGoalSignal("I want to ask you something quickly.")).toBe(false);
+  });
+
+  it("flags short-horizon task chatter", () => {
+    expect(isShortHorizonGoalTask("I need to send this block in 2 parts.")).toBe(true);
+    expect(isShortHorizonGoalTask("I want to write out a copy.")).toBe(true);
+    expect(isShortHorizonGoalTask("I plan to build a stable writing routine.")).toBe(false);
+  });
+
+  it("flags project/process chatter but keeps strategic project goals", () => {
+    expect(isProjectProcessGoal("I'm going to send this to Codex.")).toBe(true);
+    expect(isProjectProcessGoal("I need to do a chat handoff now.")).toBe(true);
+    expect(isProjectProcessGoal("I plan to build a product strategy this year.")).toBe(false);
+  });
+
+  it("rejects unknown non-goal fragments but keeps explicit self-change phrases", () => {
+    expect(
+      isSubstantiveGoalClaim(
+        "interesting um so are these books super long books because the reconstruction book is like 750 pages"
+      )
+    ).toBe(false);
+    expect(
+      isSubstantiveGoalClaim(
+        "I feel like if I can let go of this and free my mind, I will feel much calmer over time."
+      )
+    ).toBe(true);
+  });
+});
+
 // ── isBeliefFiller ────────────────────────────────────────────────────────────
 
 describe("isBeliefFiller", () => {
@@ -548,9 +592,12 @@ describe("isVagueValueClaim", () => {
 // ── isSubstantiveProfileClaim ─────────────────────────────────────────────────
 
 describe("isSubstantiveProfileClaim", () => {
-  it("delegates GOAL to isGoalFiller", () => {
+  it("applies GOAL precision gates", () => {
     expect(isSubstantiveProfileClaim("GOAL", "I want to make sure")).toBe(false);
     expect(isSubstantiveProfileClaim("GOAL", "I want to build a company.")).toBe(true);
+    expect(isSubstantiveProfileClaim("GOAL", "I need to send this block in 2 parts.")).toBe(
+      false
+    );
   });
 
   it("delegates BELIEF to isBeliefFiller", () => {
@@ -598,6 +645,76 @@ describe("extractProfileClaims — precision gates", () => {
 
   it("extracts GOAL from 'I'm working on building a stable writing routine'", () => {
     const claims = extractProfileClaims("I'm working on building a stable writing routine.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(true);
+  });
+
+  it("does not extract GOAL from 'I want to write out a copy'", () => {
+    const claims = extractProfileClaims("I want to write out a copy.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(false);
+  });
+
+  it("does not extract GOAL from 'I need to send this block in 2 parts'", () => {
+    const claims = extractProfileClaims("I need to send this block in 2 parts.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(false);
+  });
+
+  it("does not extract GOAL from 'I'm going to send this to Codex'", () => {
+    const claims = extractProfileClaims("I'm going to send this to Codex.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(false);
+  });
+
+  it("does not extract GOAL from 'I need to check this later'", () => {
+    const claims = extractProfileClaims("I need to check this later.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(false);
+  });
+
+  it("does not extract GOAL from 'I want to ask you something'", () => {
+    const claims = extractProfileClaims("I want to ask you something.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(false);
+  });
+
+  it("does not extract GOAL from 'I need to read this properly'", () => {
+    const claims = extractProfileClaims("I need to read this properly.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(false);
+  });
+
+  it("does not extract GOAL from 'I'm going to actually have to not fully read'", () => {
+    const claims = extractProfileClaims("I'm going to actually have to not fully read this.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(false);
+  });
+
+  it("extracts GOAL from 'I plan to build a stable writing routine'", () => {
+    const claims = extractProfileClaims("I plan to build a stable writing routine.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(true);
+  });
+
+  it("extracts GOAL from 'I want to become more consistent with public speaking'", () => {
+    const claims = extractProfileClaims(
+      "I want to become more consistent with public speaking."
+    );
+    expect(claims.some((c) => c.type === "GOAL")).toBe(true);
+  });
+
+  it("extracts GOAL from 'I need to develop a stronger epistemology'", () => {
+    const claims = extractProfileClaims("I need to develop a stronger epistemology.");
+    expect(claims.some((c) => c.type === "GOAL")).toBe(true);
+  });
+
+  it("does not extract GOAL from non-cue transcript fragments", () => {
+    const claims = extractProfileClaims(
+      "interesting um so are these books super long books because this one is 30 hours and i don't get it"
+    );
+    expect(claims.some((c) => c.type === "GOAL")).toBe(false);
+  });
+
+  it("keeps GOAL when extracted claim loses cue but contains clear durable self-change signal", () => {
+    const filler = " and this is additional context that keeps running without punctuation";
+    const text =
+      "I feel like if I can let go of this and free my mind, I will feel much calmer over time" +
+      filler.repeat(6) +
+      " I want to keep strengthening this direction.";
+
+    const claims = extractProfileClaims(text);
     expect(claims.some((c) => c.type === "GOAL")).toBe(true);
   });
 
