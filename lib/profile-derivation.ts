@@ -30,7 +30,7 @@ const RULES: PatternRule[] = [
   // FEAR / EMOTIONAL
   {
     type: "FEAR",
-    pattern: /\b(I'?m afraid|I fear|I'?m scared|I'?m worried|I'?m anxious|I'?m nervous|I dread|my biggest fear|I hate when|terrifies me)\b/i,
+    pattern: /\b((?:I a|I')m afraid|I fear|(?:I a|I')m scared|(?:I a|I')m worried|(?:I a|I')m anxious|(?:I a|I')m nervous|I dread|my biggest fear|I hate when|terrifies me)\b/i,
     confidence: 0.75,
   },
   // IDENTITY
@@ -60,7 +60,7 @@ const RULES: PatternRule[] = [
   // TRAIT
   {
     type: "TRAIT",
-    pattern: /\b(I'?m (someone who|the type of person|naturally|inherently|basically)|I'?ve always (been|had)|my nature is|I'?m (very|quite|extremely|pretty) \w+)\b/i,
+    pattern: /\b((?:I a|I')m (someone who|the type of person|naturally|inherently|basically)|I'?ve always (been|had)|my nature is|(?:I a|I')m (very|quite|extremely|pretty) \w+)\b/i,
     confidence: 0.55,
   },
   // EMOTIONAL_PATTERN
@@ -199,6 +199,7 @@ export async function upsertProfileClaims(
           claimNorm,
           confidence,
           status: "candidate",
+          tags: [],
           evidenceLinks: {
             create: [{ spanId }],
           },

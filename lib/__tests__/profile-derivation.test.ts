@@ -188,6 +188,7 @@ describe("upsertProfileClaims", () => {
       userId: "u1",
       type: "GOAL",
       claim: "I want to travel",
+      tags: [],
     });
   });
 
@@ -244,6 +245,36 @@ describe("upsertProfileClaims", () => {
     const db = makeMockDb({});
     const created = await upsertProfileClaims({ userId: "u1", claims: [], spanId: "span_1", db });
     expect(created).toBe(0);
+  });
+
+  it("passes tags: [] in create payload (guards NOT NULL DB constraint)", async () => {
+    // Simulate PostgreSQL NOT NULL violation when tags is absent (root cause of 0-artifact bug)
+    let capturedTags: unknown = "NOT_SET";
+    const db = {
+      profileArtifact: {
+        findUnique: async () => null,
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          capturedTags = data.tags;
+          if (data.tags === undefined) {
+            throw Object.assign(new Error("null value in column tags violates not-null constraint"), {
+              code: "P2000",
+            });
+          }
+          return { id: "new_artifact" };
+        },
+        update: async () => null,
+      },
+      profileArtifactEvidenceLink: { create: async () => ({}) },
+    } as unknown as PrismaClient;
+
+    const claims: ExtractedClaim[] = [
+      { type: "BELIEF", claim: "I believe in growth", claimNorm: "i believe in growth", confidence: 0.65 },
+    ];
+
+    const created = await upsertProfileClaims({ userId: "u1", claims, spanId: "span_1", db });
+
+    expect(created).toBe(1);
+    expect(capturedTags).toEqual([]);
   });
 });
 
@@ -357,6 +388,22 @@ describe("processMessageForProfile", () => {
 
     expect(result).not.toBeNull();
     expect(result!.claimsCreated).toBeGreaterThan(0);
+    expect(db._state.artifactCreated).toBe(true);
+  });
+
+  it("does not create a ProfileArtifact for non-profile content", async () => {
+    const db = makePipelineDb({ existingSpan: null });
+    const content = "The weather was nice yesterday in the park near the lake.";
+
+    const result = await processMessageForProfile({
+      userId: "u1",
+      messageId: "msg_1",
+      content,
+      db,
+    });
+
+    expect(result?.claimsCreated).toBe(0);
+    expect(db._state.artifactCreated).toBe(false);
   });
 
   it("returns null (swallows errors) on DB failure", async () => {
