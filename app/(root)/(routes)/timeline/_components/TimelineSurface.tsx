@@ -7,9 +7,8 @@ import { ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 import {
-  computeRepeatedSignals,
-  computeRhythms,
   TIMELINE_WINDOWS,
+  type TimelineStateSummary,
   type TimelineWindow,
 } from "@/lib/timeline-aggregation";
 import {
@@ -44,6 +43,7 @@ type TimelineJournalEntryItem = {
 type TimelineResponse = {
   checkIns: QuickCheckInView[];
   importedActivity: TimelineImportedActivityItem[];
+  stateSummary: TimelineStateSummary;
   appActivity?: TimelineAppActivityItem[];
   journalEntries?: TimelineJournalEntryItem[];
 };
@@ -256,17 +256,13 @@ export default function TimelineSurface() {
     };
   }, [windowValue]);
 
-  const checkIns = payload?.checkIns;
   const timelineEntries = useMemo(
     () => (payload ? mapTimelineEntries(payload) : []),
     [payload]
   );
 
-  const rhythms = useMemo(() => computeRhythms(checkIns ?? []), [checkIns]);
-  const repeatedSignals = useMemo(
-    () => computeRepeatedSignals(checkIns ?? []),
-    [checkIns]
-  );
+  const rhythms = payload?.stateSummary.rhythms ?? null;
+  const repeatedSignals = payload?.stateSummary.repeatedSignals ?? null;
 
   const groupedActivity = useMemo(() => {
     const now = new Date();
@@ -287,13 +283,13 @@ export default function TimelineSurface() {
       }));
   }, [timelineEntries]);
 
-  const possibleLinks = repeatedSignals.repeatedPairs.slice(0, 4).map((pair) => ({
+  const possibleLinks = (repeatedSignals?.repeatedPairs ?? []).slice(0, 4).map((pair) => ({
     event: QUICK_CHECK_IN_EVENT_LABELS[pair.eventTag],
     state: stateLabel(pair.stateTag),
     count: pair.count,
   }));
 
-  const topStateChips = rhythms.topStateTags.map((item) => ({
+  const topStateChips = (rhythms?.topStateTags ?? []).map((item) => ({
     label: stateLabel(item.tag),
     count: item.count,
   }));
@@ -326,7 +322,7 @@ export default function TimelineSurface() {
           </div>
           <div className="flex gap-4 text-right">
             <Stat label="Active days" value={String(groupedActivity.length)} />
-            <Stat label="Last check-in" value={formatRecentLabel(rhythms.lastCheckInAt)} />
+            <Stat label="Last check-in" value={formatRecentLabel(rhythms?.lastCheckInAt ?? null)} />
           </div>
         </div>
         <RhythmGraph seed={windowValue === "14d" ? 3 : windowValue === "90d" ? 8 : 4} height={150} />
@@ -366,8 +362,8 @@ export default function TimelineSurface() {
       <section className="mb-10">
         <SectionLabel>Repeated signals</SectionLabel>
         <div className="card-standard divide-y divide-white/[0.05]">
-          {repeatedSignals.rankedItems.length > 0 ? (
-            repeatedSignals.rankedItems.map((signal, index) => {
+          {(repeatedSignals?.rankedItems ?? []).length > 0 ? (
+            (repeatedSignals?.rankedItems ?? []).map((signal, index) => {
               const text = signal.kind === "state"
                 ? stateLabel(signal.tag)
                 : signal.kind === "event"
