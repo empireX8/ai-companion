@@ -152,6 +152,15 @@ function buildTriggerSummary(quotes: string[]): string | null {
     return "Pressure often pushes you toward avoidance.";
   }
 
+  if (
+    hasRecurringSignal(
+      quotes,
+      /\b(identity|this mode|feel this way|overwhelm(?:ed)?)\b/i
+    )
+  ) {
+    return "When something activates your identity, your internal state shifts.";
+  }
+
   return null;
 }
 
@@ -199,6 +208,15 @@ function buildRepetitiveLoopSummary(quotes: string[]): string | null {
   if (
     hasRecurringSignal(
       quotes,
+      /\b(reassurance|reassur\w*|confirm(?:ation)?|seeking approval|keep\s+going\s+through|doing\s+that\s+again|again\s+before)\b/i
+    )
+  ) {
+    return "You keep returning to the same need for reassurance or confirmation.";
+  }
+
+  if (
+    hasRecurringSignal(
+      quotes,
       /\b(same pattern|same loop|back here|square one|again|same place|over and over)\b/i
     )
   ) {
@@ -233,7 +251,7 @@ function buildRecoverySummary(quotes: string[]): string | null {
       /\b(doing better|get(?:ting)? better|making progress|improvement|progress)\b/i
     )
   ) {
-    return "You describe improvement when momentum becomes visible.";
+    return "You describe progress when momentum becomes visible.";
   }
 
   return null;

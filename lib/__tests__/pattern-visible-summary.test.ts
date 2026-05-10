@@ -155,16 +155,100 @@ describe("generateVisiblePatternSummary", () => {
     expect(summary).toBe("You often tell yourself you can't do it or get it right.");
   });
 
-  it("bad generic fallback loses to abstention", () => {
+  it("bad generic fallback loses to abstention when evidence has no recovery signal", () => {
     const summary = generateVisiblePatternSummary({
       patternType: "recovery_stabilizer",
       persistedSummary: "Recurring recovery pattern in conversation history",
       receipts: receipts(
-        "I've been doing better lately",
-        "I'm making progress"
+        "Things were different this week",
+        "I've been handling it differently"
       ),
     });
 
     expect(summary).toBeNull();
+  });
+
+  it("overwhelm / identity-state trigger produces a visible summary", () => {
+    const summary = generateVisiblePatternSummary({
+      patternType: "trigger_condition",
+      persistedSummary: "Recurring trigger-response patterns in conversation history",
+      receipts: receipts(
+        "triggers my internal hood identity",
+        "I always feel this way in this mode",
+        "brain like bubbling when I see something that starts to trigger my identity"
+      ),
+    });
+
+    expect(summary).toBe("When something activates your identity, your internal state shifts.");
+  });
+
+  it("weak unrelated trigger returns null — no identity or overwhelm signal", () => {
+    const summary = generateVisiblePatternSummary({
+      patternType: "trigger_condition",
+      persistedSummary: "Recurring trigger-response patterns in conversation history",
+      receipts: receipts(
+        "It was a nice day outside",
+        "I had coffee this morning"
+      ),
+    });
+
+    expect(summary).toBeNull();
+  });
+
+  it("reassurance-seeking repetitive_loop produces a visible summary", () => {
+    const summary = generateVisiblePatternSummary({
+      patternType: "repetitive_loop",
+      persistedSummary: "Recurring repetitive loop in conversation history",
+      receipts: receipts(
+        "constantly seeking reassurance",
+        "I don't want to keep going through this",
+        "confirm you're not doing that"
+      ),
+    });
+
+    expect(summary).toBe("You keep returning to the same need for reassurance or confirmation.");
+  });
+
+  it("live reassurance-loop evidence (process loop) returns a visible summary", () => {
+    const summary = generateVisiblePatternSummary({
+      patternType: "repetitive_loop",
+      persistedSummary:
+        'Repetitive loop (assistant/process loop) across sessions: "Yeah, facts, I agree. And that\'s what I\'ve been trying to do this time around, just commit to the be"',
+      receipts: receipts(
+        "and actually he was updating the aestehtic and you was just gonna skip over it, i need to confirm youre not doing that again before i continue watching",
+        "But the thing is, I don't want to keep going through this, because it's like I'm constantly seeking reassurance, bro.",
+        "But again, weirdly, I don't know if we've done this video, but we've done that already as well, so I'm a bit confused.",
+        "bruv cant i do this later, surely i can keep watching the course video now"
+      ),
+    });
+
+    expect(summary).not.toBeNull();
+    expect(summary).toBe("You keep returning to the same need for reassurance or confirmation.");
+  });
+
+  it("weak unrelated repetitive_loop returns null — no reassurance or confirmation signal", () => {
+    const summary = generateVisiblePatternSummary({
+      patternType: "repetitive_loop",
+      persistedSummary: "Recurring repetitive loop in conversation history",
+      receipts: receipts(
+        "I keep thinking about the same thing",
+        "I always do this anyway"
+      ),
+    });
+
+    expect(summary).toBeNull();
+  });
+
+  it("recovery progress wording includes progress token for lexical overlap", () => {
+    const summary = generateVisiblePatternSummary({
+      patternType: "recovery_stabilizer",
+      persistedSummary: "Recurring recovery pattern in conversation history",
+      receipts: receipts(
+        "We're making progress though.",
+        "I feel like things are finally making progress"
+      ),
+    });
+
+    expect(summary).toBe("You describe progress when momentum becomes visible.");
   });
 });
