@@ -520,29 +520,26 @@ export function summarizeContradictionSide(value: string): string {
   return buildSummaryCandidates(value)[0]?.text ?? "";
 }
 
-type ContradictionTitleInput = {
-  id: string;
-  title: string;
-  sideA: string;
-  sideB: string;
-};
-
-export function computeDisplayTitle(item: ContradictionTitleInput): string {
-  return buildPrimaryTitle(
-    buildSummaryCandidates(item.sideA)[0],
-    buildSummaryCandidates(item.sideB)[0],
-    item.title
-  );
-}
-
 export function formatContradictionPrimaryTitles(
   items: PatternContradictionView[]
 ): Map<string, string> {
-  return new Map(items.map((item) => [item.id, computeDisplayTitle(item)]));
+  return new Map(
+    items.map((item) => [
+      item.id,
+      buildPrimaryTitle(
+        buildSummaryCandidates(item.sideA)[0],
+        buildSummaryCandidates(item.sideB)[0],
+        item.title
+      ),
+    ])
+  );
 }
 
 export function formatContradictionPrimaryTitle(
   item: PatternContradictionView
 ): string {
-  return computeDisplayTitle(item);
+  return (
+    formatContradictionPrimaryTitles([item]).get(item.id) ??
+    truncateFallback(item.title, MAX_TITLE_LENGTH)
+  );
 }

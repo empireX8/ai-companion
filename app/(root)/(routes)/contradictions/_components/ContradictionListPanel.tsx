@@ -12,7 +12,6 @@ import {
   fetchContradictions,
   performContradictionAction,
 } from "@/lib/nodes-api";
-import { computeDisplayTitle } from "@/lib/pattern-contradiction-title";
 import { getSnoozedLabel } from "@/lib/contradiction-snooze-label";
 import { ListSkeleton } from "@/components/skeletons/ListSkeleton";
 import { postMetricEvent } from "@/lib/metrics-api";
@@ -678,7 +677,7 @@ export function ContradictionListPanel() {
                       checked={isSelected}
                       onChange={() => toggleSelect(item.id)}
                       className="mt-0.5 shrink-0 cursor-pointer"
-                      aria-label={`Select ${computeDisplayTitle(item)}`}
+                      aria-label={`Select ${item.title}`}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
@@ -686,7 +685,7 @@ export function ContradictionListPanel() {
                           href={`/contradictions/${item.id}`}
                           className="truncate text-xs font-semibold leading-snug text-foreground hover:text-primary"
                         >
-                          {computeDisplayTitle(item)}
+                          {item.title}
                         </Link>
                         <button
                           type="button"

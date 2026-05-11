@@ -7,7 +7,6 @@ import { CheckCircle2, Trash2, TrendingUp } from "lucide-react";
 import { DomainListSlot } from "@/components/layout/DomainListSlot";
 import { ContradictionListPanel } from "../_components/ContradictionListPanel";
 import type { ContradictionListItem } from "@/lib/nodes-api";
-import { computeDisplayTitle } from "@/lib/pattern-contradiction-title";
 import { dispatchCandidatesUpdated } from "@/components/command/candidateEvents";
 
 type CandidatePage = {
@@ -244,7 +243,7 @@ export default function CandidatesPage() {
                   <div className="mb-2 flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold leading-snug text-foreground">
-                        {computeDisplayTitle(item)}
+                        {item.title}
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {CONTRADICTION_TYPE_LABELS[item.type] ?? item.type}

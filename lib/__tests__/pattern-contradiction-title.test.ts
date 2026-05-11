@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  computeDisplayTitle,
   formatContradictionPrimaryTitle,
   formatContradictionPrimaryTitles,
   summarizeContradictionSide,
@@ -23,68 +22,6 @@ function makeItem(
     ...overrides,
   };
 }
-
-describe("computeDisplayTitle", () => {
-  it("produces a computed title instead of the generic 'Goal behavior gap' DB label", () => {
-    const result = computeDisplayTitle({
-      id: "node-1",
-      title: "Goal behavior gap",
-      sideA: "I want predictable routines",
-      sideB: "I keep making last-minute plan changes",
-    });
-    expect(result).not.toBe("Goal behavior gap");
-    expect(result).toContain("vs");
-  });
-
-  it("produces a computed title instead of the generic 'Constraint conflict' DB label", () => {
-    const result = computeDisplayTitle({
-      id: "node-2",
-      title: "Constraint conflict",
-      sideA: "I need to simplify my life",
-      sideB: "I keep adding more complexity",
-    });
-    expect(result).not.toBe("Constraint conflict");
-    expect(result).toContain("vs");
-  });
-
-  it("falls back to item.title when sideA is empty", () => {
-    const result = computeDisplayTitle({
-      id: "node-3",
-      title: "Goal behavior gap",
-      sideA: "",
-      sideB: "I keep making last-minute plan changes",
-    });
-    expect(result).toBe("Goal behavior gap");
-  });
-
-  it("falls back to item.title when sideB is empty", () => {
-    const result = computeDisplayTitle({
-      id: "node-4",
-      title: "Constraint conflict",
-      sideA: "I need to simplify my life",
-      sideB: "",
-    });
-    expect(result).toBe("Constraint conflict");
-  });
-
-  it("falls back to item.title when both sides are empty", () => {
-    const result = computeDisplayTitle({
-      id: "node-5",
-      title: "Constraint conflict",
-      sideA: "",
-      sideB: "",
-    });
-    expect(result).toBe("Constraint conflict");
-  });
-
-  it("matches formatContradictionPrimaryTitle output for equivalent inputs", () => {
-    const input = makeItem({
-      sideA: "I want strategic clarity",
-      sideB: "I keep relying on copied fixes",
-    });
-    expect(computeDisplayTitle(input)).toBe(formatContradictionPrimaryTitle(input));
-  });
-});
 
 describe("summarizeContradictionSide", () => {
   it("drops formulaic first-person framing to surface the core phrase", () => {
