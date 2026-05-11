@@ -1,5 +1,6 @@
 import { QUICK_CHECK_IN_EVENT_LABELS, QUICK_CHECK_IN_STATE_LABELS, type QuickCheckInView } from "@/lib/quick-check-ins";
 import { toJournalPreview, type JournalEntryView } from "@/lib/journal-ui";
+import { computeDisplayTitle } from "@/lib/pattern-contradiction-title";
 
 type SessionOrigin = "APP" | "IMPORTED_ARCHIVE";
 
@@ -117,6 +118,8 @@ type ContradictionDetailSource = {
   id: string;
   title: string;
   status: string;
+  sideA?: string;
+  sideB?: string;
   evidence: ContradictionEvidenceSource[];
 };
 
@@ -125,6 +128,8 @@ type ContradictionListItemSource = {
   title: string;
   status: string;
   lastTouchedAt: string;
+  sideA?: string;
+  sideB?: string;
 };
 
 type ContradictionListPayload =
@@ -352,7 +357,11 @@ export async function fetchReceiptItems(): Promise<LibraryItemView[]> {
 
       const evidence = detail.evidence[0];
       const quote = trimOrNull(evidence.quote);
-      const preview = quote ?? clampText(normalizeText(tension.title), 96);
+      const tensionDisplayTitle =
+        tension.sideA && tension.sideB
+          ? computeDisplayTitle({ id: tension.id, title: tension.title, sideA: tension.sideA, sideB: tension.sideB })
+          : normalizeText(tension.title);
+      const preview = quote ?? clampText(tensionDisplayTitle, 96);
 
       items.push({
         id: buildItemId("receipt-tension", tension.id),
@@ -360,12 +369,12 @@ export async function fetchReceiptItems(): Promise<LibraryItemView[]> {
         type: "Receipts",
         date: formatDate(evidence.createdAt),
         sortKey: parseIsoTime(evidence.createdAt),
-        title: truncate(normalizeText(tension.title), 120),
+        title: truncate(tensionDisplayTitle, 120),
         preview,
         mood: null,
         tags: ["tension"],
         signals: detail.evidence.length,
-        linked: [{ kind: "Tension", label: clampText(normalizeText(tension.title), 60) }],
+        linked: [{ kind: "Tension", label: clampText(tensionDisplayTitle, 60) }],
         createdAt: evidence.createdAt,
       });
     }
@@ -435,9 +444,14 @@ export async function fetchReceiptDetail(itemId: string): Promise<LibraryReceipt
     const detail = await fetchContradictionDetail(sourceId);
     if (!detail) return null;
 
+    const detailDisplayTitle =
+      detail.sideA && detail.sideB
+        ? computeDisplayTitle({ id: detail.id, title: detail.title, sideA: detail.sideA, sideB: detail.sideB })
+        : normalizeText(detail.title);
+
     return {
       receiptKind: "tension",
-      conclusionTitle: normalizeText(detail.title),
+      conclusionTitle: detailDisplayTitle,
       conclusionType: "Tension",
       evidenceItems: detail.evidence.map((e) => ({
         quote: e.quote,
