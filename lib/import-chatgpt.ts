@@ -293,7 +293,9 @@ export type ImportedContradictionRejectionReason =
   | "contradiction_cross_topic_pair"
   | "contradiction_project_task_pair"
   | "contradiction_low_context_pair"
-  | "contradiction_pasted_plan_pair";
+  | "contradiction_pasted_plan_pair"
+  | "contradiction_conversational_sideA"
+  | "contradiction_weak_behavior_sideB";
 
 export type ImportedContradictionPairAssessment = {
   eligible: boolean;
@@ -384,6 +386,36 @@ const CONTRADICTION_TECHNICAL_DOMAIN_PATTERN =
   /\b(?:stripe|telegram|mvp|payment|checkout|webhook|api|endpoint|route|routing|form[-\s]?submit|vector\s+store|retriever|setup|config|deploy|build|repo|codex|debug|implementation|migration|prisma|bolt|supabase|firebase|modelfile|model\s*file|query|sql|failed\s+query|insert\s+into|entire\s+code|new\s+folder|red\s+in\s+the\s+file)\b/i;
 const PASTED_PLAN_SECTION_PATTERN =
   /(?:^|\n)\s*(?:context|goal|scope|constraints|implementation requirements|required tests|required final output|acceptance criteria|steps?)\s*:/im;
+
+// SideA quality gate: these phrases signal conversational debate corrections, not durable constraints/goals.
+// "I never said that in this conversation" or "A theory is a theory" are argumentative clarifications,
+// not personal commitments. Any reference that survived extraction but contains these should be rejected
+// as a contradiction sideA before materialization.
+const CONVERSATIONAL_CORRECTION_SIDE_A_PATTERNS = [
+  /\bi\s+never\s+said\s+(?:that|this|it|i)\b/i,
+  /\bthat\s+(?:is\s+not|isn't|was\s+not|wasn't)\s+what\s+i\s+said\b/i,
+  /\bin\s+this\s+conversation\b/i,
+  /\ba\s+theory\s+is\s+a\s+theory\b/i,
+  /\byou\s+said\s+i\s+said\b/i,
+] as const;
+
+// SideB quality gate: detect morning-greeting messages with a day-planning query or generic device-status
+// sentence. These produce false positives because "I didn't open my laptop" triggers GOAL_MISMATCH_MARKERS
+// but is not a meaningful behavioral failure relative to any personal goal/constraint.
+const GREETING_OPENER_SIDE_B_PATTERN = /^(?:good\s+morning|gm\b|morning[,.\s])/i;
+const DAY_PLANNING_QUERY_SIDE_B_PATTERN =
+  /\bwhat\s+(?:do\s+you\s+think\s+i\s+should|should\s+i)\s+do\b/i;
+const GENERIC_DEVICE_STATUS_SIDE_B_PATTERN =
+  /\bi\s+didn't\s+(?:open|turn\s+on|boot|start)\s+(?:my\s+)?(?:laptop|computer|pc)\b/i;
+
+function isGreetingPlanningMessage(content: string): boolean {
+  if (!GREETING_OPENER_SIDE_B_PATTERN.test(content)) return false;
+  return (
+    DAY_PLANNING_QUERY_SIDE_B_PATTERN.test(content) ||
+    GENERIC_DEVICE_STATUS_SIDE_B_PATTERN.test(content)
+  );
+}
+
 export const IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP = 3;
 
 export function createImportedContradictionFanoutState(): ImportedContradictionFanoutState {
@@ -656,6 +688,16 @@ export function classifyImportedContradictionPair(
       (sideBHasTechnicalChatter && sideAReflective)) &&
       overlapCount === 0);
 
+  // Import-only sideA quality gate: reject conversational debate corrections that slipped through
+  // reference extraction. "I never said that in this conversation" is not a durable constraint.
+  const sideAIsConversationalCorrection = CONVERSATIONAL_CORRECTION_SIDE_A_PATTERNS.some(
+    (pattern) => pattern.test(sideA)
+  );
+
+  // Import-only sideB quality gate: reject greeting+planning messages where "I didn't open my laptop"
+  // or a day-planning query is the only behavioral signal — these are not real behavior-vs-goal failures.
+  const sideBIsGreetingPlanning = isGreetingPlanningMessage(sideB);
+
   const rejectionReasons: ImportedContradictionRejectionReason[] = [];
   if (
     sideAHasTechnicalChatter ||
@@ -672,6 +714,12 @@ export function classifyImportedContradictionPair(
   }
   if (crossTopicPair) {
     rejectionReasons.push("contradiction_cross_topic_pair");
+  }
+  if (sideAIsConversationalCorrection) {
+    rejectionReasons.push("contradiction_conversational_sideA");
+  }
+  if (sideBIsGreetingPlanning) {
+    rejectionReasons.push("contradiction_weak_behavior_sideB");
   }
 
   if (rejectionReasons.length > 0) {

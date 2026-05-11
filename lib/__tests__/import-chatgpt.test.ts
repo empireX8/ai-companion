@@ -403,6 +403,154 @@ describe("classifyImportedContradictionPair", () => {
   });
 });
 
+// ── Step 15C: Imported pair quality gates ────────────────────────────────────
+//
+// Bad sideA cases: conversational corrections should never become contradiction sideA.
+// Bad sideB cases: greeting+planning messages with generic device/day-query signals.
+// Good cases: real behavioral failures must survive.
+
+describe("classifyImportedContradictionPair — sideA conversational correction gate", () => {
+  it("rejects 'i never said that in this conversation bruv' as sideA", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "i never said that in this conversation bruv",
+      sideB: "but I keep thinking about it and I'm not sure what to do anymore",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_conversational_sideA");
+  });
+
+  it("rejects 'I never said it's maybe or maybe not. A theory is a theory' as sideA", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I never said it's maybe or maybe not. A theory is a theory",
+      sideB: "I still find myself doubting what I believe about race and science but I keep bringing it up",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_conversational_sideA");
+  });
+
+  it("rejects 'that is not what I said' as sideA", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "that is not what I said, you're twisting my words",
+      sideB: "but I avoid conflict and I don't speak up when I disagree",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_conversational_sideA");
+  });
+
+  it("rejects 'you said I said' as sideA", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "you said I said I want to be left alone but that wasn't the context",
+      sideB: "but I keep seeking validation from others even when I say I don't need it",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_conversational_sideA");
+  });
+
+  it("rejects 'I never said I was hyper masculine' as sideA", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I never said I was hyper masculine, I was just explaining the behaviour selection shift",
+      sideB: "but it's like women are seen for their oppression across racial lines and gender lines",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_conversational_sideA");
+  });
+});
+
+describe("classifyImportedContradictionPair — sideB greeting/planning gate", () => {
+  it("rejects NOI/Islam goal paired with morning greeting + 'I didn't open my laptop'", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want to join my local Noi but I don't believe in Islam or the prophet Muhammad",
+      sideB: "Good morning, I didn't open my laptop today. What do you think I should do today?",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_weak_behavior_sideB");
+  });
+
+  it("rejects productivity organisation goal paired with morning greeting + day-planning query", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "i want to organise my chat gpt and also start creating a notion workspace",
+      sideB: "Good morning, what do you think I should do today?",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_weak_behavior_sideB");
+  });
+
+  it("rejects any sideA paired with morning + 'what should I do today'", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to simplify my life and stay focused on what matters",
+      sideB: "Morning, what should I do today? I haven't started anything yet.",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_weak_behavior_sideB");
+  });
+
+  it("rejects morning opener paired with generic device-status + planning", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to finish this book and stop procrastinating",
+      sideB: "Good morning. I didn't open my laptop. What do you think I should do today?",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_weak_behavior_sideB");
+  });
+});
+
+describe("classifyImportedContradictionPair — good pairs preserved (Step 15C regression guard)", () => {
+  it("keeps 'finish this book' + 'I didn't read again tonight because I kept scrolling'", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to finish this book though",
+      sideB: "I didn't read again tonight because I kept scrolling on my phone",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps 'review after reading to retain' + 'I skipped the review again and forgot most of it'", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to review after I read to retain",
+      sideB: "I skipped the review again and forgot most of it",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps 'no weed while studying' + 'but I smoked before studying again'", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I don't want to use weed while studying",
+      sideB: "but I smoked before studying again, it's hard to stop the habit",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps 'simplify my life and stay focused' + 'I opened social media again instead of reading'", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to simplify my life and stay focused",
+      sideB: "I opened social media again instead of reading, I can't seem to stop",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps a durable constraint even when sideA uses 'never' in a durable sense", () => {
+    // This is a durable constraint, not a conversational correction
+    const result = classifyImportedContradictionPair({
+      sideA: "I never want to skip a workout two days in a row",
+      sideB: "but I skipped the gym again this week, three sessions missed",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps a constraint with 'I need to sleep before midnight' pattern", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to sleep before midnight to function properly",
+      sideB: "but I stayed up until 2am again scrolling through my phone",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+});
+
 describe("applyImportedContradictionFanoutGuard", () => {
   const mkDetection = (sideA: string, sideB: string) => ({
     title: "Constraint conflict",

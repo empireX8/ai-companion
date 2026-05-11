@@ -24,6 +24,8 @@ export type ImportDiagnosticReasonCode =
   | "contradiction_project_task_pair"
   | "contradiction_low_context_pair"
   | "contradiction_pasted_plan_pair"
+  | "contradiction_conversational_sideA"
+  | "contradiction_weak_behavior_sideB"
   | "imported_contradiction_fanout_rejected"
   | "contradiction_repeated_side_a"
   | "contradiction_repeated_side_b"
