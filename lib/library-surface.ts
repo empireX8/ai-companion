@@ -1,5 +1,6 @@
 import { QUICK_CHECK_IN_EVENT_LABELS, QUICK_CHECK_IN_STATE_LABELS, type QuickCheckInView } from "@/lib/quick-check-ins";
 import { toJournalPreview, type JournalEntryView } from "@/lib/journal-ui";
+import { computeContradictionTitle } from "./contradiction-title-adapter";
 
 type SessionOrigin = "APP" | "IMPORTED_ARCHIVE";
 
@@ -360,12 +361,12 @@ export async function fetchReceiptItems(): Promise<LibraryItemView[]> {
         type: "Receipts",
         date: formatDate(evidence.createdAt),
         sortKey: parseIsoTime(evidence.createdAt),
-        title: truncate(normalizeText(tension.title), 120),
+        title: truncate(normalizeText(computeContradictionTitle(tension)), 120),
         preview,
         mood: null,
         tags: ["tension"],
         signals: detail.evidence.length,
-        linked: [{ kind: "Tension", label: clampText(normalizeText(tension.title), 60) }],
+        linked: [{ kind: "Tension", label: clampText(normalizeText(computeContradictionTitle(tension)), 60) }],
         createdAt: evidence.createdAt,
       });
     }
@@ -437,7 +438,7 @@ export async function fetchReceiptDetail(itemId: string): Promise<LibraryReceipt
 
     return {
       receiptKind: "tension",
-      conclusionTitle: normalizeText(detail.title),
+      conclusionTitle: normalizeText(computeContradictionTitle(detail)),
       conclusionType: "Tension",
       evidenceItems: detail.evidence.map((e) => ({
         quote: e.quote,

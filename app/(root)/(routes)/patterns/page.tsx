@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { Waveform } from "@/components/Visuals";
 import { fetchPatterns, type PatternClaimView, type PatternContradictionView, type PatternsResponse } from "@/lib/patterns-api";
+import { computeContradictionTitle } from "@/lib/contradiction-title-adapter";
 import { ArrowUpRight, Receipt } from "lucide-react";
 
 export function PTToggle({ active }: { active: "patterns" | "tensions" }) {
@@ -207,7 +208,7 @@ export default function PatternsPage() {
           <Link href={`/contradictions/${keyTension.id}`} className="block">
             <div className="label-meta text-cyan/70 mb-2">Tension · {keyTension.status.replace(/_/g, " ")}</div>
             <div className="text-[16px] font-medium mb-1.5 leading-snug line-clamp-2">
-              {clampText(normalizeText(keyTension.title), 170)}
+              {clampText(normalizeText(computeContradictionTitle(keyTension)), 170)}
             </div>
             <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed line-clamp-3">
               {toTensionPreview(keyTension)}

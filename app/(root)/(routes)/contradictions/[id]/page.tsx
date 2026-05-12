@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { DualWaveform, OccurrenceDots } from "@/components/Visuals";
 import { fetchContradictionById, fetchLinkedReferences, type ContradictionDetail, type LinkedReference } from "@/lib/nodes-api";
+import { computeContradictionTitle } from "@/lib/contradiction-title-adapter";
 import { ChevronLeft, Compass, Receipt } from "lucide-react";
 
 const DATE_LABEL = new Intl.DateTimeFormat("en-GB", {
@@ -175,7 +176,7 @@ export default function TensionDetailPage() {
       </Link>
       <PageHeader
         eyebrow={`Tension · ${detail.status.replace(/_/g, " ")}`}
-        title={clampText(normalizeText(detail.title), 180)}
+        title={clampText(normalizeText(computeContradictionTitle(detail)), 180)}
         meta={`${typeLabel(detail.type)} · Last touched ${formatDate(detail.lastTouchedAt)}`}
       />
 

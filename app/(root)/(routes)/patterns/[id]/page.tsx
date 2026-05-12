@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { RhythmGraph, OccurrenceDots } from "@/components/Visuals";
 import { fetchPatterns, type PatternClaimView, type PatternContradictionView, type PatternsResponse } from "@/lib/patterns-api";
+import { computeContradictionTitle } from "@/lib/contradiction-title-adapter";
 import { ChevronLeft, Compass, Receipt } from "lucide-react";
 
 const DATE_TIME_LABEL = new Intl.DateTimeFormat("en-GB", {
@@ -301,7 +302,7 @@ export default function PatternDetailPage() {
               className="card-standard px-3 h-8 inline-flex items-center text-[12px] hover:border-[hsl(187_100%_50%/0.3)]"
             >
               <span className="text-cyan/70 label-meta mr-2">Tension</span>
-              {clampText(normalizeText(keyTension.title), 80)}
+              {clampText(normalizeText(computeContradictionTitle(keyTension)), 80)}
             </Link>
           ) : (
             <div className="card-standard px-3 h-8 inline-flex items-center text-[12px] text-meta">No linked tension yet.</div>

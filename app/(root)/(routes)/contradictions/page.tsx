@@ -6,6 +6,7 @@ import Link from "next/link";
 import { DualWaveform } from "@/components/Visuals";
 import { ArrowUpRight, Receipt } from "lucide-react";
 import { fetchContradictions, type ContradictionListItem } from "@/lib/nodes-api";
+import { computeContradictionTitle } from "@/lib/contradiction-title-adapter";
 
 function PTToggle({ active }: { active: "patterns" | "tensions" }) {
   return (
@@ -169,7 +170,7 @@ export default function TensionsPage() {
                       Tension · {statusLabel(item.status)} · {typeLabel(item.type)} · {days} days
                     </div>
                     <div className="text-[16px] font-medium mb-2 leading-snug line-clamp-2">
-                      {clampText(normalizeText(item.title), 180)}
+                      {clampText(normalizeText(computeContradictionTitle(item)), 180)}
                     </div>
                     <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed line-clamp-3 max-w-[640px]">
                       {preview}
@@ -253,7 +254,7 @@ export default function TensionsPage() {
                 >
                   <div className="label-meta mb-1">Dormant · {days} days</div>
                   <div className="text-[14px] leading-snug line-clamp-2">
-                    {clampText(normalizeText(item.title), 140)}
+                    {clampText(normalizeText(computeContradictionTitle(item)), 140)}
                   </div>
                 </Link>
               );

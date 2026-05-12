@@ -5,6 +5,7 @@ import {
   formatContradictionPrimaryTitles,
   summarizeContradictionSide,
 } from "../pattern-contradiction-title";
+import { computeContradictionTitle } from "../contradiction-title-adapter";
 import type { PatternContradictionView } from "../patterns-api";
 
 function makeItem(
@@ -91,5 +92,74 @@ describe("formatContradictionPrimaryTitles", () => {
     expect(titles.get("contradiction-2")).toBe(
       "Wanting clean execution vs defaulting to copied fixes"
     );
+  });
+});
+
+describe("computeContradictionTitle (adapter)", () => {
+  it("returns computed title when sideA/sideB are present", () => {
+    const title = computeContradictionTitle({
+      id: "test-1",
+      title: "Goal behavior gap",
+      sideA: "I want predictable routines",
+      sideB: "I keep making last-minute plan changes",
+      type: "goal_behavior_gap",
+      status: "open",
+    });
+    expect(title).toBe(
+      "Wanting predictable routines vs last-minute plan changes"
+    );
+  });
+
+  it("falls back to raw title when sideA/sideB are missing", () => {
+    const title = computeContradictionTitle({
+      id: "test-2",
+      title: "Goal behavior gap",
+      sideA: "",
+      sideB: "",
+      type: "goal_behavior_gap",
+      status: "open",
+    });
+    expect(title).toBe("Goal behavior gap");
+  });
+
+  it("does not return 'Goal behavior gap' when a better computed title is possible", () => {
+    const title = computeContradictionTitle({
+      id: "test-3",
+      title: "Goal behavior gap",
+      sideA: "I need to finish this book though",
+      sideB: "I skipped reading again and watched videos instead",
+      type: "goal_behavior_gap",
+      status: "open",
+    });
+    expect(title).not.toContain("Goal behavior gap");
+    expect(title).toContain(" vs ");
+  });
+
+  it("does not return 'Constraint conflict' when a better computed title is possible", () => {
+    const title = computeContradictionTitle({
+      id: "test-4",
+      title: "Constraint conflict",
+      sideA: "I always optimise for objectivity",
+      sideB: "I'm in an exhaustive phase at the moment",
+      type: "constraint_conflict",
+      status: "open",
+    });
+    expect(title).not.toContain("Constraint conflict");
+    expect(title).toContain(" vs ");
+  });
+
+  it("handles TitleableContradiction shape from list items", () => {
+    const title = computeContradictionTitle({
+      id: "test-5",
+      title: "Goal behavior gap",
+      sideA: "I want to simplify my life",
+      sideB: "I kept opening new threads and drifting into distractions",
+      type: "goal_behavior_gap",
+      status: "open",
+      lastEvidenceAt: null,
+      lastTouchedAt: "2026-04-20T09:00:00.000Z",
+    });
+    expect(title).toContain(" vs ");
+    expect(title).not.toBe("Goal behavior gap");
   });
 });
