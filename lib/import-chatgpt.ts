@@ -295,7 +295,9 @@ export type ImportedContradictionRejectionReason =
   | "contradiction_low_context_pair"
   | "contradiction_pasted_plan_pair"
   | "contradiction_conversational_sideA"
-  | "contradiction_weak_behavior_sideB";
+  | "contradiction_weak_behavior_sideB"
+  | "contradiction_unrelated_pair"
+  | "contradiction_technical_sideB";
 
 export type ImportedContradictionPairAssessment = {
   eligible: boolean;
@@ -393,6 +395,7 @@ const PASTED_PLAN_SECTION_PATTERN =
 // as a contradiction sideA before materialization.
 const CONVERSATIONAL_CORRECTION_SIDE_A_PATTERNS = [
   /\bi\s+never\s+said\s+(?:that|this|it|i)\b/i,
+  /\bi\s+didn't\s+say\s+that\b/i,
   /\bthat\s+(?:is\s+not|isn't|was\s+not|wasn't)\s+what\s+i\s+said\b/i,
   /\bin\s+this\s+conversation\b/i,
   /\ba\s+theory\s+is\s+a\s+theory\b/i,
@@ -414,6 +417,35 @@ function isGreetingPlanningMessage(content: string): boolean {
     DAY_PLANNING_QUERY_SIDE_B_PATTERN.test(content) ||
     GENERIC_DEVICE_STATUS_SIDE_B_PATTERN.test(content)
   );
+}
+
+// SideB technical gate: screenshot/tutorial/debug chatter is never a real behavioral failure
+// relative to a personal goal/constraint. "i skipped forward and took a screenshot" is
+// tutorial navigation noise; "have we done this?" is course-progress status — neither
+// constitutes a goal-behavior gap regardless of what goal is in sideA.
+// Exception: if sideA shares topic tokens with sideB (e.g. both mention "tutorial"),
+// the pair is NOT rejected — see `sideBTechnicalAndUnrelated` below.
+const SCREENSHOT_TUTORIAL_SIDE_B_PATTERN =
+  /\b(?:screenshot|skipped?\s+forward|skip(?:ped)?\s+ahead|course\s+video|have\s+we\s+done\s+this|what\s+are\s+you\s+talking\s+about|do\s+you\s+not\s+recogni[sz]e\s+the\s+issue|page\s+already\s+exists?|tutorial\s+(?:video|steps?|pace))\b/i;
+
+// SideB social-filler gate: check-in messages that are not morning greetings but still
+// signal a conversational role ("greeting you officially", "already spoken today") rather
+// than a behavioral admission relevant to any goal.
+const SOCIAL_GREETING_FILLER_SIDE_B_PATTERN =
+  /\b(?:greeting\s+you\s+officially|we'?ve?\s+already\s+spoken|first\s+time\s+(?:greeting|speaking\s+today))\b/i;
+
+// SideB time-filler gate: "it's 10 to 1 anyway" is a clock-time aside (British English
+// "X to Y" = Y minus X minutes), not a behavioral failure.
+const TIME_FILLER_SIDE_B_PATTERN =
+  /\bit'?s\s+\d+\s+to\s+\d+\s*(?:anyway|though|ish|so)?\b/i;
+
+// Extends isGreetingPlanningMessage to cover social-filler and time-filler sideBs that are
+// equally non-behavioral but don't begin with a morning opener.
+function isWeakSideBChatter(content: string): boolean {
+  if (isGreetingPlanningMessage(content)) return true;
+  if (SOCIAL_GREETING_FILLER_SIDE_B_PATTERN.test(content)) return true;
+  if (TIME_FILLER_SIDE_B_PATTERN.test(content)) return true;
+  return false;
 }
 
 export const IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP = 3;
@@ -679,7 +711,35 @@ export function classifyImportedContradictionPair(
   const hasOperationalTaskVerb =
     OPERATIONAL_TASK_VERBS_PATTERN.test(sideA) ||
     OPERATIONAL_TASK_VERBS_PATTERN.test(sideB);
+
+  // ── Step 15D: General imported-only relation gate ──────────────────────────
+  //
+  // The gates above catch specific patterns (technical sideB, greeting sideB,
+  // conversational sideA) but miss the general case where sideA and sideB are
+  // simply unrelated topics. A contradiction should only be created when sideB
+  // expresses behavior/state meaningfully related to sideA's goal/constraint.
+  //
+  // This gate checks whether sideA and sideB share at least 2 meaningful tokens.
+  // If they don't, the pair is rejected as unrelated — regardless of whether
+  // either side triggered a specific pattern gate.
+  //
+  // Exception: pairs where sideB describes a personal behavioral failure are
+  // presumed related to whatever sideA expresses, since the speaker is admitting
+  // to an action that contradicts a prior goal/constraint. This covers both
+  // "but I skipped..." and plain "I skipped reading again..." patterns.
+  // The pattern matches:
+  //   - "but I [failure verb]" (explicit contrast)
+  //   - "I [failure verb] again" (repeated failure)
+  //   - "I kept [gerund]" (ongoing failure pattern)
+  //   - "I [failure verb] ... instead of" (substitution failure)
+  // It deliberately excludes "but I keep getting ideas" (not a failure) by
+  // requiring the failure verb to be a concrete action, not a generic "keep".
+  const SIDE_B_BEHAVIORAL_FAILURE_PATTERN =
+    /\b(?:but\s+)?i\s+(?:(?:kept|keep)\s+(?:\w+(?:\s+\w+){0,3}\s+and\s+)?(?:scrolling|seeking|adding|switching|changing|drifting|procrastinating|putting|pushing|finding|repeating|staying|going|coming|making|doing|eating|smoking|drinking|buying|spending|wasting|ignoring|avoiding|skipping|forgetting|missing|losing|giving|letting|stopping|starting|reading|watching)|(?:skipped|ordered|smoked|stayed|opened|went|bought|ate|drank|spent|wasted|ignored|avoided|forgot|missed|lost|gave|stopped|started|changed|avoided|read)\s+\w+(?:\s+again|\s+instead|\s+yet|\s+last|\s+this|\s+the|\s+my)?|(?:change|avoid)\s+\w+(?:\s+whenever|\s+if|\s+to|\s+in|\s+at|\s+for|\s+on|\s+with|\s+by|\s+from|\s+as|\s+but|\s+and|\s+or|\s+because|\s+so|\s+yet|\s+though|\s+although|\s+while|\s+when|\s+where|\s+who|\s+which|\s+that|\s+what|\s+how|\s+why)?)\b/i;
+  const sideBIsBehavioralAdmission = SIDE_B_BEHAVIORAL_FAILURE_PATTERN.test(sideB);
   const overlapCount = contradictionPairOverlapCount(sideA, sideB);
+  const generalUnrelatedPair = !sideBIsBehavioralAdmission && overlapCount < 2;
+
   const crossTopicPair =
     (((sideAReflective && sideBTechnicalDomain) ||
       (sideBReflective && sideATechnicalDomain)) &&
@@ -696,9 +756,18 @@ export function classifyImportedContradictionPair(
 
   // Import-only sideB quality gate: reject greeting+planning messages where "I didn't open my laptop"
   // or a day-planning query is the only behavioral signal — these are not real behavior-vs-goal failures.
-  const sideBIsGreetingPlanning = isGreetingPlanningMessage(sideB);
+  // Also rejects social-filler and time-filler sideBs via isWeakSideBChatter.
+  const sideBIsWeakChatter = isWeakSideBChatter(sideB);
+
+  // Import-only sideB technical gate: screenshot/tutorial/debug chatter is rejected when it shares
+  // no topic tokens with sideA. The overlap escape allows "skipped ahead in the tutorial" to remain
+  // eligible when sideA is also about tutorial pace ("tutorial" token present in both).
+  const sideBIsTechnicalChatter = SCREENSHOT_TUTORIAL_SIDE_B_PATTERN.test(sideB);
+  const sideBTechnicalAndUnrelated =
+    sideBIsTechnicalChatter && contradictionPairOverlapCount(sideA, sideB) === 0;
 
   const rejectionReasons: ImportedContradictionRejectionReason[] = [];
+
   if (
     sideAHasTechnicalChatter ||
     sideBHasTechnicalChatter ||
@@ -718,8 +787,15 @@ export function classifyImportedContradictionPair(
   if (sideAIsConversationalCorrection) {
     rejectionReasons.push("contradiction_conversational_sideA");
   }
-  if (sideBIsGreetingPlanning) {
+  if (sideBIsWeakChatter) {
     rejectionReasons.push("contradiction_weak_behavior_sideB");
+  }
+  if (sideBTechnicalAndUnrelated) {
+    rejectionReasons.push("contradiction_technical_sideB");
+    rejectionReasons.push("contradiction_unrelated_pair");
+  }
+  if (generalUnrelatedPair) {
+    rejectionReasons.push("contradiction_unrelated_pair");
   }
 
   if (rejectionReasons.length > 0) {

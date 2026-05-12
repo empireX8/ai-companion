@@ -551,6 +551,297 @@ describe("classifyImportedContradictionPair — good pairs preserved (Step 15C r
   });
 });
 
+// ── Step 15C: Unrelated pair coherence gate ──────────────────────────────────
+//
+// sideB triggers a detection marker (i skipped / i didn't) but has nothing to do
+// with sideA's topic. The new contradiction_technical_sideB + contradiction_unrelated_pair
+// gates must catch these before materialization.
+
+describe("classifyImportedContradictionPair — screenshot/tutorial sideB rejection (Part 2 + 3C)", () => {
+  it("rejects interracial dating goal paired with screenshot/tutorial sideB", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to accept interracial dating don't I",
+      sideB: "i skipped forward and took another screenshot, have we done this?",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_technical_sideB");
+    expect(result.reasons).toContain("contradiction_unrelated_pair");
+  });
+
+  it("rejects book goal paired with screenshot sideB when no topic overlap", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to finish this book though",
+      sideB: "I skipped forward and took another screenshot",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_technical_sideB");
+    expect(result.reasons).toContain("contradiction_unrelated_pair");
+  });
+
+  it("rejects 'page already exists, do you not recognize the issue' as technical sideB", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to keep my code clean and organized",
+      sideB: "the page already exists, do you not recognize the issue?",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_technical_sideB");
+  });
+
+  it("rejects 'what are you talking about I showed you the course video' as technical sideB", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to stay on track with my learning goals",
+      sideB: "what are you talking about, I showed you the course video yesterday",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_technical_sideB");
+  });
+
+  it("rejects NOI/Islam goal paired with screenshot chatter sideB", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want to join my local Noi but I don't believe in Islam or the prophet Muhammad",
+      sideB: "i skipped forward and took another screenshot, have we done this?",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_technical_sideB");
+  });
+});
+
+// ── Step 15C: Additional weak sideB chatter (Part 3B) ────────────────────────
+//
+// Social-filler and time-check sideBs that don't start with a morning opener
+// but are equally non-behavioral and should be rejected.
+
+describe("classifyImportedContradictionPair — social filler and time-check sideB rejection (Part 3B)", () => {
+  it("rejects 'I'm greeting you officially for the first time' as sideB", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to simplify my life and stay focused on what matters",
+      sideB: "Hi, I'm greeting you officially for the first time today",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_weak_behavior_sideB");
+  });
+
+  it("rejects 'we've already spoken today' as sideB", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to focus on one task at a time",
+      sideB: "we've already spoken today, what do you mean by this?",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_weak_behavior_sideB");
+  });
+
+  it("rejects time-check filler 'it's 10 to 1 anyway' as sideB", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to manage my time and not waste the day",
+      sideB: "it's 10 to 1 anyway so I didn't start anything yet",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_weak_behavior_sideB");
+  });
+});
+
+// ── Step 15D: General imported-only relation gate ────────────────────────────
+//
+// The general relation gate rejects pairs where sideA and sideB share fewer than
+// 2 meaningful tokens AND sideB is not a behavioral admission ("but I keep...",
+// "but I still...", etc.). This catches unrelated pairs that the specific pattern
+// gates (technical sideB, greeting sideB, conversational sideA) miss.
+
+describe("classifyImportedContradictionPair — general unrelated pair rejection (Step 15D)", () => {
+  it("rejects NOI/Islam goal paired with morning greeting + device status (unrelated)", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want to join my local NOI but I don't believe in Islam or the prophet Muhammad",
+      sideB: "Good morning... I didn't open my laptop... what do you think I should do today?",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_weak_behavior_sideB");
+  });
+
+  it("rejects organise-chat-gpt goal paired with morning greeting (unrelated)", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "i want to organise my chat gpt and also start creating a notion",
+      sideB: "Good morning... I didn't open my laptop...",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_weak_behavior_sideB");
+  });
+
+  it("rejects rhetoric/institutional goal paired with politics-book reading (unrelated)", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I would like to enforce this rhetoric on an institutional level later down the road",
+      sideB: "I'm reading a politics book and it's a lot more deeper than that",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_unrelated_pair");
+  });
+
+  it("rejects objectivity goal paired with 'That would be, I think' (unrelated)", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I'm just having fun I don't really care that much although I always optimise for objectivity",
+      sideB: "That would be, I think",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_unrelated_pair");
+  });
+
+  it("rejects objectivity goal paired with new-threads chatter (unrelated)", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I'm just having fun I don't really care that much although I always optimise for objectivity",
+      sideB: "Sorry I keep opening new threads but I keep getting ideas",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_unrelated_pair");
+  });
+});
+
+// ── Step 15D: Additional conversational sideA rejects ────────────────────────
+//
+// These are conversational debate corrections that should never become
+// contradiction sideA. Some were already covered in Step 15C; these are
+// the additional required patterns.
+
+describe("classifyImportedContradictionPair — additional conversational sideA rejects (Step 15D)", () => {
+  it("rejects 'I never said I was hyper masculine' as sideA", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I never said I was hyper masculine",
+      sideB: "but I keep thinking about identity and how it shapes my behaviour",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_conversational_sideA");
+  });
+
+  it("rejects 'that is not what I said' as sideA", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "that is not what I said",
+      sideB: "but I keep finding myself in the same argument patterns",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_conversational_sideA");
+  });
+
+  it("rejects 'I didn't say that' as sideA", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I didn't say that",
+      sideB: "but I still feel misunderstood",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_conversational_sideA");
+  });
+
+  it("rejects 'in this conversation' as sideA", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "in this conversation, I never claimed that",
+      sideB: "but I keep repeating the same points",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_conversational_sideA");
+  });
+
+  it("rejects 'A theory is a theory' as sideA", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "A theory is a theory",
+      sideB: "but I still question my own beliefs",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_conversational_sideA");
+  });
+});
+
+// ── Step 15D: Required preserve examples ─────────────────────────────────────
+//
+// These pairs must survive the general relation gate because sideB is a
+// behavioral admission ("but I...") that is meaningfully related to sideA.
+
+describe("classifyImportedContradictionPair — required preserve examples (Step 15D)", () => {
+  it("keeps 'finish this book' + 'skipped reading and watched videos' (behavioral admission)", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to finish this book though",
+      sideB: "I skipped reading again and watched videos instead",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps 'peak body nutrition' + 'ordered takeaway instead of eating clean' (behavioral admission)", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "My goal is peak body nutrition",
+      sideB: "I ordered takeaway again instead of eating clean",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps 'simplify my life and remain focused' + 'kept opening new threads and drifting' (behavioral admission)", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to simplify my life and remain focused",
+      sideB: "I kept opening new threads and drifting into distractions",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps 'match tutorial pace' + 'skipped ahead in the tutorial' (topic overlap)", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want to match the pace of the tutorial and not skip basic steps",
+      sideB: "I skipped ahead in the tutorial instead of following the course pace",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps 'review after reading to retain' + 'kept reading without reviewing' (behavioral admission)", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to review after I read to retain though",
+      sideB: "I kept reading without reviewing, so I didn't retain it",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+});
+
+// ── Step 15C: Meaningful related pairs preserved (Part 4) ────────────────────
+//
+// Behavioral sideBs that genuinely describe a failure related to sideA's goal
+// must survive all new gates.
+
+describe("classifyImportedContradictionPair — meaningful related pairs preserved (Part 4)", () => {
+  it("keeps 'finish this book' + 'skipped reading again and watched videos instead'", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to finish this book though",
+      sideB: "I skipped reading again and watched videos instead",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps 'peak body nutrition' + 'ordered takeaway again instead of eating clean'", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "My goal is peak body nutrition",
+      sideB: "I ordered takeaway again instead of eating clean",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps 'simplify my life and remain focused' + 'kept opening new threads and drifting into distractions'", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to simplify my life and remain focused",
+      sideB: "I kept opening new threads and drifting into distractions",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+
+  it("keeps 'match tutorial pace' + 'skipped ahead in the tutorial' (topic overlap escapes technical gate)", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want to match the pace of the tutorial and not skip basic steps",
+      sideB: "I skipped ahead in the tutorial instead of following the course pace",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reasons).toEqual([]);
+  });
+});
+
 describe("applyImportedContradictionFanoutGuard", () => {
   const mkDetection = (sideA: string, sideB: string) => ({
     title: "Constraint conflict",
