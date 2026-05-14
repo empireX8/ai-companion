@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { UnderstandingLinkSourceType } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
 import {
@@ -11,14 +12,22 @@ import {
 } from "@/lib/actions-v1";
 import type { PatternClaimView } from "@/lib/patterns-api";
 import { projectVisiblePatternClaim } from "@/lib/pattern-visible-claim";
+import {
+  buildRelatedUnderstandingBySourceId,
+  isIncludeUnderstandingLinksEnabled,
+} from "../../../lib/understanding-links";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req?: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const includeUnderstandingLinks = req
+    ? isIncludeUnderstandingLinksEnabled(new URL(req.url).searchParams)
+    : false;
 
   const [claims, goalRefs] = await Promise.all([
     prismadb.patternClaim.findMany({
@@ -82,9 +91,39 @@ export async function GET() {
     prismadb
   );
 
+  const relatedByActionId = includeUnderstandingLinks
+    ? await buildRelatedUnderstandingBySourceId({
+        userId,
+        sourceType: UnderstandingLinkSourceType.surfaced_action,
+        sourceIds: surfacedActions.map((action) => action.id),
+      })
+    : null;
+
+  const stabilizeNow = surfacedActions
+    .filter((action) => action.bucket === "stabilize")
+    .map((action) =>
+      includeUnderstandingLinks
+        ? {
+            ...action,
+            relatedUnderstanding: relatedByActionId?.get(action.id),
+          }
+        : action
+    );
+
+  const buildForward = surfacedActions
+    .filter((action) => action.bucket === "build")
+    .map((action) =>
+      includeUnderstandingLinks
+        ? {
+            ...action,
+            relatedUnderstanding: relatedByActionId?.get(action.id),
+          }
+        : action
+    );
+
   return NextResponse.json({
     currentPriority: buildCurrentPrioritySnapshot(visibleClaims, true),
-    stabilizeNow: surfacedActions.filter((action) => action.bucket === "stabilize"),
-    buildForward: surfacedActions.filter((action) => action.bucket === "build"),
+    stabilizeNow,
+    buildForward,
   });
 }

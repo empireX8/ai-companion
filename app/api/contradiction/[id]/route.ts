@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import type { ContradictionStatus } from "@prisma/client";
+import {
+  type ContradictionStatus,
+  UnderstandingLinkSourceType,
+} from "@prisma/client";
 
 import {
   computeEscalationCooldown,
@@ -20,6 +23,10 @@ import {
 } from "@/lib/contradiction-source";
 import prismadb from "@/lib/prismadb";
 import { serverLogMetric } from "@/lib/metrics-server";
+import {
+  buildRelatedUnderstandingBySourceId,
+  isIncludeUnderstandingLinksEnabled,
+} from "../../../../lib/understanding-links";
 
 const CONTRADICTION_WITH_EVIDENCE = {
   id: true,
@@ -68,7 +75,7 @@ const TERMINAL_STATUSES: ContradictionStatus[] = [
 const NON_TERMINAL_STATUSES: ContradictionStatus[] = ["open", "snoozed", "explored"];
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -117,11 +124,25 @@ export async function GET(
     }));
 
     const cooldown = computeEscalationCooldown(node.lastEscalatedAt);
+    const includeUnderstandingLinks = isIncludeUnderstandingLinksEnabled(
+      new URL(req.url).searchParams
+    );
+    const relatedByNodeId = includeUnderstandingLinks
+      ? await buildRelatedUnderstandingBySourceId({
+          userId,
+          sourceType: UnderstandingLinkSourceType.contradiction_node,
+          sourceIds: [node.id],
+        })
+      : null;
+
     return NextResponse.json({
       ...node,
       evidence: evidenceWithSpans,
       cooldownActive: cooldown.active,
       cooldownUntil: cooldown.until?.toISOString() ?? null,
+      ...(includeUnderstandingLinks
+        ? { relatedUnderstanding: relatedByNodeId?.get(node.id) }
+        : {}),
     });
   } catch (error) {
     console.log("[CONTRADICTION_GET_DETAIL_ERROR]", error);

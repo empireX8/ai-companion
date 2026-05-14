@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { UnderstandingLinkSourceType } from "@prisma/client";
 
 import { computeRecommendedRung } from "@/lib/contradiction-escalation";
 import { CONTRADICTION_STATUS } from "@/lib/contradiction-enums";
@@ -11,6 +12,10 @@ import {
   resolveContradictionSource,
 } from "@/lib/contradiction-source";
 import prismadb from "@/lib/prismadb";
+import {
+  buildRelatedUnderstandingBySourceId,
+  isIncludeUnderstandingLinksEnabled,
+} from "../../../lib/understanding-links";
 
 export const dynamic = "force-dynamic";
 
@@ -181,6 +186,8 @@ export async function GET(req: Request) {
     await expireSnoozedContradictionsForUser({ userId });
 
     const { searchParams } = new URL(req.url);
+    const includeUnderstandingLinks =
+      isIncludeUnderstandingLinksEnabled(searchParams);
     const topParam = searchParams.get("top");
     const statusParam = searchParams.get("status");
     const modeParam = searchParams.get("mode");
@@ -262,10 +269,24 @@ export async function GET(req: Request) {
         sessionOrigin: n.sourceSessionId ? (cSessionOrigins[n.sourceSessionId] ?? null) : null,
       }));
 
+      const relatedByNodeId = includeUnderstandingLinks
+        ? await buildRelatedUnderstandingBySourceId({
+            userId,
+            sourceType: UnderstandingLinkSourceType.contradiction_node,
+            sourceIds: nodes.map((node) => node.id),
+          })
+        : null;
+      const itemsWithOptionalLinks = includeUnderstandingLinks
+        ? itemsWithOrigin.map((item) => ({
+            ...item,
+            relatedUnderstanding: relatedByNodeId?.get(item.id),
+          }))
+        : itemsWithOrigin;
+
       // Paginated envelope — consumed exclusively via fetchContradictions() in lib/nodes-api.ts.
       // Do NOT call this path directly; unwrap payload.items on the client side.
       return NextResponse.json(
-        { items: itemsWithOrigin, page, limit, hasMore: nodes.length === limit },
+        { items: itemsWithOptionalLinks, page, limit, hasMore: nodes.length === limit },
         {
           headers: {
             "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",

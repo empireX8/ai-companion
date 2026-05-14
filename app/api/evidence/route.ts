@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { UnderstandingLinkSourceType } from "@prisma/client";
 import prismadb from "@/lib/prismadb";
+import {
+  buildRelatedUnderstandingBySourceId,
+  isIncludeUnderstandingLinksEnabled,
+} from "../../../lib/understanding-links";
 
 export async function GET(req: Request) {
   try {
@@ -13,6 +18,8 @@ export async function GET(req: Request) {
     const q = searchParams.get("q") ?? "";
     const originParam = searchParams.get("origin") ?? "all";
     const hasArtifactsParam = searchParams.get("hasArtifacts");
+    const includeUnderstandingLinks =
+      isIncludeUnderstandingLinksEnabled(searchParams);
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "30", 10), 1), 100);
     const cursor = searchParams.get("cursor") ?? undefined;
 
@@ -92,12 +99,27 @@ export async function GET(req: Request) {
       };
     });
 
+    const relatedByEvidenceId = includeUnderstandingLinks
+      ? await buildRelatedUnderstandingBySourceId({
+          userId,
+          sourceType: UnderstandingLinkSourceType.evidence_span,
+          sourceIds: result.map((item) => item.id),
+        })
+      : null;
+
+    const itemsWithOptionalLinks = includeUnderstandingLinks
+      ? result.map((item) => ({
+          ...item,
+          relatedUnderstanding: relatedByEvidenceId?.get(item.id),
+        }))
+      : result;
+
     const nextCursor =
       hasMore && items.length > 0
         ? items[items.length - 1].createdAt.toISOString()
         : null;
 
-    return NextResponse.json({ items: result, nextCursor });
+    return NextResponse.json({ items: itemsWithOptionalLinks, nextCursor });
   } catch (error) {
     console.log("[EVIDENCE_LIST_ERROR]", error);
     return new NextResponse("Internal Error", { status: 500 });

@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { UnderstandingLinkSourceType } from "@prisma/client";
 import prismadb from "@/lib/prismadb";
+import {
+  buildRelatedUnderstandingBySourceId,
+  isIncludeUnderstandingLinksEnabled,
+} from "../../../../lib/understanding-links";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -55,6 +60,16 @@ export async function GET(
     }
 
     const content = span.message.content.slice(span.charStart, span.charEnd);
+    const includeUnderstandingLinks = isIncludeUnderstandingLinksEnabled(
+      new URL(req.url).searchParams
+    );
+    const relatedBySpanId = includeUnderstandingLinks
+      ? await buildRelatedUnderstandingBySourceId({
+          userId,
+          sourceType: UnderstandingLinkSourceType.evidence_span,
+          sourceIds: [span.id],
+        })
+      : null;
 
     return NextResponse.json({
       id: span.id,
@@ -73,6 +88,9 @@ export async function GET(
         confidence: link.artifact.confidence,
         status: link.artifact.status,
       })),
+      ...(includeUnderstandingLinks
+        ? { relatedUnderstanding: relatedBySpanId?.get(span.id) }
+        : {}),
     });
   } catch (error) {
     console.log("[EVIDENCE_DETAIL_ERROR]", error);

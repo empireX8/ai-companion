@@ -10,6 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { UnderstandingLinkSourceType } from "@prisma/client";
 
 import { getTopContradictions } from "@/lib/contradiction-top";
 import prismadb from "@/lib/prismadb";
@@ -22,6 +23,10 @@ import {
 } from "@/lib/patterns-api";
 import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
 import { createPatternRerunDebugCollector } from "@/lib/pattern-rerun-debug";
+import {
+  buildRelatedUnderstandingBySourceId,
+  isIncludeUnderstandingLinksEnabled,
+} from "../../../lib/understanding-links";
 
 export const dynamic = "force-dynamic";
 const INLINE_RECEIPT_LIMIT = 10;
@@ -43,11 +48,15 @@ function projectPatternContradictionItem(
   };
 }
 
-export async function GET() {
+export async function GET(req?: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const includeUnderstandingLinks = req
+    ? isIncludeUnderstandingLinksEnabled(new URL(req.url).searchParams)
+    : false;
 
   // ── Fetch claims, contradiction surface items, and scope metadata ──────────
   const [claims, contradictionItems, scopeMessageCount, scopeSessionCount] =
@@ -73,6 +82,14 @@ export async function GET() {
       prismadb.message.count({ where: { userId } }),
       prismadb.session.count({ where: { userId } }),
     ]);
+
+  const relatedByClaimId = includeUnderstandingLinks
+    ? await buildRelatedUnderstandingBySourceId({
+        userId,
+        sourceType: UnderstandingLinkSourceType.pattern_claim,
+        sourceIds: claims.map((claim) => claim.id),
+      })
+    : null;
 
   // ── Build view model ────────────────────────────────────────────────────────
 
@@ -110,6 +127,12 @@ export async function GET() {
               {
                 ...projected,
                 receipts: projected.receipts.slice(0, INLINE_RECEIPT_LIMIT),
+                ...(includeUnderstandingLinks
+                  ? {
+                      relatedUnderstanding:
+                        relatedByClaimId?.get(claim.id),
+                    }
+                  : {}),
               },
             ]
           : [];
