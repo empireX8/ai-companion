@@ -153,33 +153,33 @@ model ReferenceItem {
 }
 
 model ContradictionNode {
-  id              String                  @id @default(cuid())
+  id              String                       @id @default(cuid())
   userId          String
   title           String
   sideA           String
   sideB           String
   type            ContradictionType
-  confidence      ReferenceConfidence     @default(low)
-  status          ContradictionStatus     @default(open)
-  weight          Float                   @default(0)
-  snoozeCount     Int                     @default(0)
-  timesSurfaced   Int                     @default(0)
+  confidence      ReferenceConfidence          @default(low)
+  status          ContradictionStatus          @default(open)
+  weight          Float                        @default(0)
+  snoozeCount     Int                          @default(0)
+  timesSurfaced   Int                          @default(0)
   lastSurfacedAt  DateTime?
   lastEvidenceAt  DateTime?
-  evidenceCount   Int                     @default(0)
+  evidenceCount   Int                          @default(0)
   recommendedRung ProbeRung?
-  escalationLevel Int                     @default(0)
-  avoidanceCount  Int                     @default(0)
+  escalationLevel Int                          @default(0)
+  avoidanceCount  Int                          @default(0)
   lastEscalatedAt DateTime?
   lastAvoidedAt   DateTime?
   rung            ProbeRung?
   snoozedUntil    DateTime?
-  createdAt       DateTime                @default(now())
-  lastTouchedAt   DateTime                @default(now())
+  createdAt       DateTime                     @default(now())
+  lastTouchedAt   DateTime                     @default(now())
   sourceSessionId String?
   sourceMessageId String?
-  sourceSession   Session?                @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
-  sourceMessage   Message?                @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  sourceSession   Session?                     @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
+  sourceMessage   Message?                     @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
   evidence        ContradictionEvidence[]
   referenceLinks  ContradictionReferenceLink[]
 
@@ -219,27 +219,27 @@ model ContradictionEvidence {
 }
 
 model ImportUploadSession {
-  id                      String               @id @default(cuid())
-  userId                  String
-  filename                String
-  contentType             String
-  bytesTotal              BigInt
-  chunkSize               Int
-  totalChunks             Int
-  status                  ImportUploadStatus   @default(pending)
-  processingProgress      Int                  @default(0)
-  processedConversations  Int                  @default(0)
-  processedMessages       Int                  @default(0)
-  sessionsCreated         Int                  @default(0)
-  messagesCreated         Int                  @default(0)
-  contradictionsCreated   Int                  @default(0)
-  resultErrors            String[]
-  error                   String?
-  createdAt               DateTime             @default(now())
-  updatedAt               DateTime             @updatedAt
-  startedAt               DateTime?
-  finishedAt              DateTime?
-  chunks                  ImportUploadChunk[]
+  id                     String              @id @default(cuid())
+  userId                 String
+  filename               String
+  contentType            String
+  bytesTotal             BigInt
+  chunkSize              Int
+  totalChunks            Int
+  status                 ImportUploadStatus  @default(pending)
+  processingProgress     Int                 @default(0)
+  processedConversations Int                 @default(0)
+  processedMessages      Int                 @default(0)
+  sessionsCreated        Int                 @default(0)
+  messagesCreated        Int                 @default(0)
+  contradictionsCreated  Int                 @default(0)
+  resultErrors           String[]
+  error                  String?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  startedAt              DateTime?
+  finishedAt             DateTime?
+  chunks                 ImportUploadChunk[]
 
   @@index([userId, createdAt])
 }
@@ -346,7 +346,7 @@ model InternalMetricEvent {
   level     String   @default("info") // "info" | "warn" | "error"
   value     Float?
   meta      Json?
-  source    String   // "client" | "server"
+  source    String // "client" | "server"
   route     String?
   dedupeKey String?
 
@@ -361,7 +361,7 @@ model InternalMetricEvent {
 model DerivationRun {
   id                  String               @id @default(uuid())
   userId              String
-  scope               String               // "import" | "native" | "manual"
+  scope               String // "import" | "native" | "manual"
   processorVersion    String
   inputMessageSetHash String
   status              String               @default("created") // "created" | "running" | "completed" | "failed"
@@ -378,15 +378,15 @@ model DerivationRun {
 }
 
 model EvidenceSpan {
-  id                  String   @id @default(uuid())
-  userId              String
-  messageId           String
-  message             Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  charStart           Int
-  charEnd             Int
-  contentHash         String
-  createdAt           DateTime @default(now())
-  artifactLinks       ArtifactEvidenceLink[]
+  id                   String                        @id @default(uuid())
+  userId               String
+  messageId            String
+  message              Message                       @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  charStart            Int
+  charEnd              Int
+  contentHash          String
+  createdAt            DateTime                      @default(now())
+  artifactLinks        ArtifactEvidenceLink[]
   profileArtifactLinks ProfileArtifactEvidenceLink[]
 
   @@unique([messageId, charStart, charEnd, contentHash])
@@ -395,17 +395,17 @@ model EvidenceSpan {
 }
 
 model DerivationArtifact {
-  id              String               @id @default(uuid())
+  id              String                  @id @default(uuid())
   userId          String
   runId           String
-  run             DerivationRun        @relation(fields: [runId], references: [id], onDelete: Cascade)
+  run             DerivationRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
   type            String
-  status          String               @default("candidate") // "candidate" | "promoted" | "rejected"
+  status          String                  @default("candidate") // "candidate" | "promoted" | "rejected"
   payload         Json
   confidenceScore Float?
   temporalStart   DateTime?
   temporalEnd     DateTime?
-  createdAt       DateTime             @default(now())
+  createdAt       DateTime                @default(now())
   evidenceLinks   ArtifactEvidenceLink[]
   promotionLinks  ArtifactPromotionLink[]
 
@@ -424,30 +424,30 @@ model ArtifactEvidenceLink {
 }
 
 model ArtifactPromotionLink {
-  artifactId  String
-  entityType  String
-  entityId    String
-  createdAt   DateTime           @default(now())
-  artifact    DerivationArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  artifactId String
+  entityType String
+  entityId   String
+  createdAt  DateTime           @default(now())
+  artifact   DerivationArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
 
-  @@unique([entityType, entityId])
   @@id([artifactId, entityType, entityId])
+  @@unique([entityType, entityId])
   @@index([artifactId])
 }
 
 // ── Profile Artifacts ─────────────────────────────────────────────────────────
 
 model ProfileArtifact {
-  id           String                      @id @default(uuid())
-  userId       String
-  type         ProfileArtifactType
-  claim        String
-  claimNorm    String                      // normalized for dedup
-  confidence   Float                       @default(0.5)
-  status       String                      @default("candidate") // "candidate" | "active" | "superseded"
-  firstSeenAt  DateTime                    @default(now())
-  lastSeenAt   DateTime                    @default(now())
-  tags         String[]
+  id            String                        @id @default(uuid())
+  userId        String
+  type          ProfileArtifactType
+  claim         String
+  claimNorm     String // normalized for dedup
+  confidence    Float                         @default(0.5)
+  status        String                        @default("candidate") // "candidate" | "active" | "superseded"
+  firstSeenAt   DateTime                      @default(now())
+  lastSeenAt    DateTime                      @default(now())
+  tags          String[]
   evidenceLinks ProfileArtifactEvidenceLink[]
 
   @@unique([userId, type, claimNorm])
@@ -457,10 +457,10 @@ model ProfileArtifact {
 }
 
 model ProfileArtifactEvidenceLink {
-  artifactId  String
-  spanId      String
-  artifact    ProfileArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
-  span        EvidenceSpan    @relation(fields: [spanId], references: [id], onDelete: Cascade)
+  artifactId String
+  spanId     String
+  artifact   ProfileArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  span       EvidenceSpan    @relation(fields: [spanId], references: [id], onDelete: Cascade)
 
   @@id([artifactId, spanId])
 }
@@ -523,13 +523,13 @@ enum QuickCheckInStateTag {
 }
 
 model QuickCheckIn {
-  id        String               @id @default(cuid())
+  id        String                @id @default(cuid())
   userId    String
   stateTag  QuickCheckInStateTag?
-  eventTags String[]             @default([])
-  note      String?              @db.VarChar(160)
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
+  eventTags String[]              @default([])
+  note      String?               @db.VarChar(160)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
 
   @@index([userId, createdAt])
 }
@@ -572,25 +572,25 @@ enum SurfacedActionStatus {
 }
 
 model PatternClaim {
-  id                String               @id @default(cuid())
-  userId            String
-  patternType       PatternType
-  strengthLevel     StrengthLevel        @default(tentative)
-  status            PatternClaimStatus   @default(candidate)
-  summary           String
-  summaryNorm       String               // normalized for dedup, via normalizeSummary()
-  sourceRunId       String?
+  id                     String                 @id @default(cuid())
+  userId                 String
+  patternType            PatternType
+  strengthLevel          StrengthLevel          @default(tentative)
+  status                 PatternClaimStatus     @default(candidate)
+  summary                String
+  summaryNorm            String // normalized for dedup, via normalizeSummary()
+  sourceRunId            String?
   // P2.5-07 — set true when a not_helpful action outcome is recorded;
   // consumed + cleared by batchRefreshClaimsForUser on next refresh pass.
-  needsReevaluation    Boolean              @default(false)
-  journalEvidenceCount Int                @default(0)
-  journalEntrySpread   Int                @default(0)
-  journalDaySpread     Int                @default(0)
-  supportContainerSpread Int              @default(0)
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  evidence          PatternClaimEvidence[]
-  actions           PatternClaimAction[]
+  needsReevaluation      Boolean                @default(false)
+  journalEvidenceCount   Int                    @default(0)
+  journalEntrySpread     Int                    @default(0)
+  journalDaySpread       Int                    @default(0)
+  supportContainerSpread Int                    @default(0)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  evidence               PatternClaimEvidence[]
+  actions                PatternClaimAction[]
 
   @@unique([userId, patternType, summaryNorm])
   @@index([userId, status])
@@ -609,7 +609,7 @@ model PatternClaimAction {
   userId         String
   prompt         String
   status         String       @default("pending") // pending | in_progress | completed | skipped | abandoned
-  outcomeSignal  String?      // helpful | not_helpful | unclear
+  outcomeSignal  String? // helpful | not_helpful | unclear
   reflectionNote String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -644,17 +644,263 @@ model SurfacedAction {
 // Mirrors ContradictionEvidence — reuse shape, not a third evidence concept.
 // Fields: claimId (≙ nodeId), source, sessionId, messageId, quote, createdAt
 model PatternClaimEvidence {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   claimId        String
-  claim          PatternClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
-  source         String       @default("derivation") // "derivation" | "user_input"
+  claim          PatternClaim  @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  source         String        @default("derivation") // "derivation" | "user_input"
   sessionId      String?
   messageId      String?
   journalEntryId String?
   journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
   quote          String?
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime      @default(now())
 
   @@index([claimId])
   @@index([journalEntryId])
+}
+
+// ── Understanding Engine Foundation (Phase 1A) ───────────────────────────────
+
+enum UserMapConclusionStatus {
+  hypothesis
+  tentative
+  emerging
+  supported
+  disputed
+  superseded
+}
+
+enum UserMapConclusionArea {
+  operating_logic
+  state_ecology
+  tension_architecture
+  recovery_architecture
+  meaning_system
+  relational_field
+  developmental_vector
+  current_frontier
+}
+
+enum UserMapConfidenceLevel {
+  low
+  medium
+  high
+}
+
+enum InvestigationStatus {
+  open
+  gathering_evidence
+  testing
+  resolving
+  resolved
+  reopened
+  abandoned
+}
+
+enum InvestigationSeedType {
+  contradiction
+  pattern
+  state_switch
+  user_curiosity
+  action_failure
+  fieldwork_result
+  model_uncertainty
+  user_correction
+}
+
+enum ModelUpdateType {
+  conclusion_added
+  conclusion_strengthened
+  conclusion_weakened
+  conclusion_disputed
+  conclusion_superseded
+  investigation_opened
+  investigation_progressed
+  investigation_resolved
+  investigation_reopened
+  fieldwork_assigned
+  fieldwork_completed
+  action_outcome_recorded
+  strategy_adjusted
+  correction_applied
+  link_detected
+}
+
+enum ModelUpdateVisibility {
+  internal_only
+  candidate
+  user_visible
+}
+
+enum FieldworkStatus {
+  assigned
+  active
+  completed
+  dismissed
+  expired
+}
+
+enum UnderstandingLinkTargetType {
+  usermap_conclusion
+  investigation
+  model_update
+  fieldwork_assignment
+  surfaced_action
+  pattern_claim
+  contradiction_node
+}
+
+enum UnderstandingLinkSourceType {
+  pattern_claim
+  pattern_claim_evidence
+  contradiction_node
+  contradiction_evidence
+  profile_artifact
+  evidence_span
+  reference_item
+  surfaced_action
+  quick_check_in
+  journal_entry
+  session
+  message
+  timeline_aggregation
+  // Contract label; map to existing import/upload persisted model conventions.
+  import_record
+  user_correction
+}
+
+enum UnderstandingLinkRole {
+  supports
+  contradicts
+  context
+  seed
+  outcome
+  correction
+  temporal_anchor
+  derived_from
+}
+
+model UserMapConclusion {
+  id                       String                  @id @default(cuid())
+  userId                   String
+  area                     UserMapConclusionArea
+  status                   UserMapConclusionStatus
+  title                    String
+  summary                  String
+  confidenceScore          Float
+  confidenceLevel          UserMapConfidenceLevel
+  evidenceCount            Int                     @default(0)
+  sourceDiversity          Int                     @default(0)
+  timeSpreadDays           Int                     @default(0)
+  version                  Int                     @default(1)
+  supersededById           String?
+  supersedesId             String?
+  firstEvidenceAt          DateTime?
+  lastEvidenceAt           DateTime?
+  lastUserCorrectionAt     DateTime?
+  lastUserCorrectionLabel  String?
+  correctionCount          Int                     @default(0)
+  notes                    String?
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  supersededBy             UserMapConclusion?      @relation("UserMapConclusionSupersededBy", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes               UserMapConclusion?      @relation("UserMapConclusionSupersedes", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededByChildren     UserMapConclusion[]     @relation("UserMapConclusionSupersedes")
+  supersedesChildren       UserMapConclusion[]     @relation("UserMapConclusionSupersededBy")
+  resolvedByInvestigations Investigation[]         @relation("InvestigationResolvedIntoConclusion")
+
+  @@index([userId, area, status])
+  @@index([userId, confidenceScore])
+  @@index([userId, updatedAt])
+  @@index([userId, supersededById])
+}
+
+model Investigation {
+  id                              String                @id @default(cuid())
+  userId                          String
+  title                           String
+  organizingQuestion              String
+  status                          InvestigationStatus
+  seedType                        InvestigationSeedType
+  competingTheories               Json
+  evidenceNeeded                  Json
+  resolutionSummary               String?
+  resolvedAt                      DateTime?
+  resolvedIntoUserMapConclusionId String?
+  reopenedAt                      DateTime?
+  reopenReason                    String?
+  priority                        Int?
+  createdAt                       DateTime              @default(now())
+  updatedAt                       DateTime              @updatedAt
+  resolvedIntoUserMapConclusion   UserMapConclusion?    @relation("InvestigationResolvedIntoConclusion", fields: [resolvedIntoUserMapConclusionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, updatedAt])
+  @@index([userId, seedType, createdAt])
+  @@index([userId, resolvedAt])
+}
+
+model ModelUpdate {
+  id                   String                      @id @default(cuid())
+  userId               String
+  updateType           ModelUpdateType
+  visibility           ModelUpdateVisibility
+  affectedObjectType   UnderstandingLinkTargetType
+  affectedObjectId     String
+  userFacingSummary    String
+  isMeaningful         Boolean
+  beforeSummary        String?
+  afterSummary         String?
+  confidenceDelta      Float?
+  meaningfulDeltaScore Float?
+  sourceRunId          String?
+  internalNotes        String?
+  createdAt            DateTime                    @default(now())
+
+  @@index([userId, visibility, createdAt])
+  @@index([userId, updateType, createdAt])
+  @@index([userId, affectedObjectType, affectedObjectId])
+}
+
+model FieldworkAssignment {
+  id                 String                      @id @default(cuid())
+  userId             String
+  prompt             String
+  reason             String
+  status             FieldworkStatus
+  linkedObjectType   UnderstandingLinkTargetType
+  linkedObjectId     String
+  observationNote    String?
+  observationOutcome String?
+  completedAt        DateTime?
+  expiresAt          DateTime?
+  priority           Int?
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+
+  @@index([userId, status, updatedAt])
+  @@index([userId, linkedObjectType, linkedObjectId])
+  @@index([userId, createdAt])
+}
+
+model UnderstandingEvidenceLink {
+  id                     String                      @id @default(cuid())
+  userId                 String
+  targetType             UnderstandingLinkTargetType
+  targetId               String
+  sourceType             UnderstandingLinkSourceType
+  sourceId               String
+  role                   UnderstandingLinkRole
+  summary                String?
+  snippet                String?
+  quote                  String?
+  weight                 Float?
+  confidenceContribution Float?
+  meta                   Json?
+  createdAt              DateTime                    @default(now())
+
+  @@unique([userId, targetType, targetId, sourceType, sourceId, role])
+  @@index([userId, targetType, targetId])
+  @@index([userId, sourceType, sourceId])
+  @@index([userId, targetType, role])
+  @@index([userId, createdAt])
 }
