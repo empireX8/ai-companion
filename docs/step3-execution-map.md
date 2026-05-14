@@ -83,15 +83,16 @@ From Step 2C:
 | `ModelUpdate` | Atomic record of model change deltas | UserMapConclusion changes, Investigation status changes, action outcomes, fieldwork completions, corrections | Today "What changed", Timeline model events, User Map change history | P1 |
 | `FieldworkAssignment` | Structured observation prompt (separate from action) | Investigation evidence gaps, weak conclusions, pattern uncertainty | Today fieldwork card, Check-ins prompt, Investigation detail, update events | P1 |
 | `Action/Experiment extension` | Expand existing action system to support hypothesis testing + conditions | Existing SurfacedAction + Investigation/User Map context | Actions/Experiments surface, Tested Moves/What Worked, model feedback loop | P2 |
-| `GenerativeSelfModelEntry` (conservative) | Optional causal chain/context object | Conclusions + timeline + outcomes | User Map depth, Explore sense-making | P6 |
-| `ModelMaturitySignal` | Internal maturity signal for model reliability by area | conclusion coverage + confidence + source diversity | subtle user context + internal quality tracking | P6 |
-| `MetaObserverFinding` (internal-first) | Quality/blind spot diagnostics from eval/live data | eval outputs + corrections + stuck investigations | internal review + future safety/product tuning | P6 |
+| `GenerativeSelfModelEntry` (conservative) | Optional causal chain/context object | Conclusions + timeline + outcomes | User Map depth, Explore sense-making | Phase 7 (Advanced Intelligence) |
+| `ModelMaturitySignal` | Internal maturity signal for model reliability by area | conclusion coverage + confidence + source diversity | subtle user context + internal quality tracking | Phase 7 (Advanced Intelligence) |
+| `MetaObserverFinding` (internal-first) | Quality/blind spot diagnostics from eval/live data | eval outputs + corrections + stuck investigations | internal review + future safety/product tuning | Phase 7 (Advanced Intelligence) |
 
 ### Object build principles
 
 - Persist core user-facing intelligence objects (`UserMapConclusion`, `Investigation`, `ModelUpdate`, `FieldworkAssignment`) before surface rollout.
 - Keep all existing models intact; add links rather than replacing prior objects.
 - Prefer additive linking fields and junctions over object redefinition.
+- If placeholder scaffolding for advanced objects is introduced earlier for migration safety, no advanced behavior or user-facing use of those objects is allowed before Phase 7.
 
 ## 4. Backend API Plan
 
@@ -485,6 +486,8 @@ Expose User Map + Investigations and integrate Today/Timeline/Check-ins intellig
 ### UI work
 
 - Today: What changed + active investigations + fieldwork + suggested action slots
+- Phase 3 Today suggested action slots must use the existing `SurfacedAction` / current actions pipeline only.
+- Phase 3 must not introduce experiment semantics, action hypothesis structures, or tested-move synthesis behavior.
 - User Map list/detail with evidence drawer and correction action
 - Investigations list/detail with competing theories/evidence-needed model
 - Timeline event layers for model updates + investigation milestones + fieldwork
@@ -536,6 +539,7 @@ Wire action/experiment feedback loops and Explore mode persistence policies into
 - segmented Actions UI: Try this / Test this / What worked
 - experiment detail and outcome capture with condition tracking
 - Explore modes: Vent / Make sense / Decide with safety-aware write policies
+- Phase 4 is the first phase that upgrades action semantics into full Actions/Experiments behavior with deeper feedback loops.
 
 ### Tests
 
@@ -707,6 +711,8 @@ Run these as core verification gates throughout implementation:
 | Evidence routing | integration tests with real-shaped data | Phases 2–5 |
 | Objectivity gates | unit + integration tests | Phase 2 onward |
 | Trust language compliance | script + content tests | Phase 2 onward |
+| Fake progress indicator prevention | UI contract tests + copy/format assertions (no synthetic completion percentages) | Phases 3–6 |
+| Random insight feed prevention | Today/ModelUpdate integration tests (meaningful-delta gating only) | Phases 3–6 |
 | Legacy surface preservation | script + route behavior tests | Every phase |
 | UI states and continuity | component/integration tests | Phases 3–6 |
 | Mobile parity contract | API client + screen tests | Phase 6 |
@@ -731,6 +737,9 @@ Run these as core verification gates throughout implementation:
 - Today surface remains scan-first (no card overload, meaningful prioritization).
 - Patterns/Tensions/Timeline/Actions remain directly usable and not displaced.
 - Model updates shown only when meaningful deltas exist.
+- No fake completion/progress percentages are shown on intelligence surfaces.
+- No synthetic insight-of-the-day or random insight feed behavior is allowed.
+- Empty/no-update states are preferred over fabricated updates when no meaningful movement exists.
 
 ## 11.3 Platform thresholds
 
@@ -745,6 +754,8 @@ Run these as core verification gates throughout implementation:
 | Endpoint contract churn | web/mobile rework | lock contracts in Phase 0 and enforce additive-only changes |
 | Overclaiming from early synthesis | trust damage | strict objectivity gates + language guard + dark-run signoff |
 | Today surface overload | reduced usability | hard card priority and visibility rules from Step 2C |
+| Fake progress indicators | user trust erosion and misleading model maturity perception | disallow synthetic completion/progress percentages; enforce UI assertions in Phases 3–6 |
+| Random insight feed behavior | noisy UX and false sense of intelligence movement | Model Updates must be evidence-backed deltas only; no synthetic insight-of-the-day; use empty/no-update states when no meaningful changes exist |
 | Investigation quality drift | noisy active threads | evidence-needed discipline + resolution gate criteria |
 | Action vs fieldwork confusion | low completion quality | explicit semantic distinction in API/UI/tests |
 | Legacy surface regressions | product instability | required `check-legacy-surfaces` gate every phase |
