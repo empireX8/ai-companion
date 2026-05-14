@@ -23,15 +23,21 @@ The Understanding Engine sits above and between existing systems; it does not re
 
 ## 2. Authoritative Source Order
 
-When planning documents differ, apply this precedence:
+Use this source order for implementation prompts:
 
-1. `docs/step3-6-preimplementation-consolidation.md`
-2. `docs/step3-execution-map.md`
-3. `docs/step2c-product-surface-ui-map.md`
-4. `docs/step2b-architecture-application-map.md`
-5. `docs/step2a-infrastructure-audit.md`
+1. `docs/step4-phase0-contract-lock.md` - hard Phase 1A schema contract authority
+2. `docs/step4a-category-agent-knowledge-addendum.md` - strategic guardrail; does not expand Phase 1A scope
+3. `docs/step3-6-preimplementation-consolidation.md`
+4. `docs/step3-execution-map.md`
+5. `docs/step2c-product-surface-ui-map.md`
+6. `docs/step2b-architecture-application-map.md`
+7. `docs/step2a-infrastructure-audit.md`
 
-Step 3.6 resolves naming, evidence-input inclusion, ModelUpdate gating, and advanced-intelligence timing ambiguity.
+Implementation governance notes:
+
+- Step 4 Phase 0 is the hard authority for Phase 1A schema scope and exclusions.
+- Step 4A is required strategic context for product category, Journal role, agent framing, Intelligence Library direction, and user-evidence/domain-knowledge boundaries.
+- Step 4A cannot be used to expand Phase 1A implementation scope.
 
 ## 3. Phase 1A Scope Lock
 
@@ -52,7 +58,7 @@ Step 3.6 resolves naming, evidence-input inclusion, ModelUpdate gating, and adva
 ### 3.2 Phase 1A must exclude
 
 - UI work
-- API route handlers (except minimal schema test scaffolding if absolutely required)
+- API route handlers. Phase 1A creates no API routes. If a test appears to require route scaffolding, stop and report instead.
 - synthesis engine / derivation logic
 - agent deliberation logic
 - Explore mode runtime behavior
@@ -119,6 +125,10 @@ Persisted synthesis-level understanding claim. Not a replacement for `PatternCla
 
 - Corrections do not delete history; they downgrade/cap confidence and may move status to `disputed`
 - Supersession is explicit via `supersededById` / `supersedesId`
+- `supersededById` and `supersedesId` are optional self-relation fields
+- Prisma self-relations must use explicit relation names to avoid ambiguous self-relation wiring
+- Supersession must preserve historical rows; do not delete old conclusions during supersession
+- If implementation uses one directional field plus relation helper instead of both fields, report the chosen shape and justify it
 
 ### Evidence/link expectations
 
@@ -388,6 +398,13 @@ Hybrid strategy is locked for Phase 1A:
 - `confidenceContribution` (`Float?`)
 - `meta` (`Json?`)
 
+Implementation notes:
+
+- `weight` should remain nullable unless current repo conventions require a numeric default.
+- `confidenceContribution` should remain nullable unless later Phase 2 logic computes it.
+- Phase 1A must not invent confidence math for either field.
+- If numeric defaults are required by existing schema conventions, report the defaults and rationale in implementation output.
+
 ### TargetType enum values
 
 - `usermap_conclusion`
@@ -415,6 +432,13 @@ Hybrid strategy is locked for Phase 1A:
 - `timeline_aggregation`
 - `import_record`
 - `user_correction`
+
+Implementation note:
+
+- `import_record` means import pipeline source/output at the contract level.
+- Phase 1A must inspect the current Prisma schema and map this enum value to actual persisted import/upload model conventions.
+- Do not create, rename, or repurpose import models to fit this label.
+- If current schema naming differs, preserve contract intent and report the concrete mapping.
 
 ### Role enum values
 
@@ -561,6 +585,11 @@ Locked enum names and initial values:
 - `timeline_aggregation`
 - `import_record`
 - `user_correction`
+
+Implementation note:
+
+- `import_record` is a contract label for import pipeline source/output and may map to different persisted model names in current schema.
+- Preserve existing import model conventions and report mapping during Phase 1A implementation; do not create or rename import models.
 
 ### UnderstandingLinkRole
 
@@ -714,16 +743,19 @@ The Phase 1A implementation prompt must require:
 1. Inspect current schema conventions first.
 2. Add only locked Phase 1A models and enums.
 3. Create migration if repo convention requires.
-4. Add minimal schema/data-access tests aligned with repo test patterns.
+4. Add minimal schema/data-access tests only, aligned with repo test patterns.
 5. Do not build APIs/UI/engine logic.
-6. Do not implement Phase 7 objects.
-7. Run verification:
+6. Do not create API routes.
+7. Do not add route test scaffolding.
+8. If tests appear to require route scaffolding, stop and report instead of creating routes.
+9. Do not implement Phase 7 objects.
+10. Run verification:
 - `npx tsc --noEmit`
 - `npx vitest run`
 - `npm run build`
 - `bash scripts/check-trust-language.sh`
 - `bash scripts/check-legacy-surfaces.sh`
-8. Do not commit.
+11. Do not commit.
 
 The prompt must explicitly forbid:
 
@@ -754,4 +786,3 @@ Only true blockers for Phase 1A are allowed here.
 - **Are there any blockers?** No Phase 1A blockers remain.
 - **Exact title of first implementation prompt:**
   - `Step 4 Prompt 1 — Understanding Engine Foundation Schema and Enum Contract (Phase 1A)`
-

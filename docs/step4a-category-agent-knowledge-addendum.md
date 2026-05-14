@@ -161,6 +161,13 @@ Phase 2-adjacent:
 - baseline objectivity gates
 - baseline safety/language guard
 
+Boundary clarification:
+
+- Phase 2 may implement conservative synthesis, evidence packet assembly, baseline objectivity gates, and safety/language guards.
+- Phase 2 must not implement full multi-lens agent deliberation.
+- Full domain lenses, Intelligence Library retrieval, knowledge-aware referee behavior, and advanced objection/counterfactual deliberation belong to Phase 7 or a separately approved later phase.
+- This Step 4A addendum is strategic guardrail guidance, not Phase 2 implementation scope expansion.
+
 Phase 7:
 
 - multi-lens deliberation depth
@@ -389,4 +396,3 @@ Non-blocking for Phase 1A:
 - **Does it block Phase 1A?** No.
 - **What must be remembered before Phase 2?** Build conservative evidence-first synthesis and gates; do not imply full agent/domain architecture.
 - **What must be remembered before Phase 7?** Phase 7 must include mature lens deliberation + Intelligence Library + stronger objectivity/referee systems, but only after core engine stability.
-
