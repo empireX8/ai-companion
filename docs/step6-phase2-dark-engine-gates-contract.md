@@ -309,6 +309,107 @@ User-facing update eligibility (future promotion path) must require:
 - safe/objective language
 - real affected object change
 
+## 11A. Phase 2 UserMapConclusion Candidate Persistence Contract
+
+This section is a narrowing amendment for the first candidate-persistence step. Where this section conflicts with broader Phase 2 language, this section wins for first-write scope.
+
+### 11A.1 Allowed object scope (first persistence step)
+- Only `UserMapConclusion` is in scope for first candidate persistence.
+- `Investigation`, `ModelUpdate`, and `FieldworkAssignment` remain dry-run only.
+- `UnderstandingEvidenceLink` writes are allowed only as required provenance links for a newly created `UserMapConclusion`, via shared library writer logic (`lib/understanding-evidence-link-writer.ts`), not route-local ad hoc validation.
+- `timeline_aggregation` and `user_correction` are context-only and must not be persisted as `UnderstandingEvidenceLink` sources in this step.
+
+### 11A.2 Visibility decision (locked)
+- **Decision: B (blocked until visibility-safe contract patch).**
+- Current `GET /api/user-map/conclusions` returns authenticated-user rows across statuses unless the caller supplies explicit filters. There is no hidden/internal visibility field on `UserMapConclusion`.
+- Therefore first candidate persistence **must not create any new `UserMapConclusion` rows yet** until a separate visibility-safety contract/implementation exists (for example explicit internal visibility separation or safe default filtering that prevents accidental user-facing surfacing).
+
+### 11A.3 Status rules (when visibility is unblocked)
+- `abstain`: write nothing.
+- `pass`: may write at most `emerging` in first step.
+- `pass_with_cap`: may write at most `tentative` in first step.
+- `supported` must not be written in first persistence step, even if gate math could allow it.
+- First-write posture is candidate-level only (`tentative`/`emerging`), never `supported`.
+
+### 11A.4 Confidence cap to `UserMapConfidenceLevel` mapping
+- Use `confidenceScore = min(gateConfidenceCap, post-correction-cap)`.
+- Map score to level conservatively:
+  - `<= 0.30` => `low`
+  - `> 0.30` and `<= 0.55` => `medium` only if minimum evidence/source gates pass
+  - `> 0.55` => still `medium` in first persistence step
+- `high` confidence is not allowed in first persistence step.
+
+### 11A.5 Area/category mapping
+- `area` must be an explicit required enum value (`UserMapConclusionArea`) on the candidate write target.
+- No free-form area strings and no implicit LLM-only area inference are allowed.
+- If `area` is missing or not a valid enum value, block write.
+
+### 11A.6 Title and summary strategy
+- `title` must come from an explicit candidate field or deterministic formatter output, not ad hoc free-form generation at write time.
+- `summary` must come from the gated candidate summary text with safety/language checks applied.
+- Conservative max lengths for first step:
+  - `title`: 120 chars
+  - `summary`: 600 chars
+- Block overclaiming language and deterministic identity framing.
+- If high-emotion cap/block is active, identity-level claims are forbidden; uncertainty wording must be preserved.
+
+### 11A.7 Dedupe / upsert policy
+- No blind insert.
+- Before create, check exact duplicate for same `userId` + `area` + normalized `title` + normalized `summary` on non-superseded rows.
+- Exact duplicate: do not create a new row; count as `duplicateCandidates` in diagnostics.
+- Near-duplicate heuristics may be added later, but first step must at minimum prevent exact-duplicate spam.
+- First step must not overwrite existing rows, must not auto-supersede existing conclusions, and must not mutate existing active/supported conclusions.
+
+### 11A.8 Evidence-link policy for candidate write
+- Minimum linkable evidence for a persisted conclusion:
+  - at least 2 linkable evidence items
+  - from at least 2 allowed source types
+- Allowed source types for persisted links are the currently verifiable/source-owned types supported by the shared writer contract (for example: `pattern_claim`, `pattern_claim_evidence`, `contradiction_node`, `contradiction_evidence`, `profile_artifact`, `evidence_span`, `reference_item`, `surfaced_action`, `quick_check_in`, `journal_entry`, `session`, `message`, `import_record`).
+- Disallowed source types for persisted links in this step: `timeline_aggregation`, `user_correction`.
+- All links must target `UnderstandingLinkTargetType.usermap_conclusion`.
+- Ownership must be verifiable via shared writer rules only; no synthetic ownership mapping.
+- If required links cannot be created safely, do not persist the conclusion.
+
+### 11A.9 Write transaction policy
+- `UserMapConclusion` create and required `UnderstandingEvidenceLink` creates must be atomic (single transaction) where supported.
+- If any required link write fails, roll back the conclusion write.
+- Duplicate link tuples inside the attempted set must be deduped before write attempt.
+- Duplicate candidate outcome is non-fatal but must result in no additional row write.
+
+### 11A.10 Mandatory block conditions
+Block persistence when any of the following is true:
+- gate outcome is `abstain`
+- missing/invalid `area`
+- missing/invalid `title` or `summary`
+- insufficient linkable evidence count or source diversity
+- support relies only on non-linkable context inputs
+- unresolved ownership for required links
+- high-emotion identity block active
+- language overclaiming block active
+- disconfirmation remains unresolved under abstention conditions
+- correction downgrade active when requested status/confidence would exceed corrected cap
+
+### 11A.11 Diagnostics requirements when persistence is attempted
+Dark-run diagnostics artifact must include, in addition to existing counters:
+- `candidatesProposed`
+- `candidatesWritten`
+- `evidenceLinksAttempted`
+- `evidenceLinksWritten`
+- `blockedWriteReasons`
+- `duplicateCandidates`
+- `rollbackCount`
+
+### 11A.12 Non-goals lock (first persistence step)
+- no `Investigation` persistence
+- no `ModelUpdate` persistence
+- no `FieldworkAssignment` persistence
+- no runtime triggers
+- no UI/mobile work
+- no agents/lenses
+- no Intelligence Library/domain retrieval
+- no automatic promotion to `supported`
+- no automatic promotion to `high` confidence
+
 ## 12. Dark-Run Evaluation Protocol
 
 Before any UI exposure, Phase 2 must run dark evaluations with diagnostics.
@@ -416,7 +517,8 @@ Phase 2 must exclude:
 ### 16.1 What the next Phase 2 implementation prompt should do
 - implement dark-run EvidencePacket v1 assembly
 - implement gate evaluator with locked threshold constants
-- implement candidate/internal write path for understanding objects
+- for first persistence work, follow Section 11A scope only
+- do not write `UserMapConclusion` rows until visibility-safe contract/implementation is in place
 - implement abstention + rejection reason recording
 - implement diagnostics reporting outputs for review
 - keep all writes user-scoped and provenance-linked
@@ -452,7 +554,8 @@ Phase 2 must exclude:
 
 ## 17. Final Contract Verdict
 
-Phase 2 implementation is ready to begin under this contract, provided implementation remains dark-run/gated and non-UI.
+Phase 2 dark-run/gating implementation is ready and active under this contract.
+UserMapConclusion candidate persistence is blocked until the visibility rule in Section 11A.2 is satisfied.
 
 Recommended next implementation prompt title:
 - `Step 6 Prompt 2 — Phase 2 Dark Engine Evidence Packet + Objectivity Gates (Dark-Run Only)`
