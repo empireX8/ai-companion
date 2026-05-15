@@ -681,6 +681,11 @@ enum UserMapConclusionArea {
   current_frontier
 }
 
+enum UserMapConclusionVisibility {
+  user_visible
+  internal_only
+}
+
 enum UserMapConfidenceLevel {
   low
   medium
@@ -785,6 +790,7 @@ model UserMapConclusion {
   userId                   String
   area                     UserMapConclusionArea
   status                   UserMapConclusionStatus
+  visibility               UserMapConclusionVisibility @default(user_visible)
   title                    String
   summary                  String
   confidenceScore          Float

@@ -10,6 +10,7 @@ import {
   UserMapConfidenceLevel,
   UserMapConclusionArea,
   UserMapConclusionStatus,
+  UserMapConclusionVisibility,
 } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { readFileSync } from "fs";
@@ -51,6 +52,12 @@ describe("Phase 1A enum contracts", () => {
   it("locks UserMapConfidenceLevel", () => {
     expect(new Set(Object.values(UserMapConfidenceLevel))).toEqual(
       new Set(["low", "medium", "high"])
+    );
+  });
+
+  it("locks UserMapConclusionVisibility", () => {
+    expect(new Set(Object.values(UserMapConclusionVisibility))).toEqual(
+      new Set(["user_visible", "internal_only"])
     );
   });
 
@@ -223,6 +230,14 @@ describe("Phase 1A schema model contracts", () => {
     expect(link).toContain("@@index([userId, targetType, role])");
     expect(link).toContain("@@index([userId, createdAt])");
     expect(link).toContain("@@unique([userId, targetType, targetId, sourceType, sourceId, role])");
+  });
+
+  it("pins UserMapConclusion.visibility default for safe public exposure", () => {
+    const userMap = modelBlock("UserMapConclusion");
+
+    expect(userMap).toMatch(
+      /\bvisibility\s+UserMapConclusionVisibility\s+@default\(user_visible\)/
+    );
   });
 
   it("keeps weight and confidenceContribution nullable for Phase 1A", () => {

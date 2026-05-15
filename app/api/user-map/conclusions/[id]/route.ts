@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { UserMapConclusionVisibility } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
 import {
@@ -11,6 +12,17 @@ import {
 } from "../../../../../lib/understanding-engine-api";
 
 export const dynamic = "force-dynamic";
+
+function hasOwnProperty(
+  value: unknown,
+  key: string
+): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Object.prototype.hasOwnProperty.call(value, key)
+  );
+}
 
 export async function GET(
   _req: Request,
@@ -25,7 +37,7 @@ export async function GET(
 
   try {
     const item = await prismadb.userMapConclusion.findFirst({
-      where: { id, userId },
+      where: { id, userId, visibility: UserMapConclusionVisibility.user_visible },
     });
 
     if (!item) {
@@ -68,10 +80,18 @@ export async function PATCH(
       zodIssuesToDetails(parsed.error.issues)
     );
   }
+  if (hasOwnProperty(body, "visibility")) {
+    return errorResponse(400, "Validation failed", "VALIDATION_ERROR", [
+      {
+        field: "visibility",
+        message: "visibility is not allowed on this route",
+      },
+    ]);
+  }
 
   try {
     const current = await prismadb.userMapConclusion.findFirst({
-      where: { id, userId },
+      where: { id, userId, visibility: UserMapConclusionVisibility.user_visible },
     });
 
     if (!current) {
@@ -129,7 +149,11 @@ export async function PATCH(
 
     if (parsed.data.supersededById) {
       const supersededBy = await prismadb.userMapConclusion.findFirst({
-        where: { id: parsed.data.supersededById, userId },
+        where: {
+          id: parsed.data.supersededById,
+          userId,
+          visibility: UserMapConclusionVisibility.user_visible,
+        },
         select: { id: true },
       });
       if (!supersededBy) {
@@ -144,7 +168,11 @@ export async function PATCH(
 
     if (parsed.data.supersedesId) {
       const supersedes = await prismadb.userMapConclusion.findFirst({
-        where: { id: parsed.data.supersedesId, userId },
+        where: {
+          id: parsed.data.supersedesId,
+          userId,
+          visibility: UserMapConclusionVisibility.user_visible,
+        },
         select: { id: true },
       });
       if (!supersedes) {

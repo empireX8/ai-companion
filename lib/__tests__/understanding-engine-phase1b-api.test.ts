@@ -183,6 +183,43 @@ describe("Understanding Engine Phase 1B API routes", () => {
     expect(response.status).toBe(404);
   });
 
+  it("returns user-map conclusion detail when row is user_visible", async () => {
+    prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({
+      id: "umc-visible-1",
+      userId: "user-1",
+      visibility: "user_visible",
+      area: "operating_logic",
+      status: "hypothesis",
+    });
+
+    const route = await import("../../app/api/user-map/conclusions/[id]/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/user-map/conclusions/umc-visible-1"),
+      { params: Promise.resolve({ id: "umc-visible-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("returns 404 for internal_only user-map conclusion detail by default", async () => {
+    prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce(null);
+
+    const route = await import("../../app/api/user-map/conclusions/[id]/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/user-map/conclusions/umc-internal-1"),
+      { params: Promise.resolve({ id: "umc-internal-1" }) }
+    );
+
+    expect(response.status).toBe(404);
+    expect(prismaMock.userMapConclusion.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          visibility: "user_visible",
+        }),
+      })
+    );
+  });
+
   it("returns 404 on cross-user investigation patch", async () => {
     prismaMock.investigation.findFirst.mockResolvedValueOnce(null);
 
@@ -334,9 +371,32 @@ describe("Understanding Engine Phase 1B API routes", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           userId: "user-1",
+          visibility: "user_visible",
         }),
       })
     );
+  });
+
+  it("rejects user-map create when visibility is supplied", async () => {
+    const route = await import("../../app/api/user-map/conclusions/route");
+    const response = await route.POST(
+      new Request("http://localhost/api/user-map/conclusions", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          area: "operating_logic",
+          status: "hypothesis",
+          title: "Title",
+          summary: "Summary",
+          confidenceScore: 0.3,
+          confidenceLevel: "low",
+          visibility: "internal_only",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(prismaMock.userMapConclusion.create).not.toHaveBeenCalled();
   });
 
   it("rejects user-map supersededById that is not same-user owned", async () => {
@@ -405,6 +465,14 @@ describe("Understanding Engine Phase 1B API routes", () => {
     );
 
     expect(response.status).toBe(200);
+    expect(prismaMock.userMapConclusion.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: "user-1",
+          visibility: "user_visible",
+        }),
+      })
+    );
     await expect(response.json()).resolves.toEqual({
       items: [{ id: "umc-2", updatedAt: "2026-05-14T12:00:00.000Z" }],
       pageInfo: {
@@ -413,6 +481,69 @@ describe("Understanding Engine Phase 1B API routes", () => {
         hasMore: true,
       },
     });
+  });
+
+  it("keeps user-map list filters while excluding internal_only rows", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([]);
+
+    const route = await import("../../app/api/user-map/conclusions/route");
+    const response = await route.GET(
+      new Request(
+        "http://localhost/api/user-map/conclusions?status=hypothesis&area=operating_logic&confidenceLevel=low"
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(prismaMock.userMapConclusion.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          visibility: "user_visible",
+          status: "hypothesis",
+          area: "operating_logic",
+          confidenceLevel: "low",
+        }),
+      })
+    );
+  });
+
+  it("returns 404 for patching internal_only user-map conclusion by default", async () => {
+    prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce(null);
+
+    const route = await import("../../app/api/user-map/conclusions/[id]/route");
+    const response = await route.PATCH(
+      new Request("http://localhost/api/user-map/conclusions/umc-internal-1", {
+        method: "PATCH",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ status: "emerging" }),
+      }),
+      { params: Promise.resolve({ id: "umc-internal-1" }) }
+    );
+
+    expect(response.status).toBe(404);
+    expect(prismaMock.userMapConclusion.update).not.toHaveBeenCalled();
+    expect(prismaMock.userMapConclusion.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          visibility: "user_visible",
+        }),
+      })
+    );
+  });
+
+  it("rejects user-map patch when visibility field is supplied", async () => {
+    const route = await import("../../app/api/user-map/conclusions/[id]/route");
+    const response = await route.PATCH(
+      new Request("http://localhost/api/user-map/conclusions/umc-1", {
+        method: "PATCH",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ visibility: "internal_only" }),
+      }),
+      { params: Promise.resolve({ id: "umc-1" }) }
+    );
+
+    expect(response.status).toBe(400);
+    expect(prismaMock.userMapConclusion.findFirst).not.toHaveBeenCalled();
+    expect(prismaMock.userMapConclusion.update).not.toHaveBeenCalled();
   });
 
   it("rejects investigation resolvedIntoUserMapConclusionId not owned by user", async () => {

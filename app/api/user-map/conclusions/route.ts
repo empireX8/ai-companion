@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import {
   UserMapConclusionArea,
   UserMapConclusionStatus,
+  UserMapConclusionVisibility,
   UserMapConfidenceLevel,
 } from "@prisma/client";
 import { z } from "zod";
@@ -51,6 +52,17 @@ function buildUpdatedAtFilter(args: {
   }
 
   return Object.keys(filter).length ? filter : undefined;
+}
+
+function hasOwnProperty(
+  value: unknown,
+  key: string
+): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Object.prototype.hasOwnProperty.call(value, key)
+  );
 }
 
 export async function GET(req: Request) {
@@ -143,6 +155,7 @@ export async function GET(req: Request) {
     const items = await prismadb.userMapConclusion.findMany({
       where: {
         userId,
+        visibility: UserMapConclusionVisibility.user_visible,
         ...(area?.success ? { area: area.data } : {}),
         ...(status?.success ? { status: status.data } : {}),
         ...(confidenceLevel?.success
@@ -187,6 +200,14 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return errorResponse(400, "Validation failed", "VALIDATION_ERROR", zodIssuesToDetails(parsed.error.issues));
   }
+  if (hasOwnProperty(body, "visibility")) {
+    return errorResponse(400, "Validation failed", "VALIDATION_ERROR", [
+      {
+        field: "visibility",
+        message: "visibility is not allowed on this route",
+      },
+    ]);
+  }
 
   if (parsed.data.supersededById) {
     const supersededBy = await prismadb.userMapConclusion.findFirst({
@@ -216,6 +237,7 @@ export async function POST(req: Request) {
     const created = await prismadb.userMapConclusion.create({
       data: {
         userId,
+        visibility: UserMapConclusionVisibility.user_visible,
         ...parsed.data,
       },
     });
