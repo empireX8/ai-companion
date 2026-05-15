@@ -17,6 +17,9 @@ import { Prisma } from "@prisma/client";
 
 import prismadb from "./prismadb";
 
+export const UNDERSTANDING_DARK_ENGINE_DIAGNOSTICS_ARTIFACT_TYPE =
+  "understanding_dark_engine_diagnostics";
+
 // ── Allowed types per scope ───────────────────────────────────────────────────
 
 export const ALLOWED_ARTIFACT_TYPES_BY_SCOPE: Record<string, string[]> = {
@@ -40,6 +43,7 @@ export const ALLOWED_ARTIFACT_TYPES_BY_SCOPE: Record<string, string[]> = {
     "escalation_event",
     "projection_snapshot",
     "cognitive_load_metric",
+    UNDERSTANDING_DARK_ENGINE_DIAGNOSTICS_ARTIFACT_TYPE,
   ],
 };
 

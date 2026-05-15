@@ -6,3 +6,4 @@ export * from "./diagnostics";
 export * from "./evidence-packet";
 export * from "./objectivity-gates";
 export * from "./dark-run-evaluator";
+export * from "./diagnostics-persistence";
