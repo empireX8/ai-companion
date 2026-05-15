@@ -84,6 +84,7 @@ Persisted synthesis-level understanding claim. Not a replacement for `PatternCla
 - `userId` (`String`)
 - `area` (`UserMapConclusionArea`)
 - `status` (`UserMapConclusionStatus`)
+- `visibility` (`UserMapConclusionVisibility`, default `user_visible`)
 - `title` (`String`)
 - `summary` (`String`)
 - `confidenceScore` (`Float`)
@@ -120,6 +121,16 @@ Persisted synthesis-level understanding claim. Not a replacement for `PatternCla
 - Canonical score: `confidenceScore` (0..1)
 - Display bucket: `confidenceLevel`
 - Status and confidence must be coherent with objectivity thresholds
+
+### Visibility representation
+
+- `visibility` governs default exposure, not epistemic lifecycle state.
+- `user_visible` means normal user-facing conclusions.
+- `internal_only` means persisted internal/candidate/dark-engine conclusions that must not appear in default user-facing API reads.
+- Existing rows/backfill/default must be `user_visible`.
+- `status` and `visibility` must not be conflated:
+  - `status` answers epistemic/lifecycle state.
+  - `visibility` answers default exposure state.
 
 ### Correction / supersession
 
@@ -504,6 +515,11 @@ Locked enum names and initial values:
 - `low`
 - `medium`
 - `high`
+
+### UserMapConclusionVisibility
+
+- `user_visible`
+- `internal_only`
 
 ### InvestigationStatus
 

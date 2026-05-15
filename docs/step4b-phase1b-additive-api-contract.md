@@ -30,6 +30,7 @@ Supporting enums exist:
 - `UserMapConclusionStatus`
 - `UserMapConclusionArea`
 - `UserMapConfidenceLevel`
+- `UserMapConclusionVisibility`
 - `InvestigationStatus`
 - `InvestigationSeedType`
 - `ModelUpdateType`
@@ -99,10 +100,10 @@ Why this scheme:
 
 | Method | Path | Purpose | Model | Capability | Auth | Required params | Response | Pagination | Validation | Forbidden behavior | Phase notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| GET | `/api/user-map/conclusions` | List conclusions | `UserMapConclusion` | Read | Required | Query filters + pagination | `200 { items, pageInfo }` | Cursor | Enum + filter validation | no cross-user reads | Core Phase 1B read path |
-| GET | `/api/user-map/conclusions/[id]` | Fetch one conclusion | `UserMapConclusion` | Read | Required | `id` path | `200 { item }` | N/A | ownership check | no cross-user reads | Detail path for later UI |
-| POST | `/api/user-map/conclusions` | Explicit/manual creation path | `UserMapConclusion` | Create | Required | Body fields | `201 { item }` | N/A | field + enum validation | no auto synthesis | Controlled/manual/internal only |
-| PATCH | `/api/user-map/conclusions/[id]` | Update status/corrections/supersession/notes | `UserMapConclusion` | Update | Required | `id` + body patch | `200 { item }` | N/A | lifecycle + ownership + supersession checks | no hard delete/history loss | Supports correction/supersession contract |
+| GET | `/api/user-map/conclusions` | List conclusions | `UserMapConclusion` | Read | Required | Query filters + pagination | `200 { items, pageInfo }` | Cursor | Enum + filter validation + default visibility filtering | no cross-user reads; no default exposure of `internal_only` rows | Core Phase 1B read path; default returns `user_visible` only |
+| GET | `/api/user-map/conclusions/[id]` | Fetch one conclusion | `UserMapConclusion` | Read | Required | `id` path | `200 { item }` | N/A | ownership + visibility check | no cross-user reads; no default direct-id exposure of `internal_only` rows | Detail path for later UI; default path must `404` for `internal_only` |
+| POST | `/api/user-map/conclusions` | Explicit/manual creation path | `UserMapConclusion` | Create | Required | Body fields | `201 { item }` | N/A | field + enum validation + default visibility assignment | no auto synthesis; no public/internal ambiguity on visibility | Controlled/manual route defaults created rows to `user_visible`; `internal_only` creation reserved for restricted internal writers |
+| PATCH | `/api/user-map/conclusions/[id]` | Update status/corrections/supersession/notes | `UserMapConclusion` | Update | Required | `id` + body patch | `200 { item }` | N/A | lifecycle + ownership + supersession + visibility safety checks | no hard delete/history loss; no accidental exposure/mutation of `internal_only` rows through default route | Supports correction/supersession contract; internal mutation requires separately contracted restricted path if needed |
 
 ### 5.2 Investigation endpoints
 
@@ -193,11 +194,15 @@ Required scoping rules:
 - `summary`: required, trimmed, non-empty.
 - `confidenceScore`: number in `[0,1]`.
 - `status`: valid `UserMapConclusionStatus`.
+- `visibility`: valid `UserMapConclusionVisibility`.
 - `area`: valid `UserMapConclusionArea`.
 - `confidenceLevel`: valid `UserMapConfidenceLevel`.
 - `evidenceCount`, `sourceDiversity`, `timeSpreadDays`: integer, `>=0`.
 - `correctionCount`: integer, `>=0`.
 - `supersededById`/`supersedesId` (if provided): must reference same-user conclusions.
+- Public/default route behavior:
+  - create defaults to `visibility=user_visible`
+  - `internal_only` is reserved for restricted internal writers (for example future dark-engine persistence), not default public route creation
 
 ### 8.2 Investigation
 
@@ -440,6 +445,12 @@ Shared query params:
 - `updatedBefore`
 - `updatedAfter`
 
+Default visibility behavior:
+
+- list responses exclude `visibility=internal_only` by default.
+- an explicit `includeInternal`/`includeHidden` query mode may be added only if access is restricted to safe internal/debug callers.
+- if safe restriction is not available, do not expose an include-internal query mode.
+
 Default sort: `updatedAt desc`, tie-break `id desc`.
 
 ### 12.2 Investigation filters
@@ -530,11 +541,12 @@ If additive links to existing endpoint payloads are needed, that belongs to Phas
 
 1. No cross-user reads/writes.
 2. No unauthenticated access.
-3. Internal-only `ModelUpdate` rows excluded by default user list path.
-4. Sensitive fields (`internalNotes`) not returned by default user-facing list response.
-5. Evidence snippets/quotes are user-owned and scoped.
-6. Ownership checks on polymorphic link operations.
-7. No public endpoint for Intelligence Library/domain knowledge.
+3. Internal-only `UserMapConclusion` rows excluded by default list and detail paths.
+4. Internal-only `ModelUpdate` rows excluded by default user list path.
+5. Sensitive fields (`internalNotes`) not returned by default user-facing list response.
+6. Evidence snippets/quotes are user-owned and scoped.
+7. Ownership checks on polymorphic link operations.
+8. No public endpoint for Intelligence Library/domain knowledge.
 
 ## 16. What Phase 1B Must Not Do
 

@@ -319,10 +319,17 @@ This section is a narrowing amendment for the first candidate-persistence step. 
 - `UnderstandingEvidenceLink` writes are allowed only as required provenance links for a newly created `UserMapConclusion`, via shared library writer logic (`lib/understanding-evidence-link-writer.ts`), not route-local ad hoc validation.
 - `timeline_aggregation` and `user_correction` are context-only and must not be persisted as `UnderstandingEvidenceLink` sources in this step.
 
-### 11A.2 Visibility decision (locked)
-- **Decision: B (blocked until visibility-safe contract patch).**
-- Current `GET /api/user-map/conclusions` returns authenticated-user rows across statuses unless the caller supplies explicit filters. There is no hidden/internal visibility field on `UserMapConclusion`.
-- Therefore first candidate persistence **must not create any new `UserMapConclusion` rows yet** until a separate visibility-safety contract/implementation exists (for example explicit internal visibility separation or safe default filtering that prevents accidental user-facing surfacing).
+### 11A.2 Visibility prerequisite and candidate exposure rule (locked)
+- Candidate `UserMapConclusion` persistence is blocked until **all** of the following are implemented and verified:
+  - `UserMapConclusion.visibility` exists with `UserMapConclusionVisibility` enum semantics.
+  - `visibility` defaults/backfill existing rows to `user_visible`.
+  - default `GET /api/user-map/conclusions` excludes `internal_only`.
+  - default `GET /api/user-map/conclusions/[id]` does not expose `internal_only` rows by direct ID access.
+- No candidate persistence is allowed before visibility migration + route filtering are complete.
+- Once the visibility prerequisite is implemented and verified:
+  - first-step dark-engine candidate writes may persist only as `visibility=internal_only`.
+  - `visibility=user_visible` is forbidden for first-step dark-engine candidate persistence.
+  - promotion from `internal_only` to `user_visible` is out of scope for first-step persistence.
 
 ### 11A.3 Status rules (when visibility is unblocked)
 - `abstain`: write nothing.
@@ -518,7 +525,7 @@ Phase 2 must exclude:
 - implement dark-run EvidencePacket v1 assembly
 - implement gate evaluator with locked threshold constants
 - for first persistence work, follow Section 11A scope only
-- do not write `UserMapConclusion` rows until visibility-safe contract/implementation is in place
+- do not write `UserMapConclusion` rows until visibility migration + default route filters are implemented and verified
 - implement abstention + rejection reason recording
 - implement diagnostics reporting outputs for review
 - keep all writes user-scoped and provenance-linked
@@ -555,7 +562,7 @@ Phase 2 must exclude:
 ## 17. Final Contract Verdict
 
 Phase 2 dark-run/gating implementation is ready and active under this contract.
-UserMapConclusion candidate persistence is blocked until the visibility rule in Section 11A.2 is satisfied.
+UserMapConclusion candidate persistence is blocked until the visibility prerequisite in Section 11A.2 is implemented and verified.
 
 Recommended next implementation prompt title:
 - `Step 6 Prompt 2 — Phase 2 Dark Engine Evidence Packet + Objectivity Gates (Dark-Run Only)`
