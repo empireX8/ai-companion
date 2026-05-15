@@ -203,6 +203,7 @@ function makeDiagnosticsDbMock() {
         };
         return runs[index];
       }),
+      findMany: vi.fn(async () => []),
     },
     derivationArtifact: {
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {

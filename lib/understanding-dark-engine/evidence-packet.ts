@@ -173,6 +173,26 @@ type MessageOriginRow = {
   session: { origin: "APP" | "IMPORTED_ARCHIVE" };
 };
 
+type SessionOriginRow = {
+  id: string;
+  origin: "APP" | "IMPORTED_ARCHIVE";
+};
+
+type DerivationRunScopeRow = {
+  id: string;
+  scope: string;
+};
+
+type ProfileArtifactEvidenceLinkRow = {
+  artifactId: string;
+  spanId: string;
+  span: {
+    message: {
+      session: { origin: "APP" | "IMPORTED_ARCHIVE" };
+    };
+  };
+};
+
 type EvidencePacketDb = {
   patternClaim: {
     findMany: (args: unknown) => Promise<PatternClaimRow[]>;
@@ -215,6 +235,12 @@ type EvidencePacketDb = {
   };
   importUploadChunk: {
     findMany: (args: unknown) => Promise<ImportUploadChunkRow[]>;
+  };
+  derivationRun: {
+    findMany: (args: unknown) => Promise<DerivationRunScopeRow[]>;
+  };
+  profileArtifactEvidenceLink: {
+    findMany: (args: unknown) => Promise<ProfileArtifactEvidenceLinkRow[]>;
   };
   modelUpdate: {
     findMany: (args: unknown) => Promise<ModelUpdateCorrectionRow[]>;
@@ -474,6 +500,36 @@ function originFromSessionOrigin(
   return "unknown";
 }
 
+function rollupOrigins(
+  origins: EvidencePacketItem["origin"][]
+): EvidencePacketItem["origin"] {
+  const hasNative = origins.some(
+    (origin) => origin === "native" || origin === "mixed"
+  );
+  const hasImported = origins.some(
+    (origin) => origin === "imported" || origin === "mixed"
+  );
+
+  if (hasNative && hasImported) return "mixed";
+  if (hasNative) return "native";
+  if (hasImported) return "imported";
+  return "unknown";
+}
+
+function originFromDerivationRunScope(
+  scope: string | null | undefined
+): EvidencePacketItem["origin"] {
+  if (!scope) return "unknown";
+  const normalized = scope.toLowerCase();
+  if (normalized === "import" || normalized.startsWith("import")) {
+    return "imported";
+  }
+  if (normalized === "native" || normalized.startsWith("native")) {
+    return "native";
+  }
+  return "unknown";
+}
+
 async function fetchMessageOriginsById(
   db: EvidencePacketDb,
   userId: string,
@@ -501,6 +557,58 @@ async function fetchMessageOriginsById(
   })) as MessageOriginRow[];
 
   return new Map(rows.map((row) => [row.id, row]));
+}
+
+async function fetchSessionOriginsById(
+  db: EvidencePacketDb,
+  userId: string,
+  sessionIds: string[]
+): Promise<Map<string, SessionOriginRow>> {
+  const uniqueIds = [...new Set(sessionIds.filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = (await db.session.findMany({
+    where: {
+      userId,
+      id: { in: uniqueIds },
+    },
+    select: {
+      id: true,
+      origin: true,
+    },
+  })) as SessionOriginRow[];
+
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
+function resolveProvenanceOrigin(args: {
+  messageId?: string | null;
+  sessionId?: string | null;
+  journalEntryId?: string | null;
+  messageOriginsById: Map<string, MessageOriginRow>;
+  sessionOriginsById: Map<string, SessionOriginRow>;
+}): EvidencePacketItem["origin"] {
+  if (args.messageId) {
+    const message = args.messageOriginsById.get(args.messageId);
+    if (message) {
+      return originFromSessionOrigin(message.session.origin);
+    }
+  }
+
+  if (args.sessionId) {
+    const session = args.sessionOriginsById.get(args.sessionId);
+    if (session) {
+      return originFromSessionOrigin(session.origin);
+    }
+  }
+
+  if (args.journalEntryId) {
+    return "native";
+  }
+
+  return "unknown";
 }
 
 function hasActiveContradiction(status: ContradictionStatus): boolean {
@@ -795,15 +903,110 @@ export async function assembleEvidencePacketV1(
     ...referenceItems.map((item) => item.sourceMessageId),
   ].filter((value): value is string => Boolean(value));
 
-  const messageOriginsById = await fetchMessageOriginsById(
-    db,
-    input.userId,
-    referencedMessageIds
-  );
+  const referencedSessionIds = [
+    ...patternClaimEvidence.map((item) => item.sessionId),
+    ...contradictionNodes.map((item) => item.sourceSessionId),
+    ...contradictionEvidence.map((item) => item.sessionId),
+    ...referenceItems.map((item) => item.sourceSessionId),
+  ].filter((value): value is string => Boolean(value));
+
+  const [messageOriginsById, sessionOriginsById] = await Promise.all([
+    fetchMessageOriginsById(db, input.userId, referencedMessageIds),
+    fetchSessionOriginsById(db, input.userId, referencedSessionIds),
+  ]);
+
+  const sourceRunIds = [
+    ...new Set(
+      patternClaims
+        .map((item) => item.sourceRunId)
+        .filter((value): value is string => Boolean(value))
+    ),
+  ];
+  const sourceRuns = sourceRunIds.length
+    ? await db.derivationRun.findMany({
+        where: {
+          id: { in: sourceRunIds },
+          userId: input.userId,
+        },
+        select: {
+          id: true,
+          scope: true,
+        },
+      })
+    : [];
+  const sourceRunsById = new Map(sourceRuns.map((row) => [row.id, row]));
+
+  const claimEvidenceOriginsById = new Map<
+    string,
+    EvidencePacketItem["origin"][]
+  >();
+
+  for (const evidence of patternClaimEvidence) {
+    const evidenceOrigin = resolveProvenanceOrigin({
+      messageId: evidence.messageId,
+      sessionId: evidence.sessionId,
+      journalEntryId: evidence.journalEntryId,
+      messageOriginsById,
+      sessionOriginsById,
+    });
+
+    if (!claimEvidenceOriginsById.has(evidence.claimId)) {
+      claimEvidenceOriginsById.set(evidence.claimId, []);
+    }
+    claimEvidenceOriginsById.get(evidence.claimId)?.push(evidenceOrigin);
+  }
+
+  const profileArtifactIds = profileArtifacts.map((item) => item.id);
+  const profileArtifactEvidenceLinks = profileArtifactIds.length
+    ? await db.profileArtifactEvidenceLink.findMany({
+        where: {
+          artifactId: { in: profileArtifactIds },
+          artifact: { userId: input.userId },
+        },
+        select: {
+          artifactId: true,
+          spanId: true,
+          span: {
+            select: {
+              message: {
+                select: {
+                  session: {
+                    select: {
+                      origin: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })
+    : [];
+
+  const profileArtifactOriginsById = new Map<
+    string,
+    EvidencePacketItem["origin"][]
+  >();
+  for (const link of profileArtifactEvidenceLinks) {
+    const origin = originFromSessionOrigin(link.span.message.session.origin);
+    if (!profileArtifactOriginsById.has(link.artifactId)) {
+      profileArtifactOriginsById.set(link.artifactId, []);
+    }
+    profileArtifactOriginsById.get(link.artifactId)?.push(origin);
+  }
 
   const items: EvidencePacketItem[] = [];
 
   for (const claim of patternClaims) {
+    const claimEvidenceOrigins = claimEvidenceOriginsById.get(claim.id) ?? [];
+    const originFromEvidence = rollupOrigins(claimEvidenceOrigins);
+    const sourceRun = claim.sourceRunId
+      ? sourceRunsById.get(claim.sourceRunId)
+      : null;
+    const fallbackRunOrigin = originFromDerivationRunScope(sourceRun?.scope);
+    const claimOrigin =
+      originFromEvidence !== "unknown" ? originFromEvidence : fallbackRunOrigin;
+
     items.push(
       createEvidenceItem({
         sourceType: SourceType.pattern_claim,
@@ -815,23 +1018,20 @@ export async function assembleEvidencePacketV1(
         linkable: true,
         ownershipResolvable: true,
         highEmotionSignal: detectHighEmotionSignalFromText(claim.summary),
-        origin: "unknown",
+        origin: claimOrigin,
         episodeKey: null,
       })
     );
   }
 
   for (const receipt of patternClaimEvidence) {
-    const messageRow =
-      receipt.messageId !== null
-        ? messageOriginsById.get(receipt.messageId) ?? null
-        : null;
-
-    const origin = messageRow
-      ? originFromSessionOrigin(messageRow.session.origin)
-      : receipt.journalEntryId
-        ? "native"
-        : "unknown";
+    const origin = resolveProvenanceOrigin({
+      messageId: receipt.messageId,
+      sessionId: receipt.sessionId,
+      journalEntryId: receipt.journalEntryId,
+      messageOriginsById,
+      sessionOriginsById,
+    });
 
     items.push(
       createEvidenceItem({
@@ -860,11 +1060,6 @@ export async function assembleEvidencePacketV1(
   }
 
   for (const node of contradictionNodes) {
-    const messageRow =
-      node.sourceMessageId !== null
-        ? messageOriginsById.get(node.sourceMessageId) ?? null
-        : null;
-
     const contradictionSummary = `${node.title} ${node.sideA} ${node.sideB}`;
 
     items.push(
@@ -882,9 +1077,12 @@ export async function assembleEvidencePacketV1(
         linkable: true,
         ownershipResolvable: true,
         highEmotionSignal: detectHighEmotionSignalFromText(contradictionSummary),
-        origin: messageRow
-          ? originFromSessionOrigin(messageRow.session.origin)
-          : "unknown",
+        origin: resolveProvenanceOrigin({
+          messageId: node.sourceMessageId,
+          sessionId: node.sourceSessionId,
+          messageOriginsById,
+          sessionOriginsById,
+        }),
         episodeKey: determineEpisodeKey({
           sessionId: node.sourceSessionId,
           messageId: node.sourceMessageId,
@@ -894,11 +1092,6 @@ export async function assembleEvidencePacketV1(
   }
 
   for (const evidence of contradictionEvidence) {
-    const messageRow =
-      evidence.messageId !== null
-        ? messageOriginsById.get(evidence.messageId) ?? null
-        : null;
-
     items.push(
       createEvidenceItem({
         sourceType: SourceType.contradiction_evidence,
@@ -914,9 +1107,12 @@ export async function assembleEvidencePacketV1(
         linkable: true,
         ownershipResolvable: true,
         highEmotionSignal: detectHighEmotionSignalFromText(evidence.quote),
-        origin: messageRow
-          ? originFromSessionOrigin(messageRow.session.origin)
-          : "unknown",
+        origin: resolveProvenanceOrigin({
+          messageId: evidence.messageId,
+          sessionId: evidence.sessionId,
+          messageOriginsById,
+          sessionOriginsById,
+        }),
         episodeKey: determineEpisodeKey({
           sessionId: evidence.sessionId,
           messageId: evidence.messageId,
@@ -927,6 +1123,8 @@ export async function assembleEvidencePacketV1(
 
   for (const artifact of profileArtifacts) {
     const signalSnippet = `${artifact.type}: ${artifact.claim}`;
+    const profileOrigins = profileArtifactOriginsById.get(artifact.id) ?? [];
+    const profileOrigin = rollupOrigins(profileOrigins);
 
     items.push(
       createEvidenceItem({
@@ -939,7 +1137,7 @@ export async function assembleEvidencePacketV1(
         linkable: true,
         ownershipResolvable: true,
         highEmotionSignal: detectHighEmotionSignalFromText(artifact.claim),
-        origin: "unknown",
+        origin: profileOrigin,
         episodeKey: null,
       })
     );
@@ -967,11 +1165,6 @@ export async function assembleEvidencePacketV1(
   }
 
   for (const reference of referenceItems) {
-    const messageRow =
-      reference.sourceMessageId !== null
-        ? messageOriginsById.get(reference.sourceMessageId) ?? null
-        : null;
-
     items.push(
       createEvidenceItem({
         sourceType: SourceType.reference_item,
@@ -987,9 +1180,12 @@ export async function assembleEvidencePacketV1(
         linkable: true,
         ownershipResolvable: true,
         highEmotionSignal: detectHighEmotionSignalFromText(reference.statement),
-        origin: messageRow
-          ? originFromSessionOrigin(messageRow.session.origin)
-          : "unknown",
+        origin: resolveProvenanceOrigin({
+          messageId: reference.sourceMessageId,
+          sessionId: reference.sourceSessionId,
+          messageOriginsById,
+          sessionOriginsById,
+        }),
         episodeKey: determineEpisodeKey({
           sessionId: reference.sourceSessionId,
           messageId: reference.sourceMessageId,
