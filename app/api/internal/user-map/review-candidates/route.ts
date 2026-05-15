@@ -1,43 +1,20 @@
 import { auth } from "@clerk/nextjs/server";
 import {
-  UnderstandingLinkTargetType,
   UserMapConfidenceLevel,
   UserMapConclusionArea,
   UserMapConclusionStatus,
-  UserMapConclusionVisibility,
-  type UnderstandingLinkSourceType,
 } from "@prisma/client";
 import { z } from "zod";
 
-import prismadb from "@/lib/prismadb";
+import {
+  INTERNAL_USER_MAP_REVIEW_DEFAULT_LIMIT as DEFAULT_LIMIT,
+  INTERNAL_USER_MAP_REVIEW_MAX_LIMIT as MAX_LIMIT,
+  listInternalUserMapReviewCandidates,
+} from "../../../../../lib/internal-user-map-review-candidates";
 import { isInternalUserMapReviewer } from "../../../../../lib/internal-review-auth";
 import { errorResponse } from "../../../../../lib/understanding-engine-api";
 
 export const dynamic = "force-dynamic";
-
-const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 100;
-
-type CandidateSummary = {
-  id: string;
-  title: string;
-  summary: string;
-  area: UserMapConclusionArea;
-  status: UserMapConclusionStatus;
-  confidenceLevel: UserMapConfidenceLevel;
-  visibility: "internal_only";
-  createdAt: string;
-  updatedAt: string;
-  evidence: {
-    linkCount: number;
-    sourceTypes: Record<string, number>;
-  };
-  diagnostics: {
-    latestRunId: string | null;
-    latestArtifactId: string | null;
-    latestArtifactType: string | null;
-  };
-};
 
 function parseLimit(value: string | null): number | null {
   if (value === null) {
@@ -101,90 +78,14 @@ export async function GET(req: Request) {
   }
 
   try {
-    const candidates = await prismadb.userMapConclusion.findMany({
-      where: {
-        userId,
-        visibility: UserMapConclusionVisibility.internal_only,
-        ...(area?.success ? { area: area.data } : {}),
-        ...(status?.success ? { status: status.data } : {}),
-        ...(confidenceLevel?.success
-          ? { confidenceLevel: confidenceLevel.data }
-          : {}),
-      },
-      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-      take: limit,
-      select: {
-        id: true,
-        title: true,
-        summary: true,
-        area: true,
-        status: true,
-        confidenceLevel: true,
-        visibility: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    const candidateIds = candidates.map((candidate) => candidate.id);
-    const evidenceLinks =
-      candidateIds.length > 0
-        ? await prismadb.understandingEvidenceLink.findMany({
-            where: {
-              userId,
-              targetType: UnderstandingLinkTargetType.usermap_conclusion,
-              targetId: { in: candidateIds },
-            },
-            select: {
-              targetId: true,
-              sourceType: true,
-            },
-          })
-        : [];
-
-    const evidenceByTarget = new Map<
-      string,
-      { linkCount: number; sourceTypes: Partial<Record<UnderstandingLinkSourceType, number>> }
-    >();
-
-    for (const link of evidenceLinks) {
-      const existing = evidenceByTarget.get(link.targetId) ?? {
-        linkCount: 0,
-        sourceTypes: {},
-      };
-
-      existing.linkCount += 1;
-      existing.sourceTypes[link.sourceType] =
-        (existing.sourceTypes[link.sourceType] ?? 0) + 1;
-      evidenceByTarget.set(link.targetId, existing);
-    }
-
-    const items: CandidateSummary[] = candidates.map((candidate) => {
-      const evidence = evidenceByTarget.get(candidate.id) ?? {
-        linkCount: 0,
-        sourceTypes: {},
-      };
-
-      return {
-        id: candidate.id,
-        title: candidate.title,
-        summary: candidate.summary,
-        area: candidate.area,
-        status: candidate.status,
-        confidenceLevel: candidate.confidenceLevel,
-        visibility: UserMapConclusionVisibility.internal_only,
-        createdAt: candidate.createdAt.toISOString(),
-        updatedAt: candidate.updatedAt.toISOString(),
-        evidence: {
-          linkCount: evidence.linkCount,
-          sourceTypes: evidence.sourceTypes,
-        },
-        diagnostics: {
-          latestRunId: null,
-          latestArtifactId: null,
-          latestArtifactType: null,
-        },
-      };
+    const items = await listInternalUserMapReviewCandidates({
+      userId,
+      limit,
+      ...(area?.success ? { area: area.data } : {}),
+      ...(status?.success ? { status: status.data } : {}),
+      ...(confidenceLevel?.success
+        ? { confidenceLevel: confidenceLevel.data }
+        : {}),
     });
 
     return Response.json({ items });

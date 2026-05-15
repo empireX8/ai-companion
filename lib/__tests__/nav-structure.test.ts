@@ -146,6 +146,10 @@ describe("V1_HIDDEN_INTERNAL_ROUTES", () => {
     expect(hiddenHrefs).not.toContain("/help");
   });
 
+  it("does not include /internal/user-map/review in hidden nav list", () => {
+    expect(hiddenHrefs).not.toContain("/internal/user-map/review");
+  });
+
   it("every hidden route has a reason string", () => {
     for (const route of V1_HIDDEN_INTERNAL_ROUTES) {
       expect(typeof route.reason).toBe("string");
@@ -212,5 +216,11 @@ describe("visible + hidden sets are disjoint", () => {
   it("core and secondary route sets do not overlap", () => {
     const overlap = secondaryHrefs.filter((h) => coreHrefs.includes(h));
     expect(overlap).toHaveLength(0);
+  });
+
+  it("internal review page is absent from visible nav sets", () => {
+    const internalReviewHref = "/internal/user-map/review";
+    expect(V1_VISIBLE_HREFS.has(internalReviewHref)).toBe(false);
+    expect(V1_HIDDEN_HREFS.has(internalReviewHref)).toBe(false);
   });
 });
