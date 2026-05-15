@@ -84,6 +84,10 @@ vi.mock("@/lib/prismadb", () => ({
   default: prismaMock,
 }));
 
+vi.mock("../prismadb", () => ({
+  default: prismaMock,
+}));
+
 const JSON_HEADERS = { "content-type": "application/json" };
 
 describe("Understanding Engine Phase 1B API routes", () => {

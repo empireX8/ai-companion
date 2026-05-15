@@ -1,6 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
 import {
-  Prisma,
   UnderstandingLinkRole,
   UnderstandingLinkSourceType,
   UnderstandingLinkTargetType,
@@ -18,6 +17,11 @@ import {
   parseSortOrder,
   zodIssuesToDetails,
 } from "../../../../lib/understanding-engine-api";
+import {
+  UnderstandingEvidenceLinkDuplicateError,
+  UnderstandingEvidenceLinkValidationError,
+  createUnderstandingEvidenceLinkForUser,
+} from "../../../../lib/understanding-evidence-link-writer";
 
 export const dynamic = "force-dynamic";
 
@@ -51,187 +55,6 @@ function buildCreatedAtFilter(args: {
   }
 
   return Object.keys(filter).length ? filter : undefined;
-}
-
-async function verifyTargetOwnership(args: {
-  userId: string;
-  targetType: UnderstandingLinkTargetType;
-  targetId: string;
-}) {
-  const { userId, targetType, targetId } = args;
-
-  switch (targetType) {
-    case "usermap_conclusion": {
-      const row = await prismadb.userMapConclusion.findFirst({
-        where: { id: targetId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "investigation": {
-      const row = await prismadb.investigation.findFirst({
-        where: { id: targetId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "model_update": {
-      const row = await prismadb.modelUpdate.findFirst({
-        where: { id: targetId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "fieldwork_assignment": {
-      const row = await prismadb.fieldworkAssignment.findFirst({
-        where: { id: targetId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "surfaced_action": {
-      const row = await prismadb.surfacedAction.findFirst({
-        where: { id: targetId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "pattern_claim": {
-      const row = await prismadb.patternClaim.findFirst({
-        where: { id: targetId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "contradiction_node": {
-      const row = await prismadb.contradictionNode.findFirst({
-        where: { id: targetId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    default:
-      return false;
-  }
-}
-
-async function verifySourceOwnership(args: {
-  userId: string;
-  sourceType: UnderstandingLinkSourceType;
-  sourceId: string;
-}) {
-  const { userId, sourceType, sourceId } = args;
-
-  switch (sourceType) {
-    case "pattern_claim": {
-      const row = await prismadb.patternClaim.findFirst({
-        where: { id: sourceId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "pattern_claim_evidence": {
-      const row = await prismadb.patternClaimEvidence.findFirst({
-        where: { id: sourceId, claim: { userId } },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "contradiction_node": {
-      const row = await prismadb.contradictionNode.findFirst({
-        where: { id: sourceId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "contradiction_evidence": {
-      const row = await prismadb.contradictionEvidence.findFirst({
-        where: { id: sourceId, node: { userId } },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "profile_artifact": {
-      const row = await prismadb.profileArtifact.findFirst({
-        where: { id: sourceId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "evidence_span": {
-      const row = await prismadb.evidenceSpan.findFirst({
-        where: { id: sourceId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "reference_item": {
-      const row = await prismadb.referenceItem.findFirst({
-        where: { id: sourceId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "surfaced_action": {
-      const row = await prismadb.surfacedAction.findFirst({
-        where: { id: sourceId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "quick_check_in": {
-      const row = await prismadb.quickCheckIn.findFirst({
-        where: { id: sourceId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "journal_entry": {
-      const row = await prismadb.journalEntry.findFirst({
-        where: { id: sourceId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "session": {
-      const row = await prismadb.session.findFirst({
-        where: { id: sourceId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "message": {
-      const row = await prismadb.message.findFirst({
-        where: { id: sourceId, userId },
-        select: { id: true },
-      });
-      return Boolean(row);
-    }
-    case "import_record": {
-      const sessionRow = await prismadb.importUploadSession.findFirst({
-        where: { id: sourceId, userId },
-        select: { id: true },
-      });
-      if (sessionRow) {
-        return true;
-      }
-
-      const chunkRow = await prismadb.importUploadChunk.findFirst({
-        where: {
-          id: sourceId,
-          session: { userId },
-        },
-        select: { id: true },
-      });
-
-      return Boolean(chunkRow);
-    }
-    case "timeline_aggregation":
-    case "user_correction":
-      return false;
-    default:
-      return false;
-  }
 }
 
 export async function GET(req: Request) {
@@ -401,62 +224,23 @@ export async function POST(req: Request) {
     return errorResponse(400, "Validation failed", "VALIDATION_ERROR", zodIssuesToDetails(parsed.error.issues));
   }
 
-  const targetOwned = await verifyTargetOwnership({
-    userId,
-    targetType: parsed.data.targetType,
-    targetId: parsed.data.targetId,
-  });
-  if (!targetOwned) {
-    return errorResponse(400, "Validation failed", "VALIDATION_ERROR", [
-      {
-        field: "targetId",
-        message: "Target not found for authenticated user",
-      },
-    ]);
-  }
-
-  const sourceOwned = await verifySourceOwnership({
-    userId,
-    sourceType: parsed.data.sourceType,
-    sourceId: parsed.data.sourceId,
-  });
-
-  if (!sourceOwned) {
-    return errorResponse(400, "Validation failed", "VALIDATION_ERROR", [
-      {
-        field: "sourceId",
-        message:
-          "Source not found for authenticated user or source type is not verifiable in Phase 1B",
-      },
-    ]);
-  }
-
   try {
-    const createData: Prisma.UnderstandingEvidenceLinkUncheckedCreateInput = {
+    const created = await createUnderstandingEvidenceLinkForUser({
       userId,
-      targetType: parsed.data.targetType,
-      targetId: parsed.data.targetId,
-      sourceType: parsed.data.sourceType,
-      sourceId: parsed.data.sourceId,
-      role: parsed.data.role,
-      summary: parsed.data.summary,
-      snippet: parsed.data.snippet,
-      quote: parsed.data.quote,
-      weight: parsed.data.weight ?? null,
-      confidenceContribution: parsed.data.confidenceContribution ?? null,
-      meta: parsed.data.meta as Prisma.InputJsonValue | undefined,
-    };
-
-    const created = await prismadb.understandingEvidenceLink.create({
-      data: createData,
+      input: parsed.data,
     });
 
     return Response.json({ item: created }, { status: 201 });
   } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
+    if (error instanceof UnderstandingEvidenceLinkValidationError) {
+      return errorResponse(400, "Validation failed", "VALIDATION_ERROR", [
+        {
+          field: error.field,
+          message: error.message,
+        },
+      ]);
+    }
+    if (error instanceof UnderstandingEvidenceLinkDuplicateError) {
       return errorResponse(409, "Duplicate evidence link", "DUPLICATE_LINK");
     }
 
