@@ -2,61 +2,26 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
-import { RhythmGraph, OccurrenceDots } from "@/components/Visuals";
+import { OccurrenceDots } from "@/components/Visuals";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 import {
   TIMELINE_WINDOWS,
-  type TimelineStateSummary,
   type TimelineWindow,
 } from "@/lib/timeline-aggregation";
 import {
   QUICK_CHECK_IN_EVENT_LABELS,
   QUICK_CHECK_IN_STATE_LABELS,
   type QuickCheckInStateTag,
-  type QuickCheckInView,
 } from "@/lib/quick-check-ins";
-
-type TimelineImportedActivityItem = {
-  id: string;
-  startedAt: string;
-  label: string | null;
-  preview: string | null;
-  messageCount: number;
-};
-
-type TimelineAppActivityItem = TimelineImportedActivityItem & {
-  surfaceType?: string | null;
-};
-
-type TimelineJournalEntryItem = {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  authoredAt: string | null;
-  title: string | null;
-  preview: string;
-  bodyLength: number;
-};
-
-type TimelineResponse = {
-  checkIns: QuickCheckInView[];
-  importedActivity: TimelineImportedActivityItem[];
-  stateSummary: TimelineStateSummary;
-  appActivity?: TimelineAppActivityItem[];
-  journalEntries?: TimelineJournalEntryItem[];
-};
-
-type TimelineEntry = {
-  id: string;
-  occurredAt: string;
-  chip: "Check-in" | "Journal" | "Journal Chat" | "Explore" | "Imported";
-  title: string;
-  body: string | null;
-  href: string;
-  weight?: "low";
-};
+import {
+  buildTimelineRequestUrl,
+  hasEnoughCheckInsForRhythm,
+  mapTimelineEntries,
+  type TimelineEntry,
+  type TimelineResponse,
+} from "@/lib/timeline-surface";
 
 const STATE_DISPLAY_LABELS: Record<QuickCheckInStateTag, string> = {
   stable: "Calm",
@@ -153,56 +118,6 @@ function stateLabel(stateTag: QuickCheckInStateTag | null): string {
   return STATE_DISPLAY_LABELS[stateTag] ?? QUICK_CHECK_IN_STATE_LABELS[stateTag];
 }
 
-function mapTimelineEntries(payload: TimelineResponse): TimelineEntry[] {
-  const checkInEntries: TimelineEntry[] = payload.checkIns.map((checkIn) => {
-    const eventLabel = checkIn.eventTags.length > 0
-      ? checkIn.eventTags.map((eventTag) => QUICK_CHECK_IN_EVENT_LABELS[eventTag]).join(", ")
-      : null;
-
-    return {
-      id: checkIn.id,
-      occurredAt: checkIn.createdAt,
-      chip: "Check-in",
-      title: `Check-in · ${stateLabel(checkIn.stateTag)}`,
-      body: checkIn.note ?? eventLabel,
-      href: "/check-ins",
-      weight: checkIn.note ? undefined : "low",
-    };
-  });
-
-  const journalEntries: TimelineEntry[] = (payload.journalEntries ?? []).map((entry) => ({
-    id: entry.id,
-    occurredAt: entry.authoredAt ?? entry.createdAt,
-    chip: "Journal",
-    title: entry.title ?? "Journal entry",
-    body: entry.preview,
-    href: "/journal",
-  }));
-
-  const appEntries: TimelineEntry[] = (payload.appActivity ?? []).map((entry) => ({
-    id: entry.id,
-    occurredAt: entry.startedAt,
-    chip: entry.surfaceType === "explore_chat" ? "Explore" : "Journal Chat",
-    title: entry.label ?? (entry.surfaceType === "explore_chat" ? "Explore session" : "Journal chat"),
-    body: entry.preview,
-    href: entry.surfaceType === "explore_chat" ? "/explore" : "/journal-chat",
-  }));
-
-  const importedEntries: TimelineEntry[] = payload.importedActivity.map((entry) => ({
-    id: entry.id,
-    occurredAt: entry.startedAt,
-    chip: "Imported",
-    title: entry.label ?? "Imported conversation",
-    body: entry.preview,
-    href: "/library",
-    weight: "low",
-  }));
-
-  return [...checkInEntries, ...journalEntries, ...appEntries, ...importedEntries].sort(
-    (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
-  );
-}
-
 export default function TimelineSurface() {
   const [windowValue, setWindowValue] = useState<TimelineWindow>("30d");
   const [isLoading, setIsLoading] = useState(true);
@@ -217,13 +132,10 @@ export default function TimelineSurface() {
       setErrorMessage(null);
 
       try {
-        const response = await fetch(
-          `/api/timeline?window=${windowValue}&includeAppActivity=true&includeJournalEntries=true`,
-          {
-            method: "GET",
-            cache: "no-store",
-          }
-        );
+        const response = await fetch(buildTimelineRequestUrl(windowValue), {
+          method: "GET",
+          cache: "no-store",
+        });
 
         if (!response.ok) {
           throw new Error("Could not load timeline.");
@@ -293,6 +205,19 @@ export default function TimelineSurface() {
     label: stateLabel(item.tag),
     count: item.count,
   }));
+  const topEventChips = (rhythms?.topEventTags ?? []).map((item) => ({
+    label: QUICK_CHECK_IN_EVENT_LABELS[item.tag],
+    count: item.count,
+  }));
+  const totalCheckIns = payload?.stateSummary.totalCheckIns ?? 0;
+  const rhythmReady = hasEnoughCheckInsForRhythm(totalCheckIns);
+  const checkInDayCount = useMemo(() => {
+    const checkIns = payload?.checkIns ?? [];
+    const dayKeys = new Set(
+      checkIns.map((item) => toDateKey(item.createdAt)).filter((item) => item !== "invalid")
+    );
+    return dayKeys.size;
+  }, [payload?.checkIns]);
 
   return (
     <div className="px-12 py-10 max-w-[1180px] mx-auto animate-fade-in">
@@ -319,28 +244,46 @@ export default function TimelineSurface() {
           <div>
             <div className="label-meta mb-1">Recent rhythms</div>
             <div className="text-[15px]">Check-in cadence · last {windowValue}</div>
+            <div className="label-meta text-meta mt-1">Based on check-ins in this window.</div>
           </div>
           <div className="flex gap-4 text-right">
-            <Stat label="Active days" value={String(groupedActivity.length)} />
+            <Stat label="Check-in days" value={String(checkInDayCount)} />
             <Stat label="Last check-in" value={formatRecentLabel(rhythms?.lastCheckInAt ?? null)} />
           </div>
         </div>
-        <RhythmGraph seed={windowValue === "14d" ? 3 : windowValue === "90d" ? 8 : 4} height={150} />
-        <div className="flex gap-2 flex-wrap mt-4">
-          {topStateChips.length > 0 ? (
-            topStateChips.map((chip) => (
-              <span key={chip.label} className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
-                {chip.label} <span className="text-cyan/70">×{chip.count}</span>
-              </span>
-            ))
-          ) : (
-            <span className="label-meta text-meta">No check-ins in this window yet.</span>
-          )}
-        </div>
+        {!rhythmReady ? (
+          <div className="card-standard p-4 text-[13px] text-meta mt-4">Not enough check-ins to show a rhythm yet.</div>
+        ) : (
+          <div className="space-y-3 mt-4">
+            <div className="flex gap-2 flex-wrap">
+              {topStateChips.length > 0 ? (
+                topStateChips.map((chip) => (
+                  <span key={chip.label} className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
+                    {chip.label} <span className="text-cyan/70">×{chip.count}</span>
+                  </span>
+                ))
+              ) : (
+                <span className="label-meta text-meta">No check-ins in this window yet.</span>
+              )}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {topEventChips.length > 0 ? (
+                topEventChips.map((chip) => (
+                  <span key={chip.label} className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
+                    {chip.label} <span className="text-cyan/70">×{chip.count}</span>
+                  </span>
+                ))
+              ) : (
+                <span className="label-meta text-meta">No repeated events in this window yet.</span>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="mb-10">
         <SectionLabel>Possible links</SectionLabel>
+        <div className="label-meta text-meta mb-3">Based on check-ins in this window.</div>
         <div className="grid grid-cols-2 gap-3">
           {possibleLinks.length > 0 ? (
             possibleLinks.map((link, index) => (
@@ -412,14 +355,19 @@ export default function TimelineSurface() {
                       <div className={entry.weight === "low" ? "opacity-60" : ""}>
                         <div className="flex items-center gap-3 mb-1">
                           <span className="label-meta">{formatTime(entry.occurredAt)}</span>
-                          <Link href={entry.href} className="text-[14px] font-medium hover:text-cyan transition-colors">
-                            {entry.title}
-                          </Link>
+                          {entry.href ? (
+                            <Link href={entry.href} className="text-[14px] font-medium hover:text-cyan transition-colors">
+                              {entry.title}
+                            </Link>
+                          ) : (
+                            <span className="text-[14px] font-medium text-[hsl(216_11%_82%)]">{entry.title}</span>
+                          )}
                           <span className="label-meta text-cyan/70 px-2 h-5 rounded bg-[hsl(187_100%_50%/0.08)] inline-flex items-center">
                             {entry.chip}
                           </span>
                         </div>
                         {entry.body && <div className="text-[13px] text-meta leading-relaxed line-clamp-2">{entry.body}</div>}
+                        {!entry.href ? <div className="label-meta text-meta mt-1">No linked detail available yet.</div> : null}
                       </div>
                     </div>
                   ))}
