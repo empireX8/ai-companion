@@ -308,7 +308,9 @@ function ReceiptView({ detail }: { detail: Extract<LibraryDetailView, { kind: "r
 
       <SectionLabel>Supporting evidence</SectionLabel>
       {receipt.evidenceItems.length === 0 ? (
-        <div className="card-standard p-4 text-[13px] text-meta mb-6">No evidence items available.</div>
+        <div className="card-standard p-4 text-[13px] text-meta mb-6">
+          This item does not have linked evidence yet.
+        </div>
       ) : (
         <div className="space-y-3 mb-6">
           {receipt.evidenceItems.map((item, index) => {

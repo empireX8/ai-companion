@@ -328,8 +328,25 @@ export default function LibraryPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="card-standard px-6 py-14 text-center">
-              <div className="text-[14px] text-[hsl(216_11%_75%)] mb-1">Nothing matches these filters.</div>
-              <div className="label-meta text-meta">Try removing a filter or widening the search.</div>
+              {cat === "Receipts" &&
+              query.trim().length === 0 &&
+              activeMoods.length === 0 &&
+              activeTags.length === 0 &&
+              activeLinks.length === 0 ? (
+                <>
+                  <div className="text-[14px] text-[hsl(216_11%_75%)] mb-1">
+                    No backend receipts yet.
+                  </div>
+                  <div className="label-meta text-meta">
+                    Receipts appear when linked evidence is available.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-[14px] text-[hsl(216_11%_75%)] mb-1">Nothing matches these filters.</div>
+                  <div className="label-meta text-meta">Try removing a filter or widening the search.</div>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-2">

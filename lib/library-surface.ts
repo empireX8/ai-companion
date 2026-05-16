@@ -1,5 +1,5 @@
-import { QUICK_CHECK_IN_EVENT_LABELS, QUICK_CHECK_IN_STATE_LABELS, type QuickCheckInView } from "@/lib/quick-check-ins";
-import { toJournalPreview, type JournalEntryView } from "@/lib/journal-ui";
+import { QUICK_CHECK_IN_EVENT_LABELS, QUICK_CHECK_IN_STATE_LABELS, type QuickCheckInView } from "./quick-check-ins";
+import { toJournalPreview, type JournalEntryView } from "./journal-ui";
 import { computeContradictionTitle } from "./contradiction-title-adapter";
 
 type SessionOrigin = "APP" | "IMPORTED_ARCHIVE";
@@ -65,7 +65,7 @@ export type LibraryDetailView =
 
 // ── Receipt types ──────────────────────────────────────────────────────────────
 
-export type ReceiptKind = "pattern" | "tension" | "action" | "surfacing";
+export type ReceiptKind = "pattern" | "tension";
 
 export type LibraryReceiptDetail = {
   receiptKind: ReceiptKind;
@@ -92,7 +92,7 @@ type PatternReceiptSource = {
   source: string;
   sessionId: string | null;
   messageId: string | null;
-  journalEntryId?: string | null;
+  journalEntryId: string | null;
   quote: string | null;
   createdAt: string;
 };
@@ -134,14 +134,6 @@ type ContradictionListPayload =
       items?: ContradictionListItemSource[];
     };
 
-type ActionSource = {
-  id: string;
-  title: string;
-  linkedClaimId: string | null;
-  linkedClaimSummary: string | null;
-  linkedSourceLabel: string;
-};
-
 // ── Fetch helpers ──────────────────────────────────────────────────────────────
 
 async function getJson<T>(url: string): Promise<T> {
@@ -164,9 +156,9 @@ async function fetchSessions(url: string): Promise<SessionListItem[]> {
   return getJson<SessionListItem[]>(url);
 }
 
-async function fetchPatternsData(): Promise<{ sections: Array<{ claims: PatternClaimSource[] }> } | null> {
+async function fetchPatternsData(): Promise<unknown | null> {
   try {
-    return await getJson<{ sections: Array<{ claims: PatternClaimSource[] }> }>("/api/patterns");
+    return await getJson<unknown>("/api/patterns");
   } catch {
     return null;
   }
@@ -175,14 +167,6 @@ async function fetchPatternsData(): Promise<{ sections: Array<{ claims: PatternC
 async function fetchContradictionDetail(id: string): Promise<ContradictionDetailSource | null> {
   try {
     return await getJson<ContradictionDetailSource>(`/api/contradiction/${id}`);
-  } catch {
-    return null;
-  }
-}
-
-async function fetchActionsData(): Promise<{ stabilizeNow: ActionSource[]; buildForward: ActionSource[] } | null> {
-  try {
-    return await getJson<{ stabilizeNow: ActionSource[]; buildForward: ActionSource[] }>("/api/actions");
   } catch {
     return null;
   }
@@ -254,7 +238,7 @@ function buildItemId(prefix: string, sourceId: string): string {
 }
 
 /** Known multi-part prefixes that contain hyphens. */
-const MULTI_PART_PREFIXES = ["receipt-pattern", "receipt-tension", "receipt-action"] as const;
+const MULTI_PART_PREFIXES = ["receipt-pattern", "receipt-tension"] as const;
 
 function parseItemId(itemId: string): { prefix: string; sourceId: string } | null {
   // Check multi-part prefixes first (they contain hyphens)
@@ -306,6 +290,188 @@ function readContradictionItems(
   return [];
 }
 
+function readPatternClaims(payload: unknown): PatternClaimSource[] {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const sections = (payload as { sections?: unknown }).sections;
+  if (!Array.isArray(sections)) {
+    return [];
+  }
+
+  const claims: PatternClaimSource[] = [];
+  for (const section of sections) {
+    const sectionClaims = (section as { claims?: unknown })?.claims;
+    if (!Array.isArray(sectionClaims)) {
+      continue;
+    }
+
+    for (const claim of sectionClaims) {
+      if (!claim || typeof claim !== "object") {
+        continue;
+      }
+
+      const raw = claim as {
+        id?: unknown;
+        summary?: unknown;
+        strengthLevel?: unknown;
+        evidenceCount?: unknown;
+        receipts?: unknown;
+      };
+
+      if (typeof raw.id !== "string" || typeof raw.summary !== "string") {
+        continue;
+      }
+
+      const receipts = Array.isArray(raw.receipts)
+        ? raw.receipts
+            .map((receipt) => {
+              if (!receipt || typeof receipt !== "object") {
+                return null;
+              }
+
+              const maybe = receipt as {
+                id?: unknown;
+                source?: unknown;
+                sessionId?: unknown;
+                messageId?: unknown;
+                journalEntryId?: unknown;
+                quote?: unknown;
+                createdAt?: unknown;
+              };
+
+              if (
+                typeof maybe.id !== "string" ||
+                typeof maybe.source !== "string" ||
+                typeof maybe.createdAt !== "string"
+              ) {
+                return null;
+              }
+
+              return {
+                id: maybe.id,
+                source: maybe.source,
+                sessionId:
+                  typeof maybe.sessionId === "string" ? maybe.sessionId : null,
+                messageId:
+                  typeof maybe.messageId === "string" ? maybe.messageId : null,
+                journalEntryId:
+                  typeof maybe.journalEntryId === "string"
+                    ? maybe.journalEntryId
+                    : null,
+                quote: typeof maybe.quote === "string" ? maybe.quote : null,
+                createdAt: maybe.createdAt,
+              } satisfies PatternReceiptSource;
+            })
+            .filter((receipt): receipt is PatternReceiptSource =>
+              Boolean(receipt)
+            )
+        : [];
+
+      claims.push({
+        id: raw.id,
+        summary: raw.summary,
+        strengthLevel:
+          typeof raw.strengthLevel === "string"
+            ? raw.strengthLevel
+            : "tentative",
+        evidenceCount:
+          typeof raw.evidenceCount === "number" &&
+          Number.isFinite(raw.evidenceCount)
+            ? raw.evidenceCount
+            : receipts.length,
+        receipts,
+      });
+    }
+  }
+
+  return claims;
+}
+
+function readContradictionEvidence(
+  detail: ContradictionDetailSource | null
+): ContradictionEvidenceSource[] {
+  const rawEvidence = detail?.evidence;
+  if (!Array.isArray(rawEvidence)) {
+    return [];
+  }
+
+  return rawEvidence
+    .map((evidence) => {
+      if (!evidence || typeof evidence !== "object") {
+        return null;
+      }
+
+      const maybe = evidence as {
+        id?: unknown;
+        createdAt?: unknown;
+        source?: unknown;
+        quote?: unknown;
+        sessionId?: unknown;
+        messageId?: unknown;
+      };
+
+      if (
+        typeof maybe.id !== "string" ||
+        typeof maybe.createdAt !== "string" ||
+        typeof maybe.source !== "string"
+      ) {
+        return null;
+      }
+
+      return {
+        id: maybe.id,
+        createdAt: maybe.createdAt,
+        source: maybe.source,
+        quote: typeof maybe.quote === "string" ? maybe.quote : null,
+        sessionId: typeof maybe.sessionId === "string" ? maybe.sessionId : null,
+        messageId: typeof maybe.messageId === "string" ? maybe.messageId : null,
+      } satisfies ContradictionEvidenceSource;
+    })
+    .filter((item): item is ContradictionEvidenceSource => Boolean(item));
+}
+
+type EvidenceSummarySource = {
+  createdAt: string | null;
+  quote: string | null;
+};
+
+function summarizeEvidenceSources(items: EvidenceSummarySource[]): {
+  latestSourceDate: string | null;
+  previewQuote: string | null;
+} {
+  const normalized = items.map((item) => ({
+    createdAt: item.createdAt,
+    time: parseIsoTime(item.createdAt),
+    quote: trimOrNull(item.quote),
+  }));
+
+  const sortedByNewest = [...normalized].sort((left, right) => {
+    if (right.time !== left.time) {
+      return right.time - left.time;
+    }
+    return (right.createdAt ?? "").localeCompare(left.createdAt ?? "");
+  });
+
+  const latestWithDate = sortedByNewest.find((item) => item.time > 0) ?? null;
+  const previewQuote =
+    sortedByNewest.find((item) => item.quote !== null)?.quote ?? null;
+
+  return {
+    latestSourceDate: latestWithDate?.createdAt ?? null,
+    previewQuote,
+  };
+}
+
+function toReceiptDateLabel(createdAt: string | null): string {
+  return createdAt ? formatDate(createdAt) : "Unknown";
+}
+
+function toReceiptCreatedAt(createdAt: string | null): string {
+  return createdAt ?? "";
+}
+
 // ── Receipt fetching ───────────────────────────────────────────────────────────
 
 export async function fetchReceiptItems(): Promise<LibraryItemView[]> {
@@ -313,32 +479,38 @@ export async function fetchReceiptItems(): Promise<LibraryItemView[]> {
 
   // 1. Pattern claim receipts
   const patternsData = await fetchPatternsData();
-  if (patternsData) {
-    for (const section of patternsData.sections) {
-      for (const claim of section.claims) {
-        if (claim.receipts.length === 0) continue;
-
-        const receipt = claim.receipts[0];
-        const createdAt = receipt.createdAt;
-        const quote = trimOrNull(receipt.quote);
-        const preview = quote ?? clampText(normalizeText(claim.summary), 96);
-
-        items.push({
-          id: buildItemId("receipt-pattern", claim.id),
-          sourceId: claim.id,
-          type: "Receipts",
-          date: formatDate(createdAt),
-          sortKey: parseIsoTime(createdAt),
-          title: truncate(normalizeText(claim.summary), 120),
-          preview,
-          mood: null,
-          tags: ["pattern"],
-          signals: claim.evidenceCount,
-          linked: [{ kind: "Pattern", label: clampText(normalizeText(claim.summary), 60) }],
-          createdAt,
-        });
-      }
+  for (const claim of readPatternClaims(patternsData)) {
+    const signals = Math.max(claim.evidenceCount, claim.receipts.length);
+    if (signals <= 0) {
+      continue;
     }
+
+    const evidenceSummary = summarizeEvidenceSources(
+      claim.receipts.map((receipt) => ({
+        createdAt: receipt.createdAt,
+        quote: receipt.quote,
+      }))
+    );
+
+    items.push({
+      id: buildItemId("receipt-pattern", claim.id),
+      sourceId: claim.id,
+      type: "Receipts",
+      date: toReceiptDateLabel(evidenceSummary.latestSourceDate),
+      sortKey: parseIsoTime(evidenceSummary.latestSourceDate),
+      title: truncate(normalizeText(claim.summary), 120),
+      preview: evidenceSummary.previewQuote,
+      mood: null,
+      tags: ["pattern"],
+      signals,
+      linked: [
+        {
+          kind: "Pattern",
+          label: clampText(normalizeText(claim.summary), 60),
+        },
+      ],
+      createdAt: toReceiptCreatedAt(evidenceSummary.latestSourceDate),
+    });
   }
 
   // 2. Tension evidence receipts
@@ -349,53 +521,33 @@ export async function fetchReceiptItems(): Promise<LibraryItemView[]> {
     const tensions = readContradictionItems(tensionPayload);
     for (const tension of tensions) {
       const detail = await fetchContradictionDetail(tension.id);
-      if (!detail || detail.evidence.length === 0) continue;
+      const evidence = readContradictionEvidence(detail);
+      if (evidence.length === 0) continue;
 
-      const evidence = detail.evidence[0];
-      const quote = trimOrNull(evidence.quote);
-      const preview = quote ?? clampText(normalizeText(tension.title), 96);
+      const evidenceSummary = summarizeEvidenceSources(
+        evidence.map((item) => ({
+          createdAt: item.createdAt,
+          quote: item.quote,
+        }))
+      );
 
       items.push({
         id: buildItemId("receipt-tension", tension.id),
         sourceId: tension.id,
         type: "Receipts",
-        date: formatDate(evidence.createdAt),
-        sortKey: parseIsoTime(evidence.createdAt),
+        date: toReceiptDateLabel(evidenceSummary.latestSourceDate),
+        sortKey: parseIsoTime(evidenceSummary.latestSourceDate),
         title: truncate(normalizeText(computeContradictionTitle(tension)), 120),
-        preview,
+        preview: evidenceSummary.previewQuote,
         mood: null,
         tags: ["tension"],
-        signals: detail.evidence.length,
+        signals: evidence.length,
         linked: [{ kind: "Tension", label: clampText(normalizeText(computeContradictionTitle(tension)), 60) }],
-        createdAt: evidence.createdAt,
+        createdAt: toReceiptCreatedAt(evidenceSummary.latestSourceDate),
       });
     }
   } catch {
     // Tension receipts are optional
-  }
-
-  // 3. Action receipts (only when linked data exists)
-  const actionsData = await fetchActionsData();
-  if (actionsData) {
-    const allActions = [...actionsData.stabilizeNow, ...actionsData.buildForward];
-    for (const action of allActions) {
-      if (!action.linkedClaimId && !action.linkedClaimSummary) continue;
-
-      items.push({
-        id: buildItemId("receipt-action", action.id),
-        sourceId: action.id,
-        type: "Receipts",
-        date: "recent",
-        sortKey: Date.now(),
-        title: truncate(normalizeText(action.title), 120),
-        preview: action.linkedClaimSummary ?? action.linkedSourceLabel,
-        mood: null,
-        tags: ["action"],
-        signals: 1,
-        linked: [],
-        createdAt: new Date().toISOString(),
-      });
-    }
   }
 
   return items.sort((left, right) => right.sortKey - left.sortKey);
@@ -411,23 +563,21 @@ export async function fetchReceiptDetail(itemId: string): Promise<LibraryReceipt
     const patternsData = await fetchPatternsData();
     if (!patternsData) return null;
 
-    for (const section of patternsData.sections) {
-      for (const claim of section.claims) {
-        if (claim.id !== sourceId) continue;
+    for (const claim of readPatternClaims(patternsData)) {
+      if (claim.id !== sourceId) continue;
 
-        return {
-          receiptKind: "pattern",
-          conclusionTitle: normalizeText(claim.summary),
-          conclusionType: "Pattern",
-          evidenceItems: claim.receipts.map((r) => ({
-            quote: r.quote,
-            sourceLabel: r.source?.replace(/_/g, " ") ?? null,
-            sourceDate: r.createdAt,
-          })),
-          linkedHref: `/patterns/${claim.id}`,
-          linkedLabel: "View pattern detail",
-        };
-      }
+      return {
+        receiptKind: "pattern",
+        conclusionTitle: normalizeText(claim.summary),
+        conclusionType: "Pattern",
+        evidenceItems: claim.receipts.map((r) => ({
+          quote: r.quote,
+          sourceLabel: r.source?.replace(/_/g, " ") ?? null,
+          sourceDate: r.createdAt,
+        })),
+        linkedHref: `/patterns/${claim.id}`,
+        linkedLabel: "View pattern detail",
+      };
     }
     return null;
   }
@@ -436,41 +586,19 @@ export async function fetchReceiptDetail(itemId: string): Promise<LibraryReceipt
     const detail = await fetchContradictionDetail(sourceId);
     if (!detail) return null;
 
+    const evidence = readContradictionEvidence(detail);
+
     return {
       receiptKind: "tension",
       conclusionTitle: normalizeText(computeContradictionTitle(detail)),
       conclusionType: "Tension",
-      evidenceItems: detail.evidence.map((e) => ({
+      evidenceItems: evidence.map((e) => ({
         quote: e.quote,
         sourceLabel: e.source?.replace(/_/g, " ") ?? null,
         sourceDate: e.createdAt,
       })),
       linkedHref: `/contradictions/${detail.id}`,
       linkedLabel: "View tension detail",
-    };
-  }
-
-  if (prefix === "receipt-action") {
-    const actionsData = await fetchActionsData();
-    if (!actionsData) return null;
-
-    const allActions = [...actionsData.stabilizeNow, ...actionsData.buildForward];
-    const action = allActions.find((a) => a.id === sourceId);
-    if (!action || !action.linkedClaimSummary) return null;
-
-    return {
-      receiptKind: "action",
-      conclusionTitle: normalizeText(action.title),
-      conclusionType: "Action",
-      evidenceItems: [
-        {
-          quote: action.linkedClaimSummary,
-          sourceLabel: action.linkedSourceLabel,
-          sourceDate: null,
-        },
-      ],
-      linkedHref: action.linkedClaimId ? `/patterns/${action.linkedClaimId}` : null,
-      linkedLabel: action.linkedClaimId ? "View source pattern" : null,
     };
   }
 
@@ -615,9 +743,19 @@ export async function fetchLibraryDetail(itemId: string): Promise<LibraryDetailV
   }
 
   // Receipt detail
-  if (parsedId.prefix === "receipt-pattern" || parsedId.prefix === "receipt-tension" || parsedId.prefix === "receipt-action") {
+  if (
+    parsedId.prefix === "receipt-pattern" ||
+    parsedId.prefix === "receipt-tension"
+  ) {
     const receipt = await fetchReceiptDetail(itemId);
     if (!receipt) return null;
+
+    const evidenceSummary = summarizeEvidenceSources(
+      receipt.evidenceItems.map((item) => ({
+        createdAt: item.sourceDate,
+        quote: item.quote,
+      }))
+    );
 
     return {
       kind: "receipt",
@@ -625,15 +763,15 @@ export async function fetchLibraryDetail(itemId: string): Promise<LibraryDetailV
         id: itemId,
         sourceId: parsedId.sourceId,
         type: "Receipts",
-        date: "recent",
-        sortKey: Date.now(),
+        date: toReceiptDateLabel(evidenceSummary.latestSourceDate),
+        sortKey: parseIsoTime(evidenceSummary.latestSourceDate),
         title: truncate(receipt.conclusionTitle, 120),
-        preview: receipt.evidenceItems[0]?.quote ?? null,
+        preview: evidenceSummary.previewQuote,
         mood: null,
         tags: [receipt.receiptKind],
         signals: receipt.evidenceItems.length,
         linked: [],
-        createdAt: new Date().toISOString(),
+        createdAt: toReceiptCreatedAt(evidenceSummary.latestSourceDate),
       },
       receipt,
     };
