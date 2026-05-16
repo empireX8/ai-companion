@@ -1,7 +1,14 @@
 "use client";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
-import { toJournalPreview } from "@/lib/journal-ui";
+import {
+  buildTodaySurfacingCards,
+  TODAY_SURFACING_ENDPOINTS,
+  type TodayJournalEntry,
+  type TodayPatternsResponse,
+  type TodaySurfacingCard,
+  type TodayTopContradiction,
+} from "@/lib/today-surface";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
 import { ArrowUpRight, Mic, Image, Receipt } from "lucide-react";
@@ -32,66 +39,6 @@ const DISPLAY_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
 });
 
-const META_DATE = new Intl.DateTimeFormat("en-GB", {
-  month: "short",
-  day: "numeric",
-  timeZone: "Europe/London",
-});
-
-type JournalEntry = {
-  id: string;
-  title: string | null;
-  body: string;
-  createdAt: string;
-  authoredAt: string | null;
-};
-
-type TopContradiction = {
-  id: string;
-  title: string;
-  sideA: string;
-  sideB: string;
-  status: string;
-  lastEvidenceAt: string | null;
-  lastTouchedAt: string;
-};
-
-type PatternClaim = {
-  id: string;
-  summary: string;
-  strengthLevel: "tentative" | "developing" | "established";
-  evidenceCount: number;
-};
-
-type PatternSection = {
-  claims: PatternClaim[];
-};
-
-type PatternsResponse = {
-  sections: PatternSection[];
-};
-
-type SurfacingCard = {
-  kind: string;
-  title: string;
-  body: string;
-  meta: string;
-  href: string;
-};
-
-function formatShortDate(iso: string | null): string {
-  if (!iso) {
-    return "recently";
-  }
-
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) {
-    return "recently";
-  }
-
-  return META_DATE.format(parsed);
-}
-
 function normalizeText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -101,20 +48,6 @@ function clampText(value: string, max: number): string {
     return value;
   }
   return `${value.slice(0, max - 1).trimEnd()}…`;
-}
-
-function toTensionPreview(top: TopContradiction): string {
-  const combined = [normalizeText(top.sideA), normalizeText(top.sideB)].filter(Boolean).join(" · ");
-  if (!combined) {
-    return clampText(normalizeText(top.title), 220);
-  }
-  return clampText(combined, 220);
-}
-
-function strengthLabel(value: PatternClaim["strengthLevel"]): string {
-  if (value === "established") return "High";
-  if (value === "developing") return "Medium";
-  return "Emerging";
 }
 
 export default function Today() {
@@ -144,7 +77,7 @@ export default function Today() {
     }
   }, [voice.interimTranscript, voice.state]);
 
-  const [surfacingCards, setSurfacingCards] = useState<SurfacingCard[]>([]);
+  const [surfacingCards, setSurfacingCards] = useState<TodaySurfacingCard[]>([]);
   const [isLoadingSurfacing, setIsLoadingSurfacing] = useState(true);
   const [surfacingError, setSurfacingError] = useState<string | null>(null);
 
@@ -163,68 +96,45 @@ export default function Today() {
       setSurfacingError(null);
 
       const [journalResult, contradictionResult, patternsResult] = await Promise.allSettled([
-        fetch("/api/journal/entries?limit=1", { method: "GET", cache: "no-store" }),
-        fetch("/api/contradiction?top=3&mode=read_only", { method: "GET", cache: "no-store" }),
-        fetch("/api/patterns", { method: "GET", cache: "no-store" }),
+        fetch(TODAY_SURFACING_ENDPOINTS.journal, {
+          method: "GET",
+          cache: "no-store",
+        }),
+        fetch(TODAY_SURFACING_ENDPOINTS.contradiction, {
+          method: "GET",
+          cache: "no-store",
+        }),
+        fetch(TODAY_SURFACING_ENDPOINTS.patterns, {
+          method: "GET",
+          cache: "no-store",
+        }),
       ]);
 
       if (cancelled) {
         return;
       }
 
-      const nextCards: SurfacingCard[] = [];
+      let journalEntries: TodayJournalEntry[] = [];
+      let contradictions: TodayTopContradiction[] = [];
+      let patterns: TodayPatternsResponse | null = null;
 
       if (journalResult.status === "fulfilled" && journalResult.value.ok) {
-        const entries = (await journalResult.value.json()) as JournalEntry[];
-        const entry = entries[0];
-
-        if (entry) {
-          const createdAt = entry.authoredAt ?? entry.createdAt;
-          nextCards.push({
-            kind: "Recent Journal",
-            title: clampText((entry.title?.trim() || toJournalPreview(entry.body, 72) || "Journal entry").trim(), 170),
-            body: toJournalPreview(entry.body, 130),
-            meta: `Last touched · ${formatShortDate(createdAt)}`,
-            href: "/journal",
-          });
-        }
+        journalEntries = (await journalResult.value.json()) as TodayJournalEntry[];
       }
 
       if (contradictionResult.status === "fulfilled" && contradictionResult.value.ok) {
-        const contradictions = (await contradictionResult.value.json()) as TopContradiction[];
-        const top = contradictions[0];
-
-        if (top) {
-          nextCards.push({
-            kind: "Active Tension",
-            title: clampText(normalizeText(top.title), 170),
-            body: toTensionPreview(top),
-            meta: `${top.status.replace(/_/g, " ")} · ${formatShortDate(top.lastEvidenceAt ?? top.lastTouchedAt)}`,
-            href: `/contradictions/${top.id}`,
-          });
-        }
+        contradictions = (await contradictionResult.value.json()) as TodayTopContradiction[];
       }
 
       if (patternsResult.status === "fulfilled" && patternsResult.value.ok) {
-        const patterns = (await patternsResult.value.json()) as PatternsResponse;
-
-        const claims = patterns.sections.flatMap((section) => section.claims);
-        const topClaim = [...claims].sort((left, right) => right.evidenceCount - left.evidenceCount)[0];
-
-        if (topClaim) {
-          nextCards.push({
-            kind: "Recent Pattern",
-            title: clampText(normalizeText(topClaim.summary), 170),
-            body:
-              topClaim.evidenceCount > 0
-                ? `${topClaim.evidenceCount} evidence receipts in recent material.`
-                : "Early signal from recent material.",
-            meta: `Strength · ${strengthLabel(topClaim.strengthLevel)}`,
-            href: `/patterns/${topClaim.id}`,
-          });
-        }
+        patterns = (await patternsResult.value.json()) as TodayPatternsResponse;
       }
 
+      const nextCards = buildTodaySurfacingCards({
+        journalEntries,
+        contradictions,
+        patterns,
+      });
       setSurfacingCards(nextCards);
 
       if (nextCards.length === 0) {
@@ -389,19 +299,31 @@ export default function Today() {
         ) : (
           <div className="space-y-3">
             {surfacingCards.map((card) => {
-              const receiptHref =
-                card.kind === "Recent Pattern"
-                  ? `/library/receipt-pattern-${card.href.replace("/patterns/", "")}`
-                  : card.kind === "Active Tension"
-                    ? `/library/receipt-tension-${card.href.replace("/contradictions/", "")}`
-                    : null;
-
               return (
                 <div
                   key={`${card.kind}-${card.title}`}
                   className="card-surfaced p-5 hover:border-[hsl(187_100%_50%/0.32)] transition-colors"
                 >
-                  <Link href={card.href} className="block group">
+                  {card.detailHref ? (
+                    <Link href={card.detailHref} className="block group">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="label-meta mb-2 text-cyan/70">{card.kind}</div>
+                          <div className="text-[16px] font-medium mb-1.5 leading-snug line-clamp-2">
+                            {clampText(normalizeText(card.title), 170)}
+                          </div>
+                          <div className="text-[13.5px] text-[hsl(216_11%_65%)] leading-relaxed line-clamp-3">
+                            {clampText(normalizeText(card.body), 220)}
+                          </div>
+                          <div className="label-meta mt-3">{card.meta}</div>
+                        </div>
+                        <ArrowUpRight
+                          className="h-4 w-4 text-meta group-hover:text-cyan transition-colors shrink-0"
+                          strokeWidth={1.5}
+                        />
+                      </div>
+                    </Link>
+                  ) : (
                     <div className="flex items-start gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="label-meta mb-2 text-cyan/70">{card.kind}</div>
@@ -412,14 +334,14 @@ export default function Today() {
                           {clampText(normalizeText(card.body), 220)}
                         </div>
                         <div className="label-meta mt-3">{card.meta}</div>
+                        <div className="label-meta text-meta mt-2">No linked detail available yet.</div>
                       </div>
-                      <ArrowUpRight className="h-4 w-4 text-meta group-hover:text-cyan transition-colors shrink-0" strokeWidth={1.5} />
                     </div>
-                  </Link>
-                  {receiptHref ? (
+                  )}
+                  {card.receiptHref ? (
                     <div className="mt-3 pt-3 border-t hairline">
                       <Link
-                        href={receiptHref}
+                        href={card.receiptHref}
                         className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
                       >
                         <Receipt className="h-3 w-3" strokeWidth={1.5} />
