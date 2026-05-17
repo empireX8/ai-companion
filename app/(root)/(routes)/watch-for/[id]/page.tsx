@@ -9,6 +9,7 @@ import {
   buildLinkedObjectHref,
   formatFieldworkStatus,
   formatLinkedObjectType,
+  WATCH_FOR_VISIBLE_STATUSES,
 } from "@/lib/public-intelligence-safe-slice";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +47,11 @@ export default async function WatchForDetailPage({
 
   const { id } = await params;
   const item = await prismadb.fieldworkAssignment.findFirst({
-    where: { id, userId },
+    where: {
+      id,
+      userId,
+      status: { in: WATCH_FOR_VISIBLE_STATUSES },
+    },
     select: {
       id: true,
       prompt: true,
@@ -57,7 +62,6 @@ export default async function WatchForDetailPage({
       priority: true,
       observationNote: true,
       observationOutcome: true,
-      completedAt: true,
       expiresAt: true,
       createdAt: true,
       updatedAt: true,
@@ -130,7 +134,6 @@ export default async function WatchForDetailPage({
       <section>
         <SectionLabel>Timing</SectionLabel>
         <div className="card-standard p-5 text-[13.5px] text-[hsl(216_11%_70%)] space-y-2">
-          <div>Completed at {formatDateTime(item.completedAt)}</div>
           <div>Expires at {formatDateTime(item.expiresAt)}</div>
         </div>
       </section>

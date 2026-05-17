@@ -2,10 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const authMock = vi.fn();
+const notFoundMock = vi.fn(() => {
+  throw new Error("NEXT_NOT_FOUND");
+});
 
 const prismaMock = {
   investigation: {
     findMany: vi.fn(),
+    findFirst: vi.fn(),
   },
 };
 
@@ -31,11 +35,16 @@ vi.mock("../prismadb", () => ({
   default: prismaMock,
 }));
 
+vi.mock("next/navigation", () => ({
+  notFound: notFoundMock,
+}));
+
 describe("Phase 3 Active Questions page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ userId: "user-1" });
     prismaMock.investigation.findMany.mockResolvedValue([]);
+    prismaMock.investigation.findFirst.mockResolvedValue(null);
   });
 
   it("filters to authenticated user-owned investigation records and shows honest empty state", async () => {
@@ -85,5 +94,27 @@ describe("Phase 3 Active Questions page", () => {
     expect(html).toContain("/active-questions/inv-1");
     expect(html).toContain("Observe shutdown patterns");
     expect(html).not.toContain("inv-from-title should never become an ID");
+  });
+
+  it("hides detail rows outside first-slice statuses through the same not-found path", async () => {
+    const page = await import(
+      "../../app/(root)/(routes)/active-questions/[id]/page"
+    );
+
+    await expect(
+      page.default({ params: Promise.resolve({ id: "inv-resolved" }) })
+    ).rejects.toThrow("NEXT_NOT_FOUND");
+
+    expect(prismaMock.investigation.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: "inv-resolved",
+          userId: "user-1",
+          status: {
+            in: ["open", "gathering_evidence", "testing", "resolving", "reopened"],
+          },
+        },
+      })
+    );
   });
 });

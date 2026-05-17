@@ -2,10 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const authMock = vi.fn();
+const notFoundMock = vi.fn(() => {
+  throw new Error("NEXT_NOT_FOUND");
+});
 
 const prismaMock = {
   fieldworkAssignment: {
     findMany: vi.fn(),
+    findFirst: vi.fn(),
   },
 };
 
@@ -31,11 +35,16 @@ vi.mock("../prismadb", () => ({
   default: prismaMock,
 }));
 
+vi.mock("next/navigation", () => ({
+  notFound: notFoundMock,
+}));
+
 describe("Phase 3 Watch For page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ userId: "user-1" });
     prismaMock.fieldworkAssignment.findMany.mockResolvedValue([]);
+    prismaMock.fieldworkAssignment.findFirst.mockResolvedValue(null);
   });
 
   it("filters to authenticated user-owned watch-for records and shows honest empty state", async () => {
@@ -97,5 +106,49 @@ describe("Phase 3 Watch For page", () => {
     expect(html).toContain("umc-internal-1");
     expect(html).toContain("No linked detail available yet.");
     expect(html).not.toContain("fw-from-prompt should never become an ID");
+  });
+
+  it("hides detail rows outside assigned/active through the same not-found path", async () => {
+    const page = await import("../../app/(root)/(routes)/watch-for/[id]/page");
+
+    await expect(
+      page.default({ params: Promise.resolve({ id: "fw-completed" }) })
+    ).rejects.toThrow("NEXT_NOT_FOUND");
+
+    expect(prismaMock.fieldworkAssignment.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: "fw-completed",
+          userId: "user-1",
+          status: { in: ["assigned", "active"] },
+        },
+      })
+    );
+  });
+
+  it("does not render completion framing in watch-for detail", async () => {
+    prismaMock.fieldworkAssignment.findFirst.mockResolvedValueOnce({
+      id: "fw-1",
+      prompt: "Track post-meeting crash",
+      reason: "Validate energy-drop hypothesis",
+      status: "assigned",
+      linkedObjectType: "investigation",
+      linkedObjectId: "inv-12",
+      priority: 1,
+      observationNote: null,
+      observationOutcome: null,
+      expiresAt: new Date("2026-05-20T09:00:00.000Z"),
+      createdAt: new Date("2026-05-17T09:00:00.000Z"),
+      updatedAt: new Date("2026-05-17T10:00:00.000Z"),
+    });
+
+    const page = await import("../../app/(root)/(routes)/watch-for/[id]/page");
+    const element = await page.default({
+      params: Promise.resolve({ id: "fw-1" }),
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Expires at");
+    expect(html).not.toContain("Completed at");
   });
 });

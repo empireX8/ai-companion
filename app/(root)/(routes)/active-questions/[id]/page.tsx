@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import prismadb from "@/lib/prismadb";
 import {
+  ACTIVE_QUESTION_VISIBLE_STATUSES,
   buildLinkedObjectHref,
   toActiveQuestionDetailItem,
 } from "@/lib/public-intelligence-safe-slice";
@@ -57,7 +58,11 @@ export default async function ActiveQuestionDetailPage({
 
   const { id } = await params;
   const row = await prismadb.investigation.findFirst({
-    where: { id, userId },
+    where: {
+      id,
+      userId,
+      status: { in: ACTIVE_QUESTION_VISIBLE_STATUSES },
+    },
     select: {
       id: true,
       title: true,

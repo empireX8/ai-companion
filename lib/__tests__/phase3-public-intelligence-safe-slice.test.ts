@@ -121,16 +121,30 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
       ),
       "utf8"
     );
+    const activeQuestionDetailSource = readFileSync(
+      path.join(
+        process.cwd(),
+        "app/(root)/(routes)/active-questions/[id]/page.tsx"
+      ),
+      "utf8"
+    );
     const watchForSource = readFileSync(
       path.join(process.cwd(), "app/(root)/(routes)/watch-for/page.tsx"),
       "utf8"
     );
+    const watchForDetailSource = readFileSync(
+      path.join(process.cwd(), "app/(root)/(routes)/watch-for/[id]/page.tsx"),
+      "utf8"
+    );
 
-    const combined = `${activeQuestionsSource}\n${watchForSource}`;
+    const combined =
+      `${activeQuestionsSource}\n` +
+      `${activeQuestionDetailSource}\n` +
+      `${watchForSource}\n` +
+      `${watchForDetailSource}`;
     expect(combined.includes("/api/internal/user-map/review-candidates")).toBe(false);
     expect(combined.includes("/api/user-map")).toBe(false);
     expect(combined.includes("internal_only")).toBe(false);
     expect(combined.includes("receipt-action-")).toBe(false);
   });
 });
-
