@@ -2,6 +2,10 @@ import {
   FieldworkStatus,
   InvestigationStatus,
   UnderstandingLinkTargetType,
+  UserMapConfidenceLevel,
+  UserMapConclusionArea,
+  UserMapConclusionStatus,
+  type UserMapConclusion,
   type FieldworkAssignment,
   type Investigation,
 } from "@prisma/client";
@@ -54,6 +58,33 @@ type FieldworkListRecord = Pick<
   | "updatedAt"
 >;
 
+type UserMapListRecord = Pick<
+  UserMapConclusion,
+  | "id"
+  | "title"
+  | "summary"
+  | "area"
+  | "status"
+  | "confidenceLevel"
+  | "evidenceCount"
+  | "updatedAt"
+>;
+
+type UserMapDetailRecord = Pick<
+  UserMapConclusion,
+  | "id"
+  | "title"
+  | "summary"
+  | "area"
+  | "status"
+  | "confidenceLevel"
+  | "evidenceCount"
+  | "sourceDiversity"
+  | "timeSpreadDays"
+  | "createdAt"
+  | "updatedAt"
+>;
+
 function toNonEmptyId(value: string | null | undefined): string | null {
   if (typeof value !== "string") {
     return null;
@@ -86,6 +117,20 @@ export function formatLinkedObjectType(type: UnderstandingLinkTargetType): strin
   return toTitleCase(type);
 }
 
+export function formatUserMapArea(area: UserMapConclusionArea): string {
+  return toTitleCase(area);
+}
+
+export function formatUserMapStatus(status: UserMapConclusionStatus): string {
+  return toTitleCase(status);
+}
+
+export function formatUserMapConfidenceLevel(
+  confidenceLevel: UserMapConfidenceLevel
+): string {
+  return toTitleCase(confidenceLevel);
+}
+
 export function buildActiveQuestionDetailHref(id: string | null | undefined): string | null {
   const safeId = toNonEmptyId(id);
   return safeId ? `/active-questions/${safeId}` : null;
@@ -94,6 +139,11 @@ export function buildActiveQuestionDetailHref(id: string | null | undefined): st
 export function buildWatchForDetailHref(id: string | null | undefined): string | null {
   const safeId = toNonEmptyId(id);
   return safeId ? `/watch-for/${safeId}` : null;
+}
+
+export function buildYourMapDetailHref(id: string | null | undefined): string | null {
+  const safeId = toNonEmptyId(id);
+  return safeId ? `/your-map/${safeId}` : null;
 }
 
 export function buildLinkedObjectHref(input: {
@@ -249,3 +299,69 @@ export function toWatchForListItem(row: FieldworkListRecord): WatchForListItem |
   };
 }
 
+export type YourMapListItem = {
+  id: string;
+  title: string;
+  summary: string;
+  areaLabel: string;
+  statusLabel: string;
+  confidenceLevelLabel: string;
+  evidenceCount: number;
+  updatedAt: string;
+  detailHref: string;
+};
+
+export type YourMapDetailItem = {
+  id: string;
+  title: string;
+  summary: string;
+  areaLabel: string;
+  statusLabel: string;
+  confidenceLevelLabel: string;
+  evidenceCount: number;
+  sourceDiversity: number;
+  timeSpreadDays: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function toYourMapListItem(row: UserMapListRecord): YourMapListItem | null {
+  const safeId = toNonEmptyId(row.id);
+  const detailHref = buildYourMapDetailHref(safeId);
+  if (!safeId || !detailHref) {
+    return null;
+  }
+
+  return {
+    id: safeId,
+    title: row.title,
+    summary: row.summary,
+    areaLabel: formatUserMapArea(row.area),
+    statusLabel: formatUserMapStatus(row.status),
+    confidenceLevelLabel: formatUserMapConfidenceLevel(row.confidenceLevel),
+    evidenceCount: row.evidenceCount,
+    updatedAt: row.updatedAt.toISOString(),
+    detailHref,
+  };
+}
+
+export function toYourMapDetailItem(row: UserMapDetailRecord): YourMapDetailItem | null {
+  const safeId = toNonEmptyId(row.id);
+  if (!safeId) {
+    return null;
+  }
+
+  return {
+    id: safeId,
+    title: row.title,
+    summary: row.summary,
+    areaLabel: formatUserMapArea(row.area),
+    statusLabel: formatUserMapStatus(row.status),
+    confidenceLevelLabel: formatUserMapConfidenceLevel(row.confidenceLevel),
+    evidenceCount: row.evidenceCount,
+    sourceDiversity: row.sourceDiversity,
+    timeSpreadDays: row.timeSpreadDays,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
