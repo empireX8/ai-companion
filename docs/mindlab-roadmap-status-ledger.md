@@ -74,13 +74,13 @@ Must not be claimed as done:
 ## 5) Current Active Workstream
 
 Current active workstream (official label):
-- **Mobile parity / existing surface trust cleanup**
-- Existing-surface trust cleanup sub-pass is now closed/validated.
-- Current focus should move to a Phase 6 decision gate, not further trust-hotfix continuation unless a new blocker appears.
+- **Phase 3 public web intelligence surfaces (decision-gated next workstream)**
+- Existing-surface mobile trust cleanup sub-pass is closed/validated.
+- Do not continue the mobile trust-hotfix loop unless a new blocker is discovered.
 
 Do not label this as:
-- “Phase 3”
-- “Step 9 status”
+- “Step 10 Prompt”
+- any prompt-step status label
 
 ## 6) Update Protocol
 
@@ -94,21 +94,38 @@ Minimum update fields each time:
 - commit(s) and validation evidence
 - any newly introduced deferred gap
 
-## 7) Next Recommended Move
+## 7) Current Decision Gate (Next Workstream Decision)
+
+Decision recorded:
+- **Next workstream: Phase 3 public web intelligence surfaces.**
+
+Why this is the correct next move:
+- existing-surface mobile trust cleanup is closed/validated with no additional narrow repair required,
+- Phase 3 public intelligence surfaces remain partial,
+- broader mobile intelligence parity should follow stable upstream web/product contracts.
+
+Deferred until later phase gates:
+- new broad Phase 6 mobile intelligence pass,
+- Phase 4 Actions/Experiments semantic expansion,
+- Phase 5 continuity expansion for new Understanding objects,
+- Phase 7 agents/lenses.
+
+Guardrail:
+- do not continue trust-hotfix continuation work unless a new concrete blocker appears.
+
+Recommended next audit title:
+- **Phase 3 Public Intelligence Surfaces — Contract Audit**
+
+## 8) Next Recommended Move
 
 Recommendation:
-- **Run a Phase 6 decision gate: either return to broader Phase 3/public intelligence surfaces, or open a new scoped Phase 6 pass for broader mobile intelligence surfaces after upstream web/product surfaces exist.**
+- **Run: Phase 3 Public Intelligence Surfaces — Contract Audit.**
 
 Why this next:
-- web backend contracts for Today/Timeline/Library are stabilized,
-- existing-surface mobile trust cleanup is now closed/validated with no additional narrow repair required,
-- remaining open Phase 6 work is broader parity/intelligence scope, not trust-hotfix cleanup,
-- sequencing should now follow product-surface readiness and explicit scoped-pass definitions.
+- it is the first contract-level checkpoint needed to resume Phase 3 execution with phase-aware scope labels,
+- it avoids reopening closed trust-hotfix loops without new blocker evidence.
 
-Alternative (not primary now):
-- open another trust-hotfix patch only if a new concrete blocker is discovered.
-
-## 8) Evidence Pointers
+## 9) Evidence Pointers
 
 Web docs used for this ledger:
 - `docs/step2a-infrastructure-audit.md`
