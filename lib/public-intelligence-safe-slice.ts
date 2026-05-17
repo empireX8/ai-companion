@@ -1,6 +1,7 @@
 import {
   FieldworkStatus,
   InvestigationStatus,
+  ModelUpdateType,
   UnderstandingLinkTargetType,
   UserMapConfidenceLevel,
   UserMapConclusionArea,
@@ -8,6 +9,7 @@ import {
   type UserMapConclusion,
   type FieldworkAssignment,
   type Investigation,
+  type ModelUpdate,
 } from "@prisma/client";
 
 export const ACTIVE_QUESTION_VISIBLE_STATUSES: InvestigationStatus[] = [
@@ -56,6 +58,16 @@ type FieldworkListRecord = Pick<
   | "linkedObjectId"
   | "priority"
   | "updatedAt"
+>;
+
+type ModelUpdateListRecord = Pick<
+  ModelUpdate,
+  | "id"
+  | "updateType"
+  | "affectedObjectType"
+  | "affectedObjectId"
+  | "userFacingSummary"
+  | "createdAt"
 >;
 
 type UserMapListRecord = Pick<
@@ -117,6 +129,10 @@ export function formatLinkedObjectType(type: UnderstandingLinkTargetType): strin
   return toTitleCase(type);
 }
 
+export function formatModelUpdateType(type: ModelUpdateType): string {
+  return toTitleCase(type);
+}
+
 export function formatUserMapArea(area: UserMapConclusionArea): string {
   return toTitleCase(area);
 }
@@ -144,6 +160,28 @@ export function buildWatchForDetailHref(id: string | null | undefined): string |
 export function buildYourMapDetailHref(id: string | null | undefined): string | null {
   const safeId = toNonEmptyId(id);
   return safeId ? `/your-map/${safeId}` : null;
+}
+
+export function buildWhatChangedAffectedObjectHref(input: {
+  affectedObjectType: UnderstandingLinkTargetType;
+  affectedObjectId: string | null | undefined;
+}): string | null {
+  const safeId = toNonEmptyId(input.affectedObjectId);
+  if (!safeId) {
+    return null;
+  }
+
+  if (input.affectedObjectType === "usermap_conclusion") {
+    return buildYourMapDetailHref(safeId);
+  }
+  if (input.affectedObjectType === "pattern_claim") {
+    return `/patterns/${safeId}`;
+  }
+  if (input.affectedObjectType === "contradiction_node") {
+    return `/contradictions/${safeId}`;
+  }
+
+  return null;
 }
 
 export function buildLinkedObjectHref(input: {
@@ -325,6 +363,17 @@ export type YourMapDetailItem = {
   updatedAt: string;
 };
 
+export type WhatChangedListItem = {
+  id: string;
+  updateTypeLabel: string;
+  affectedObjectType: UnderstandingLinkTargetType;
+  affectedObjectTypeLabel: string;
+  affectedObjectId: string | null;
+  affectedObjectHref: string | null;
+  userFacingSummary: string;
+  createdAt: string;
+};
+
 export function toYourMapListItem(row: UserMapListRecord): YourMapListItem | null {
   const safeId = toNonEmptyId(row.id);
   const detailHref = buildYourMapDetailHref(safeId);
@@ -363,5 +412,30 @@ export function toYourMapDetailItem(row: UserMapDetailRecord): YourMapDetailItem
     timeSpreadDays: row.timeSpreadDays,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toWhatChangedListItem(
+  row: ModelUpdateListRecord
+): WhatChangedListItem | null {
+  const safeId = toNonEmptyId(row.id);
+  if (!safeId) {
+    return null;
+  }
+
+  const safeAffectedObjectId = toNonEmptyId(row.affectedObjectId);
+
+  return {
+    id: safeId,
+    updateTypeLabel: formatModelUpdateType(row.updateType),
+    affectedObjectType: row.affectedObjectType,
+    affectedObjectTypeLabel: formatLinkedObjectType(row.affectedObjectType),
+    affectedObjectId: safeAffectedObjectId,
+    affectedObjectHref: buildWhatChangedAffectedObjectHref({
+      affectedObjectType: row.affectedObjectType,
+      affectedObjectId: safeAffectedObjectId,
+    }),
+    userFacingSummary: row.userFacingSummary,
+    createdAt: row.createdAt.toISOString(),
   };
 }

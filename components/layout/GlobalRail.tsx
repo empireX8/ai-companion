@@ -16,6 +16,7 @@ import {
   Library,
   CircleHelp,
   Eye,
+  History,
   Map,
 } from "lucide-react";
 
@@ -34,6 +35,7 @@ const insightNav = [
   { href: "/active-questions", label: "Active Questions", icon: CircleHelp },
   { href: "/watch-for", label: "Watch For", icon: Eye },
   { href: "/your-map", label: "Your Map", icon: Map },
+  { href: "/what-changed", label: "What Changed", icon: History },
   { href: "/check-ins", label: "Check-ins", icon: CircleDot },
 ];
 

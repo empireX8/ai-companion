@@ -5,9 +5,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildActiveQuestionDetailHref,
   buildLinkedObjectHref,
+  buildWhatChangedAffectedObjectHref,
   buildYourMapDetailHref,
   buildWatchForDetailHref,
   toActiveQuestionListItem,
+  toWhatChangedListItem,
   toYourMapListItem,
   toWatchForListItem,
 } from "../public-intelligence-safe-slice";
@@ -24,6 +26,46 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
     expect(buildActiveQuestionDetailHref(undefined)).toBeNull();
     expect(buildWatchForDetailHref(null)).toBeNull();
     expect(buildYourMapDetailHref(undefined)).toBeNull();
+  });
+
+  it("maps what-changed affected-object links from allowlisted real IDs only", () => {
+    expect(
+      buildWhatChangedAffectedObjectHref({
+        affectedObjectType: "usermap_conclusion",
+        affectedObjectId: "umc-1",
+      })
+    ).toBe("/your-map/umc-1");
+    expect(
+      buildWhatChangedAffectedObjectHref({
+        affectedObjectType: "pattern_claim",
+        affectedObjectId: "pc-2",
+      })
+    ).toBe("/patterns/pc-2");
+    expect(
+      buildWhatChangedAffectedObjectHref({
+        affectedObjectType: "contradiction_node",
+        affectedObjectId: "cn-4",
+      })
+    ).toBe("/contradictions/cn-4");
+
+    expect(
+      buildWhatChangedAffectedObjectHref({
+        affectedObjectType: "model_update",
+        affectedObjectId: "mu-1",
+      })
+    ).toBeNull();
+    expect(
+      buildWhatChangedAffectedObjectHref({
+        affectedObjectType: "investigation",
+        affectedObjectId: "inv-9",
+      })
+    ).toBeNull();
+    expect(
+      buildWhatChangedAffectedObjectHref({
+        affectedObjectType: "pattern_claim",
+        affectedObjectId: "   ",
+      })
+    ).toBeNull();
   });
 
   it("maps linked object hrefs from real backend IDs only", () => {
@@ -116,6 +158,19 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
     expect(item).toBeNull();
   });
 
+  it("does not create fallback what-changed rows from labels when ID is missing", () => {
+    const item = toWhatChangedListItem({
+      id: "",
+      updateType: "strategy_adjusted",
+      affectedObjectType: "usermap_conclusion",
+      affectedObjectId: "umc-1",
+      userFacingSummary: "mu-from-summary should never become an ID",
+      createdAt: new Date("2026-05-17T10:00:00.000Z"),
+    });
+
+    expect(item).toBeNull();
+  });
+
   it("keeps unresolved linked targets in explicit non-link state", () => {
     const item = toWatchForListItem({
       id: "fw-8",
@@ -164,6 +219,10 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
       path.join(process.cwd(), "app/(root)/(routes)/your-map/[id]/page.tsx"),
       "utf8"
     );
+    const whatChangedSource = readFileSync(
+      path.join(process.cwd(), "app/(root)/(routes)/what-changed/page.tsx"),
+      "utf8"
+    );
 
     const combined =
       `${activeQuestionsSource}\n` +
@@ -171,10 +230,12 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
       `${watchForSource}\n` +
       `${watchForDetailSource}\n` +
       `${yourMapSource}\n` +
-      `${yourMapDetailSource}`;
+      `${yourMapDetailSource}\n` +
+      `${whatChangedSource}`;
     expect(combined.includes("/api/internal/user-map/review-candidates")).toBe(false);
     expect(combined.includes("/internal/user-map/review")).toBe(false);
     expect(combined.includes("/api/user-map")).toBe(false);
+    expect(combined.includes("/api/model-updates/[id]")).toBe(false);
     expect(combined.includes("internal_only")).toBe(false);
     expect(combined.includes("receipt-action-")).toBe(false);
   });
