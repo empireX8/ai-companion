@@ -5,6 +5,7 @@ const authMock = vi.fn();
 const notFoundMock = vi.fn(() => {
   throw new Error("NEXT_NOT_FOUND");
 });
+const listYourMapPublicEvidenceContinuityMock = vi.fn();
 
 const prismaMock = {
   userMapConclusion: {
@@ -27,6 +28,10 @@ vi.mock("@/lib/public-intelligence-safe-slice", async () => {
   return actual;
 });
 
+vi.mock("@/lib/public-evidence-continuity", () => ({
+  listYourMapPublicEvidenceContinuity: listYourMapPublicEvidenceContinuityMock,
+}));
+
 vi.mock("@/lib/prismadb", () => ({
   default: prismaMock,
 }));
@@ -45,6 +50,7 @@ describe("Phase 3 Your Map page", () => {
     authMock.mockResolvedValue({ userId: "user-1" });
     prismaMock.userMapConclusion.findMany.mockResolvedValue([]);
     prismaMock.userMapConclusion.findFirst.mockResolvedValue(null);
+    listYourMapPublicEvidenceContinuityMock.mockResolvedValue([]);
   });
 
   it("filters to authenticated user-owned user_visible conclusions and shows honest empty state", async () => {
@@ -164,10 +170,65 @@ describe("Phase 3 Your Map page", () => {
 
     expect(html).toContain("Short decompression windows reduce late-day escalation patterns.");
     expect(html).toContain("No linked evidence available yet.");
+    expect(listYourMapPublicEvidenceContinuityMock).toHaveBeenCalledWith({
+      userId: "user-1",
+      targetId: "umc-1",
+    });
     expect(html).not.toContain("<form");
     expect(html).not.toContain("Promote");
     expect(html).not.toContain("Publish");
     expect(html).not.toContain("Edit");
     expect(html).not.toContain("Delete");
+  });
+
+  it("renders linked evidence list from verified pattern/contradiction sources only", async () => {
+    prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({
+      id: "umc-1",
+      title: "Recovery depends on earlier decompression",
+      summary: "Short decompression windows reduce late-day escalation patterns.",
+      area: "recovery_architecture",
+      status: "supported",
+      confidenceLevel: "medium",
+      evidenceCount: 2,
+      sourceDiversity: 2,
+      timeSpreadDays: 7,
+      createdAt: new Date("2026-05-10T09:00:00.000Z"),
+      updatedAt: new Date("2026-05-17T10:00:00.000Z"),
+    });
+    listYourMapPublicEvidenceContinuityMock.mockResolvedValueOnce([
+      {
+        id: "link-pattern-1",
+        sourceType: "pattern_claim",
+        sourceTypeLabel: "Pattern Claim",
+        sourceId: "pc-1",
+        href: "/patterns/pc-1",
+        createdAt: "2026-05-18T10:00:00.000Z",
+      },
+      {
+        id: "link-contradiction-1",
+        sourceType: "contradiction_node",
+        sourceTypeLabel: "Contradiction Node",
+        sourceId: "cn-1",
+        href: "/contradictions/cn-1",
+        createdAt: "2026-05-18T09:00:00.000Z",
+      },
+    ]);
+
+    const page = await import("../../app/(root)/(routes)/your-map/[id]/page");
+    const element = await page.default({
+      params: Promise.resolve({ id: "umc-1" }),
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Linked evidence");
+    expect(html).toContain("/patterns/pc-1");
+    expect(html).toContain("/contradictions/cn-1");
+    expect(html).not.toContain("No linked evidence available yet.");
+    expect(html).not.toContain("/active-questions/");
+    expect(html).not.toContain("/watch-for/");
+    expect(html).not.toContain("receipt-user-map-");
+    expect(html).not.toContain("receipt-action-");
+    expect(html).not.toContain("internalNotes");
+    expect(html).not.toContain("quote");
   });
 });
