@@ -9,6 +9,10 @@ import {
   type TodaySurfacingCard,
   type TodayTopContradiction,
 } from "@/lib/today-surface";
+import {
+  TODAY_INTELLIGENCE_UPDATES_ENDPOINT,
+  type TodayIntelligenceUpdateItem,
+} from "@/lib/today-intelligence-updates";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
 import { ArrowUpRight, Mic, Image, Receipt } from "lucide-react";
@@ -39,6 +43,12 @@ const DISPLAY_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
 });
 
+const DETAIL_DATE = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Europe/London",
+});
+
 function normalizeText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -48,6 +58,14 @@ function clampText(value: string, max: number): string {
     return value;
   }
   return `${value.slice(0, max - 1).trimEnd()}…`;
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return DETAIL_DATE.format(date);
 }
 
 export default function Today() {
@@ -80,6 +98,10 @@ export default function Today() {
   const [surfacingCards, setSurfacingCards] = useState<TodaySurfacingCard[]>([]);
   const [isLoadingSurfacing, setIsLoadingSurfacing] = useState(true);
   const [surfacingError, setSurfacingError] = useState<string | null>(null);
+  const [intelligenceUpdates, setIntelligenceUpdates] = useState<
+    TodayIntelligenceUpdateItem[]
+  >([]);
+  const [isLoadingIntelligence, setIsLoadingIntelligence] = useState(true);
 
   const trimmedCaptureText = captureText.trim();
 
@@ -94,21 +116,27 @@ export default function Today() {
     const loadSurfacing = async () => {
       setIsLoadingSurfacing(true);
       setSurfacingError(null);
+      setIsLoadingIntelligence(true);
 
-      const [journalResult, contradictionResult, patternsResult] = await Promise.allSettled([
-        fetch(TODAY_SURFACING_ENDPOINTS.journal, {
-          method: "GET",
-          cache: "no-store",
-        }),
-        fetch(TODAY_SURFACING_ENDPOINTS.contradiction, {
-          method: "GET",
-          cache: "no-store",
-        }),
-        fetch(TODAY_SURFACING_ENDPOINTS.patterns, {
-          method: "GET",
-          cache: "no-store",
-        }),
-      ]);
+      const [journalResult, contradictionResult, patternsResult, intelligenceResult] =
+        await Promise.allSettled([
+          fetch(TODAY_SURFACING_ENDPOINTS.journal, {
+            method: "GET",
+            cache: "no-store",
+          }),
+          fetch(TODAY_SURFACING_ENDPOINTS.contradiction, {
+            method: "GET",
+            cache: "no-store",
+          }),
+          fetch(TODAY_SURFACING_ENDPOINTS.patterns, {
+            method: "GET",
+            cache: "no-store",
+          }),
+          fetch(TODAY_INTELLIGENCE_UPDATES_ENDPOINT, {
+            method: "GET",
+            cache: "no-store",
+          }),
+        ]);
 
       if (cancelled) {
         return;
@@ -130,18 +158,33 @@ export default function Today() {
         patterns = (await patternsResult.value.json()) as TodayPatternsResponse;
       }
 
+      let nextIntelligenceUpdates: TodayIntelligenceUpdateItem[] = [];
+      if (
+        intelligenceResult.status === "fulfilled" &&
+        intelligenceResult.value.ok
+      ) {
+        const payload = (await intelligenceResult.value.json()) as {
+          items?: TodayIntelligenceUpdateItem[];
+        };
+        if (Array.isArray(payload.items)) {
+          nextIntelligenceUpdates = payload.items;
+        }
+      }
+
       const nextCards = buildTodaySurfacingCards({
         journalEntries,
         contradictions,
         patterns,
       });
       setSurfacingCards(nextCards);
+      setIntelligenceUpdates(nextIntelligenceUpdates);
 
       if (nextCards.length === 0) {
         setSurfacingError("No surfaced items yet.");
       }
 
       setIsLoadingSurfacing(false);
+      setIsLoadingIntelligence(false);
     };
 
     void loadSurfacing();
@@ -352,6 +395,54 @@ export default function Today() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <SectionLabel>Intelligence updates</SectionLabel>
+        {isLoadingIntelligence ? (
+          <div className="card-standard p-4 text-[13px] text-meta">
+            Loading intelligence updates…
+          </div>
+        ) : intelligenceUpdates.length === 0 ? (
+          <div className="card-standard p-4 text-[13px] text-meta">
+            No intelligence updates yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {intelligenceUpdates.map((item) => (
+              <article key={item.id} className="card-standard p-5">
+                <div className="label-meta text-cyan/70 mb-2">
+                  {item.updateTypeLabel} · {item.affectedObjectTypeLabel}
+                </div>
+                <p className="text-[14px] text-[hsl(216_11%_70%)] leading-relaxed">
+                  {item.userFacingSummary}
+                </p>
+                <div className="mt-3 pt-3 border-t hairline">
+                  {item.affectedObjectId && item.affectedObjectHref ? (
+                    <Link
+                      href={item.affectedObjectHref}
+                      className="label-meta text-cyan hover:underline"
+                    >
+                      Linked target: {item.affectedObjectId}
+                    </Link>
+                  ) : item.affectedObjectId ? (
+                    <div className="label-meta text-meta">
+                      Linked target: {item.affectedObjectId}
+                      <div className="mt-1">No linked detail available yet.</div>
+                    </div>
+                  ) : (
+                    <div className="label-meta text-meta">
+                      No linked detail available yet.
+                    </div>
+                  )}
+                  <div className="label-meta mt-2">
+                    Recorded {formatDateTime(item.createdAt)}
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>

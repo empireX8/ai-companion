@@ -159,11 +159,35 @@ describe("today-surface safety and honest copy", () => {
     expect(source.includes("Saving media is not wired yet.")).toBe(true);
     expect(source.includes("No linked detail available yet.")).toBe(true);
     expect(source.includes("No surfaced items yet.")).toBe(true);
+    expect(source.includes("No intelligence updates yet.")).toBe(true);
+    expect(source.includes("Loading intelligence updates…")).toBe(true);
   });
 
   it("does not derive receipt links via string replacement from detail href", () => {
     const source = readTodayPageSource();
     expect(source.includes(".replace(\"/patterns/\"")).toBe(false);
     expect(source.includes(".replace(\"/contradictions/\"")).toBe(false);
+  });
+
+  it("uses today intelligence-updates safe endpoint and avoids direct model-updates usage", () => {
+    const source = readTodayPageSource();
+    expect(source.includes("TODAY_INTELLIGENCE_UPDATES_ENDPOINT")).toBe(true);
+    expect(source.includes("/api/model-updates")).toBe(false);
+    expect(source.includes("/api/model-updates/[id]")).toBe(false);
+  });
+
+  it("renders intelligence-updates section as read-only without review/write/timeline coupling", () => {
+    const source = readTodayPageSource();
+    expect(source.includes("Intelligence updates")).toBe(true);
+    expect(source.includes("Promote")).toBe(false);
+    expect(source.includes("Publish")).toBe(false);
+    expect(source.includes("Edit")).toBe(false);
+    expect(source.includes("Delete")).toBe(false);
+    expect(source.includes("/api/internal/user-map/review-candidates")).toBe(
+      false
+    );
+    expect(source.includes("/internal/user-map/review")).toBe(false);
+    expect(source.includes("/api/timeline")).toBe(false);
+    expect(source.includes("/timeline")).toBe(false);
   });
 });
