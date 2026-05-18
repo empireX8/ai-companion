@@ -22,6 +22,10 @@ import {
   type TimelineEntry,
   type TimelineResponse,
 } from "@/lib/timeline-surface";
+import {
+  buildTimelineModelLayersRequestUrl,
+  type TimelineModelLayerItem,
+} from "@/lib/timeline-model-layers";
 
 const STATE_DISPLAY_LABELS: Record<QuickCheckInStateTag, string> = {
   stable: "Calm",
@@ -41,6 +45,19 @@ function formatTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: "Europe/London",
+  }).format(date);
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
     timeZone: "Europe/London",
   }).format(date);
 }
@@ -123,6 +140,8 @@ export default function TimelineSurface() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [payload, setPayload] = useState<TimelineResponse | null>(null);
+  const [modelLayers, setModelLayers] = useState<TimelineModelLayerItem[]>([]);
+  const [isLoadingModelLayers, setIsLoadingModelLayers] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +181,51 @@ export default function TimelineSurface() {
     };
 
     void loadTimeline();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [windowValue]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadModelLayers = async () => {
+      setIsLoadingModelLayers(true);
+
+      try {
+        const response = await fetch(
+          buildTimelineModelLayersRequestUrl(windowValue),
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Could not load model movement.");
+        }
+
+        const nextPayload = (await response.json()) as {
+          items?: TimelineModelLayerItem[];
+        };
+        if (!cancelled) {
+          setModelLayers(
+            Array.isArray(nextPayload.items) ? nextPayload.items : []
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setModelLayers([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingModelLayers(false);
+        }
+      }
+    };
+
+    void loadModelLayers();
 
     return () => {
       cancelled = true;
@@ -373,6 +437,54 @@ export default function TimelineSurface() {
                   ))}
                 </div>
               </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <SectionLabel>Model movement</SectionLabel>
+        {isLoadingModelLayers ? (
+          <div className="card-standard p-4 text-[13px] text-meta">
+            Loading model movement...
+          </div>
+        ) : modelLayers.length === 0 ? (
+          <div className="card-standard p-4 text-[13px] text-meta">
+            No model movement in this window.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {modelLayers.map((item) => (
+              <article key={item.id} className="card-standard p-5">
+                <div className="label-meta text-cyan/70 mb-2">
+                  {item.updateTypeLabel} · {item.affectedObjectTypeLabel}
+                </div>
+                <p className="text-[14px] text-[hsl(216_11%_70%)] leading-relaxed">
+                  {item.userFacingSummary}
+                </p>
+                <div className="mt-3 pt-3 border-t hairline">
+                  {item.affectedObjectId && item.affectedObjectHref ? (
+                    <Link
+                      href={item.affectedObjectHref}
+                      className="label-meta text-cyan hover:underline"
+                    >
+                      Linked target: {item.affectedObjectId}
+                    </Link>
+                  ) : item.affectedObjectId ? (
+                    <div className="label-meta text-meta">
+                      Linked target: {item.affectedObjectId}
+                      <div className="mt-1">No linked detail available yet.</div>
+                    </div>
+                  ) : (
+                    <div className="label-meta text-meta">
+                      No linked detail available yet.
+                    </div>
+                  )}
+                  <div className="label-meta mt-2">
+                    Recorded {formatDateTime(item.createdAt)}
+                  </div>
+                </div>
+              </article>
             ))}
           </div>
         )}

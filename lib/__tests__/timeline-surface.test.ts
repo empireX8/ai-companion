@@ -9,6 +9,7 @@ import {
   mapTimelineEntries,
   type TimelineResponse,
 } from "../timeline-surface";
+import { buildTimelineModelLayersRequestUrl } from "../timeline-model-layers";
 
 function makeSummary(totalCheckIns = 0): TimelineStateSummary {
   return {
@@ -208,6 +209,14 @@ describe("timeline-surface rhythm honesty", () => {
     expect(url.includes("/api/user-map")).toBe(false);
   });
 
+  it("requests model movement from additive timeline model-layers endpoint, not model-updates", () => {
+    const url = buildTimelineModelLayersRequestUrl("30d");
+
+    expect(url).toBe("/api/timeline/model-layers?window=30d");
+    expect(url.includes("/api/model-updates")).toBe(false);
+    expect(url.includes("/api/internal/user-map/review-candidates")).toBe(false);
+  });
+
   it("removes seeded rhythm rendering and keeps honest rhythm copy in timeline UI", () => {
     const source = readFileSync(
       join(
@@ -222,5 +231,34 @@ describe("timeline-surface rhythm honesty", () => {
     expect(source.includes("Not enough check-ins to show a rhythm yet.")).toBe(
       true
     );
+  });
+
+  it("renders model movement as a separate read-only section with honest empty and link fallback copy", () => {
+    const source = readFileSync(
+      join(
+        process.cwd(),
+        "app/(root)/(routes)/timeline/_components/TimelineSurface.tsx"
+      ),
+      "utf8"
+    );
+
+    expect(source.includes("Model movement")).toBe(true);
+    expect(source.includes("No model movement in this window.")).toBe(true);
+    expect(source.includes("No linked detail available yet.")).toBe(true);
+    expect(source.includes("item.affectedObjectId && item.affectedObjectHref")).toBe(
+      true
+    );
+    expect(source.includes("Promote")).toBe(false);
+    expect(source.includes("Publish")).toBe(false);
+    expect(source.includes("Edit")).toBe(false);
+    expect(source.includes("Delete")).toBe(false);
+    expect(source.includes("/api/model-updates")).toBe(false);
+    expect(source.includes("/api/internal/user-map/review-candidates")).toBe(
+      false
+    );
+    expect(source.includes("/internal/user-map/review")).toBe(false);
+    expect(source.includes("receipt-action-")).toBe(false);
+    expect(source.includes(".replace(\"/patterns/\"")).toBe(false);
+    expect(source.includes(".replace(\"/contradictions/\"")).toBe(false);
   });
 });
