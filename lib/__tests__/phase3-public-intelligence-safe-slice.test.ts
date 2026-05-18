@@ -71,10 +71,10 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
   it("maps linked object hrefs from real backend IDs only", () => {
     expect(
       buildLinkedObjectHref({
-        linkedObjectType: "investigation",
-        linkedObjectId: "inv-9",
+        linkedObjectType: "usermap_conclusion",
+        linkedObjectId: "umc-9",
       })
-    ).toBe("/active-questions/inv-9");
+    ).toBe("/your-map/umc-9");
     expect(
       buildLinkedObjectHref({
         linkedObjectType: "pattern_claim",
@@ -90,8 +90,14 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
 
     expect(
       buildLinkedObjectHref({
-        linkedObjectType: "usermap_conclusion",
-        linkedObjectId: "umc-1",
+        linkedObjectType: "investigation",
+        linkedObjectId: "inv-1",
+      })
+    ).toBeNull();
+    expect(
+      buildLinkedObjectHref({
+        linkedObjectType: "fieldwork_assignment",
+        linkedObjectId: "fw-1",
       })
     ).toBeNull();
     expect(
@@ -177,14 +183,14 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
       prompt: "Watch for conflict spikes",
       reason: "Investigate trigger pattern",
       status: "active",
-      linkedObjectType: "usermap_conclusion",
-      linkedObjectId: "umc-internal-1",
+      linkedObjectType: "investigation",
+      linkedObjectId: "inv-still-fallback",
       priority: 2,
       updatedAt: new Date("2026-05-17T10:00:00.000Z"),
     });
 
     expect(item).not.toBeNull();
-    expect(item?.linkedObjectId).toBe("umc-internal-1");
+    expect(item?.linkedObjectId).toBe("inv-still-fallback");
     expect(item?.linkedObjectHref).toBeNull();
   });
 

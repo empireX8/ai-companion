@@ -4,9 +4,9 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { resolvePublicLinkedObjectHref } from "@/lib/public-linked-object-continuity";
 import prismadb from "@/lib/prismadb";
 import {
-  buildLinkedObjectHref,
   formatFieldworkStatus,
   formatLinkedObjectType,
   WATCH_FOR_VISIBLE_STATUSES,
@@ -73,7 +73,8 @@ export default async function WatchForDetailPage({
   }
 
   const linkedObjectId = toSafeId(item.linkedObjectId);
-  const linkedObjectHref = buildLinkedObjectHref({
+  const linkedObjectHref = await resolvePublicLinkedObjectHref({
+    userId,
     linkedObjectType: item.linkedObjectType,
     linkedObjectId,
   });

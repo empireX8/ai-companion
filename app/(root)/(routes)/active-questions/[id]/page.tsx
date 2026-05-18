@@ -4,10 +4,10 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { resolvePublicLinkedObjectHref } from "@/lib/public-linked-object-continuity";
 import prismadb from "@/lib/prismadb";
 import {
   ACTIVE_QUESTION_VISIBLE_STATUSES,
-  buildLinkedObjectHref,
   toActiveQuestionDetailItem,
 } from "@/lib/public-intelligence-safe-slice";
 
@@ -93,7 +93,8 @@ export default async function ActiveQuestionDetailPage({
   const resolvedConclusionHref =
     item.resolvedConclusionId === null
       ? null
-      : buildLinkedObjectHref({
+      : await resolvePublicLinkedObjectHref({
+          userId,
           linkedObjectType: "usermap_conclusion",
           linkedObjectId: item.resolvedConclusionId,
         });

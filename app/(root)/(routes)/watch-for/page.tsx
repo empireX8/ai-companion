@@ -3,6 +3,10 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
+import {
+  linkedObjectHrefMapKey,
+  resolvePublicLinkedObjectHrefs,
+} from "@/lib/public-linked-object-continuity";
 import prismadb from "@/lib/prismadb";
 import {
   WATCH_FOR_VISIBLE_STATUSES,
@@ -54,6 +58,14 @@ export default async function WatchForPage() {
     .map((row) => toWatchForListItem(row))
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
+  const verifiedLinkedObjectHrefByKey = await resolvePublicLinkedObjectHrefs({
+    userId,
+    targets: items.map((item) => ({
+      linkedObjectType: item.linkedObjectType,
+      linkedObjectId: item.linkedObjectId,
+    })),
+  });
+
   return (
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
       <PageHeader
@@ -86,18 +98,34 @@ export default async function WatchForPage() {
               </Link>
 
               <div className="mt-3 pt-3 border-t hairline">
-                {item.linkedObjectId && item.linkedObjectHref ? (
-                  <Link href={item.linkedObjectHref} className="label-meta text-cyan hover:underline">
-                    Linked target: {item.linkedObjectId}
-                  </Link>
-                ) : item.linkedObjectId ? (
-                  <div className="label-meta text-meta">
-                    Linked target: {item.linkedObjectId}
-                    <div className="mt-1">No linked detail available yet.</div>
-                  </div>
-                ) : (
-                  <div className="label-meta text-meta">No linked detail available yet.</div>
-                )}
+                {(() => {
+                  const mapKey = linkedObjectHrefMapKey({
+                    linkedObjectType: item.linkedObjectType,
+                    linkedObjectId: item.linkedObjectId,
+                  });
+                  const verifiedHref = mapKey
+                    ? verifiedLinkedObjectHrefByKey.get(mapKey) ?? null
+                    : null;
+
+                  if (item.linkedObjectId && verifiedHref) {
+                    return (
+                      <Link href={verifiedHref} className="label-meta text-cyan hover:underline">
+                        Linked target: {item.linkedObjectId}
+                      </Link>
+                    );
+                  }
+
+                  if (item.linkedObjectId) {
+                    return (
+                      <div className="label-meta text-meta">
+                        Linked target: {item.linkedObjectId}
+                        <div className="mt-1">No linked detail available yet.</div>
+                      </div>
+                    );
+                  }
+
+                  return <div className="label-meta text-meta">No linked detail available yet.</div>;
+                })()}
                 <div className="label-meta mt-2">
                   Updated {formatDateTime(item.updatedAt)}
                   {typeof item.priority === "number"

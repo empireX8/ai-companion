@@ -5,6 +5,7 @@ const authMock = vi.fn();
 const notFoundMock = vi.fn(() => {
   throw new Error("NEXT_NOT_FOUND");
 });
+const resolvePublicLinkedObjectHrefMock = vi.fn();
 
 const prismaMock = {
   investigation: {
@@ -27,6 +28,10 @@ vi.mock("@/lib/public-intelligence-safe-slice", async () => {
   return actual;
 });
 
+vi.mock("@/lib/public-linked-object-continuity", () => ({
+  resolvePublicLinkedObjectHref: resolvePublicLinkedObjectHrefMock,
+}));
+
 vi.mock("@/lib/prismadb", () => ({
   default: prismaMock,
 }));
@@ -45,6 +50,7 @@ describe("Phase 3 Active Questions page", () => {
     authMock.mockResolvedValue({ userId: "user-1" });
     prismaMock.investigation.findMany.mockResolvedValue([]);
     prismaMock.investigation.findFirst.mockResolvedValue(null);
+    resolvePublicLinkedObjectHrefMock.mockResolvedValue(null);
   });
 
   it("filters to authenticated user-owned investigation records and shows honest empty state", async () => {
@@ -116,5 +122,71 @@ describe("Phase 3 Active Questions page", () => {
         },
       })
     );
+  });
+
+  it("renders resolved conclusion link only when verified safe", async () => {
+    resolvePublicLinkedObjectHrefMock.mockResolvedValueOnce("/your-map/umc-1");
+    prismaMock.investigation.findFirst.mockResolvedValueOnce({
+      id: "inv-1",
+      title: "Observe shutdown patterns",
+      organizingQuestion: "What precedes shutdown mode?",
+      status: "resolving",
+      seedType: "pattern",
+      priority: 2,
+      createdAt: new Date("2026-05-17T07:00:00.000Z"),
+      updatedAt: new Date("2026-05-17T09:00:00.000Z"),
+      resolutionSummary: "Likely routes through recovery architecture.",
+      resolvedAt: new Date("2026-05-18T09:00:00.000Z"),
+      resolvedIntoUserMapConclusionId: "umc-1",
+      reopenReason: null,
+      competingTheories: [],
+      evidenceNeeded: [],
+    });
+
+    const page = await import("../../app/(root)/(routes)/active-questions/[id]/page");
+    const element = await page.default({
+      params: Promise.resolve({ id: "inv-1" }),
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("/your-map/umc-1");
+    expect(resolvePublicLinkedObjectHrefMock).toHaveBeenCalledWith({
+      userId: "user-1",
+      linkedObjectType: "usermap_conclusion",
+      linkedObjectId: "umc-1",
+    });
+  });
+
+  it("falls back when resolved conclusion is missing, hidden, or unowned", async () => {
+    prismaMock.investigation.findFirst.mockResolvedValueOnce({
+      id: "inv-1",
+      title: "Observe shutdown patterns",
+      organizingQuestion: "What precedes shutdown mode?",
+      status: "resolving",
+      seedType: "pattern",
+      priority: 2,
+      createdAt: new Date("2026-05-17T07:00:00.000Z"),
+      updatedAt: new Date("2026-05-17T09:00:00.000Z"),
+      resolutionSummary: "Likely routes through recovery architecture.",
+      resolvedAt: new Date("2026-05-18T09:00:00.000Z"),
+      resolvedIntoUserMapConclusionId: "umc-hidden",
+      reopenReason: null,
+      competingTheories: [],
+      evidenceNeeded: [],
+    });
+
+    const page = await import("../../app/(root)/(routes)/active-questions/[id]/page");
+    const element = await page.default({
+      params: Promise.resolve({ id: "inv-1" }),
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("No linked detail available yet.");
+    expect(html).not.toContain("/your-map/umc-hidden");
+    expect(html).not.toContain("/api/internal/user-map/review-candidates");
+    expect(html).not.toContain("<form");
+    expect(html).not.toContain("Promote");
+    expect(html).not.toContain("Edit");
+    expect(html).not.toContain("Delete");
   });
 });

@@ -193,11 +193,8 @@ export function buildLinkedObjectHref(input: {
     return null;
   }
 
-  if (input.linkedObjectType === "investigation") {
-    return buildActiveQuestionDetailHref(safeId);
-  }
-  if (input.linkedObjectType === "fieldwork_assignment") {
-    return buildWatchForDetailHref(safeId);
+  if (input.linkedObjectType === "usermap_conclusion") {
+    return buildYourMapDetailHref(safeId);
   }
   if (input.linkedObjectType === "pattern_claim") {
     return `/patterns/${safeId}`;
