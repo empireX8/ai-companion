@@ -191,4 +191,71 @@ describe("public linked-object continuity helper", () => {
     expect(combined).not.toContain("receipt-action-");
     expect(combined).not.toContain("receipt-user-map-");
   });
+
+  it("applies verified affected-object hrefs and clears unverified links", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
+    prismaMock.patternClaim.findMany.mockResolvedValueOnce([{ id: "pc-safe" }]);
+    prismaMock.contradictionNode.findMany.mockResolvedValueOnce([]);
+
+    const { applyVerifiedAffectedObjectHrefs } = await import(
+      "../public-linked-object-continuity"
+    );
+
+    const result = await applyVerifiedAffectedObjectHrefs({
+      userId: "user-1",
+      items: [
+        {
+          id: "mu-1",
+          affectedObjectType: "usermap_conclusion",
+          affectedObjectId: "umc-1",
+          affectedObjectHref: "/your-map/umc-1",
+        },
+        {
+          id: "mu-2",
+          affectedObjectType: "pattern_claim",
+          affectedObjectId: "pc-safe",
+          affectedObjectHref: "/patterns/pc-safe",
+        },
+        {
+          id: "mu-3",
+          affectedObjectType: "contradiction_node",
+          affectedObjectId: "cn-missing",
+          affectedObjectHref: "/contradictions/cn-missing",
+        },
+        {
+          id: "mu-4",
+          affectedObjectType: "investigation",
+          affectedObjectId: "inv-1",
+          affectedObjectHref: null,
+        },
+      ],
+    });
+
+    expect(result).toEqual([
+      {
+        id: "mu-1",
+        affectedObjectType: "usermap_conclusion",
+        affectedObjectId: "umc-1",
+        affectedObjectHref: "/your-map/umc-1",
+      },
+      {
+        id: "mu-2",
+        affectedObjectType: "pattern_claim",
+        affectedObjectId: "pc-safe",
+        affectedObjectHref: "/patterns/pc-safe",
+      },
+      {
+        id: "mu-3",
+        affectedObjectType: "contradiction_node",
+        affectedObjectId: "cn-missing",
+        affectedObjectHref: null,
+      },
+      {
+        id: "mu-4",
+        affectedObjectType: "investigation",
+        affectedObjectId: "inv-1",
+        affectedObjectHref: null,
+      },
+    ]);
+  });
 });

@@ -19,6 +19,12 @@ type LinkedObjectInput = {
   linkedObjectId: string | null | undefined;
 };
 
+type AffectedObjectLinkInput = {
+  affectedObjectType: string | null | undefined;
+  affectedObjectId: string | null | undefined;
+  affectedObjectHref: string | null;
+};
+
 const SUPPORTED_LINK_TYPES: LinkableObjectType[] = [
   "usermap_conclusion",
   "pattern_claim",
@@ -192,4 +198,32 @@ export function isPublicLinkedObjectTypeSupported(
   return SUPPORTED_LINK_TYPES.includes(
     linkedObjectType as LinkableObjectType
   );
+}
+
+export async function applyVerifiedAffectedObjectHrefs<
+  T extends AffectedObjectLinkInput,
+>(args: {
+  userId: string;
+  items: T[];
+}): Promise<T[]> {
+  const hrefsByKey = await resolvePublicLinkedObjectHrefs({
+    userId: args.userId,
+    targets: args.items.map((item) => ({
+      linkedObjectType: item.affectedObjectType,
+      linkedObjectId: item.affectedObjectId,
+    })),
+  });
+
+  return args.items.map((item) => {
+    const mapKey = linkedObjectHrefMapKey({
+      linkedObjectType: item.affectedObjectType,
+      linkedObjectId: item.affectedObjectId,
+    });
+    const verifiedHref = mapKey ? hrefsByKey.get(mapKey) ?? null : null;
+
+    return {
+      ...item,
+      affectedObjectHref: verifiedHref,
+    };
+  });
 }

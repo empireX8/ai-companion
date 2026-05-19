@@ -7,6 +7,7 @@ import {
   TODAY_INTELLIGENCE_UPDATES_LIMIT,
   toTodayIntelligenceUpdateItem,
 } from "../../../../lib/today-intelligence-updates";
+import { applyVerifiedAffectedObjectHrefs } from "../../../../lib/public-linked-object-continuity";
 
 export const dynamic = "force-dynamic";
 
@@ -38,8 +39,12 @@ export async function GET() {
     const items = rows
       .map((row) => toTodayIntelligenceUpdateItem(row))
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
+    const verifiedItems = await applyVerifiedAffectedObjectHrefs({
+      userId,
+      items,
+    });
 
-    return NextResponse.json({ items });
+    return NextResponse.json({ items: verifiedItems });
   } catch (error) {
     console.error("[TODAY_INTELLIGENCE_UPDATES_GET_ERROR]", error);
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });

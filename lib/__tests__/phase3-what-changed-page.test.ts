@@ -3,10 +3,21 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
+vi.mock("server-only", () => ({}));
+
 const authMock = vi.fn();
 
 const prismaMock = {
   modelUpdate: {
+    findMany: vi.fn(),
+  },
+  userMapConclusion: {
+    findMany: vi.fn(),
+  },
+  patternClaim: {
+    findMany: vi.fn(),
+  },
+  contradictionNode: {
     findMany: vi.fn(),
   },
 };
@@ -38,6 +49,9 @@ describe("Phase 3 What Changed page", () => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ userId: "user-1" });
     prismaMock.modelUpdate.findMany.mockResolvedValue([]);
+    prismaMock.userMapConclusion.findMany.mockResolvedValue([]);
+    prismaMock.patternClaim.findMany.mockResolvedValue([]);
+    prismaMock.contradictionNode.findMany.mockResolvedValue([]);
   });
 
   it("filters to authenticated user-owned meaningful user_visible updates and shows honest empty state", async () => {
@@ -57,7 +71,7 @@ describe("Phase 3 What Changed page", () => {
     );
   });
 
-  it("renders allowlisted real-ID links only and keeps unsupported/missing targets in honest non-link state", async () => {
+  it("renders only verified allowlisted links and keeps unsupported/hidden/candidate/missing targets in honest non-link state", async () => {
     prismaMock.modelUpdate.findMany.mockResolvedValueOnce([
       {
         id: "mu-1",
@@ -71,7 +85,7 @@ describe("Phase 3 What Changed page", () => {
         id: "mu-2",
         updateType: "correction_applied",
         affectedObjectType: "pattern_claim",
-        affectedObjectId: "pc-2",
+        affectedObjectId: "pc-safe",
         userFacingSummary: "Pattern was corrected to remove an overbroad interpretation.",
         createdAt: new Date("2026-05-17T09:30:00.000Z"),
       },
@@ -79,9 +93,33 @@ describe("Phase 3 What Changed page", () => {
         id: "mu-3",
         updateType: "conclusion_disputed",
         affectedObjectType: "contradiction_node",
-        affectedObjectId: "cn-4",
+        affectedObjectId: "cn-safe",
         userFacingSummary: "A contradiction now disputes the older certainty claim.",
         createdAt: new Date("2026-05-17T09:00:00.000Z"),
+      },
+      {
+        id: "mu-3b",
+        updateType: "conclusion_disputed",
+        affectedObjectType: "usermap_conclusion",
+        affectedObjectId: "umc-hidden",
+        userFacingSummary: "Hidden or unowned target should stay non-link.",
+        createdAt: new Date("2026-05-17T08:45:00.000Z"),
+      },
+      {
+        id: "mu-3c",
+        updateType: "correction_applied",
+        affectedObjectType: "pattern_claim",
+        affectedObjectId: "pc-candidate",
+        userFacingSummary: "Candidate pattern target should stay non-link.",
+        createdAt: new Date("2026-05-17T08:40:00.000Z"),
+      },
+      {
+        id: "mu-3d",
+        updateType: "conclusion_disputed",
+        affectedObjectType: "contradiction_node",
+        affectedObjectId: "cn-candidate",
+        userFacingSummary: "Candidate contradiction target should stay non-link.",
+        createdAt: new Date("2026-05-17T08:35:00.000Z"),
       },
       {
         id: "mu-4",
@@ -108,14 +146,24 @@ describe("Phase 3 What Changed page", () => {
         createdAt: new Date("2026-05-17T07:00:00.000Z"),
       },
     ]);
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
+    prismaMock.patternClaim.findMany.mockResolvedValueOnce([{ id: "pc-safe" }]);
+    prismaMock.contradictionNode.findMany.mockResolvedValueOnce([{ id: "cn-safe" }]);
 
     const page = await import("../../app/(root)/(routes)/what-changed/page");
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain("/your-map/umc-1");
-    expect(html).toContain("/patterns/pc-2");
-    expect(html).toContain("/contradictions/cn-4");
+    expect(html).toContain("/patterns/pc-safe");
+    expect(html).toContain("/contradictions/cn-safe");
+    expect(html).not.toContain("/your-map/umc-hidden");
+    expect(html).not.toContain("/patterns/pc-candidate");
+    expect(html).not.toContain("/contradictions/cn-candidate");
+    expect(html).not.toContain("/model-updates/mu-target-1");
+    expect(html).toContain("Linked target: umc-hidden");
+    expect(html).toContain("Linked target: pc-candidate");
+    expect(html).toContain("Linked target: cn-candidate");
     expect(html).toContain("No linked detail available yet.");
     expect(html).not.toContain("mu-from-summary should never become an ID");
     expect(html).not.toContain("<form");
@@ -123,6 +171,30 @@ describe("Phase 3 What Changed page", () => {
     expect(html).not.toContain("Publish");
     expect(html).not.toContain("Edit");
     expect(html).not.toContain("Delete");
+    expect(prismaMock.userMapConclusion.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        visibility: "user_visible",
+        id: { in: ["umc-1", "umc-hidden"] },
+      },
+      select: { id: true },
+    });
+    expect(prismaMock.patternClaim.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        status: { not: "candidate" },
+        id: { in: ["pc-safe", "pc-candidate"] },
+      },
+      select: { id: true },
+    });
+    expect(prismaMock.contradictionNode.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        status: { not: "candidate" },
+        id: { in: ["cn-safe", "cn-candidate"] },
+      },
+      select: { id: true },
+    });
   });
 
   it("keeps What Changed list-only and avoids forbidden internal/detail endpoint usage", async () => {

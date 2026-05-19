@@ -1,9 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
+
 const authMock = vi.fn();
 
 const prismaMock = {
   modelUpdate: {
+    findMany: vi.fn(),
+  },
+  userMapConclusion: {
+    findMany: vi.fn(),
+  },
+  patternClaim: {
+    findMany: vi.fn(),
+  },
+  contradictionNode: {
     findMany: vi.fn(),
   },
 };
@@ -25,6 +36,9 @@ describe("/api/today/intelligence-updates", () => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ userId: "user-1" });
     prismaMock.modelUpdate.findMany.mockResolvedValue([]);
+    prismaMock.userMapConclusion.findMany.mockResolvedValue([]);
+    prismaMock.patternClaim.findMany.mockResolvedValue([]);
+    prismaMock.contradictionNode.findMany.mockResolvedValue([]);
   });
 
   it("blocks unauthenticated requests with 401", async () => {
@@ -39,7 +53,7 @@ describe("/api/today/intelligence-updates", () => {
     expect(prismaMock.modelUpdate.findMany).not.toHaveBeenCalled();
   });
 
-  it("returns only authenticated user-owned meaningful user_visible rows with allowlisted fields", async () => {
+  it("returns only authenticated user-owned meaningful user_visible rows with allowlisted fields and verified links", async () => {
     prismaMock.modelUpdate.findMany.mockResolvedValueOnce([
       {
         id: "mu-1",
@@ -52,10 +66,26 @@ describe("/api/today/intelligence-updates", () => {
       {
         id: "mu-2",
         updateType: "correction_applied",
+        affectedObjectType: "pattern_claim",
+        affectedObjectId: "pc-candidate",
+        userFacingSummary: "Candidate target must remain non-link.",
+        createdAt: new Date("2026-05-18T08:30:00.000Z"),
+      },
+      {
+        id: "mu-2b",
+        updateType: "conclusion_disputed",
+        affectedObjectType: "contradiction_node",
+        affectedObjectId: "cn-safe",
+        userFacingSummary: "Safe contradiction target should link.",
+        createdAt: new Date("2026-05-18T08:20:00.000Z"),
+      },
+      {
+        id: "mu-2c",
+        updateType: "strategy_adjusted",
         affectedObjectType: "model_update",
         affectedObjectId: "mu-target-1",
         userFacingSummary: "Unsupported targets must remain non-link.",
-        createdAt: new Date("2026-05-18T08:30:00.000Z"),
+        createdAt: new Date("2026-05-18T08:10:00.000Z"),
       },
       {
         id: " ",
@@ -66,6 +96,9 @@ describe("/api/today/intelligence-updates", () => {
         createdAt: new Date("2026-05-18T07:30:00.000Z"),
       },
     ]);
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
+    prismaMock.patternClaim.findMany.mockResolvedValueOnce([]);
+    prismaMock.contradictionNode.findMany.mockResolvedValueOnce([{ id: "cn-safe" }]);
 
     const route = await import(
       "../../app/api/today/intelligence-updates/route"
@@ -107,14 +140,58 @@ describe("/api/today/intelligence-updates", () => {
         {
           id: "mu-2",
           updateTypeLabel: "Correction Applied",
+          affectedObjectType: "pattern_claim",
+          affectedObjectTypeLabel: "Pattern Claim",
+          affectedObjectId: "pc-candidate",
+          affectedObjectHref: null,
+          userFacingSummary: "Candidate target must remain non-link.",
+          createdAt: "2026-05-18T08:30:00.000Z",
+        },
+        {
+          id: "mu-2b",
+          updateTypeLabel: "Conclusion Disputed",
+          affectedObjectType: "contradiction_node",
+          affectedObjectTypeLabel: "Contradiction Node",
+          affectedObjectId: "cn-safe",
+          affectedObjectHref: "/contradictions/cn-safe",
+          userFacingSummary: "Safe contradiction target should link.",
+          createdAt: "2026-05-18T08:20:00.000Z",
+        },
+        {
+          id: "mu-2c",
+          updateTypeLabel: "Strategy Adjusted",
           affectedObjectType: "model_update",
           affectedObjectTypeLabel: "Model Update",
           affectedObjectId: "mu-target-1",
           affectedObjectHref: null,
           userFacingSummary: "Unsupported targets must remain non-link.",
-          createdAt: "2026-05-18T08:30:00.000Z",
+          createdAt: "2026-05-18T08:10:00.000Z",
         },
       ],
+    });
+    expect(prismaMock.userMapConclusion.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        visibility: "user_visible",
+        id: { in: ["umc-1"] },
+      },
+      select: { id: true },
+    });
+    expect(prismaMock.patternClaim.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        status: { not: "candidate" },
+        id: { in: ["pc-candidate"] },
+      },
+      select: { id: true },
+    });
+    expect(prismaMock.contradictionNode.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        status: { not: "candidate" },
+        id: { in: ["cn-safe"] },
+      },
+      select: { id: true },
     });
 
     const body = JSON.stringify(payload);

@@ -6,6 +6,7 @@ import { ModelUpdateVisibility } from "@prisma/client";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import prismadb from "@/lib/prismadb";
 import { toWhatChangedListItem } from "@/lib/public-intelligence-safe-slice";
+import { applyVerifiedAffectedObjectHrefs } from "../../../../lib/public-linked-object-continuity";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,10 @@ export default async function WhatChangedPage() {
   const items = rows
     .map((row) => toWhatChangedListItem(row))
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const verifiedItems = await applyVerifiedAffectedObjectHrefs({
+    userId,
+    items,
+  });
 
   return (
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
@@ -59,13 +64,13 @@ export default async function WhatChangedPage() {
       />
 
       <SectionLabel>Meaningful updates</SectionLabel>
-      {items.length === 0 ? (
+      {verifiedItems.length === 0 ? (
         <div className="card-standard p-4 text-[13px] text-meta">
           No meaningful changes yet.
         </div>
       ) : (
         <div className="space-y-3">
-          {items.map((item) => (
+          {verifiedItems.map((item) => (
             <article key={item.id} className="card-standard p-5">
               <div className="label-meta text-cyan/70 mb-2">
                 {item.updateTypeLabel} · {item.affectedObjectTypeLabel}

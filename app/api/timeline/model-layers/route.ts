@@ -11,6 +11,7 @@ import {
   TIMELINE_MODEL_LAYERS_LIMIT,
   toTimelineModelLayerItem,
 } from "../../../../lib/timeline-model-layers";
+import { applyVerifiedAffectedObjectHrefs } from "../../../../lib/public-linked-object-continuity";
 
 export const dynamic = "force-dynamic";
 
@@ -47,8 +48,12 @@ export async function GET(req: Request) {
     const items = rows
       .map((row) => toTimelineModelLayerItem(row))
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
+    const verifiedItems = await applyVerifiedAffectedObjectHrefs({
+      userId,
+      items,
+    });
 
-    return NextResponse.json({ items });
+    return NextResponse.json({ items: verifiedItems });
   } catch (error) {
     console.error("[TIMELINE_MODEL_LAYERS_GET_ERROR]", error);
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
