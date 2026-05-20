@@ -8,6 +8,7 @@ import {
   type TodayPatternsResponse,
   type TodayTopContradiction,
 } from "../today-surface";
+import { DEFERRED_RECEIPT_NAMESPACE_PREFIXES } from "../public-continuity-registry";
 
 function readTodayPageSource(): string {
   return readFileSync(join(process.cwd(), "app/(root)/page.tsx"), "utf8");
@@ -133,6 +134,45 @@ describe("today-surface link mapping", () => {
     expect(tensionCard?.receiptHref).toBeNull();
     expect(patternCard?.detailHref).toBeNull();
     expect(patternCard?.receiptHref).toBeNull();
+  });
+
+  it("does not generate deferred receipt namespaces", () => {
+    const cards = buildTodaySurfacingCards({
+      journalEntries: [],
+      contradictions: [
+        {
+          id: "tension-1",
+          title: "Rest vs push",
+          sideA: "Rest more",
+          sideB: "Push harder",
+          status: "open",
+          lastEvidenceAt: "2026-05-16T09:00:00.000Z",
+          lastTouchedAt: "2026-05-16T09:00:00.000Z",
+        },
+      ],
+      patterns: {
+        sections: [
+          {
+            claims: [
+              {
+                id: "pattern-1",
+                summary: "I overcommit before deadlines",
+                strengthLevel: "developing",
+                evidenceCount: 3,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const renderedHrefs = JSON.stringify(cards.map((card) => card.receiptHref));
+    expect(renderedHrefs).toContain("receipt-pattern-pattern-1");
+    expect(renderedHrefs).toContain("receipt-tension-tension-1");
+
+    for (const namespace of DEFERRED_RECEIPT_NAMESPACE_PREFIXES) {
+      expect(renderedHrefs).not.toContain(namespace);
+    }
   });
 });
 

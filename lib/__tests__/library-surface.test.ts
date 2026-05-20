@@ -5,6 +5,7 @@ import {
   fetchLibraryItems,
   fetchReceiptItems,
 } from "../library-surface";
+import { DEFERRED_RECEIPT_NAMESPACE_PREFIXES } from "../public-continuity-registry";
 
 type MockRoute = {
   body: unknown;
@@ -243,6 +244,20 @@ describe("library-surface receipt alignment", () => {
     expect(detail.item.preview).toBeNull();
     expect(detail.item.date).toBe("Unknown");
     expect(detail.item.createdAt).toBe("");
+  });
+
+  it("returns null for deferred receipt namespaces without fetching evidence APIs", async () => {
+    const fetchMock = vi.fn(async (input: unknown) => {
+      throw new Error(`Unexpected fetch URL: ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
+
+    for (const namespace of DEFERRED_RECEIPT_NAMESPACE_PREFIXES) {
+      const detail = await fetchLibraryDetail(`${namespace}-test-id`);
+      expect(detail).toBeNull();
+    }
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("does not access internal user-map endpoints from public library receipt helpers", async () => {
