@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../../../../lib/public-continuity-registry";
 import {
   linkedObjectHrefMapKey,
   resolvePublicLinkedObjectHrefs,
@@ -119,12 +120,12 @@ export default async function WatchForPage() {
                     return (
                       <div className="label-meta text-meta">
                         Linked target: {item.linkedObjectId}
-                        <div className="mt-1">No linked detail available yet.</div>
+                        <div className="mt-1">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
                       </div>
                     );
                   }
 
-                  return <div className="label-meta text-meta">No linked detail available yet.</div>;
+                  return <div className="label-meta text-meta">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>;
                 })()}
                 <div className="label-meta mt-2">
                   Updated {formatDateTime(item.updatedAt)}

@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../../../../../lib/public-continuity-registry";
 import { resolvePublicLinkedObjectHref } from "@/lib/public-linked-object-continuity";
 import prismadb from "@/lib/prismadb";
 import {
@@ -154,11 +155,11 @@ export default async function ActiveQuestionDetailPage({
             <div>
               <div>{item.resolvedConclusionId}</div>
               <div className="label-meta text-meta mt-1">
-                No linked detail available yet.
+                {PUBLIC_LINKED_DETAIL_FALLBACK_COPY}
               </div>
             </div>
           ) : (
-            <div>No linked detail available yet.</div>
+            <div>{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
           )}
         </div>
       </section>

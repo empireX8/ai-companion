@@ -1,7 +1,10 @@
 import { QUICK_CHECK_IN_EVENT_LABELS, QUICK_CHECK_IN_STATE_LABELS, type QuickCheckInView } from "./quick-check-ins";
 import { toJournalPreview, type JournalEntryView } from "./journal-ui";
 import { computeContradictionTitle } from "./contradiction-title-adapter";
-import { PUBLIC_RECEIPT_NAMESPACE_PREFIXES } from "./public-continuity-registry";
+import {
+  PUBLIC_RECEIPT_NAMESPACE_PREFIXES,
+  buildPublicObjectHref,
+} from "./public-continuity-registry";
 
 type SessionOrigin = "APP" | "IMPORTED_ARCHIVE";
 
@@ -576,7 +579,10 @@ export async function fetchReceiptDetail(itemId: string): Promise<LibraryReceipt
           sourceLabel: r.source?.replace(/_/g, " ") ?? null,
           sourceDate: r.createdAt,
         })),
-        linkedHref: `/patterns/${claim.id}`,
+        linkedHref: buildPublicObjectHref({
+          type: "pattern_claim",
+          id: claim.id,
+        }),
         linkedLabel: "View pattern detail",
       };
     }
@@ -598,7 +604,10 @@ export async function fetchReceiptDetail(itemId: string): Promise<LibraryReceipt
         sourceLabel: e.source?.replace(/_/g, " ") ?? null,
         sourceDate: e.createdAt,
       })),
-      linkedHref: `/contradictions/${detail.id}`,
+      linkedHref: buildPublicObjectHref({
+        type: "contradiction_node",
+        id: detail.id,
+      }),
       linkedLabel: "View tension detail",
     };
   }

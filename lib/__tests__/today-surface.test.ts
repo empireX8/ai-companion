@@ -8,7 +8,10 @@ import {
   type TodayPatternsResponse,
   type TodayTopContradiction,
 } from "../today-surface";
-import { DEFERRED_RECEIPT_NAMESPACE_PREFIXES } from "../public-continuity-registry";
+import {
+  DEFERRED_RECEIPT_NAMESPACE_PREFIXES,
+  PUBLIC_LINKED_DETAIL_FALLBACK_COPY,
+} from "../public-continuity-registry";
 
 function readTodayPageSource(): string {
   return readFileSync(join(process.cwd(), "app/(root)/page.tsx"), "utf8");
@@ -197,7 +200,10 @@ describe("today-surface safety and honest copy", () => {
   it("keeps honest placeholder and fallback copy", () => {
     const source = readTodayPageSource();
     expect(source.includes("Saving media is not wired yet.")).toBe(true);
-    expect(source.includes("No linked detail available yet.")).toBe(true);
+    expect(source.includes("PUBLIC_LINKED_DETAIL_FALLBACK_COPY")).toBe(true);
+    expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe(
+      "No linked detail available yet."
+    );
     expect(source.includes("No surfaced items yet.")).toBe(true);
     expect(source.includes("No intelligence updates yet.")).toBe(true);
     expect(source.includes("Loading intelligence updates…")).toBe(true);

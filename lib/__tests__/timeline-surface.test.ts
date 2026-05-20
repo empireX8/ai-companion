@@ -10,6 +10,7 @@ import {
   type TimelineResponse,
 } from "../timeline-surface";
 import { buildTimelineModelLayersRequestUrl } from "../timeline-model-layers";
+import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../public-continuity-registry";
 
 function makeSummary(totalCheckIns = 0): TimelineStateSummary {
   return {
@@ -244,7 +245,10 @@ describe("timeline-surface rhythm honesty", () => {
 
     expect(source.includes("Model movement")).toBe(true);
     expect(source.includes("No model movement in this window.")).toBe(true);
-    expect(source.includes("No linked detail available yet.")).toBe(true);
+    expect(source.includes("PUBLIC_LINKED_DETAIL_FALLBACK_COPY")).toBe(true);
+    expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe(
+      "No linked detail available yet."
+    );
     expect(source.includes("item.affectedObjectId && item.affectedObjectHref")).toBe(
       true
     );

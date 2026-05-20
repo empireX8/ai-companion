@@ -7,6 +7,7 @@ import { PageHeader, SectionLabel } from "@/components/AppShell";
 import prismadb from "@/lib/prismadb";
 import { toWhatChangedListItem } from "@/lib/public-intelligence-safe-slice";
 import { applyVerifiedAffectedObjectHrefs } from "../../../../lib/public-linked-object-continuity";
+import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../../../../lib/public-continuity-registry";
 
 export const dynamic = "force-dynamic";
 
@@ -90,10 +91,10 @@ export default async function WhatChangedPage() {
                 ) : item.affectedObjectId ? (
                   <div className="label-meta text-meta">
                     Linked target: {item.affectedObjectId}
-                    <div className="mt-1">No linked detail available yet.</div>
+                    <div className="mt-1">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
                   </div>
                 ) : (
-                  <div className="label-meta text-meta">No linked detail available yet.</div>
+                  <div className="label-meta text-meta">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
                 )}
                 <div className="label-meta mt-2">
                   Recorded {formatDateTime(item.createdAt)}

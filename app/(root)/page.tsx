@@ -13,6 +13,7 @@ import {
   TODAY_INTELLIGENCE_UPDATES_ENDPOINT,
   type TodayIntelligenceUpdateItem,
 } from "@/lib/today-intelligence-updates";
+import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../../lib/public-continuity-registry";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
 import { ArrowUpRight, Mic, Image, Receipt } from "lucide-react";
@@ -377,7 +378,7 @@ export default function Today() {
                           {clampText(normalizeText(card.body), 220)}
                         </div>
                         <div className="label-meta mt-3">{card.meta}</div>
-                        <div className="label-meta text-meta mt-2">No linked detail available yet.</div>
+                        <div className="label-meta text-meta mt-2">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
                       </div>
                     </div>
                   )}
@@ -430,11 +431,11 @@ export default function Today() {
                   ) : item.affectedObjectId ? (
                     <div className="label-meta text-meta">
                       Linked target: {item.affectedObjectId}
-                      <div className="mt-1">No linked detail available yet.</div>
+                      <div className="mt-1">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
                     </div>
                   ) : (
                     <div className="label-meta text-meta">
-                      No linked detail available yet.
+                      {PUBLIC_LINKED_DETAIL_FALLBACK_COPY}
                     </div>
                   )}
                   <div className="label-meta mt-2">

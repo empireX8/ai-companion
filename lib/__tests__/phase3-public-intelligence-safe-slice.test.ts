@@ -13,12 +13,15 @@ import {
   toYourMapListItem,
   toWatchForListItem,
 } from "../public-intelligence-safe-slice";
+import { buildPublicObjectHref } from "../public-continuity-registry";
 
 describe("Phase 3 public intelligence safe-slice helpers", () => {
   it("builds active-question, watch-for, and your-map detail hrefs only from real IDs", () => {
     expect(buildActiveQuestionDetailHref("inv-1")).toBe("/active-questions/inv-1");
     expect(buildWatchForDetailHref("fw-1")).toBe("/watch-for/fw-1");
-    expect(buildYourMapDetailHref("umc-1")).toBe("/your-map/umc-1");
+    expect(buildYourMapDetailHref("umc-1")).toBe(
+      buildPublicObjectHref({ type: "usermap_conclusion", id: "umc-1" })
+    );
 
     expect(buildActiveQuestionDetailHref("   ")).toBeNull();
     expect(buildWatchForDetailHref("")).toBeNull();
@@ -34,19 +37,19 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
         affectedObjectType: "usermap_conclusion",
         affectedObjectId: "umc-1",
       })
-    ).toBe("/your-map/umc-1");
+    ).toBe(buildPublicObjectHref({ type: "usermap_conclusion", id: "umc-1" }));
     expect(
       buildWhatChangedAffectedObjectHref({
         affectedObjectType: "pattern_claim",
         affectedObjectId: "pc-2",
       })
-    ).toBe("/patterns/pc-2");
+    ).toBe(buildPublicObjectHref({ type: "pattern_claim", id: "pc-2" }));
     expect(
       buildWhatChangedAffectedObjectHref({
         affectedObjectType: "contradiction_node",
         affectedObjectId: "cn-4",
       })
-    ).toBe("/contradictions/cn-4");
+    ).toBe(buildPublicObjectHref({ type: "contradiction_node", id: "cn-4" }));
 
     expect(
       buildWhatChangedAffectedObjectHref({
@@ -74,19 +77,19 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
         linkedObjectType: "usermap_conclusion",
         linkedObjectId: "umc-9",
       })
-    ).toBe("/your-map/umc-9");
+    ).toBe(buildPublicObjectHref({ type: "usermap_conclusion", id: "umc-9" }));
     expect(
       buildLinkedObjectHref({
         linkedObjectType: "pattern_claim",
         linkedObjectId: "pc-2",
       })
-    ).toBe("/patterns/pc-2");
+    ).toBe(buildPublicObjectHref({ type: "pattern_claim", id: "pc-2" }));
     expect(
       buildLinkedObjectHref({
         linkedObjectType: "contradiction_node",
         linkedObjectId: "cn-4",
       })
-    ).toBe("/contradictions/cn-4");
+    ).toBe(buildPublicObjectHref({ type: "contradiction_node", id: "cn-4" }));
 
     expect(
       buildLinkedObjectHref({

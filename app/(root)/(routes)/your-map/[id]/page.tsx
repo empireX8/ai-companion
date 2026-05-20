@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { listYourMapPublicEvidenceContinuity } from "@/lib/public-evidence-continuity";
+import { PUBLIC_EVIDENCE_FALLBACK_COPY } from "../../../../../lib/public-continuity-registry";
 import prismadb from "@/lib/prismadb";
 import { toYourMapDetailItem } from "@/lib/public-intelligence-safe-slice";
 
@@ -102,7 +103,7 @@ export default async function YourMapDetailPage({
         <SectionLabel>Linked evidence</SectionLabel>
         {linkedEvidence.length === 0 ? (
           <div className="card-standard p-4 text-[13px] text-meta">
-            No linked evidence available yet.
+            {PUBLIC_EVIDENCE_FALLBACK_COPY}
           </div>
         ) : (
           <div className="space-y-2">

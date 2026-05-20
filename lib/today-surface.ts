@@ -1,5 +1,8 @@
 import { toJournalPreview } from "./journal-ui";
-import { buildPublicReceiptHref } from "./public-continuity-registry";
+import {
+  buildPublicObjectHref,
+  buildPublicReceiptHref,
+} from "./public-continuity-registry";
 
 const META_DATE = new Intl.DateTimeFormat("en-GB", {
   month: "short",
@@ -145,9 +148,10 @@ export function buildTodaySurfacingCards({
       meta: `${topContradiction.status.replace(/_/g, " ")} · ${formatShortDate(
         topContradiction.lastEvidenceAt ?? topContradiction.lastTouchedAt
       )}`,
-      detailHref: contradictionId
-        ? `/contradictions/${contradictionId}`
-        : null,
+      detailHref: buildPublicObjectHref({
+        type: "contradiction_node",
+        id: contradictionId,
+      }),
       receiptHref: buildPublicReceiptHref({
         namespace: "receipt-tension",
         id: contradictionId,
@@ -169,7 +173,10 @@ export function buildTodaySurfacingCards({
           ? `${topClaim.evidenceCount} evidence receipts in recent material.`
           : "Early signal from recent material.",
       meta: `Strength · ${strengthLabel(topClaim.strengthLevel)}`,
-      detailHref: patternId ? `/patterns/${patternId}` : null,
+      detailHref: buildPublicObjectHref({
+        type: "pattern_claim",
+        id: patternId,
+      }),
       receiptHref: buildPublicReceiptHref({
         namespace: "receipt-pattern",
         id: patternId,

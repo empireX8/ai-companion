@@ -26,6 +26,7 @@ import {
   buildTimelineModelLayersRequestUrl,
   type TimelineModelLayerItem,
 } from "@/lib/timeline-model-layers";
+import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../../../../../lib/public-continuity-registry";
 
 const STATE_DISPLAY_LABELS: Record<QuickCheckInStateTag, string> = {
   stable: "Calm",
@@ -431,7 +432,7 @@ export default function TimelineSurface() {
                           </span>
                         </div>
                         {entry.body && <div className="text-[13px] text-meta leading-relaxed line-clamp-2">{entry.body}</div>}
-                        {!entry.href ? <div className="label-meta text-meta mt-1">No linked detail available yet.</div> : null}
+                        {!entry.href ? <div className="label-meta text-meta mt-1">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div> : null}
                       </div>
                     </div>
                   ))}
@@ -473,11 +474,11 @@ export default function TimelineSurface() {
                   ) : item.affectedObjectId ? (
                     <div className="label-meta text-meta">
                       Linked target: {item.affectedObjectId}
-                      <div className="mt-1">No linked detail available yet.</div>
+                      <div className="mt-1">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
                     </div>
                   ) : (
                     <div className="label-meta text-meta">
-                      No linked detail available yet.
+                      {PUBLIC_LINKED_DETAIL_FALLBACK_COPY}
                     </div>
                   )}
                   <div className="label-meta mt-2">

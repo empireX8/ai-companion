@@ -159,8 +159,10 @@ export function buildWatchForDetailHref(id: string | null | undefined): string |
 }
 
 export function buildYourMapDetailHref(id: string | null | undefined): string | null {
-  const safeId = toNonEmptyId(id);
-  return safeId ? `/your-map/${safeId}` : null;
+  return buildPublicObjectHref({
+    type: UnderstandingLinkTargetType.usermap_conclusion,
+    id,
+  });
 }
 
 export function buildWhatChangedAffectedObjectHref(input: {
