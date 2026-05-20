@@ -8,11 +8,14 @@ import {
 } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
+import {
+  buildPublicObjectHref,
+  isPublicObjectLinkType,
+  toNonEmptyPublicId,
+  type PublicObjectLinkType,
+} from "./public-continuity-registry";
 
-type LinkableObjectType =
-  | "usermap_conclusion"
-  | "pattern_claim"
-  | "contradiction_node";
+type LinkableObjectType = PublicObjectLinkType;
 
 type LinkedObjectInput = {
   linkedObjectType: string | null | undefined;
@@ -25,37 +28,8 @@ type AffectedObjectLinkInput = {
   affectedObjectHref: string | null;
 };
 
-const SUPPORTED_LINK_TYPES: LinkableObjectType[] = [
-  "usermap_conclusion",
-  "pattern_claim",
-  "contradiction_node",
-];
-
-function toNonEmptyId(value: string | null | undefined): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
 function toSupportedType(value: string | null | undefined): LinkableObjectType | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  if (value === "usermap_conclusion") {
-    return "usermap_conclusion";
-  }
-  if (value === "pattern_claim") {
-    return "pattern_claim";
-  }
-  if (value === "contradiction_node") {
-    return "contradiction_node";
-  }
-
-  return null;
+  return isPublicObjectLinkType(value) ? value : null;
 }
 
 function toKey(type: string, id: string): string {
@@ -63,13 +37,7 @@ function toKey(type: string, id: string): string {
 }
 
 function toHref(type: LinkableObjectType, id: string): string {
-  if (type === "usermap_conclusion") {
-    return `/your-map/${id}`;
-  }
-  if (type === "pattern_claim") {
-    return `/patterns/${id}`;
-  }
-  return `/contradictions/${id}`;
+  return buildPublicObjectHref({ type, id }) ?? "";
 }
 
 export async function resolvePublicLinkedObjectHref(args: {
@@ -87,7 +55,7 @@ export async function resolvePublicLinkedObjectHref(args: {
     ],
   });
 
-  const safeId = toNonEmptyId(args.linkedObjectId);
+  const safeId = toNonEmptyPublicId(args.linkedObjectId);
   if (!safeId) {
     return null;
   }
@@ -114,7 +82,7 @@ export async function resolvePublicLinkedObjectHrefs(args: {
 
   for (const target of args.targets) {
     const safeType = toSupportedType(target.linkedObjectType);
-    const safeId = toNonEmptyId(target.linkedObjectId);
+    const safeId = toNonEmptyPublicId(target.linkedObjectId);
 
     if (!safeType || !safeId) {
       continue;
@@ -185,7 +153,7 @@ export function linkedObjectHrefMapKey(input: {
   linkedObjectId: string | null | undefined;
 }): string | null {
   const safeType = toSupportedType(input.linkedObjectType);
-  const safeId = toNonEmptyId(input.linkedObjectId);
+  const safeId = toNonEmptyPublicId(input.linkedObjectId);
   if (!safeType || !safeId) {
     return null;
   }
@@ -195,9 +163,7 @@ export function linkedObjectHrefMapKey(input: {
 export function isPublicLinkedObjectTypeSupported(
   linkedObjectType: string | null | undefined
 ): boolean {
-  return SUPPORTED_LINK_TYPES.includes(
-    linkedObjectType as LinkableObjectType
-  );
+  return isPublicObjectLinkType(linkedObjectType);
 }
 
 export async function applyVerifiedAffectedObjectHrefs<

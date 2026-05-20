@@ -1,4 +1,5 @@
 import { toJournalPreview } from "./journal-ui";
+import { buildPublicReceiptHref } from "./public-continuity-registry";
 
 const META_DATE = new Intl.DateTimeFormat("en-GB", {
   month: "short",
@@ -147,9 +148,10 @@ export function buildTodaySurfacingCards({
       detailHref: contradictionId
         ? `/contradictions/${contradictionId}`
         : null,
-      receiptHref: contradictionId
-        ? `/library/receipt-tension-${contradictionId}`
-        : null,
+      receiptHref: buildPublicReceiptHref({
+        namespace: "receipt-tension",
+        id: contradictionId,
+      }),
     });
   }
 
@@ -168,7 +170,10 @@ export function buildTodaySurfacingCards({
           : "Early signal from recent material.",
       meta: `Strength · ${strengthLabel(topClaim.strengthLevel)}`,
       detailHref: patternId ? `/patterns/${patternId}` : null,
-      receiptHref: patternId ? `/library/receipt-pattern-${patternId}` : null,
+      receiptHref: buildPublicReceiptHref({
+        namespace: "receipt-pattern",
+        id: patternId,
+      }),
     });
   }
 

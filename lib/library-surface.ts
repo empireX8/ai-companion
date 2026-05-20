@@ -1,6 +1,7 @@
 import { QUICK_CHECK_IN_EVENT_LABELS, QUICK_CHECK_IN_STATE_LABELS, type QuickCheckInView } from "./quick-check-ins";
 import { toJournalPreview, type JournalEntryView } from "./journal-ui";
 import { computeContradictionTitle } from "./contradiction-title-adapter";
+import { PUBLIC_RECEIPT_NAMESPACE_PREFIXES } from "./public-continuity-registry";
 
 type SessionOrigin = "APP" | "IMPORTED_ARCHIVE";
 
@@ -238,7 +239,7 @@ function buildItemId(prefix: string, sourceId: string): string {
 }
 
 /** Known multi-part prefixes that contain hyphens. */
-const MULTI_PART_PREFIXES = ["receipt-pattern", "receipt-tension"] as const;
+const MULTI_PART_PREFIXES = PUBLIC_RECEIPT_NAMESPACE_PREFIXES;
 
 function parseItemId(itemId: string): { prefix: string; sourceId: string } | null {
   // Check multi-part prefixes first (they contain hyphens)

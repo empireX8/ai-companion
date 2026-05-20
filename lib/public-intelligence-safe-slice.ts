@@ -12,6 +12,11 @@ import {
   type ModelUpdate,
 } from "@prisma/client";
 
+import {
+  buildPublicObjectHref,
+  toNonEmptyPublicId,
+} from "./public-continuity-registry";
+
 export const ACTIVE_QUESTION_VISIBLE_STATUSES: InvestigationStatus[] = [
   "open",
   "gathering_evidence",
@@ -98,11 +103,7 @@ type UserMapDetailRecord = Pick<
 >;
 
 function toNonEmptyId(value: string | null | undefined): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
+  return toNonEmptyPublicId(value);
 }
 
 function toTitleCase(value: string): string {
@@ -166,44 +167,20 @@ export function buildWhatChangedAffectedObjectHref(input: {
   affectedObjectType: UnderstandingLinkTargetType;
   affectedObjectId: string | null | undefined;
 }): string | null {
-  const safeId = toNonEmptyId(input.affectedObjectId);
-  if (!safeId) {
-    return null;
-  }
-
-  if (input.affectedObjectType === "usermap_conclusion") {
-    return buildYourMapDetailHref(safeId);
-  }
-  if (input.affectedObjectType === "pattern_claim") {
-    return `/patterns/${safeId}`;
-  }
-  if (input.affectedObjectType === "contradiction_node") {
-    return `/contradictions/${safeId}`;
-  }
-
-  return null;
+  return buildPublicObjectHref({
+    type: input.affectedObjectType,
+    id: input.affectedObjectId,
+  });
 }
 
 export function buildLinkedObjectHref(input: {
   linkedObjectType: UnderstandingLinkTargetType;
   linkedObjectId: string | null | undefined;
 }): string | null {
-  const safeId = toNonEmptyId(input.linkedObjectId);
-  if (!safeId) {
-    return null;
-  }
-
-  if (input.linkedObjectType === "usermap_conclusion") {
-    return buildYourMapDetailHref(safeId);
-  }
-  if (input.linkedObjectType === "pattern_claim") {
-    return `/patterns/${safeId}`;
-  }
-  if (input.linkedObjectType === "contradiction_node") {
-    return `/contradictions/${safeId}`;
-  }
-
-  return null;
+  return buildPublicObjectHref({
+    type: input.linkedObjectType,
+    id: input.linkedObjectId,
+  });
 }
 
 export type ActiveQuestionListItem = {

@@ -9,16 +9,21 @@ import {
 } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
+import {
+  buildPublicObjectHref,
+  isPublicEvidenceSourceType,
+  toNonEmptyPublicId,
+  type PublicEvidenceSourceType,
+} from "./public-continuity-registry";
 
 const YOUR_MAP_EVIDENCE_LIMIT = 6;
 const YOUR_MAP_EVIDENCE_TARGET_TYPE = UnderstandingLinkTargetType.usermap_conclusion;
 const YOUR_MAP_EVIDENCE_ALLOWED_SOURCE_TYPES = [
   UnderstandingLinkSourceType.pattern_claim,
   UnderstandingLinkSourceType.contradiction_node,
-] as const;
+] as const satisfies readonly PublicEvidenceSourceType[];
 
-type YourMapEvidenceSourceType =
-  (typeof YOUR_MAP_EVIDENCE_ALLOWED_SOURCE_TYPES)[number];
+type YourMapEvidenceSourceType = PublicEvidenceSourceType;
 
 type YourMapEvidenceRow = {
   id: string;
@@ -36,15 +41,6 @@ export type PublicEvidenceContinuityItem = {
   createdAt: string;
 };
 
-function toNonEmptyId(value: string | null | undefined): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
 function toTitleCase(value: string): string {
   return value
     .split("_")
@@ -57,14 +53,7 @@ function buildAllowlistedSourceHref(input: {
   sourceType: YourMapEvidenceSourceType;
   sourceId: string;
 }): string | null {
-  if (input.sourceType === UnderstandingLinkSourceType.pattern_claim) {
-    return `/patterns/${input.sourceId}`;
-  }
-  if (input.sourceType === UnderstandingLinkSourceType.contradiction_node) {
-    return `/contradictions/${input.sourceId}`;
-  }
-
-  return null;
+  return buildPublicObjectHref({ type: input.sourceType, id: input.sourceId });
 }
 
 function toSafePublicEvidenceItem(args: {
@@ -72,12 +61,12 @@ function toSafePublicEvidenceItem(args: {
   verifiedPatternIds: ReadonlySet<string>;
   verifiedContradictionIds: ReadonlySet<string>;
 }): PublicEvidenceContinuityItem | null {
-  const safeSourceId = toNonEmptyId(args.row.sourceId);
+  const safeSourceId = toNonEmptyPublicId(args.row.sourceId);
   if (!safeSourceId) {
     return null;
   }
 
-  if (args.row.sourceType === UnderstandingLinkSourceType.pattern_claim) {
+  if (isPublicEvidenceSourceType(args.row.sourceType) && args.row.sourceType === UnderstandingLinkSourceType.pattern_claim) {
     if (!args.verifiedPatternIds.has(safeSourceId)) {
       return null;
     }
@@ -100,7 +89,7 @@ function toSafePublicEvidenceItem(args: {
     };
   }
 
-  if (args.row.sourceType === UnderstandingLinkSourceType.contradiction_node) {
+  if (isPublicEvidenceSourceType(args.row.sourceType) && args.row.sourceType === UnderstandingLinkSourceType.contradiction_node) {
     if (!args.verifiedContradictionIds.has(safeSourceId)) {
       return null;
     }
@@ -130,7 +119,7 @@ export async function listYourMapPublicEvidenceContinuity(args: {
   userId: string;
   targetId: string;
 }): Promise<PublicEvidenceContinuityItem[]> {
-  const safeTargetId = toNonEmptyId(args.targetId);
+  const safeTargetId = toNonEmptyPublicId(args.targetId);
   if (!safeTargetId) {
     return [];
   }
@@ -172,13 +161,13 @@ export async function listYourMapPublicEvidenceContinuity(args: {
   const patternSourceIds = [...new Set(
     rows
       .filter((row) => row.sourceType === UnderstandingLinkSourceType.pattern_claim)
-      .map((row) => toNonEmptyId(row.sourceId))
+      .map((row) => toNonEmptyPublicId(row.sourceId))
       .filter((sourceId): sourceId is string => Boolean(sourceId))
   )];
   const contradictionSourceIds = [...new Set(
     rows
       .filter((row) => row.sourceType === UnderstandingLinkSourceType.contradiction_node)
-      .map((row) => toNonEmptyId(row.sourceId))
+      .map((row) => toNonEmptyPublicId(row.sourceId))
       .filter((sourceId): sourceId is string => Boolean(sourceId))
   )];
 
