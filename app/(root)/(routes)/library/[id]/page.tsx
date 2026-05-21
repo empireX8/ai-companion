@@ -146,26 +146,16 @@ export default function LibraryDetailPage() {
           <div className="mt-8">
             <SectionLabel>Linked</SectionLabel>
             <div className="flex gap-2 flex-wrap">
-              {detail.item.linked.map((linked, index) => {
-                const path =
-                  linked.kind === "Pattern"
-                    ? "/patterns"
-                    : linked.kind === "Tension"
-                      ? "/contradictions"
-                      : "/timeline";
-
-                return (
-                  <Link
-                    key={`${linked.kind}-${linked.label}-${index}`}
-                    href={path}
-                    className="card-standard px-3 h-8 inline-flex items-center text-[12px] hover:border-[hsl(187_100%_50%/0.3)]"
-                  >
-                    <Link2 className="h-2.5 w-2.5 mr-1.5 text-cyan/70" strokeWidth={1.5} />
-                    <span className="text-cyan/70 label-meta mr-2">{linked.kind}</span>
-                    {linked.label}
-                  </Link>
-                );
-              })}
+              {detail.item.linked.map((linked, index) => (
+                <span
+                  key={`${linked.kind}-${linked.label}-${index}`}
+                  className="card-standard px-3 h-8 inline-flex items-center text-[12px]"
+                >
+                  <Link2 className="h-2.5 w-2.5 mr-1.5 text-cyan/70" strokeWidth={1.5} />
+                  <span className="text-cyan/70 label-meta mr-2">{linked.kind}</span>
+                  {linked.label}
+                </span>
+              ))}
             </div>
           </div>
         ) : null}

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -46,6 +48,18 @@ afterEach(() => {
 });
 
 describe("library-surface receipt alignment", () => {
+  it("does not derive Library detail linked-object hrefs from display labels", () => {
+    const source = readFileSync(
+      join(process.cwd(), "app/(root)/(routes)/library/[id]/page.tsx"),
+      "utf8"
+    );
+
+    expect(source).not.toContain('href={path}');
+    expect(source).not.toContain('linked.kind === "Pattern"');
+    expect(source).not.toContain('linked.kind === "Tension"');
+    expect(source).toContain("receipt.linkedHref");
+  });
+
   it("does not fabricate action receipts or call actions route for receipt rows", async () => {
     const fetchMock = setupFetchMock({
       "/api/patterns": {
