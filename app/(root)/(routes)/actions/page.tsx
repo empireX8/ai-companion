@@ -12,6 +12,7 @@ import {
   type ActionsPageData,
   type SurfacedActionView,
 } from "@/lib/actions-api";
+import { buildPublicReceiptHref } from "@/lib/public-continuity-registry";
 
 export default function ActionsPage() {
   const searchParams = useSearchParams();
@@ -111,42 +112,48 @@ export default function ActionsPage() {
         <div className="card-standard p-4 text-[13px] text-meta">No actions are available yet.</div>
       ) : (
         <div className="space-y-3">
-          {list.map((action) => (
-            <div key={action.id} className="card-standard p-5 hover:border-[hsl(187_100%_50%/0.18)] transition-colors">
-              <div className="flex items-start gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="label-meta text-cyan/70">{action.linkedSourceLabel}</div>
-                    <span className="label-meta">·</span>
-                    <div className="label-meta inline-flex items-center gap-1">
-                      <Clock className="h-3 w-3" strokeWidth={1.5} /> {action.effort}
+          {list.map((action) => {
+            const receiptHref = buildPublicReceiptHref({
+              namespace: "receipt-pattern",
+              id: action.linkedClaimId,
+            });
+
+            return (
+              <div key={action.id} className="card-standard p-5 hover:border-[hsl(187_100%_50%/0.18)] transition-colors">
+                <div className="flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="label-meta text-cyan/70">{action.linkedSourceLabel}</div>
+                      <span className="label-meta">·</span>
+                      <div className="label-meta inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" strokeWidth={1.5} /> {action.effort}
+                      </div>
+                      <span className="label-meta">·</span>
+                      <span className="label-meta">{toStatusLabel(action.status)}</span>
                     </div>
-                    <span className="label-meta">·</span>
-                    <span className="label-meta">{toStatusLabel(action.status)}</span>
-                  </div>
-                  <div className="text-[15.5px] font-medium mb-1.5">{action.title}</div>
-                  <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed mb-3 max-w-[640px]">
-                    {action.whySuggested}
-                  </div>
-                  <div className="label-meta inline-flex items-center gap-2">
-                    Based on <span className="text-cyan">{action.linkedClaimSummary ?? action.linkedGoalStatement ?? "Recent activity"}</span>
-                  </div>
-                  {action.linkedClaimId ? (
-                    <div className="mt-3 pt-3 border-t hairline">
-                      <Link
-                        href={`/library/receipt-pattern-${action.linkedClaimId}`}
-                        className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
-                      >
-                        <Receipt className="h-3 w-3" strokeWidth={1.5} />
-                        Receipts
-                      </Link>
+                    <div className="text-[15.5px] font-medium mb-1.5">{action.title}</div>
+                    <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed mb-3 max-w-[640px]">
+                      {action.whySuggested}
                     </div>
-                  ) : null}
+                    <div className="label-meta inline-flex items-center gap-2">
+                      Based on <span className="text-cyan">{action.linkedClaimSummary ?? action.linkedGoalStatement ?? "Recent activity"}</span>
+                    </div>
+                    {receiptHref ? (
+                      <div className="mt-3 pt-3 border-t hairline">
+                        <Link
+                          href={receiptHref}
+                          className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+                        >
+                          <Receipt className="h-3 w-3" strokeWidth={1.5} />
+                          Receipts
+                        </Link>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            </div>
-
-          ))}
+            );
+          })}
         </div>
       )}
 
