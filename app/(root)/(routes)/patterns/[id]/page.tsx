@@ -7,6 +7,7 @@ import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { RhythmGraph, OccurrenceDots } from "@/components/Visuals";
 import { fetchPatterns, type PatternClaimView, type PatternContradictionView, type PatternsResponse } from "@/lib/patterns-api";
 import { computeContradictionTitle } from "@/lib/contradiction-title-adapter";
+import { buildPublicReceiptHref } from "@/lib/public-continuity-registry";
 import { ChevronLeft, Compass, Receipt } from "lucide-react";
 
 const DATE_TIME_LABEL = new Intl.DateTimeFormat("en-GB", {
@@ -196,6 +197,11 @@ export default function PatternDetailPage() {
     );
   }
 
+  const receiptHref = buildPublicReceiptHref({
+    namespace: "receipt-pattern",
+    id: claim.id,
+  });
+
   return (
     <div className="px-12 py-10 max-w-[1000px] mx-auto animate-fade-in">
       <Link href="/patterns" className="inline-flex items-center gap-1.5 label-meta hover:text-white mb-6">
@@ -307,9 +313,9 @@ export default function PatternDetailPage() {
           ) : (
             <div className="card-standard px-3 h-8 inline-flex items-center text-[12px] text-meta">No linked tension yet.</div>
           )}
-          {claim.evidenceCount > 0 ? (
+          {claim.evidenceCount > 0 && receiptHref ? (
             <Link
-              href={`/library/receipt-pattern-${claim.id}`}
+              href={receiptHref}
               className="card-standard px-3 h-8 inline-flex items-center text-[12px] hover:border-[hsl(187_100%_50%/0.3)]"
             >
               <Receipt className="h-3 w-3 mr-1.5 text-cyan/70" strokeWidth={1.5} />
