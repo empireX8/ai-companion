@@ -6,6 +6,7 @@ import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { Waveform } from "@/components/Visuals";
 import { fetchPatterns, type PatternClaimView, type PatternContradictionView, type PatternsResponse } from "@/lib/patterns-api";
 import { computeContradictionTitle } from "@/lib/contradiction-title-adapter";
+import { buildPublicReceiptHref } from "@/lib/public-continuity-registry";
 import { ArrowUpRight, Receipt } from "lucide-react";
 
 export function PTToggle({ active }: { active: "patterns" | "tensions" }) {
@@ -125,6 +126,13 @@ export default function PatternsPage() {
     return contradictionSection?.contradictionItems?.[0] ?? null;
   }, [data]);
 
+  const keyTensionReceiptHref = keyTension
+    ? buildPublicReceiptHref({
+        namespace: "receipt-tension",
+        id: keyTension.id,
+      })
+    : null;
+
   return (
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
       <PageHeader
@@ -142,63 +150,70 @@ export default function PatternsPage() {
         <div className="card-standard p-4 text-[13px] text-meta mb-10">No recurring patterns yet.</div>
       ) : (
         <div className="space-y-3 mb-10">
-          {topClaims.map((claim, index) => (
-            <div
-              key={claim.id}
-              className={`p-5 ${
-                index === 0 ? "card-surfaced" : "card-standard hover:border-[hsl(187_100%_50%/0.18)]"
-              } transition-colors`}
-            >
-              <Link href={`/patterns/${claim.id}`} className="block group">
-                <div className="flex items-start gap-6">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="label-meta text-cyan/70">Pattern</div>
-                      <span className="label-meta">·</span>
-                      <div className="label-meta">
-                        Strength <span className="text-white/80">{strengthLabel(claim.strengthLevel)}</span>
+          {topClaims.map((claim, index) => {
+            const claimReceiptHref = buildPublicReceiptHref({
+              namespace: "receipt-pattern",
+              id: claim.id,
+            });
+
+            return (
+              <div
+                key={claim.id}
+                className={`p-5 ${
+                  index === 0 ? "card-surfaced" : "card-standard hover:border-[hsl(187_100%_50%/0.18)]"
+                } transition-colors`}
+              >
+                <Link href={`/patterns/${claim.id}`} className="block group">
+                  <div className="flex items-start gap-6">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="label-meta text-cyan/70">Pattern</div>
+                        <span className="label-meta">·</span>
+                        <div className="label-meta">
+                          Strength <span className="text-white/80">{strengthLabel(claim.strengthLevel)}</span>
+                        </div>
+                      </div>
+                      <div className="text-[16px] font-medium leading-snug mb-1.5 line-clamp-2">
+                        {clampText(normalizeText(claim.summary), 180)}
+                      </div>
+                      <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed mb-4 max-w-[640px]">
+                        {claim.evidenceCount > 0
+                          ? `${claim.evidenceCount} evidence receipts across ${claim.sessionCount} sessions.`
+                          : "Early signal in recent material."}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
+                          <span className="text-cyan/70">Family</span> {claim.familyLabel}
+                        </span>
+                        <span className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
+                          <span className="text-cyan/70">Action</span>{" "}
+                          <span className="max-w-[240px] truncate">
+                            {clampText(normalizeText(claim.action?.prompt ?? "No action suggested yet"), 72)}
+                          </span>
+                        </span>
                       </div>
                     </div>
-                    <div className="text-[16px] font-medium leading-snug mb-1.5 line-clamp-2">
-                      {clampText(normalizeText(claim.summary), 180)}
+                    <div className="w-[200px] shrink-0">
+                      <Waveform seed={index + 1} height={48} />
+                      <div className="label-meta mt-2 text-right">Seen {claim.evidenceCount}×</div>
                     </div>
-                    <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed mb-4 max-w-[640px]">
-                      {claim.evidenceCount > 0
-                        ? `${claim.evidenceCount} evidence receipts across ${claim.sessionCount} sessions.`
-                        : "Early signal in recent material."}
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
-                        <span className="text-cyan/70">Family</span> {claim.familyLabel}
-                      </span>
-                      <span className="label-meta px-2.5 h-6 rounded bg-white/[0.04] inline-flex items-center gap-2">
-                        <span className="text-cyan/70">Action</span>{" "}
-                        <span className="max-w-[240px] truncate">
-                          {clampText(normalizeText(claim.action?.prompt ?? "No action suggested yet"), 72)}
-                        </span>
-                      </span>
-                    </div>
+                    <ArrowUpRight className="h-4 w-4 text-meta group-hover:text-cyan transition-colors shrink-0" strokeWidth={1.5} />
                   </div>
-                  <div className="w-[200px] shrink-0">
-                    <Waveform seed={index + 1} height={48} />
-                    <div className="label-meta mt-2 text-right">Seen {claim.evidenceCount}×</div>
+                </Link>
+                {claim.evidenceCount > 0 && claimReceiptHref ? (
+                  <div className="mt-3 pt-3 border-t hairline">
+                    <Link
+                      href={claimReceiptHref}
+                      className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+                    >
+                      <Receipt className="h-3 w-3" strokeWidth={1.5} />
+                      Receipts
+                    </Link>
                   </div>
-                  <ArrowUpRight className="h-4 w-4 text-meta group-hover:text-cyan transition-colors shrink-0" strokeWidth={1.5} />
-                </div>
-              </Link>
-              {claim.evidenceCount > 0 ? (
-                <div className="mt-3 pt-3 border-t hairline">
-                  <Link
-                    href={`/library/receipt-pattern-${claim.id}`}
-                    className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
-                  >
-                    <Receipt className="h-3 w-3" strokeWidth={1.5} />
-                    Receipts
-                  </Link>
-                </div>
-              ) : null}
-            </div>
-          ))}
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -214,15 +229,17 @@ export default function PatternsPage() {
               {toTensionPreview(keyTension)}
             </div>
           </Link>
-          <div className="mt-3 pt-3 border-t hairline">
-            <Link
-              href={`/library/receipt-tension-${keyTension.id}`}
-              className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
-            >
-              <Receipt className="h-3 w-3" strokeWidth={1.5} />
-              Receipts
-            </Link>
-          </div>
+          {keyTensionReceiptHref ? (
+            <div className="mt-3 pt-3 border-t hairline">
+              <Link
+                href={keyTensionReceiptHref}
+                className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+              >
+                <Receipt className="h-3 w-3" strokeWidth={1.5} />
+                Receipts
+              </Link>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="card-standard p-4 text-[13px] text-meta">No active tensions yet.</div>
