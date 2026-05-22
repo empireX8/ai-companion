@@ -7,6 +7,7 @@ import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { DualWaveform, OccurrenceDots } from "@/components/Visuals";
 import { fetchContradictionById, fetchLinkedReferences, type ContradictionDetail, type LinkedReference } from "@/lib/nodes-api";
 import { computeContradictionTitle } from "@/lib/contradiction-title-adapter";
+import { buildPublicReceiptHref } from "@/lib/public-continuity-registry";
 import { ChevronLeft, Compass, Receipt } from "lucide-react";
 
 const DATE_LABEL = new Intl.DateTimeFormat("en-GB", {
@@ -169,6 +170,11 @@ export default function TensionDetailPage() {
     );
   }
 
+  const receiptHref = buildPublicReceiptHref({
+    namespace: "receipt-tension",
+    id: detail.id,
+  });
+
   return (
     <div className="px-12 py-10 max-w-[1000px] mx-auto animate-fade-in">
       <Link href="/contradictions" className="inline-flex items-center gap-1.5 label-meta hover:text-white mb-6">
@@ -304,9 +310,9 @@ export default function TensionDetailPage() {
             ))}
           </div>
         )}
-        {detail.evidence.length > 0 ? (
+        {detail.evidence.length > 0 && receiptHref ? (
           <Link
-            href={`/library/receipt-tension-${detail.id}`}
+            href={receiptHref}
             className="card-standard px-4 h-9 inline-flex items-center gap-2 text-[12.5px] hover:border-[hsl(187_100%_50%/0.3)]"
           >
             <Receipt className="h-3.5 w-3.5 text-cyan/70" strokeWidth={1.5} />
