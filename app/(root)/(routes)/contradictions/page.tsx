@@ -7,6 +7,7 @@ import { DualWaveform } from "@/components/Visuals";
 import { ArrowUpRight, Receipt } from "lucide-react";
 import { fetchContradictions, type ContradictionListItem } from "@/lib/nodes-api";
 import { computeContradictionTitle } from "@/lib/contradiction-title-adapter";
+import { buildPublicReceiptHref } from "@/lib/public-continuity-registry";
 
 function PTToggle({ active }: { active: "patterns" | "tensions" }) {
   return (
@@ -158,6 +159,10 @@ export default function TensionsPage() {
             const days = toDaysSince(item.lastTouchedAt);
             const isExpanded = expandedIds.includes(item.id);
             const preview = toPreviewFromSides(item);
+            const receiptHref = buildPublicReceiptHref({
+              namespace: "receipt-tension",
+              id: item.id,
+            });
             return (
               <article
                 key={item.id}
@@ -218,13 +223,15 @@ export default function TensionsPage() {
                     >
                       {isExpanded ? "Collapse" : "Show more"}
                     </button>
-                    <Link
-                      href={`/library/receipt-tension-${item.id}`}
-                      className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
-                    >
-                      <Receipt className="h-3 w-3" strokeWidth={1.5} />
-                      Receipts
-                    </Link>
+                    {receiptHref ? (
+                      <Link
+                        href={receiptHref}
+                        className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+                      >
+                        <Receipt className="h-3 w-3" strokeWidth={1.5} />
+                        Receipts
+                      </Link>
+                    ) : null}
                   </div>
                   <Link
                     href={`/contradictions/${item.id}`}
