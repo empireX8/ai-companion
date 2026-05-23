@@ -21,6 +21,7 @@ const PUBLIC_EVIDENCE_ALLOWED_TARGET_TYPES = [
   UnderstandingLinkTargetType.usermap_conclusion,
   UnderstandingLinkTargetType.investigation,
   UnderstandingLinkTargetType.fieldwork_assignment,
+  UnderstandingLinkTargetType.model_update,
 ] as const;
 type PublicEvidenceTargetType =
   (typeof PUBLIC_EVIDENCE_ALLOWED_TARGET_TYPES)[number];
