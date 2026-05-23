@@ -16,16 +16,23 @@ import {
   type PublicEvidenceSourceType,
 } from "./public-continuity-registry";
 
-const YOUR_MAP_EVIDENCE_LIMIT = 6;
-const YOUR_MAP_EVIDENCE_TARGET_TYPE = UnderstandingLinkTargetType.usermap_conclusion;
-const YOUR_MAP_EVIDENCE_ALLOWED_SOURCE_TYPES = [
+const PUBLIC_EVIDENCE_LIMIT = 6;
+const PUBLIC_EVIDENCE_ALLOWED_TARGET_TYPES = [
+  UnderstandingLinkTargetType.usermap_conclusion,
+  UnderstandingLinkTargetType.investigation,
+  UnderstandingLinkTargetType.fieldwork_assignment,
+] as const;
+type PublicEvidenceTargetType =
+  (typeof PUBLIC_EVIDENCE_ALLOWED_TARGET_TYPES)[number];
+
+const PUBLIC_EVIDENCE_ALLOWED_SOURCE_TYPES = [
   UnderstandingLinkSourceType.pattern_claim,
   UnderstandingLinkSourceType.contradiction_node,
 ] as const satisfies readonly PublicEvidenceSourceType[];
 
-type YourMapEvidenceSourceType = PublicEvidenceSourceType;
+type PublicEvidenceSource = PublicEvidenceSourceType;
 
-type YourMapEvidenceRow = {
+type PublicEvidenceRow = {
   id: string;
   sourceType: UnderstandingLinkSourceType;
   sourceId: string;
@@ -34,7 +41,7 @@ type YourMapEvidenceRow = {
 
 export type PublicEvidenceContinuityItem = {
   id: string;
-  sourceType: YourMapEvidenceSourceType;
+  sourceType: PublicEvidenceSource;
   sourceTypeLabel: string;
   sourceId: string;
   href: string;
@@ -50,14 +57,14 @@ function toTitleCase(value: string): string {
 }
 
 function buildAllowlistedSourceHref(input: {
-  sourceType: YourMapEvidenceSourceType;
+  sourceType: PublicEvidenceSource;
   sourceId: string;
 }): string | null {
   return buildPublicObjectHref({ type: input.sourceType, id: input.sourceId });
 }
 
 function toSafePublicEvidenceItem(args: {
-  row: YourMapEvidenceRow;
+  row: PublicEvidenceRow;
   verifiedPatternIds: ReadonlySet<string>;
   verifiedContradictionIds: ReadonlySet<string>;
 }): PublicEvidenceContinuityItem | null {
@@ -115,44 +122,35 @@ function toSafePublicEvidenceItem(args: {
   return null;
 }
 
-export async function listYourMapPublicEvidenceContinuity(args: {
+function isSupportedPublicEvidenceTargetType(
+  targetType: UnderstandingLinkTargetType
+): targetType is PublicEvidenceTargetType {
+  return PUBLIC_EVIDENCE_ALLOWED_TARGET_TYPES.includes(
+    targetType as PublicEvidenceTargetType
+  );
+}
+
+async function listVerifiedPublicEvidenceContinuityByTarget(args: {
   userId: string;
+  targetType: PublicEvidenceTargetType;
   targetId: string;
 }): Promise<PublicEvidenceContinuityItem[]> {
-  const safeTargetId = toNonEmptyPublicId(args.targetId);
-  if (!safeTargetId) {
-    return [];
-  }
-
-  const target = await prismadb.userMapConclusion.findFirst({
-    where: {
-      id: safeTargetId,
-      userId: args.userId,
-      visibility: UserMapConclusionVisibility.user_visible,
-    },
-    select: { id: true },
-  });
-
-  if (!target) {
-    return [];
-  }
-
   const rows = (await prismadb.understandingEvidenceLink.findMany({
     where: {
       userId: args.userId,
-      targetType: YOUR_MAP_EVIDENCE_TARGET_TYPE,
-      targetId: target.id,
-      sourceType: { in: [...YOUR_MAP_EVIDENCE_ALLOWED_SOURCE_TYPES] },
+      targetType: args.targetType,
+      targetId: args.targetId,
+      sourceType: { in: [...PUBLIC_EVIDENCE_ALLOWED_SOURCE_TYPES] },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: YOUR_MAP_EVIDENCE_LIMIT,
+    take: PUBLIC_EVIDENCE_LIMIT,
     select: {
       id: true,
       sourceType: true,
       sourceId: true,
       createdAt: true,
     },
-  })) as YourMapEvidenceRow[];
+  })) as PublicEvidenceRow[];
 
   if (rows.length === 0) {
     return [];
@@ -206,4 +204,54 @@ export async function listYourMapPublicEvidenceContinuity(args: {
       })
     )
     .filter((item): item is PublicEvidenceContinuityItem => Boolean(item));
+}
+
+export async function listPublicEvidenceContinuityForTarget(args: {
+  userId: string;
+  targetType: UnderstandingLinkTargetType;
+  targetId: string;
+}): Promise<PublicEvidenceContinuityItem[]> {
+  const safeTargetId = toNonEmptyPublicId(args.targetId);
+  if (!safeTargetId) {
+    return [];
+  }
+
+  if (!isSupportedPublicEvidenceTargetType(args.targetType)) {
+    return [];
+  }
+
+  return listVerifiedPublicEvidenceContinuityByTarget({
+    userId: args.userId,
+    targetType: args.targetType,
+    targetId: safeTargetId,
+  });
+}
+
+export async function listYourMapPublicEvidenceContinuity(args: {
+  userId: string;
+  targetId: string;
+}): Promise<PublicEvidenceContinuityItem[]> {
+  const safeTargetId = toNonEmptyPublicId(args.targetId);
+  if (!safeTargetId) {
+    return [];
+  }
+
+  const target = await prismadb.userMapConclusion.findFirst({
+    where: {
+      id: safeTargetId,
+      userId: args.userId,
+      visibility: UserMapConclusionVisibility.user_visible,
+    },
+    select: { id: true },
+  });
+
+  if (!target) {
+    return [];
+  }
+
+  return listPublicEvidenceContinuityForTarget({
+    userId: args.userId,
+    targetType: UnderstandingLinkTargetType.usermap_conclusion,
+    targetId: target.id,
+  });
 }
