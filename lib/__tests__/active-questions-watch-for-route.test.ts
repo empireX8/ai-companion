@@ -262,7 +262,7 @@ describe("/api/active-questions and /api/watch-for safe mobile list routes", () 
     expect(body).not.toContain("fw-from-prompt should never become an ID");
   });
 
-  it("keeps safe list endpoints read-only and free of internal review or write semantics", () => {
+  it("keeps safe active-questions and watch-for endpoints read-only and free of internal review or write semantics", () => {
     const activeQuestionsDetailRoutePath = path.join(
       process.cwd(),
       "app/api/active-questions/[id]/route.ts"
@@ -271,8 +271,8 @@ describe("/api/active-questions and /api/watch-for safe mobile list routes", () 
       process.cwd(),
       "app/api/watch-for/[id]/route.ts"
     );
-    expect(existsSync(activeQuestionsDetailRoutePath)).toBe(false);
-    expect(existsSync(watchForDetailRoutePath)).toBe(false);
+    expect(existsSync(activeQuestionsDetailRoutePath)).toBe(true);
+    expect(existsSync(watchForDetailRoutePath)).toBe(true);
 
     const activeQuestionsSource = readFileSync(
       path.join(process.cwd(), "app/api/active-questions/route.ts"),
@@ -282,7 +282,14 @@ describe("/api/active-questions and /api/watch-for safe mobile list routes", () 
       path.join(process.cwd(), "app/api/watch-for/route.ts"),
       "utf8"
     );
-    const combined = `${activeQuestionsSource}\n${watchForSource}`;
+    const activeQuestionsDetailSource = readFileSync(
+      activeQuestionsDetailRoutePath,
+      "utf8"
+    );
+    const watchForDetailSource = readFileSync(watchForDetailRoutePath, "utf8");
+    const combined =
+      `${activeQuestionsSource}\n${watchForSource}\n` +
+      `${activeQuestionsDetailSource}\n${watchForDetailSource}`;
 
     expect(combined.includes("/api/internal/user-map/review-candidates")).toBe(
       false

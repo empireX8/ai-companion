@@ -16,6 +16,17 @@ type ActiveQuestionRecord = Pick<
   | "updatedAt"
 >;
 
+type ActiveQuestionDetailRecord = Pick<
+  Investigation,
+  | "id"
+  | "title"
+  | "organizingQuestion"
+  | "status"
+  | "createdAt"
+  | "updatedAt"
+  | "resolvedIntoUserMapConclusionId"
+>;
+
 export type ActiveQuestionItem = {
   id: string;
   title: string;
@@ -24,6 +35,18 @@ export type ActiveQuestionItem = {
   statusLabel: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ActiveQuestionDetailItem = {
+  id: string;
+  title: string;
+  organizingQuestion: string;
+  status: InvestigationStatus;
+  statusLabel: string;
+  createdAt: string;
+  updatedAt: string;
+  resolvedIntoUserMapConclusionId: string | null;
+  resolvedIntoUserMapConclusionHref: string | null;
 };
 
 export const ACTIVE_QUESTIONS_ENDPOINT = "/api/active-questions";
@@ -47,5 +70,28 @@ export function toActiveQuestionItem(
     statusLabel: formatInvestigationStatus(row.status),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toActiveQuestionDetailItem(
+  row: ActiveQuestionDetailRecord
+): ActiveQuestionDetailItem | null {
+  const safeId = toNonEmptyPublicId(row.id);
+  if (!safeId) {
+    return null;
+  }
+
+  return {
+    id: safeId,
+    title: row.title,
+    organizingQuestion: row.organizingQuestion,
+    status: row.status,
+    statusLabel: formatInvestigationStatus(row.status),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    resolvedIntoUserMapConclusionId: toNonEmptyPublicId(
+      row.resolvedIntoUserMapConclusionId
+    ),
+    resolvedIntoUserMapConclusionHref: null,
   };
 }
