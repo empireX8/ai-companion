@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
-import { Clock, Receipt } from "lucide-react";
+import { Clock, Compass, Receipt } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -13,6 +13,7 @@ import {
   type SurfacedActionView,
 } from "@/lib/actions-api";
 import { buildPublicReceiptHref } from "@/lib/public-continuity-registry";
+import { buildExploreActionHandoffHref } from "@/lib/explore-action-handoff";
 
 export default function ActionsPage() {
   const searchParams = useSearchParams();
@@ -117,6 +118,7 @@ export default function ActionsPage() {
               namespace: "receipt-pattern",
               id: action.linkedClaimId,
             });
+            const reflectHref = buildExploreActionHandoffHref(action.id);
 
             return (
               <div key={action.id} className="card-standard p-5 hover:border-[hsl(187_100%_50%/0.18)] transition-colors">
@@ -138,15 +140,28 @@ export default function ActionsPage() {
                     <div className="label-meta inline-flex items-center gap-2">
                       Based on <span className="text-cyan">{action.linkedClaimSummary ?? action.linkedGoalStatement ?? "Recent activity"}</span>
                     </div>
-                    {receiptHref ? (
+                    {receiptHref || reflectHref ? (
                       <div className="mt-3 pt-3 border-t hairline">
-                        <Link
-                          href={receiptHref}
-                          className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
-                        >
-                          <Receipt className="h-3 w-3" strokeWidth={1.5} />
-                          Receipts
-                        </Link>
+                        <div className="flex items-center gap-4">
+                          {reflectHref ? (
+                            <Link
+                              href={reflectHref}
+                              className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+                            >
+                              <Compass className="h-3 w-3" strokeWidth={1.5} />
+                              Reflect in Explore
+                            </Link>
+                          ) : null}
+                          {receiptHref ? (
+                            <Link
+                              href={receiptHref}
+                              className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+                            >
+                              <Receipt className="h-3 w-3" strokeWidth={1.5} />
+                              Receipts
+                            </Link>
+                          ) : null}
+                        </div>
                       </div>
                     ) : null}
                   </div>
