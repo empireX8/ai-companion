@@ -149,23 +149,28 @@ describe("/api/what-changed/[id]/evidence", () => {
       items: [
         {
           sourceTypeLabel: "Pattern Claim",
+          evidenceSummaryLabel: "Pattern evidence is linked.",
           sourceObjectHref: "/patterns/pc-safe",
           createdAt: "2026-05-23T10:00:00.000Z",
           hasEvidence: true,
         },
         {
           sourceTypeLabel: "Contradiction Node",
+          evidenceSummaryLabel: "Tension evidence is linked.",
           sourceObjectHref: "/contradictions/cn-safe",
           createdAt: "2026-05-23T08:00:00.000Z",
           hasEvidence: true,
         },
       ],
     });
+    expect(payload.items.every((item: { hasEvidence: boolean }) => item.hasEvidence)).toBe(
+      true
+    );
 
     const body = JSON.stringify(payload);
     expect(body).not.toContain("quote");
     expect(body).not.toContain("snippet");
-    expect(body).not.toContain("summary");
+    expect(body).not.toContain("\"summary\":");
     expect(body).not.toContain("meta");
     expect(body).not.toContain("weight");
     expect(body).not.toContain("confidenceContribution");
@@ -176,6 +181,7 @@ describe("/api/what-changed/[id]/evidence", () => {
     expect(body).not.toContain("afterSummary");
     expect(body).not.toContain("confidenceDelta");
     expect(body).not.toContain("meaningfulDeltaScore");
+    expect(body).not.toContain("raw user text");
   });
 
   it("returns empty items when no verified links exist", async () => {

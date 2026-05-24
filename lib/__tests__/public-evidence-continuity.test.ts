@@ -170,6 +170,7 @@ describe("public evidence continuity helper", () => {
         id: "link-1",
         sourceType: "pattern_claim",
         sourceTypeLabel: "Pattern Claim",
+        evidenceSummaryLabel: "Pattern evidence is linked.",
         sourceId: "pc-1",
         href: "/patterns/pc-1",
         createdAt: "2026-05-18T10:00:00.000Z",
@@ -178,6 +179,7 @@ describe("public evidence continuity helper", () => {
         id: "link-4",
         sourceType: "contradiction_node",
         sourceTypeLabel: "Contradiction Node",
+        evidenceSummaryLabel: "Tension evidence is linked.",
         sourceId: "cn-1",
         href: "/contradictions/cn-1",
         createdAt: "2026-05-18T07:00:00.000Z",
@@ -214,18 +216,20 @@ describe("public evidence continuity helper", () => {
     expect(items).toHaveLength(1);
     expect(Object.keys(items[0] ?? {}).sort()).toEqual([
       "createdAt",
+      "evidenceSummaryLabel",
       "href",
       "id",
       "sourceId",
       "sourceType",
       "sourceTypeLabel",
     ]);
+    expect(items[0]?.evidenceSummaryLabel).toBe("Pattern evidence is linked.");
 
     const combined = JSON.stringify(items);
     expect(combined).not.toContain("meta");
-    expect(combined).not.toContain("summary");
-    expect(combined).not.toContain("snippet");
-    expect(combined).not.toContain("quote");
+    expect(combined).not.toContain("\"summary\":");
+    expect(combined).not.toContain("\"snippet\":");
+    expect(combined).not.toContain("\"quote\":");
     expect(combined).not.toContain("text");
     expect(combined).not.toContain("internalNotes");
   });

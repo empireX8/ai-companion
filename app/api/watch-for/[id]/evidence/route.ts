@@ -41,6 +41,7 @@ export async function GET(
 
     const items = continuityItems.map((item) => ({
       sourceTypeLabel: item.sourceTypeLabel,
+      evidenceSummaryLabel: item.evidenceSummaryLabel,
       sourceObjectHref: item.href,
       createdAt: item.createdAt,
       hasEvidence: true as const,

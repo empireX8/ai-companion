@@ -44,10 +44,21 @@ export type PublicEvidenceContinuityItem = {
   id: string;
   sourceType: PublicEvidenceSource;
   sourceTypeLabel: string;
+  evidenceSummaryLabel: string;
   sourceId: string;
   href: string;
   createdAt: string;
 };
+
+function toPublicEvidenceSummaryLabel(
+  sourceType: PublicEvidenceSource
+): string {
+  if (sourceType === UnderstandingLinkSourceType.pattern_claim) {
+    return "Pattern evidence is linked.";
+  }
+
+  return "Tension evidence is linked.";
+}
 
 function toTitleCase(value: string): string {
   return value
@@ -91,6 +102,7 @@ function toSafePublicEvidenceItem(args: {
       id: args.row.id,
       sourceType: args.row.sourceType,
       sourceTypeLabel: toTitleCase(args.row.sourceType),
+      evidenceSummaryLabel: toPublicEvidenceSummaryLabel(args.row.sourceType),
       sourceId: safeSourceId,
       href,
       createdAt: args.row.createdAt.toISOString(),
@@ -114,6 +126,7 @@ function toSafePublicEvidenceItem(args: {
       id: args.row.id,
       sourceType: args.row.sourceType,
       sourceTypeLabel: toTitleCase(args.row.sourceType),
+      evidenceSummaryLabel: toPublicEvidenceSummaryLabel(args.row.sourceType),
       sourceId: safeSourceId,
       href,
       createdAt: args.row.createdAt.toISOString(),

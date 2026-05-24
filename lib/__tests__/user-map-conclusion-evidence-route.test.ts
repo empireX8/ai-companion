@@ -150,23 +150,28 @@ describe("/api/user-map/conclusions/[id]/evidence", () => {
       items: [
         {
           sourceTypeLabel: "Pattern Claim",
+          evidenceSummaryLabel: "Pattern evidence is linked.",
           sourceObjectHref: "/patterns/pc-safe",
           createdAt: "2026-05-22T10:00:00.000Z",
           hasEvidence: true,
         },
         {
           sourceTypeLabel: "Contradiction Node",
+          evidenceSummaryLabel: "Tension evidence is linked.",
           sourceObjectHref: "/contradictions/cn-safe",
           createdAt: "2026-05-22T08:00:00.000Z",
           hasEvidence: true,
         },
       ],
     });
+    expect(payload.items.every((item: { hasEvidence: boolean }) => item.hasEvidence)).toBe(
+      true
+    );
 
     const body = JSON.stringify(payload);
     expect(body).not.toContain("quote");
     expect(body).not.toContain("snippet");
-    expect(body).not.toContain("summary");
+    expect(body).not.toContain("\"summary\":");
     expect(body).not.toContain("meta");
     expect(body).not.toContain("weight");
     expect(body).not.toContain("confidenceContribution");
@@ -174,5 +179,6 @@ describe("/api/user-map/conclusions/[id]/evidence", () => {
     expect(body).not.toContain("sourceRunId");
     expect(body).not.toContain("internalNotes");
     expect(body).not.toContain("receipt-action-");
+    expect(body).not.toContain("raw user text");
   });
 });
