@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   aggregateActionFeedback,
+  buildActionTemplateRankingDiagnostics,
   REPEATED_SIGNAL_THRESHOLD,
 } from "../actions-feedback";
 
@@ -392,5 +393,107 @@ describe("aggregateActionFeedback", () => {
       expect(unknown).toBeDefined();
       expect(unknown!.helped).toBe(1);
     });
+  });
+});
+
+describe("buildActionTemplateRankingDiagnostics", () => {
+  const toDiagnostics = (rows: RawRow[]) =>
+    buildActionTemplateRankingDiagnostics(aggregateActionFeedback(rows));
+
+  it("suggests promote when helped reaches threshold and didnt_help does not", () => {
+    const diagnostics = toDiagnostics([
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, () =>
+        makeHelpedRow({ templateId: "s1" })
+      ),
+      makeDidntHelpRow({ templateId: "s1" }),
+    ]);
+
+    expect(diagnostics).toEqual([
+      {
+        templateId: "s1",
+        helpedCount: REPEATED_SIGNAL_THRESHOLD,
+        didntHelpCount: 1,
+        repeatedHelped: true,
+        repeatedDidntHelp: false,
+        suggestedRankingHint: "promote",
+      },
+    ]);
+  });
+
+  it("suggests suppress when didnt_help reaches threshold and helped does not", () => {
+    const diagnostics = toDiagnostics([
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, () =>
+        makeDidntHelpRow({ templateId: "s2" })
+      ),
+      makeHelpedRow({ templateId: "s2" }),
+    ]);
+
+    expect(diagnostics).toEqual([
+      {
+        templateId: "s2",
+        helpedCount: 1,
+        didntHelpCount: REPEATED_SIGNAL_THRESHOLD,
+        repeatedHelped: false,
+        repeatedDidntHelp: true,
+        suggestedRankingHint: "suppress",
+      },
+    ]);
+  });
+
+  it("suggests neutral when repeated helped and repeated didnt_help conflict", () => {
+    const diagnostics = toDiagnostics([
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, () =>
+        makeHelpedRow({ templateId: "b1", bucket: "build", effort: "Medium" })
+      ),
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, () =>
+        makeDidntHelpRow({
+          templateId: "b1",
+          bucket: "build",
+          effort: "Medium",
+        })
+      ),
+    ]);
+
+    expect(diagnostics).toEqual([
+      {
+        templateId: "b1",
+        helpedCount: REPEATED_SIGNAL_THRESHOLD,
+        didntHelpCount: REPEATED_SIGNAL_THRESHOLD,
+        repeatedHelped: true,
+        repeatedDidntHelp: true,
+        suggestedRankingHint: "neutral",
+      },
+    ]);
+  });
+
+  it("suggests neutral below threshold", () => {
+    const diagnostics = toDiagnostics([
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD - 1 }, () =>
+        makeHelpedRow({ templateId: "s3" })
+      ),
+    ]);
+
+    expect(diagnostics).toEqual([
+      {
+        templateId: "s3",
+        helpedCount: REPEATED_SIGNAL_THRESHOLD - 1,
+        didntHelpCount: 0,
+        repeatedHelped: false,
+        repeatedDidntHelp: false,
+        suggestedRankingHint: "neutral",
+      },
+    ]);
+  });
+
+  it("does not expose raw note text", () => {
+    const diagnostics = toDiagnostics([
+      makeHelpedRow({
+        templateId: "s4",
+        note: "private note should never leak",
+      }),
+    ]);
+
+    const serialized = JSON.stringify(diagnostics);
+    expect(serialized).not.toContain("private note should never leak");
   });
 });

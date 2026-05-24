@@ -79,6 +79,17 @@ export type ActionBucketFeedbackAggregate = {
   notStarted: number;
 };
 
+export type ActionTemplateRankingHint = "promote" | "suppress" | "neutral";
+
+export type ActionTemplateRankingDiagnostic = {
+  templateId: string;
+  helpedCount: number;
+  didntHelpCount: number;
+  repeatedHelped: boolean;
+  repeatedDidntHelp: boolean;
+  suggestedRankingHint: ActionTemplateRankingHint;
+};
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 /** Minimum number of same-signal outcomes before it qualifies as "repeated". */
@@ -313,4 +324,37 @@ export function aggregateActionFeedback(
     totalWithFeedback,
     totalNotStarted,
   };
+}
+
+function resolveTemplateRankingHint(
+  aggregate: Pick<ActionFeedbackAggregate, "repeatedHelped" | "repeatedDidntHelp">
+): ActionTemplateRankingHint {
+  if (aggregate.repeatedHelped && !aggregate.repeatedDidntHelp) {
+    return "promote";
+  }
+  if (aggregate.repeatedDidntHelp && !aggregate.repeatedHelped) {
+    return "suppress";
+  }
+  return "neutral";
+}
+
+/**
+ * Converts template aggregates into diagnostics-only ranking hints.
+ *
+ * This helper is intentionally read-only and does not affect live action
+ * generation. It is safe to use for experimentation and telemetry.
+ */
+export function buildActionTemplateRankingDiagnostics(
+  summary: ActionFeedbackSummary
+): ActionTemplateRankingDiagnostic[] {
+  return summary.byTemplate
+    .map((aggregate) => ({
+      templateId: aggregate.templateId,
+      helpedCount: aggregate.helped,
+      didntHelpCount: aggregate.didntHelp,
+      repeatedHelped: aggregate.repeatedHelped,
+      repeatedDidntHelp: aggregate.repeatedDidntHelp,
+      suggestedRankingHint: resolveTemplateRankingHint(aggregate),
+    }))
+    .sort((left, right) => left.templateId.localeCompare(right.templateId));
 }
