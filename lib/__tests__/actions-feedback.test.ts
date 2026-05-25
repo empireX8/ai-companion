@@ -15,6 +15,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   aggregateActionFeedback,
   buildActionTemplateRankingDiagnostics,
+  DEFAULT_ACTION_RANKING_ELIGIBILITY_OPTIONS,
+  evaluateActionRankingEligibility,
   loadActionRankingDiagnosticsForUser,
   simulateActionRankingWithDiagnostics,
   REPEATED_SIGNAL_THRESHOLD,
@@ -762,5 +764,215 @@ describe("simulateActionRankingWithDiagnostics", () => {
       "simulatedIndex",
       "suggestedRankingHint",
     ]);
+  });
+});
+
+describe("evaluateActionRankingEligibility", () => {
+  const NOW_ISO = "2026-05-25T00:00:00.000Z";
+
+  it("returns eligible promote for recent repeated helped signals", () => {
+    const result = evaluateActionRankingEligibility(
+      {
+        templateId: "s1",
+        helpedCount: 3,
+        didntHelpCount: 0,
+        lastFeedbackAt: "2026-05-20T00:00:00.000Z",
+      },
+      { now: NOW_ISO }
+    );
+
+    expect(result).toEqual({
+      eligible: true,
+      reason: "promote_signal",
+      suggestedRankingHint: "promote",
+      isReversible: true,
+    });
+  });
+
+  it("returns eligible suppress for recent repeated didnt_help signals", () => {
+    const result = evaluateActionRankingEligibility(
+      {
+        templateId: "b2",
+        helpedCount: 0,
+        didntHelpCount: 3,
+        lastFeedbackAt: "2026-05-21T00:00:00.000Z",
+      },
+      { now: NOW_ISO }
+    );
+
+    expect(result).toEqual({
+      eligible: true,
+      reason: "suppress_signal",
+      suggestedRankingHint: "suppress",
+      isReversible: true,
+    });
+  });
+
+  it("returns ineligible neutral for conflicts", () => {
+    const result = evaluateActionRankingEligibility(
+      {
+        templateId: "s3",
+        helpedCount: 3,
+        didntHelpCount: 3,
+        lastFeedbackAt: "2026-05-21T00:00:00.000Z",
+      },
+      { now: NOW_ISO }
+    );
+
+    expect(result).toEqual({
+      eligible: false,
+      reason: "conflict",
+      suggestedRankingHint: "neutral",
+      isReversible: true,
+    });
+  });
+
+  it("returns ineligible neutral below threshold", () => {
+    const result = evaluateActionRankingEligibility(
+      {
+        templateId: "s4",
+        helpedCount: 2,
+        didntHelpCount: 0,
+        lastFeedbackAt: "2026-05-20T00:00:00.000Z",
+      },
+      { now: NOW_ISO }
+    );
+
+    expect(result).toEqual({
+      eligible: false,
+      reason: "below_threshold",
+      suggestedRankingHint: "neutral",
+      isReversible: true,
+    });
+  });
+
+  it("returns ineligible neutral for stale repeated signals", () => {
+    const result = evaluateActionRankingEligibility(
+      {
+        templateId: "b1",
+        helpedCount: 3,
+        didntHelpCount: 0,
+        lastFeedbackAt: "2026-01-01T00:00:00.000Z",
+      },
+      { now: NOW_ISO }
+    );
+
+    expect(result).toEqual({
+      eligible: false,
+      reason: "stale_signal",
+      suggestedRankingHint: "neutral",
+      isReversible: true,
+    });
+  });
+
+  it("returns ineligible neutral when repeated signals are not recent", () => {
+    const result = evaluateActionRankingEligibility(
+      {
+        templateId: "b3",
+        helpedCount: 3,
+        didntHelpCount: 0,
+        lastFeedbackAt: "2026-02-10T00:00:00.000Z",
+      },
+      { now: NOW_ISO }
+    );
+
+    expect(result).toEqual({
+      eligible: false,
+      reason: "missing_recent_feedback",
+      suggestedRankingHint: "neutral",
+      isReversible: true,
+    });
+  });
+
+  it("returns ineligible neutral when recent feedback is required but missing", () => {
+    const result = evaluateActionRankingEligibility(
+      {
+        templateId: "s2",
+        helpedCount: 3,
+        didntHelpCount: 0,
+      },
+      { now: NOW_ISO }
+    );
+
+    expect(result).toEqual({
+      eligible: false,
+      reason: "missing_recent_feedback",
+      suggestedRankingHint: "neutral",
+      isReversible: true,
+    });
+  });
+
+  it("supports custom minimumRepeatedSignals while keeping reversibility", () => {
+    const result = evaluateActionRankingEligibility(
+      {
+        templateId: "s5",
+        helpedCount: 4,
+        didntHelpCount: 0,
+        lastFeedbackAt: "2026-05-20T00:00:00.000Z",
+      },
+      {
+        now: NOW_ISO,
+        minimumRepeatedSignals: 4,
+      }
+    );
+
+    expect(result).toEqual({
+      eligible: true,
+      reason: "promote_signal",
+      suggestedRankingHint: "promote",
+      isReversible: true,
+    });
+  });
+
+  it("does not leak raw note/evidence-like text and keeps output allowlisted", () => {
+    const result = evaluateActionRankingEligibility(
+      {
+        templateId: "s6",
+        helpedCount: 3,
+        didntHelpCount: 0,
+        lastFeedbackAt: "2026-05-21T00:00:00.000Z",
+        note: "private note",
+        evidence: "private evidence",
+      } as unknown as {
+        templateId: string;
+        helpedCount: number;
+        didntHelpCount: number;
+        lastFeedbackAt: string;
+      },
+      { now: NOW_ISO }
+    );
+
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain("private note");
+    expect(serialized).not.toContain("private evidence");
+    expect(Object.keys(result)).toEqual([
+      "eligible",
+      "reason",
+      "suggestedRankingHint",
+      "isReversible",
+    ]);
+  });
+
+  it("uses policy defaults for rolling window and staleness", () => {
+    expect(DEFAULT_ACTION_RANKING_ELIGIBILITY_OPTIONS).toEqual({
+      rollingWindowDays: 90,
+      staleAfterDays: 120,
+      requireRecentFeedback: true,
+      minimumRepeatedSignals: REPEATED_SIGNAL_THRESHOLD,
+    });
+  });
+
+  it("is pure and does not mutate diagnostic input", () => {
+    const input = {
+      templateId: "s1",
+      helpedCount: 3,
+      didntHelpCount: 0,
+      lastFeedbackAt: "2026-05-20T00:00:00.000Z",
+    };
+    const before = JSON.stringify(input);
+
+    evaluateActionRankingEligibility(input, { now: NOW_ISO });
+
+    expect(JSON.stringify(input)).toBe(before);
   });
 });

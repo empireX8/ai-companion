@@ -91,6 +91,36 @@ export type ActionTemplateRankingDiagnostic = {
   suggestedRankingHint: ActionTemplateRankingHint;
 };
 
+export type ActionRankingEligibilityReason =
+  | "promote_signal"
+  | "suppress_signal"
+  | "below_threshold"
+  | "conflict"
+  | "stale_signal"
+  | "missing_recent_feedback";
+
+export type ActionRankingEligibilityDiagnostic = Pick<
+  ActionTemplateRankingDiagnostic,
+  "templateId" | "helpedCount" | "didntHelpCount"
+> & {
+  lastFeedbackAt?: string | Date | null;
+};
+
+export type ActionRankingEligibilityOptions = {
+  rollingWindowDays?: number;
+  staleAfterDays?: number;
+  requireRecentFeedback?: boolean;
+  minimumRepeatedSignals?: number;
+  now?: string | Date;
+};
+
+export type ActionRankingEligibilityResult = {
+  eligible: boolean;
+  reason: ActionRankingEligibilityReason;
+  suggestedRankingHint: ActionTemplateRankingHint;
+  isReversible: true;
+};
+
 export type ActionRankingSimulationInput = {
   actionId: string;
   templateId: string;
@@ -108,6 +138,15 @@ export type ActionRankingSimulationPreviewItem = {
 
 /** Minimum number of same-signal outcomes before it qualifies as "repeated". */
 export const REPEATED_SIGNAL_THRESHOLD = 3;
+
+export const DEFAULT_ACTION_RANKING_ELIGIBILITY_OPTIONS = {
+  rollingWindowDays: 90,
+  staleAfterDays: 120,
+  requireRecentFeedback: true,
+  minimumRepeatedSignals: REPEATED_SIGNAL_THRESHOLD,
+} as const;
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -176,6 +215,24 @@ const toIsoTimestamp = (value: unknown): string | null => {
   }
   return normalizeNonEmptyString(value);
 };
+
+const toValidDate = (value: unknown): Date | null => {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const toPositiveIntegerOrFallback = (value: unknown, fallback: number): number =>
+  typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.floor(value)
+    : fallback;
 
 // ── Row parsing ────────────────────────────────────────────────────────────────
 
@@ -397,6 +454,110 @@ const RANKING_HINT_PRIORITY: Record<ActionTemplateRankingHint, number> = {
   neutral: 1,
   suppress: 2,
 };
+
+/**
+ * Evaluates whether a template-level ranking signal is currently eligible for
+ * live use under a reversible, recency-aware policy.
+ *
+ * This helper is pure and side-effect-free:
+ * - no database reads/writes
+ * - no model mutation
+ * - no PatternClaim/Fieldwork side effects
+ * - no raw note/evidence handling
+ */
+export function evaluateActionRankingEligibility(
+  diagnostic: ActionRankingEligibilityDiagnostic,
+  options: ActionRankingEligibilityOptions = {}
+): ActionRankingEligibilityResult {
+  const minimumRepeatedSignals = toPositiveIntegerOrFallback(
+    options.minimumRepeatedSignals,
+    DEFAULT_ACTION_RANKING_ELIGIBILITY_OPTIONS.minimumRepeatedSignals
+  );
+  const rollingWindowDays = toPositiveIntegerOrFallback(
+    options.rollingWindowDays,
+    DEFAULT_ACTION_RANKING_ELIGIBILITY_OPTIONS.rollingWindowDays
+  );
+  const staleAfterDays = toPositiveIntegerOrFallback(
+    options.staleAfterDays,
+    DEFAULT_ACTION_RANKING_ELIGIBILITY_OPTIONS.staleAfterDays
+  );
+  const requireRecentFeedback =
+    options.requireRecentFeedback ??
+    DEFAULT_ACTION_RANKING_ELIGIBILITY_OPTIONS.requireRecentFeedback;
+  const now = toValidDate(options.now) ?? new Date();
+
+  const repeatedHelped = diagnostic.helpedCount >= minimumRepeatedSignals;
+  const repeatedDidntHelp = diagnostic.didntHelpCount >= minimumRepeatedSignals;
+
+  if (repeatedHelped && repeatedDidntHelp) {
+    return {
+      eligible: false,
+      reason: "conflict",
+      suggestedRankingHint: "neutral",
+      isReversible: true,
+    };
+  }
+
+  if (!repeatedHelped && !repeatedDidntHelp) {
+    return {
+      eligible: false,
+      reason: "below_threshold",
+      suggestedRankingHint: "neutral",
+      isReversible: true,
+    };
+  }
+
+  const lastFeedbackDate = toValidDate(diagnostic.lastFeedbackAt);
+  if (!lastFeedbackDate && requireRecentFeedback) {
+    return {
+      eligible: false,
+      reason: "missing_recent_feedback",
+      suggestedRankingHint: "neutral",
+      isReversible: true,
+    };
+  }
+
+  if (lastFeedbackDate) {
+    const ageInDays = Math.max(
+      0,
+      (now.getTime() - lastFeedbackDate.getTime()) / MS_PER_DAY
+    );
+
+    if (ageInDays > staleAfterDays) {
+      return {
+        eligible: false,
+        reason: "stale_signal",
+        suggestedRankingHint: "neutral",
+        isReversible: true,
+      };
+    }
+
+    if (requireRecentFeedback && ageInDays > rollingWindowDays) {
+      return {
+        eligible: false,
+        reason: "missing_recent_feedback",
+        suggestedRankingHint: "neutral",
+        isReversible: true,
+      };
+    }
+  }
+
+  if (repeatedHelped) {
+    return {
+      eligible: true,
+      reason: "promote_signal",
+      suggestedRankingHint: "promote",
+      isReversible: true,
+    };
+  }
+
+  return {
+    eligible: true,
+    reason: "suppress_signal",
+    suggestedRankingHint: "suppress",
+    isReversible: true,
+  };
+}
 
 /**
  * Returns a diagnostics-only ranking simulation preview.
