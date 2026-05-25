@@ -10,11 +10,12 @@
  * - Preserves existing action GET/PATCH tests
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   aggregateActionFeedback,
   buildActionTemplateRankingDiagnostics,
+  loadActionRankingDiagnosticsForUser,
   REPEATED_SIGNAL_THRESHOLD,
 } from "../actions-feedback";
 
@@ -495,5 +496,118 @@ describe("buildActionTemplateRankingDiagnostics", () => {
 
     const serialized = JSON.stringify(diagnostics);
     expect(serialized).not.toContain("private note should never leak");
+  });
+});
+
+describe("loadActionRankingDiagnosticsForUser", () => {
+  it("queries only user-owned surfaced actions with a safe read-only selection", async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, (_, index) =>
+        makeHelpedRow({
+          templateId: "s1",
+          updatedAt: new Date(`2026-05-0${index + 1}T10:00:00.000Z`),
+          note: "private note should not be queried",
+        })
+      ),
+    ]);
+    const create = vi.fn();
+    const update = vi.fn();
+
+    const diagnostics = await loadActionRankingDiagnosticsForUser({
+      userId: " user-1 ",
+      db: {
+        surfacedAction: {
+          findMany,
+          create,
+          update,
+        } as unknown as {
+          findMany: typeof findMany;
+        },
+      },
+    });
+
+    expect(findMany).toHaveBeenCalledTimes(1);
+    expect(findMany).toHaveBeenCalledWith({
+      where: { userId: "user-1" },
+      select: {
+        templateId: true,
+        bucket: true,
+        linkedFamily: true,
+        effort: true,
+        status: true,
+        updatedAt: true,
+      },
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(diagnostics).toEqual([
+      {
+        templateId: "s1",
+        helpedCount: REPEATED_SIGNAL_THRESHOLD,
+        didntHelpCount: 0,
+        repeatedHelped: true,
+        repeatedDidntHelp: false,
+        suggestedRankingHint: "promote",
+      },
+    ]);
+    expect(JSON.stringify(diagnostics)).not.toContain("private note should not be queried");
+  });
+
+  it("preserves conflict-neutral behavior and threshold rules from the ranking helper", async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, () =>
+        makeHelpedRow({ templateId: "b1", bucket: "build", effort: "Medium" })
+      ),
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, () =>
+        makeDidntHelpRow({ templateId: "b1", bucket: "build", effort: "Medium" })
+      ),
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD - 1 }, () =>
+        makeHelpedRow({ templateId: "s2" })
+      ),
+    ]);
+
+    const diagnostics = await loadActionRankingDiagnosticsForUser({
+      userId: "user-1",
+      db: {
+        surfacedAction: {
+          findMany,
+        },
+      },
+    });
+
+    expect(diagnostics).toEqual([
+      {
+        templateId: "b1",
+        helpedCount: REPEATED_SIGNAL_THRESHOLD,
+        didntHelpCount: REPEATED_SIGNAL_THRESHOLD,
+        repeatedHelped: true,
+        repeatedDidntHelp: true,
+        suggestedRankingHint: "neutral",
+      },
+      {
+        templateId: "s2",
+        helpedCount: REPEATED_SIGNAL_THRESHOLD - 1,
+        didntHelpCount: 0,
+        repeatedHelped: false,
+        repeatedDidntHelp: false,
+        suggestedRankingHint: "neutral",
+      },
+    ]);
+  });
+
+  it("returns an empty result and skips querying when userId is blank", async () => {
+    const findMany = vi.fn();
+
+    const diagnostics = await loadActionRankingDiagnosticsForUser({
+      userId: "   ",
+      db: {
+        surfacedAction: {
+          findMany,
+        },
+      },
+    });
+
+    expect(diagnostics).toEqual([]);
+    expect(findMany).not.toHaveBeenCalled();
   });
 });

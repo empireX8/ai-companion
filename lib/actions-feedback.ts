@@ -14,6 +14,7 @@
 
 import type { FamilyKey } from "./patterns-api";
 import type { ActionBucket, ActionStatus } from "./actions-api";
+import prismadb from "./prismadb";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -144,6 +145,13 @@ const toEffortLevel = (value: unknown): "Low" | "Medium" | "High" | null => {
   return normalized;
 };
 
+const toIsoTimestamp = (value: unknown): string | null => {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString();
+  }
+  return normalizeNonEmptyString(value);
+};
+
 // ── Row parsing ────────────────────────────────────────────────────────────────
 
 type ParsedActionRow = {
@@ -166,7 +174,7 @@ const parseActionRow = (raw: Record<string, unknown>): ParsedActionRow | null =>
   const linkedFamily = toFamilyKey(raw.linkedFamily);
   const effort = toEffortLevel(raw.effort);
   const status = toActionStatus(raw.status);
-  const updatedAt = normalizeNonEmptyString(raw.updatedAt);
+  const updatedAt = toIsoTimestamp(raw.updatedAt);
 
   if (!templateId || !bucket || !effort || !status) {
     return null;
@@ -357,4 +365,56 @@ export function buildActionTemplateRankingDiagnostics(
       suggestedRankingHint: resolveTemplateRankingHint(aggregate),
     }))
     .sort((left, right) => left.templateId.localeCompare(right.templateId));
+}
+
+type ActionFeedbackDiagnosticsDb = {
+  surfacedAction: {
+    findMany(args: {
+      where: { userId: string };
+      select: {
+        templateId: true;
+        bucket: true;
+        linkedFamily: true;
+        effort: true;
+        status: true;
+        updatedAt: true;
+      };
+    }): Promise<Record<string, unknown>[]>;
+  };
+};
+
+/**
+ * Loads diagnostics-only ranking hints for a user's surfaced actions.
+ *
+ * This helper is query-only and intentionally does not:
+ * - affect live action ordering
+ * - expose raw note text or raw evidence
+ * - create ModelUpdates / mutate PatternClaims / create Fieldwork
+ * - write any database rows
+ */
+export async function loadActionRankingDiagnosticsForUser({
+  userId,
+  db = prismadb as unknown as ActionFeedbackDiagnosticsDb,
+}: {
+  userId: string;
+  db?: ActionFeedbackDiagnosticsDb;
+}): Promise<ActionTemplateRankingDiagnostic[]> {
+  const normalizedUserId = normalizeNonEmptyString(userId);
+  if (!normalizedUserId) {
+    return [];
+  }
+
+  const rows = await db.surfacedAction.findMany({
+    where: { userId: normalizedUserId },
+    select: {
+      templateId: true,
+      bucket: true,
+      linkedFamily: true,
+      effort: true,
+      status: true,
+      updatedAt: true,
+    },
+  });
+
+  return buildActionTemplateRankingDiagnostics(aggregateActionFeedback(rows));
 }
