@@ -91,6 +91,19 @@ export type ActionTemplateRankingDiagnostic = {
   suggestedRankingHint: ActionTemplateRankingHint;
 };
 
+export type ActionRankingSimulationInput = {
+  actionId: string;
+  templateId: string;
+};
+
+export type ActionRankingSimulationPreviewItem = {
+  actionId: string;
+  templateId: string;
+  originalIndex: number;
+  simulatedIndex: number;
+  suggestedRankingHint: ActionTemplateRankingHint;
+};
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 /** Minimum number of same-signal outcomes before it qualifies as "repeated". */
@@ -365,6 +378,63 @@ export function buildActionTemplateRankingDiagnostics(
       suggestedRankingHint: resolveTemplateRankingHint(aggregate),
     }))
     .sort((left, right) => left.templateId.localeCompare(right.templateId));
+}
+
+const RANKING_HINT_PRIORITY: Record<ActionTemplateRankingHint, number> = {
+  promote: 0,
+  neutral: 1,
+  suppress: 2,
+};
+
+/**
+ * Returns a diagnostics-only ranking simulation preview.
+ *
+ * The returned order is simulated only:
+ * - promote templates float earlier
+ * - suppress templates move later
+ * - neutral/missing diagnostics preserve relative order
+ *
+ * This helper does not mutate live ranking, does not write to the database,
+ * and does not include raw note or evidence text.
+ */
+export function simulateActionRankingWithDiagnostics(
+  actions: ActionRankingSimulationInput[],
+  diagnostics: ActionTemplateRankingDiagnostic[]
+): ActionRankingSimulationPreviewItem[] {
+  const hintByTemplateId = new Map<string, ActionTemplateRankingHint>();
+  for (const diagnostic of diagnostics) {
+    if (!hintByTemplateId.has(diagnostic.templateId)) {
+      hintByTemplateId.set(
+        diagnostic.templateId,
+        diagnostic.suggestedRankingHint
+      );
+    }
+  }
+
+  const annotated = actions.map((action, originalIndex) => ({
+    actionId: action.actionId,
+    templateId: action.templateId,
+    originalIndex,
+    suggestedRankingHint:
+      hintByTemplateId.get(action.templateId) ?? ("neutral" as const),
+  }));
+
+  annotated.sort((left, right) => {
+    const leftPriority = RANKING_HINT_PRIORITY[left.suggestedRankingHint];
+    const rightPriority = RANKING_HINT_PRIORITY[right.suggestedRankingHint];
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
+    }
+    return left.originalIndex - right.originalIndex;
+  });
+
+  return annotated.map((item, simulatedIndex) => ({
+    actionId: item.actionId,
+    templateId: item.templateId,
+    originalIndex: item.originalIndex,
+    simulatedIndex,
+    suggestedRankingHint: item.suggestedRankingHint,
+  }));
 }
 
 type ActionFeedbackDiagnosticsDb = {

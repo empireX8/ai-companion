@@ -16,6 +16,7 @@ import {
   aggregateActionFeedback,
   buildActionTemplateRankingDiagnostics,
   loadActionRankingDiagnosticsForUser,
+  simulateActionRankingWithDiagnostics,
   REPEATED_SIGNAL_THRESHOLD,
 } from "../actions-feedback";
 
@@ -609,5 +610,126 @@ describe("loadActionRankingDiagnosticsForUser", () => {
 
     expect(diagnostics).toEqual([]);
     expect(findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("simulateActionRankingWithDiagnostics", () => {
+  it("preserves all actions and keeps order unchanged when diagnostics are missing", () => {
+    const preview = simulateActionRankingWithDiagnostics(
+      [
+        { actionId: "a1", templateId: "s1" },
+        { actionId: "a2", templateId: "s2" },
+        { actionId: "a3", templateId: "s3" },
+      ],
+      []
+    );
+
+    expect(preview.map((item) => item.actionId)).toEqual(["a1", "a2", "a3"]);
+    expect(preview.map((item) => item.simulatedIndex)).toEqual([0, 1, 2]);
+    expect(preview.every((item) => item.suggestedRankingHint === "neutral")).toBe(
+      true
+    );
+  });
+
+  it("moves promote templates earlier in simulated order", () => {
+    const preview = simulateActionRankingWithDiagnostics(
+      [
+        { actionId: "a1", templateId: "s1" },
+        { actionId: "a2", templateId: "s2" },
+        { actionId: "a3", templateId: "s3" },
+      ],
+      [
+        {
+          templateId: "s2",
+          helpedCount: REPEATED_SIGNAL_THRESHOLD,
+          didntHelpCount: 0,
+          repeatedHelped: true,
+          repeatedDidntHelp: false,
+          suggestedRankingHint: "promote",
+        },
+      ]
+    );
+
+    expect(preview.map((item) => item.actionId)).toEqual(["a2", "a1", "a3"]);
+    expect(preview.find((item) => item.actionId === "a2")?.suggestedRankingHint).toBe(
+      "promote"
+    );
+  });
+
+  it("moves suppress templates later in simulated order", () => {
+    const preview = simulateActionRankingWithDiagnostics(
+      [
+        { actionId: "a1", templateId: "s1" },
+        { actionId: "a2", templateId: "s2" },
+        { actionId: "a3", templateId: "s3" },
+      ],
+      [
+        {
+          templateId: "s1",
+          helpedCount: 0,
+          didntHelpCount: REPEATED_SIGNAL_THRESHOLD,
+          repeatedHelped: false,
+          repeatedDidntHelp: true,
+          suggestedRankingHint: "suppress",
+        },
+      ]
+    );
+
+    expect(preview.map((item) => item.actionId)).toEqual(["a2", "a3", "a1"]);
+    expect(preview.find((item) => item.actionId === "a1")?.suggestedRankingHint).toBe(
+      "suppress"
+    );
+  });
+
+  it("keeps neutral and conflict diagnostics order-stable", () => {
+    const diagnostics = buildActionTemplateRankingDiagnostics(
+      aggregateActionFeedback([
+        ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, () =>
+          makeHelpedRow({ templateId: "s2" })
+        ),
+        ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, () =>
+          makeDidntHelpRow({ templateId: "s2" })
+        ),
+      ])
+    );
+
+    const preview = simulateActionRankingWithDiagnostics(
+      [
+        { actionId: "a1", templateId: "s1" },
+        { actionId: "a2", templateId: "s2" },
+        { actionId: "a3", templateId: "s3" },
+      ],
+      diagnostics
+    );
+
+    expect(preview.map((item) => item.actionId)).toEqual(["a1", "a2", "a3"]);
+    expect(preview.find((item) => item.templateId === "s2")?.suggestedRankingHint).toBe(
+      "neutral"
+    );
+  });
+
+  it("does not leak raw note or evidence-like text in output", () => {
+    const preview = simulateActionRankingWithDiagnostics(
+      [
+        {
+          actionId: "a1",
+          templateId: "s1",
+          note: "private note should never leak",
+          evidenceSnippet: "private quote should never leak",
+        } as unknown as { actionId: string; templateId: string },
+      ],
+      []
+    );
+
+    const serialized = JSON.stringify(preview);
+    expect(serialized).not.toContain("private note should never leak");
+    expect(serialized).not.toContain("private quote should never leak");
+    expect(Object.keys(preview[0] ?? {})).toEqual([
+      "actionId",
+      "templateId",
+      "originalIndex",
+      "simulatedIndex",
+      "suggestedRankingHint",
+    ]);
   });
 });
