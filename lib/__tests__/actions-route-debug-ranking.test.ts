@@ -129,6 +129,7 @@ beforeEach(() => {
     makeAction("a1", "stabilize"),
     makeAction("a2", "build"),
     makeAction("a3", "stabilize"),
+    makeAction("a4", "build"),
   ]);
 
   isIncludeUnderstandingLinksEnabledMock.mockReturnValue(false);
@@ -140,6 +141,7 @@ beforeEach(() => {
         { id: "a1", templateId: "s1" },
         { id: "a2", templateId: "b2" },
         { id: "a3", templateId: "s3" },
+        { id: "a4", templateId: "b4" },
       ];
     }
 
@@ -258,7 +260,7 @@ describe("GET /api/actions debugRanking simulation gate", () => {
         hasData: true,
       },
       stabilizeNow: [makeAction("a1", "stabilize"), makeAction("a3", "stabilize")],
-      buildForward: [makeAction("a2", "build")],
+      buildForward: [makeAction("a2", "build"), makeAction("a4", "build")],
     });
     expect(payload).not.toHaveProperty("rankingDiagnostics");
     expect(payload).not.toHaveProperty("simulatedRankingPreview");
@@ -278,7 +280,9 @@ describe("GET /api/actions debugRanking simulation gate", () => {
     ]);
     expect(payload.buildForward.map((action: { id: string }) => action.id)).toEqual([
       "a2",
+      "a4",
     ]);
+    expect(payload.rankingMode).toBe("default");
 
     expect(payload.rankingDiagnostics).toEqual([
       {
@@ -323,10 +327,17 @@ describe("GET /api/actions debugRanking simulation gate", () => {
         suggestedRankingHint: "neutral",
       },
       {
+        actionId: "a4",
+        templateId: "b4",
+        originalIndex: 3,
+        simulatedIndex: 2,
+        suggestedRankingHint: "neutral",
+      },
+      {
         actionId: "a2",
         templateId: "b2",
         originalIndex: 1,
-        simulatedIndex: 2,
+        simulatedIndex: 3,
         suggestedRankingHint: "suppress",
       },
     ]);
@@ -349,7 +360,7 @@ describe("GET /api/actions debugRanking simulation gate", () => {
     expect(mappingQueryCall).toEqual({
       where: {
         userId: "u1",
-        id: { in: ["a1", "a2", "a3"] },
+        id: { in: ["a1", "a2", "a3", "a4"] },
       },
       select: {
         id: true,
@@ -373,5 +384,31 @@ describe("GET /api/actions debugRanking simulation gate", () => {
     });
     expect(debugOnly).not.toContain("private note should not appear");
     expect(debugOnly).not.toContain("raw evidence");
+  });
+
+  it("reorders only within buckets when debugRanking=1&simulateRanking=1", async () => {
+    const route = await import("../../app/api/actions/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/actions?debugRanking=1&simulateRanking=1")
+    );
+    const payload = await response.json();
+
+    expect(payload.rankingMode).toBe("simulated_debug");
+    expect(payload.stabilizeNow.map((action: { id: string }) => action.id)).toEqual([
+      "a1",
+      "a3",
+    ]);
+    expect(payload.buildForward.map((action: { id: string }) => action.id)).toEqual([
+      "a4",
+      "a2",
+    ]);
+
+    // Bucket membership remains stable in simulated mode.
+    expect(
+      new Set(payload.stabilizeNow.map((action: { id: string }) => action.id))
+    ).toEqual(new Set(["a1", "a3"]));
+    expect(
+      new Set(payload.buildForward.map((action: { id: string }) => action.id))
+    ).toEqual(new Set(["a2", "a4"]));
   });
 });

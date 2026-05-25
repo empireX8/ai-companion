@@ -37,6 +37,11 @@ export async function GET(req?: Request) {
   const debugRankingEnabled =
     debugRankingParam === "1" ||
     debugRankingParam?.toLowerCase() === "true";
+  const simulateRankingParam = searchParams?.get("simulateRanking");
+  const simulateRankingEnabled =
+    debugRankingEnabled &&
+    (simulateRankingParam === "1" ||
+      simulateRankingParam?.toLowerCase() === "true");
 
   const [claims, goalRefs] = await Promise.all([
     prismadb.patternClaim.findMany({
@@ -166,8 +171,59 @@ export async function GET(req?: Request) {
     rankingDiagnostics
   );
 
+  if (!simulateRankingEnabled) {
+    return NextResponse.json({
+      ...payload,
+      rankingMode: "default" as const,
+      rankingDiagnostics,
+      simulatedRankingPreview,
+    });
+  }
+
+  const buildOrderMap = (
+    preview: { actionId: string; simulatedIndex: number }[]
+  ): Map<string, number> =>
+    new Map(preview.map((item) => [item.actionId, item.simulatedIndex]));
+
+  const reorderBucketByPreview = <T extends { id: string }>(
+    actions: T[],
+    orderByActionId: Map<string, number>
+  ): T[] =>
+    actions
+      .map((action, index) => ({
+        action,
+        index,
+        simulatedIndex: orderByActionId.get(action.id) ?? index,
+      }))
+      .sort((left, right) => {
+        if (left.simulatedIndex !== right.simulatedIndex) {
+          return left.simulatedIndex - right.simulatedIndex;
+        }
+        return left.index - right.index;
+      })
+      .map((entry) => entry.action);
+
+  const stabilizePreview = simulatedRankingPreview.filter(
+    (item) => item.actionId && stabilizeNow.some((action) => action.id === item.actionId)
+  );
+  const buildPreview = simulatedRankingPreview.filter(
+    (item) => item.actionId && buildForward.some((action) => action.id === item.actionId)
+  );
+
+  const simulatedStabilizeNow = reorderBucketByPreview(
+    stabilizeNow,
+    buildOrderMap(stabilizePreview)
+  );
+  const simulatedBuildForward = reorderBucketByPreview(
+    buildForward,
+    buildOrderMap(buildPreview)
+  );
+
   return NextResponse.json({
     ...payload,
+    rankingMode: "simulated_debug" as const,
+    stabilizeNow: simulatedStabilizeNow,
+    buildForward: simulatedBuildForward,
     rankingDiagnostics,
     simulatedRankingPreview,
   });
