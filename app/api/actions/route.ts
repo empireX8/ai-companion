@@ -10,6 +10,10 @@ import {
   syncSurfacedActions,
   type VisibleGoalReference,
 } from "@/lib/actions-v1";
+import {
+  loadActionRankingDiagnosticsForUser,
+  simulateActionRankingWithDiagnostics,
+} from "../../../lib/actions-feedback";
 import type { PatternClaimView } from "@/lib/patterns-api";
 import { projectVisiblePatternClaim } from "@/lib/pattern-visible-claim";
 import {
@@ -25,9 +29,14 @@ export async function GET(req?: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const includeUnderstandingLinks = req
-    ? isIncludeUnderstandingLinksEnabled(new URL(req.url).searchParams)
+  const searchParams = req ? new URL(req.url).searchParams : null;
+  const includeUnderstandingLinks = searchParams
+    ? isIncludeUnderstandingLinksEnabled(searchParams)
     : false;
+  const debugRankingParam = searchParams?.get("debugRanking");
+  const debugRankingEnabled =
+    debugRankingParam === "1" ||
+    debugRankingParam?.toLowerCase() === "true";
 
   const [claims, goalRefs] = await Promise.all([
     prismadb.patternClaim.findMany({
@@ -121,9 +130,45 @@ export async function GET(req?: Request) {
         : action
     );
 
-  return NextResponse.json({
+  const payload = {
     currentPriority: buildCurrentPrioritySnapshot(visibleClaims, true),
     stabilizeNow,
     buildForward,
+  };
+
+  if (!debugRankingEnabled) {
+    return NextResponse.json(payload);
+  }
+
+  const rankingDiagnostics = await loadActionRankingDiagnosticsForUser({
+    userId,
+    db: prismadb,
+  });
+  const actionRows = await prismadb.surfacedAction.findMany({
+    where: {
+      userId,
+      id: { in: surfacedActions.map((action) => action.id) },
+    },
+    select: {
+      id: true,
+      templateId: true,
+    },
+  });
+  const templateIdByActionId = new Map(
+    actionRows.map((actionRow) => [actionRow.id, actionRow.templateId])
+  );
+  const simulationInputs = surfacedActions.map((action) => ({
+    actionId: action.id,
+    templateId: templateIdByActionId.get(action.id) ?? "__unknown_template__",
+  }));
+  const simulatedRankingPreview = simulateActionRankingWithDiagnostics(
+    simulationInputs,
+    rankingDiagnostics
+  );
+
+  return NextResponse.json({
+    ...payload,
+    rankingDiagnostics,
+    simulatedRankingPreview,
   });
 }

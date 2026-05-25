@@ -534,7 +534,6 @@ describe("loadActionRankingDiagnosticsForUser", () => {
         templateId: true,
         bucket: true,
         linkedFamily: true,
-        effort: true,
         status: true,
         updatedAt: true,
       },
@@ -592,6 +591,38 @@ describe("loadActionRankingDiagnosticsForUser", () => {
         repeatedHelped: false,
         repeatedDidntHelp: false,
         suggestedRankingHint: "neutral",
+      },
+    ]);
+  });
+
+  it("handles surfaced-action rows that do not persist effort", async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, () => ({
+        templateId: "b1",
+        bucket: "build",
+        linkedFamily: null,
+        status: "helped",
+        updatedAt: new Date("2026-05-01T10:00:00.000Z"),
+      })),
+    ]);
+
+    const diagnostics = await loadActionRankingDiagnosticsForUser({
+      userId: "user-1",
+      db: {
+        surfacedAction: {
+          findMany,
+        },
+      },
+    });
+
+    expect(diagnostics).toEqual([
+      {
+        templateId: "b1",
+        helpedCount: REPEATED_SIGNAL_THRESHOLD,
+        didntHelpCount: 0,
+        repeatedHelped: true,
+        repeatedDidntHelp: false,
+        suggestedRankingHint: "promote",
       },
     ]);
   });

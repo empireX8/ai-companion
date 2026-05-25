@@ -158,6 +158,18 @@ const toEffortLevel = (value: unknown): "Low" | "Medium" | "High" | null => {
   return normalized;
 };
 
+const MEDIUM_EFFORT_TEMPLATE_IDS = new Set(["b1", "b3"]);
+
+const inferEffortFromTemplateId = (
+  templateId: unknown
+): "Low" | "Medium" | "High" => {
+  const normalized = normalizeNonEmptyString(templateId);
+  if (normalized && MEDIUM_EFFORT_TEMPLATE_IDS.has(normalized)) {
+    return "Medium";
+  }
+  return "Low";
+};
+
 const toIsoTimestamp = (value: unknown): string | null => {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value.toISOString();
@@ -445,7 +457,6 @@ type ActionFeedbackDiagnosticsDb = {
         templateId: true;
         bucket: true;
         linkedFamily: true;
-        effort: true;
         status: true;
         updatedAt: true;
       };
@@ -480,11 +491,17 @@ export async function loadActionRankingDiagnosticsForUser({
       templateId: true,
       bucket: true,
       linkedFamily: true,
-      effort: true,
       status: true,
       updatedAt: true,
     },
   });
 
-  return buildActionTemplateRankingDiagnostics(aggregateActionFeedback(rows));
+  const rowsWithInferredEffort = rows.map((row) => ({
+    ...row,
+    effort: inferEffortFromTemplateId(row.templateId),
+  }));
+
+  return buildActionTemplateRankingDiagnostics(
+    aggregateActionFeedback(rowsWithInferredEffort)
+  );
 }
