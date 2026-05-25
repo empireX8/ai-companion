@@ -683,6 +683,7 @@ describe("Understanding Engine Phase 1B API routes", () => {
   });
 
   it("allows completed fieldwork create with observation payload", async () => {
+    prismaMock.investigation.findFirst.mockResolvedValueOnce({ id: "inv-1" });
     prismaMock.fieldworkAssignment.create.mockResolvedValueOnce({
       id: "fw-2",
       userId: "user-1",
@@ -721,6 +722,93 @@ describe("Understanding Engine Phase 1B API routes", () => {
     );
   });
 
+  it("rejects fieldwork create when surfaced_action link is not user-owned", async () => {
+    prismaMock.surfacedAction.findFirst.mockResolvedValueOnce(null);
+
+    const route = await import("../../app/api/fieldwork/route");
+    const response = await route.POST(
+      new Request("http://localhost/api/fieldwork", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          prompt: "Track if this action stabilizes energy",
+          reason: "Turn action into observation-first experiment",
+          status: "assigned",
+          linkedObjectType: "surfaced_action",
+          linkedObjectId: "sa-other-user",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "linkedObjectId" }),
+      ]),
+    });
+    expect(prismaMock.fieldworkAssignment.create).not.toHaveBeenCalled();
+    expect(prismaMock.surfacedAction.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: "sa-other-user",
+        userId: "user-1",
+      },
+      select: { id: true },
+    });
+  });
+
+  it("allows fieldwork create when surfaced_action link is user-owned", async () => {
+    prismaMock.fieldworkAssignment.create.mockResolvedValueOnce({
+      id: "fw-action-1",
+      userId: "user-1",
+      prompt: "Track if this action stabilizes energy",
+      reason: "Turn action into observation-first experiment",
+      status: "assigned",
+      linkedObjectType: "surfaced_action",
+      linkedObjectId: "sa-1",
+      observationNote: null,
+      observationOutcome: null,
+      completedAt: null,
+      expiresAt: null,
+      priority: null,
+      createdAt: new Date("2026-05-14T10:00:00.000Z"),
+      updatedAt: new Date("2026-05-14T10:00:00.000Z"),
+    });
+
+    const route = await import("../../app/api/fieldwork/route");
+    const response = await route.POST(
+      new Request("http://localhost/api/fieldwork", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          prompt: "Track if this action stabilizes energy",
+          reason: "Turn action into observation-first experiment",
+          status: "assigned",
+          linkedObjectType: "surfaced_action",
+          linkedObjectId: "sa-1",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(prismaMock.fieldworkAssignment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: "user-1",
+          linkedObjectType: "surfaced_action",
+          linkedObjectId: "sa-1",
+        }),
+      })
+    );
+    expect(prismaMock.surfacedAction.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: "sa-1",
+        userId: "user-1",
+      },
+      select: { id: true },
+    });
+  });
+
   it("requires observation note or outcome when completing fieldwork patch", async () => {
     prismaMock.fieldworkAssignment.findFirst.mockResolvedValueOnce({
       id: "fw-1",
@@ -743,6 +831,49 @@ describe("Understanding Engine Phase 1B API routes", () => {
 
     expect(response.status).toBe(400);
     expect(prismaMock.fieldworkAssignment.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects fieldwork patch when surfaced_action link is not user-owned", async () => {
+    prismaMock.fieldworkAssignment.findFirst.mockResolvedValueOnce({
+      id: "fw-1",
+      userId: "user-1",
+      status: "assigned",
+      linkedObjectType: "investigation",
+      linkedObjectId: "inv-1",
+      observationNote: null,
+      observationOutcome: null,
+      completedAt: null,
+    });
+    prismaMock.surfacedAction.findFirst.mockResolvedValueOnce(null);
+
+    const route = await import("../../app/api/fieldwork/[id]/route");
+    const response = await route.PATCH(
+      new Request("http://localhost/api/fieldwork/fw-1", {
+        method: "PATCH",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          linkedObjectType: "surfaced_action",
+          linkedObjectId: "sa-other-user",
+        }),
+      }),
+      { params: Promise.resolve({ id: "fw-1" }) }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: expect.arrayContaining([
+        expect.objectContaining({ field: "linkedObjectId" }),
+      ]),
+    });
+    expect(prismaMock.fieldworkAssignment.update).not.toHaveBeenCalled();
+    expect(prismaMock.surfacedAction.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: "sa-other-user",
+        userId: "user-1",
+      },
+      select: { id: true },
+    });
   });
 
   it("supports filtered fieldwork list with activeOnly", async () => {

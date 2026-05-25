@@ -9,6 +9,7 @@ import {
   isAllowedFieldworkTransition,
   zodIssuesToDetails,
 } from "../../../../lib/understanding-engine-api";
+import { verifyUnderstandingEvidenceLinkTargetOwnership } from "../../../../lib/understanding-evidence-link-writer";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,10 @@ export async function PATCH(
       parsed.data.observationNote ?? current.observationNote;
     const effectiveObservationOutcome =
       parsed.data.observationOutcome ?? current.observationOutcome;
+    const effectiveLinkedObjectType =
+      parsed.data.linkedObjectType ?? current.linkedObjectType;
+    const effectiveLinkedObjectId =
+      parsed.data.linkedObjectId ?? current.linkedObjectId;
 
     if (
       effectiveStatus === "completed" &&
@@ -116,6 +121,25 @@ export async function PATCH(
             "completed status requires observationNote or observationOutcome",
         },
       ]);
+    }
+
+    if (
+      parsed.data.linkedObjectType !== undefined ||
+      parsed.data.linkedObjectId !== undefined
+    ) {
+      const linkedObjectOwned = await verifyUnderstandingEvidenceLinkTargetOwnership({
+        userId,
+        targetType: effectiveLinkedObjectType,
+        targetId: effectiveLinkedObjectId,
+      });
+      if (!linkedObjectOwned) {
+        return errorResponse(400, "Validation failed", "VALIDATION_ERROR", [
+          {
+            field: "linkedObjectId",
+            message: "Linked object not found for authenticated user",
+          },
+        ]);
+      }
     }
 
     const data = {

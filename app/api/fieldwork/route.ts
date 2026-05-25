@@ -15,6 +15,7 @@ import {
   parseSortOrder,
   zodIssuesToDetails,
 } from "../../../lib/understanding-engine-api";
+import { verifyUnderstandingEvidenceLinkTargetOwnership } from "../../../lib/understanding-evidence-link-writer";
 
 export const dynamic = "force-dynamic";
 
@@ -213,6 +214,20 @@ export async function POST(req: Request) {
   }
 
   try {
+    const linkedObjectOwned = await verifyUnderstandingEvidenceLinkTargetOwnership({
+      userId,
+      targetType: parsed.data.linkedObjectType,
+      targetId: parsed.data.linkedObjectId,
+    });
+    if (!linkedObjectOwned) {
+      return errorResponse(400, "Validation failed", "VALIDATION_ERROR", [
+        {
+          field: "linkedObjectId",
+          message: "Linked object not found for authenticated user",
+        },
+      ]);
+    }
+
     const created = await prismadb.fieldworkAssignment.create({
       data: {
         userId,
