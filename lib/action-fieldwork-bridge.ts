@@ -1,8 +1,3 @@
-import {
-  FieldworkStatus,
-  UnderstandingLinkTargetType,
-} from "@prisma/client";
-
 import type { SurfacedActionView } from "./actions-api";
 
 type ActionForFieldworkBridge = Pick<
@@ -17,6 +12,10 @@ export type FieldworkDraftFromAction = {
   linkedObjectType: "surfaced_action";
   linkedObjectId: string;
 };
+
+const FIELDWORK_ASSIGNED_STATUS: FieldworkDraftFromAction["status"] = "assigned";
+const SURFACED_ACTION_LINK_TYPE: FieldworkDraftFromAction["linkedObjectType"] =
+  "surfaced_action";
 
 function toNonEmptyString(value: unknown): string | null {
   if (typeof value !== "string") {
@@ -55,8 +54,8 @@ export function buildFieldworkDraftFromAction(
   return {
     prompt,
     reason,
-    status: FieldworkStatus.assigned,
-    linkedObjectType: UnderstandingLinkTargetType.surfaced_action,
+    status: FIELDWORK_ASSIGNED_STATUS,
+    linkedObjectType: SURFACED_ACTION_LINK_TYPE,
     linkedObjectId,
   };
 }

@@ -797,6 +797,7 @@ describe("Understanding Engine Phase 1B API routes", () => {
           userId: "user-1",
           linkedObjectType: "surfaced_action",
           linkedObjectId: "sa-1",
+          status: "assigned",
         }),
       })
     );
@@ -807,6 +808,7 @@ describe("Understanding Engine Phase 1B API routes", () => {
       },
       select: { id: true },
     });
+    expect(prismaMock.modelUpdate.create).not.toHaveBeenCalled();
   });
 
   it("requires observation note or outcome when completing fieldwork patch", async () => {

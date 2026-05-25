@@ -1,4 +1,5 @@
 import type { FamilyKey } from "./patterns-api";
+import { buildFieldworkDraftFromAction } from "./action-fieldwork-bridge";
 
 export type ActionBucket = "stabilize" | "build";
 export type ActionStatus = "not_started" | "done" | "helped" | "didnt_help";
@@ -70,6 +71,38 @@ export async function updateSurfacedAction(
       SurfacedActionView,
       "id" | "status" | "note" | "updatedAt"
     >;
+  } catch {
+    return null;
+  }
+}
+
+export async function createFieldworkFromAction(
+  action: Pick<SurfacedActionView, "id" | "title" | "whySuggested">
+): Promise<{ id: string } | null> {
+  const draft = buildFieldworkDraftFromAction(action);
+  if (!draft) {
+    return null;
+  }
+
+  try {
+    const response = await fetch("/api/fieldwork", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(draft),
+    });
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as {
+      item?: { id?: unknown };
+    };
+    const createdId = payload.item?.id;
+    if (typeof createdId !== "string" || createdId.trim().length === 0) {
+      return null;
+    }
+
+    return { id: createdId };
   } catch {
     return null;
   }

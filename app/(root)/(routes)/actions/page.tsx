@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { Clock, Compass, Receipt } from "lucide-react";
 import Link from "next/link";
 
 import {
+  createFieldworkFromAction,
   fetchActionsPageData,
   type ActionBucket,
   type ActionsPageData,
@@ -16,11 +17,16 @@ import { buildPublicReceiptHref } from "@/lib/public-continuity-registry";
 import { buildExploreActionHandoffHref } from "@/lib/explore-action-handoff";
 
 export default function ActionsPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<ActionBucket>("stabilize");
   const [data, setData] = useState<ActionsPageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [creatingActionId, setCreatingActionId] = useState<string | null>(null);
+  const [createErrorByActionId, setCreateErrorByActionId] = useState<
+    Record<string, string>
+  >({});
 
   useEffect(() => {
     const bucket = searchParams.get("bucket");
@@ -80,6 +86,42 @@ export default function ActionsPage() {
     return tab === "stabilize" ? data.stabilizeNow : data.buildForward;
   }, [data, tab]);
 
+  const handleTurnIntoExperiment = async (
+    action: Pick<SurfacedActionView, "id" | "title" | "whySuggested">
+  ) => {
+    if (creatingActionId === action.id) {
+      return;
+    }
+
+    setCreatingActionId(action.id);
+    setCreateErrorByActionId((current) => {
+      if (!current[action.id]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[action.id];
+      return next;
+    });
+
+    try {
+      const created = await createFieldworkFromAction(action);
+      if (!created?.id) {
+        setCreateErrorByActionId((current) => ({
+          ...current,
+          [action.id]: "Could not create experiment.",
+        }));
+        return;
+      }
+
+      router.push(`/watch-for/${created.id}`);
+    } finally {
+      setCreatingActionId((current) =>
+        current === action.id ? null : current
+      );
+    }
+  };
+
   return (
     <div className="px-12 py-10 max-w-[1000px] mx-auto animate-fade-in">
       <PageHeader
@@ -119,6 +161,8 @@ export default function ActionsPage() {
               id: action.linkedClaimId,
             });
             const reflectHref = buildExploreActionHandoffHref(action.id);
+            const isCreating = creatingActionId === action.id;
+            const createError = createErrorByActionId[action.id];
 
             return (
               <div key={action.id} className="card-standard p-5 hover:border-[hsl(187_100%_50%/0.18)] transition-colors">
@@ -140,30 +184,45 @@ export default function ActionsPage() {
                     <div className="label-meta inline-flex items-center gap-2">
                       Based on <span className="text-cyan">{action.linkedClaimSummary ?? action.linkedGoalStatement ?? "Recent activity"}</span>
                     </div>
-                    {receiptHref || reflectHref ? (
-                      <div className="mt-3 pt-3 border-t hairline">
-                        <div className="flex items-center gap-4">
-                          {reflectHref ? (
-                            <Link
-                              href={reflectHref}
-                              className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
-                            >
-                              <Compass className="h-3 w-3" strokeWidth={1.5} />
-                              Reflect in Explore
-                            </Link>
-                          ) : null}
-                          {receiptHref ? (
-                            <Link
-                              href={receiptHref}
-                              className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
-                            >
-                              <Receipt className="h-3 w-3" strokeWidth={1.5} />
-                              Receipts
-                            </Link>
-                          ) : null}
-                        </div>
+                    <div className="mt-3 pt-3 border-t hairline">
+                      <div className="flex items-center gap-4">
+                        <button
+                          type="button"
+                          disabled={isCreating}
+                          onClick={() => {
+                            void handleTurnIntoExperiment(action);
+                          }}
+                          className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors disabled:opacity-60 disabled:hover:text-meta"
+                        >
+                          {isCreating
+                            ? "Creating experiment..."
+                            : "Turn into experiment"}
+                        </button>
+                        {reflectHref ? (
+                          <Link
+                            href={reflectHref}
+                            className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+                          >
+                            <Compass className="h-3 w-3" strokeWidth={1.5} />
+                            Reflect in Explore
+                          </Link>
+                        ) : null}
+                        {receiptHref ? (
+                          <Link
+                            href={receiptHref}
+                            className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+                          >
+                            <Receipt className="h-3 w-3" strokeWidth={1.5} />
+                            Receipts
+                          </Link>
+                        ) : null}
                       </div>
-                    ) : null}
+                      {createError ? (
+                        <div className="label-meta text-[hsl(12_80%_64%)] mt-2">
+                          {createError}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </div>
