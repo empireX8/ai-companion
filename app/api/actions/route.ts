@@ -23,6 +23,23 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function isTruthyParam(value: string | null): boolean {
+  if (value === null) {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true";
+}
+
+function isActionRankingLiveSimulationEnabled(): boolean {
+  const raw = process.env.ACTION_RANKING_LIVE_SIMULATION_ENABLED;
+  if (!raw) {
+    return false;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized === "1" || normalized === "true";
+}
+
 export async function GET(req?: Request) {
   const { userId } = await auth();
   if (!userId) {
@@ -34,14 +51,14 @@ export async function GET(req?: Request) {
     ? isIncludeUnderstandingLinksEnabled(searchParams)
     : false;
   const debugRankingParam = searchParams?.get("debugRanking");
-  const debugRankingEnabled =
-    debugRankingParam === "1" ||
-    debugRankingParam?.toLowerCase() === "true";
+  const debugRankingEnabled = isTruthyParam(debugRankingParam ?? null);
   const simulateRankingParam = searchParams?.get("simulateRanking");
   const simulateRankingEnabled =
-    debugRankingEnabled &&
-    (simulateRankingParam === "1" ||
-      simulateRankingParam?.toLowerCase() === "true");
+    debugRankingEnabled && isTruthyParam(simulateRankingParam ?? null);
+  const useRankingSimulationParam = searchParams?.get("useRankingSimulation");
+  const liveRankingSimulationEnabled =
+    isActionRankingLiveSimulationEnabled() &&
+    isTruthyParam(useRankingSimulationParam ?? null);
 
   const [claims, goalRefs] = await Promise.all([
     prismadb.patternClaim.findMany({
@@ -141,7 +158,7 @@ export async function GET(req?: Request) {
     buildForward,
   };
 
-  if (!debugRankingEnabled) {
+  if (!debugRankingEnabled && !liveRankingSimulationEnabled) {
     return NextResponse.json(payload);
   }
 
@@ -170,15 +187,6 @@ export async function GET(req?: Request) {
     simulationInputs,
     rankingDiagnostics
   );
-
-  if (!simulateRankingEnabled) {
-    return NextResponse.json({
-      ...payload,
-      rankingMode: "default" as const,
-      rankingDiagnostics,
-      simulatedRankingPreview,
-    });
-  }
 
   const buildOrderMap = (
     preview: { actionId: string; simulatedIndex: number }[]
@@ -219,8 +227,29 @@ export async function GET(req?: Request) {
     buildOrderMap(buildPreview)
   );
 
+  const maybeLiveRankedPayload = liveRankingSimulationEnabled
+    ? {
+        ...payload,
+        stabilizeNow: simulatedStabilizeNow,
+        buildForward: simulatedBuildForward,
+      }
+    : payload;
+
+  if (!debugRankingEnabled) {
+    return NextResponse.json(maybeLiveRankedPayload);
+  }
+
+  if (!simulateRankingEnabled) {
+    return NextResponse.json({
+      ...maybeLiveRankedPayload,
+      rankingMode: "default" as const,
+      rankingDiagnostics,
+      simulatedRankingPreview,
+    });
+  }
+
   return NextResponse.json({
-    ...payload,
+    ...maybeLiveRankedPayload,
     rankingMode: "simulated_debug" as const,
     stabilizeNow: simulatedStabilizeNow,
     buildForward: simulatedBuildForward,

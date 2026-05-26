@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMock = vi.fn();
 const projectVisiblePatternClaimMock = vi.fn();
@@ -112,8 +112,20 @@ function makeAction(
 const daysAgo = (days: number) =>
   new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
+const LIVE_RANKING_ENV_FLAG = "ACTION_RANKING_LIVE_SIMULATION_ENABLED";
+const originalLiveRankingEnv = process.env[LIVE_RANKING_ENV_FLAG];
+
+afterEach(() => {
+  if (originalLiveRankingEnv === undefined) {
+    delete process.env[LIVE_RANKING_ENV_FLAG];
+  } else {
+    process.env[LIVE_RANKING_ENV_FLAG] = originalLiveRankingEnv;
+  }
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
+  delete process.env[LIVE_RANKING_ENV_FLAG];
 
   authMock.mockResolvedValue({ userId: "u1" });
   prismadbMock.patternClaim.findMany.mockResolvedValue([makePatternClaim()]);
@@ -268,6 +280,73 @@ describe("GET /api/actions debugRanking simulation gate", () => {
     expect(payload).not.toHaveProperty("rankingDiagnostics");
     expect(payload).not.toHaveProperty("simulatedRankingPreview");
     expect(surfacedActionFindManyMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps default ordering when useRankingSimulation=1 but env flag is absent", async () => {
+    const route = await import("../../app/api/actions/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/actions?useRankingSimulation=1")
+    );
+    const payload = await response.json();
+
+    expect(payload.stabilizeNow.map((action: { id: string }) => action.id)).toEqual([
+      "a1",
+      "a3",
+    ]);
+    expect(payload.buildForward.map((action: { id: string }) => action.id)).toEqual([
+      "a2",
+      "a4",
+    ]);
+    expect(payload).not.toHaveProperty("rankingDiagnostics");
+    expect(payload).not.toHaveProperty("simulatedRankingPreview");
+  });
+
+  it("keeps default ordering when env flag is false", async () => {
+    process.env[LIVE_RANKING_ENV_FLAG] = "false";
+
+    const route = await import("../../app/api/actions/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/actions?useRankingSimulation=1")
+    );
+    const payload = await response.json();
+
+    expect(payload.stabilizeNow.map((action: { id: string }) => action.id)).toEqual([
+      "a1",
+      "a3",
+    ]);
+    expect(payload.buildForward.map((action: { id: string }) => action.id)).toEqual([
+      "a2",
+      "a4",
+    ]);
+    expect(payload).not.toHaveProperty("rankingDiagnostics");
+    expect(payload).not.toHaveProperty("simulatedRankingPreview");
+  });
+
+  it("applies live simulated ordering only when env flag and useRankingSimulation are both enabled", async () => {
+    process.env[LIVE_RANKING_ENV_FLAG] = "true";
+
+    const route = await import("../../app/api/actions/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/actions?useRankingSimulation=1")
+    );
+    const payload = await response.json();
+
+    expect(payload.stabilizeNow.map((action: { id: string }) => action.id)).toEqual([
+      "a1",
+      "a3",
+    ]);
+    expect(payload.buildForward.map((action: { id: string }) => action.id)).toEqual([
+      "a4",
+      "a2",
+    ]);
+    expect(
+      new Set(payload.stabilizeNow.map((action: { id: string }) => action.id))
+    ).toEqual(new Set(["a1", "a3"]));
+    expect(
+      new Set(payload.buildForward.map((action: { id: string }) => action.id))
+    ).toEqual(new Set(["a2", "a4"]));
+    expect(payload).not.toHaveProperty("rankingDiagnostics");
+    expect(payload).not.toHaveProperty("simulatedRankingPreview");
   });
 
   it("adds diagnostics and simulated preview only when debugRanking=1", async () => {
@@ -509,5 +588,87 @@ describe("GET /api/actions debugRanking simulation gate", () => {
       "a2",
       "a4",
     ]);
+  });
+
+  it("uses eligibility gating for live env-ranked ordering so stale suppress signals stay neutral", async () => {
+    process.env[LIVE_RANKING_ENV_FLAG] = "true";
+    surfacedActionFindManyMock.mockImplementation(async (args) => {
+      if ("id" in args.select) {
+        return [
+          { id: "a1", templateId: "s1" },
+          { id: "a2", templateId: "b2" },
+          { id: "a3", templateId: "s3" },
+          { id: "a4", templateId: "b4" },
+        ];
+      }
+
+      return [
+        {
+          templateId: "s1",
+          bucket: "stabilize",
+          linkedFamily: "trigger_condition",
+          effort: "Low",
+          status: "helped",
+          updatedAt: daysAgo(2),
+        },
+        {
+          templateId: "s1",
+          bucket: "stabilize",
+          linkedFamily: "trigger_condition",
+          effort: "Low",
+          status: "helped",
+          updatedAt: daysAgo(1),
+        },
+        {
+          templateId: "s1",
+          bucket: "stabilize",
+          linkedFamily: "trigger_condition",
+          effort: "Low",
+          status: "helped",
+          updatedAt: daysAgo(1),
+        },
+        {
+          templateId: "b2",
+          bucket: "build",
+          linkedFamily: null,
+          effort: "Low",
+          status: "didnt_help",
+          updatedAt: new Date("2020-01-01T00:00:00.000Z"),
+        },
+        {
+          templateId: "b2",
+          bucket: "build",
+          linkedFamily: null,
+          effort: "Low",
+          status: "didnt_help",
+          updatedAt: new Date("2020-01-02T00:00:00.000Z"),
+        },
+        {
+          templateId: "b2",
+          bucket: "build",
+          linkedFamily: null,
+          effort: "Low",
+          status: "didnt_help",
+          updatedAt: new Date("2020-01-03T00:00:00.000Z"),
+        },
+      ];
+    });
+
+    const route = await import("../../app/api/actions/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/actions?useRankingSimulation=1")
+    );
+    const payload = await response.json();
+
+    expect(payload.stabilizeNow.map((action: { id: string }) => action.id)).toEqual([
+      "a1",
+      "a3",
+    ]);
+    expect(payload.buildForward.map((action: { id: string }) => action.id)).toEqual([
+      "a2",
+      "a4",
+    ]);
+    expect(payload).not.toHaveProperty("rankingDiagnostics");
+    expect(payload).not.toHaveProperty("simulatedRankingPreview");
   });
 });
