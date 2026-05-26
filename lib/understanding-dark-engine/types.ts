@@ -40,6 +40,12 @@ export type EvidenceRole =
 
 export type EvidenceOriginMarker = "native" | "imported" | "mixed" | "unknown";
 
+export type EvidencePublicSafetyLevel =
+  | "internal_only"
+  | "safe_summary"
+  | "public_safe_id_only"
+  | "not_public_safe";
+
 export type EvidenceProvenanceRefs = {
   patternClaimId?: string;
   contradictionNodeId?: string;
@@ -59,8 +65,26 @@ export type EvidencePacketItem = {
   sourceFamily: EvidenceSourceFamily;
   timestamp: Date;
   authoredAt?: Date | null;
+  /**
+   * Internal-only text excerpt. Never implicitly public-safe.
+   */
   snippet?: string | null;
+  /**
+   * Internal-only quote text. Never implicitly public-safe.
+   */
   quote?: string | null;
+  /**
+   * Explicit packet-level projection safety marker for this source item.
+   */
+  publicSafetyLevel: EvidencePublicSafetyLevel;
+  /**
+   * Safe projection label/summary (optional) when the item is `safe_summary`.
+   */
+  publicSafeSummary?: string | null;
+  /**
+   * True when the item contains raw/private user-authored prose.
+   */
+  containsRawPrivateText: boolean;
   provenanceRefs: EvidenceProvenanceRefs;
   qualityFlags: string[];
   linkable: boolean;

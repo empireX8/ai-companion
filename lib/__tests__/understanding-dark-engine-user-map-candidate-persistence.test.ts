@@ -78,6 +78,9 @@ function buildPacket(items: PacketItemInput[]) {
       authoredAt: null,
       snippet: `snippet-${item.sourceId}`,
       quote: `quote-${item.sourceId}`,
+      publicSafetyLevel: "internal_only" as const,
+      publicSafeSummary: null,
+      containsRawPrivateText: true,
       provenanceRefs: {
         messageId: item.messageId,
         sessionId: item.sessionId,

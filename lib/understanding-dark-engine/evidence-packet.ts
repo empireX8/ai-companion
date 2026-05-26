@@ -15,6 +15,7 @@ import type {
   EvidencePacket,
   EvidencePacketItem,
   EvidencePacketMetrics,
+  EvidencePublicSafetyLevel,
   EvidenceSourceFamily,
   EvidenceWeightClass,
 } from "./types";
@@ -305,6 +306,57 @@ function hasLowQuoteQuality(text: string | null | undefined): boolean {
   return false;
 }
 
+function normalizeSafeSummary(value: string | null | undefined): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function resolvePublicSafetyMetadata(args: {
+  publicSafetyLevel?: EvidencePublicSafetyLevel;
+  publicSafeSummary?: string | null;
+  containsRawPrivateText?: boolean;
+  snippet?: string | null;
+  quote?: string | null;
+}): {
+  publicSafetyLevel: EvidencePublicSafetyLevel;
+  publicSafeSummary: string | null;
+  containsRawPrivateText: boolean;
+} {
+  const containsRawPrivateText =
+    args.containsRawPrivateText ??
+    Boolean(
+      (typeof args.quote === "string" && args.quote.trim().length > 0) ||
+        (typeof args.snippet === "string" && args.snippet.trim().length > 0)
+    );
+
+  let publicSafetyLevel: EvidencePublicSafetyLevel =
+    args.publicSafetyLevel ??
+    (containsRawPrivateText ? "internal_only" : "public_safe_id_only");
+
+  if (containsRawPrivateText) {
+    publicSafetyLevel = "internal_only";
+  }
+
+  const normalizedPublicSafeSummary =
+    publicSafetyLevel === "safe_summary"
+      ? normalizeSafeSummary(args.publicSafeSummary)
+      : null;
+
+  if (publicSafetyLevel === "safe_summary" && !normalizedPublicSafeSummary) {
+    publicSafetyLevel = "public_safe_id_only";
+  }
+
+  return {
+    publicSafetyLevel,
+    publicSafeSummary:
+      publicSafetyLevel === "safe_summary" ? normalizedPublicSafeSummary : null,
+    containsRawPrivateText,
+  };
+}
+
 function determineEpisodeKey(args: {
   sessionId?: string | null;
   journalEntryId?: string | null;
@@ -372,6 +424,9 @@ function createEvidenceItem(args: {
   authoredAt?: Date | null;
   snippet?: string | null;
   quote?: string | null;
+  publicSafetyLevel?: EvidencePublicSafetyLevel;
+  publicSafeSummary?: string | null;
+  containsRawPrivateText?: boolean;
   provenanceRefs: EvidencePacketItem["provenanceRefs"];
   linkable: boolean;
   ownershipResolvable: boolean;
@@ -379,6 +434,14 @@ function createEvidenceItem(args: {
   origin: EvidencePacketItem["origin"];
   episodeKey: string | null;
 }): EvidencePacketItem {
+  const publicSafetyMetadata = resolvePublicSafetyMetadata({
+    publicSafetyLevel: args.publicSafetyLevel,
+    publicSafeSummary: args.publicSafeSummary,
+    containsRawPrivateText: args.containsRawPrivateText,
+    snippet: args.snippet,
+    quote: args.quote,
+  });
+
   const qualityFlags = buildQualityFlags({
     hasProvenance: Object.keys(args.provenanceRefs).length > 0,
     quote: args.quote,
@@ -398,6 +461,9 @@ function createEvidenceItem(args: {
     authoredAt: args.authoredAt,
     snippet: args.snippet,
     quote: args.quote,
+    publicSafetyLevel: publicSafetyMetadata.publicSafetyLevel,
+    publicSafeSummary: publicSafetyMetadata.publicSafeSummary,
+    containsRawPrivateText: publicSafetyMetadata.containsRawPrivateText,
     provenanceRefs: args.provenanceRefs,
     qualityFlags,
     linkable: args.linkable,
@@ -1014,6 +1080,9 @@ export async function assembleEvidencePacketV1(
         role: "signal",
         timestamp: claim.updatedAt,
         snippet: claim.summary,
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: claim.summary,
+        containsRawPrivateText: false,
         provenanceRefs: {},
         linkable: true,
         ownershipResolvable: true,
@@ -1040,6 +1109,7 @@ export async function assembleEvidencePacketV1(
         role: "receipt",
         timestamp: receipt.createdAt,
         quote: receipt.quote,
+        containsRawPrivateText: true,
         provenanceRefs: {
           patternClaimId: receipt.claimId,
           sessionId: receipt.sessionId ?? undefined,
@@ -1069,6 +1139,9 @@ export async function assembleEvidencePacketV1(
         role: "context",
         timestamp: node.lastTouchedAt,
         snippet: node.title,
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: node.title,
+        containsRawPrivateText: false,
         provenanceRefs: {
           contradictionNodeId: node.id,
           sessionId: node.sourceSessionId ?? undefined,
@@ -1099,6 +1172,7 @@ export async function assembleEvidencePacketV1(
         role: "receipt",
         timestamp: evidence.createdAt,
         quote: evidence.quote,
+        containsRawPrivateText: true,
         provenanceRefs: {
           contradictionNodeId: evidence.nodeId,
           sessionId: evidence.sessionId ?? undefined,
@@ -1133,6 +1207,8 @@ export async function assembleEvidencePacketV1(
         role: "signal",
         timestamp: artifact.lastSeenAt,
         snippet: signalSnippet,
+        publicSafetyLevel: "not_public_safe",
+        containsRawPrivateText: false,
         provenanceRefs: {},
         linkable: true,
         ownershipResolvable: true,
@@ -1152,6 +1228,7 @@ export async function assembleEvidencePacketV1(
         role: "receipt",
         timestamp: span.createdAt,
         quote: excerpt,
+        containsRawPrivateText: true,
         provenanceRefs: {
           messageId: span.messageId,
         },
@@ -1172,6 +1249,7 @@ export async function assembleEvidencePacketV1(
         role: "context",
         timestamp: reference.updatedAt,
         snippet: reference.statement,
+        containsRawPrivateText: true,
         provenanceRefs: {
           referenceItemId: reference.id,
           sessionId: reference.sourceSessionId ?? undefined,
@@ -1206,6 +1284,8 @@ export async function assembleEvidencePacketV1(
         role: "outcome",
         timestamp: action.updatedAt,
         snippet: actionSnippet,
+        publicSafetyLevel: "not_public_safe",
+        containsRawPrivateText: Boolean(action.note),
         provenanceRefs: {
           patternClaimId: action.linkedClaimId ?? undefined,
         },
@@ -1233,6 +1313,8 @@ export async function assembleEvidencePacketV1(
         timestamp: checkIn.createdAt,
         snippet: [checkIn.stateTag, ...checkIn.eventTags].filter(Boolean).join(" | "),
         quote: checkIn.note,
+        publicSafetyLevel: "not_public_safe",
+        containsRawPrivateText: Boolean(checkIn.note),
         provenanceRefs: {},
         linkable: true,
         ownershipResolvable: true,
@@ -1255,6 +1337,7 @@ export async function assembleEvidencePacketV1(
         authoredAt,
         snippet: entry.title ?? entry.body.slice(0, 180),
         quote: entry.body.slice(0, 280),
+        containsRawPrivateText: true,
         provenanceRefs: {
           journalEntryId: entry.id,
         },
@@ -1274,7 +1357,9 @@ export async function assembleEvidencePacketV1(
         sourceId: session.id,
         role: "container",
         timestamp: session.startedAt,
-        snippet: session.label,
+        snippet: null,
+        publicSafetyLevel: "public_safe_id_only",
+        containsRawPrivateText: false,
         provenanceRefs: {
           sessionId: session.id,
         },
@@ -1299,6 +1384,7 @@ export async function assembleEvidencePacketV1(
         role: "signal",
         timestamp: message.createdAt,
         quote: message.content.slice(0, 280),
+        containsRawPrivateText: true,
         provenanceRefs: {
           sessionId: message.sessionId,
           messageId: message.id,
@@ -1325,6 +1411,9 @@ export async function assembleEvidencePacketV1(
         role: "context",
         timestamp: importSession.finishedAt ?? importSession.startedAt ?? importSession.createdAt,
         snippet: summary,
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: summary,
+        containsRawPrivateText: false,
         provenanceRefs: {
           importSessionId: importSession.id,
         },
@@ -1345,6 +1434,9 @@ export async function assembleEvidencePacketV1(
         role: "container",
         timestamp: chunk.createdAt,
         snippet: `chunk bytes=${chunk.sizeBytes}`,
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: `Import chunk metadata`,
+        containsRawPrivateText: false,
         provenanceRefs: {
           importSessionId: chunk.sessionId,
           importChunkId: chunk.id,
@@ -1375,6 +1467,8 @@ export async function assembleEvidencePacketV1(
           role: "context",
           timestamp: now,
           snippet: `window=${windowDays}d checkIns=${checkInCount} topState=${topState ?? "none"}`,
+          publicSafetyLevel: "not_public_safe",
+          containsRawPrivateText: false,
           provenanceRefs: {},
           linkable: false,
           ownershipResolvable: false,
@@ -1401,6 +1495,8 @@ export async function assembleEvidencePacketV1(
           role: "calibration",
           timestamp: correctionUpdate.createdAt,
           snippet: correctionUpdate.userFacingSummary,
+          publicSafetyLevel: "not_public_safe",
+          containsRawPrivateText: false,
           provenanceRefs: {},
           linkable: false,
           ownershipResolvable: false,
@@ -1424,6 +1520,8 @@ export async function assembleEvidencePacketV1(
           role: "calibration",
           timestamp: correctionConclusion.lastUserCorrectionAt,
           snippet: correctionConclusion.lastUserCorrectionLabel,
+          publicSafetyLevel: "not_public_safe",
+          containsRawPrivateText: false,
           provenanceRefs: {},
           linkable: false,
           ownershipResolvable: false,

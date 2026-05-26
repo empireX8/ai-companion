@@ -962,4 +962,137 @@ describe("Phase 2 dark engine EvidencePacket assembly", () => {
       expect(item.ownershipResolvable).toBe(true);
     }
   });
+
+  it("marks raw journal/message/check-in text as internal-only and raw-private", async () => {
+    const { db, state } = createFixture();
+    state.surfacedActions = [
+      {
+        id: "sa-1",
+        bucket: "stabilize",
+        status: "helped",
+        note: "Raw private action note.",
+        surfacedAt: new Date("2026-05-09T10:00:00.000Z"),
+        updatedAt: new Date("2026-05-10T10:00:00.000Z"),
+        linkedClaimId: "pc-1",
+      },
+    ];
+
+    const packet = await assembleEvidencePacketV1({
+      userId: "user-1",
+      now: new Date("2026-05-15T12:00:00.000Z"),
+      db,
+    });
+
+    const rawSourceTypes = new Set<UnderstandingLinkSourceType>([
+      UnderstandingLinkSourceType.journal_entry,
+      UnderstandingLinkSourceType.message,
+      UnderstandingLinkSourceType.quick_check_in,
+      UnderstandingLinkSourceType.surfaced_action,
+    ]);
+    const rawSources = packet.items.filter((item) =>
+      rawSourceTypes.has(item.sourceType)
+    );
+
+    expect(rawSources.length).toBeGreaterThan(0);
+    for (const item of rawSources) {
+      expect(item.publicSafetyLevel).toBe("internal_only");
+      expect(item.containsRawPrivateText).toBe(true);
+      expect(item.publicSafeSummary ?? null).toBeNull();
+    }
+  });
+
+  it("distinguishes safe summaries from id-only and non-public-safe metadata", async () => {
+    const { db } = createFixture();
+    const packet = await assembleEvidencePacketV1({
+      userId: "user-1",
+      now: new Date("2026-05-15T12:00:00.000Z"),
+      db,
+    });
+
+    const patternClaim = packet.items.find(
+      (item) => item.sourceType === UnderstandingLinkSourceType.pattern_claim
+    );
+    expect(patternClaim).toBeTruthy();
+    expect(patternClaim?.publicSafetyLevel).toBe("safe_summary");
+    expect(patternClaim?.containsRawPrivateText).toBe(false);
+    expect(patternClaim?.publicSafeSummary).toBeTruthy();
+
+    const sessionItem = packet.items.find(
+      (item) => item.sourceType === UnderstandingLinkSourceType.session
+    );
+    expect(sessionItem).toBeTruthy();
+    expect(sessionItem?.publicSafetyLevel).toBe("public_safe_id_only");
+    expect(sessionItem?.publicSafeSummary ?? null).toBeNull();
+
+    const correctionItem = packet.items.find(
+      (item) => item.sourceType === UnderstandingLinkSourceType.user_correction
+    );
+    expect(correctionItem).toBeTruthy();
+    expect(correctionItem?.publicSafetyLevel).toBe("not_public_safe");
+    expect(correctionItem?.publicSafeSummary ?? null).toBeNull();
+  });
+
+  it("keeps public-safe projection metadata-only and never includes raw quote/snippet text", async () => {
+    const { db } = createFixture();
+    const packet = await assembleEvidencePacketV1({
+      userId: "user-1",
+      now: new Date("2026-05-15T12:00:00.000Z"),
+      db,
+    });
+
+    const publicProjection = packet.items.map((item) => ({
+      sourceType: item.sourceType,
+      sourceId: item.sourceId,
+      timestamp: item.timestamp.toISOString(),
+      publicSafetyLevel: item.publicSafetyLevel,
+      publicSafeSummary:
+        item.publicSafetyLevel === "safe_summary"
+          ? item.publicSafeSummary
+          : null,
+    }));
+
+    expect(publicProjection.length).toBe(packet.items.length);
+    expect(
+      publicProjection.every(
+        (item) => typeof item.sourceId === "string" && typeof item.timestamp === "string"
+      )
+    ).toBe(true);
+
+    for (const item of packet.items) {
+      if (item.containsRawPrivateText) {
+        expect(item.publicSafetyLevel).toBe("internal_only");
+      }
+      if (item.publicSafetyLevel !== "safe_summary") {
+        expect(item.publicSafeSummary ?? null).toBeNull();
+      }
+    }
+  });
+
+  it("preserves source IDs/timestamps while keeping action outcomes as metadata-only signals", async () => {
+    const { db, state } = createFixture();
+    state.surfacedActions = [
+      {
+        id: "sa-2",
+        bucket: "build",
+        status: "done",
+        note: null,
+        surfacedAt: new Date("2026-05-08T10:00:00.000Z"),
+        updatedAt: new Date("2026-05-11T10:00:00.000Z"),
+        linkedClaimId: "pc-1",
+      },
+    ];
+
+    const packet = await assembleEvidencePacketV1({
+      userId: "user-1",
+      now: new Date("2026-05-15T12:00:00.000Z"),
+      db,
+    });
+
+    const actionItem = packet.items.find((item) => item.sourceId === "sa-2");
+    expect(actionItem).toBeTruthy();
+    expect(actionItem?.sourceType).toBe(UnderstandingLinkSourceType.surfaced_action);
+    expect(actionItem?.timestamp.toISOString()).toBe("2026-05-11T10:00:00.000Z");
+    expect(actionItem?.publicSafetyLevel).toBe("not_public_safe");
+    expect(actionItem?.containsRawPrivateText).toBe(false);
+  });
 });
