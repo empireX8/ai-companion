@@ -13,10 +13,12 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  applyActionRankingEligibilityToDiagnostics,
   aggregateActionFeedback,
   buildActionTemplateRankingDiagnostics,
   DEFAULT_ACTION_RANKING_ELIGIBILITY_OPTIONS,
   evaluateActionRankingEligibility,
+  loadEligibleActionRankingDiagnosticsForUser,
   loadActionRankingDiagnosticsForUser,
   simulateActionRankingWithDiagnostics,
   REPEATED_SIGNAL_THRESHOLD,
@@ -643,6 +645,263 @@ describe("loadActionRankingDiagnosticsForUser", () => {
 
     expect(diagnostics).toEqual([]);
     expect(findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("applyActionRankingEligibilityToDiagnostics", () => {
+  const NOW_ISO = "2026-05-25T00:00:00.000Z";
+
+  const makeDiagnostic = (overrides: Partial<{
+    templateId: string;
+    helpedCount: number;
+    didntHelpCount: number;
+    repeatedHelped: boolean;
+    repeatedDidntHelp: boolean;
+    suggestedRankingHint: "promote" | "suppress" | "neutral";
+    lastFeedbackAt: string | null;
+  }> = {}) => ({
+    templateId: "s1",
+    helpedCount: 3,
+    didntHelpCount: 0,
+    repeatedHelped: true,
+    repeatedDidntHelp: false,
+    suggestedRankingHint: "promote" as const,
+    lastFeedbackAt: "2026-05-20T00:00:00.000Z",
+    ...overrides,
+  });
+
+  it("keeps eligible promote signals as promote", () => {
+    const diagnostics = applyActionRankingEligibilityToDiagnostics(
+      [makeDiagnostic()],
+      { now: NOW_ISO }
+    );
+
+    expect(diagnostics).toEqual([
+      {
+        templateId: "s1",
+        helpedCount: 3,
+        didntHelpCount: 0,
+        repeatedHelped: true,
+        repeatedDidntHelp: false,
+        suggestedRankingHint: "promote",
+        eligible: true,
+        reason: "promote_signal",
+        isReversible: true,
+      },
+    ]);
+  });
+
+  it("keeps eligible suppress signals as suppress", () => {
+    const diagnostics = applyActionRankingEligibilityToDiagnostics(
+      [
+        makeDiagnostic({
+          templateId: "b2",
+          helpedCount: 0,
+          didntHelpCount: 3,
+          repeatedHelped: false,
+          repeatedDidntHelp: true,
+          suggestedRankingHint: "suppress",
+        }),
+      ],
+      { now: NOW_ISO }
+    );
+
+    expect(diagnostics[0]).toMatchObject({
+      templateId: "b2",
+      suggestedRankingHint: "suppress",
+      eligible: true,
+      reason: "suppress_signal",
+      isReversible: true,
+    });
+  });
+
+  it("neutralizes conflicts", () => {
+    const diagnostics = applyActionRankingEligibilityToDiagnostics(
+      [
+        makeDiagnostic({
+          templateId: "s3",
+          helpedCount: 3,
+          didntHelpCount: 3,
+          repeatedHelped: true,
+          repeatedDidntHelp: true,
+          suggestedRankingHint: "neutral",
+        }),
+      ],
+      { now: NOW_ISO }
+    );
+
+    expect(diagnostics[0]).toMatchObject({
+      templateId: "s3",
+      suggestedRankingHint: "neutral",
+      eligible: false,
+      reason: "conflict",
+      isReversible: true,
+    });
+  });
+
+  it("neutralizes below-threshold signals", () => {
+    const diagnostics = applyActionRankingEligibilityToDiagnostics(
+      [
+        makeDiagnostic({
+          templateId: "s4",
+          helpedCount: 2,
+          didntHelpCount: 0,
+          repeatedHelped: false,
+          repeatedDidntHelp: false,
+          suggestedRankingHint: "neutral",
+        }),
+      ],
+      { now: NOW_ISO }
+    );
+
+    expect(diagnostics[0]).toMatchObject({
+      templateId: "s4",
+      suggestedRankingHint: "neutral",
+      eligible: false,
+      reason: "below_threshold",
+      isReversible: true,
+    });
+  });
+
+  it("neutralizes stale signals", () => {
+    const diagnostics = applyActionRankingEligibilityToDiagnostics(
+      [
+        makeDiagnostic({
+          templateId: "b1",
+          lastFeedbackAt: "2025-01-01T00:00:00.000Z",
+        }),
+      ],
+      { now: NOW_ISO }
+    );
+
+    expect(diagnostics[0]).toMatchObject({
+      templateId: "b1",
+      suggestedRankingHint: "neutral",
+      eligible: false,
+      reason: "stale_signal",
+      isReversible: true,
+    });
+  });
+
+  it("neutralizes missing recent feedback signals", () => {
+    const diagnostics = applyActionRankingEligibilityToDiagnostics(
+      [
+        makeDiagnostic({
+          templateId: "b3",
+          lastFeedbackAt: null,
+        }),
+      ],
+      { now: NOW_ISO }
+    );
+
+    expect(diagnostics[0]).toMatchObject({
+      templateId: "b3",
+      suggestedRankingHint: "neutral",
+      eligible: false,
+      reason: "missing_recent_feedback",
+      isReversible: true,
+    });
+  });
+
+  it("returns only safe diagnostic metadata and no raw note/evidence text", () => {
+    const diagnostics = applyActionRankingEligibilityToDiagnostics(
+      [
+        {
+          ...makeDiagnostic(),
+          note: "private note",
+          evidence: "private evidence",
+        } as unknown as {
+          templateId: string;
+          helpedCount: number;
+          didntHelpCount: number;
+          repeatedHelped: boolean;
+          repeatedDidntHelp: boolean;
+          suggestedRankingHint: "promote" | "suppress" | "neutral";
+          lastFeedbackAt: string;
+        },
+      ],
+      { now: NOW_ISO }
+    );
+
+    const serialized = JSON.stringify(diagnostics);
+    expect(serialized).not.toContain("private note");
+    expect(serialized).not.toContain("private evidence");
+    expect(Object.keys(diagnostics[0] ?? {})).toEqual([
+      "templateId",
+      "helpedCount",
+      "didntHelpCount",
+      "repeatedHelped",
+      "repeatedDidntHelp",
+      "suggestedRankingHint",
+      "eligible",
+      "reason",
+      "isReversible",
+    ]);
+  });
+});
+
+describe("loadEligibleActionRankingDiagnosticsForUser", () => {
+  it("applies eligibility gating with safe metadata and no writes", async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, (_, index) =>
+        makeDidntHelpRow({
+          templateId: "b2",
+          bucket: "build",
+          updatedAt: new Date(`2026-05-0${index + 1}T10:00:00.000Z`),
+          note: "private note should not leak",
+        })
+      ),
+      ...Array.from({ length: REPEATED_SIGNAL_THRESHOLD }, (_, index) =>
+        makeHelpedRow({
+          templateId: "s3",
+          updatedAt: new Date(`2025-01-0${index + 1}T10:00:00.000Z`),
+        })
+      ),
+    ]);
+    const create = vi.fn();
+    const update = vi.fn();
+
+    const diagnostics = await loadEligibleActionRankingDiagnosticsForUser({
+      userId: " user-1 ",
+      db: {
+        surfacedAction: {
+          findMany,
+          create,
+          update,
+        } as unknown as {
+          findMany: typeof findMany;
+        },
+      },
+      options: { now: "2026-05-25T00:00:00.000Z" },
+    });
+
+    expect(create).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(diagnostics).toEqual([
+      {
+        templateId: "b2",
+        helpedCount: 0,
+        didntHelpCount: REPEATED_SIGNAL_THRESHOLD,
+        repeatedHelped: false,
+        repeatedDidntHelp: true,
+        suggestedRankingHint: "suppress",
+        eligible: true,
+        reason: "suppress_signal",
+        isReversible: true,
+      },
+      {
+        templateId: "s3",
+        helpedCount: REPEATED_SIGNAL_THRESHOLD,
+        didntHelpCount: 0,
+        repeatedHelped: true,
+        repeatedDidntHelp: false,
+        suggestedRankingHint: "neutral",
+        eligible: false,
+        reason: "stale_signal",
+        isReversible: true,
+      },
+    ]);
+    expect(JSON.stringify(diagnostics)).not.toContain("private note should not leak");
   });
 });
 

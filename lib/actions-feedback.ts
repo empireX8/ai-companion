@@ -91,6 +91,13 @@ export type ActionTemplateRankingDiagnostic = {
   suggestedRankingHint: ActionTemplateRankingHint;
 };
 
+export type ActionTemplateRankingDiagnosticWithEligibility =
+  ActionTemplateRankingDiagnostic & {
+    eligible: boolean;
+    reason: ActionRankingEligibilityReason;
+    isReversible: true;
+  };
+
 export type ActionRankingEligibilityReason =
   | "promote_signal"
   | "suppress_signal"
@@ -449,6 +456,68 @@ export function buildActionTemplateRankingDiagnostics(
     .sort((left, right) => left.templateId.localeCompare(right.templateId));
 }
 
+type ActionTemplateRankingDiagnosticWithLastFeedback =
+  ActionTemplateRankingDiagnostic & {
+    lastFeedbackAt: string | null;
+  };
+
+function buildActionTemplateRankingDiagnosticsWithLastFeedback(
+  summary: ActionFeedbackSummary
+): ActionTemplateRankingDiagnosticWithLastFeedback[] {
+  return summary.byTemplate
+    .map((aggregate) => ({
+      templateId: aggregate.templateId,
+      helpedCount: aggregate.helped,
+      didntHelpCount: aggregate.didntHelp,
+      repeatedHelped: aggregate.repeatedHelped,
+      repeatedDidntHelp: aggregate.repeatedDidntHelp,
+      suggestedRankingHint: resolveTemplateRankingHint(aggregate),
+      lastFeedbackAt: aggregate.lastFeedbackAt,
+    }))
+    .sort((left, right) => left.templateId.localeCompare(right.templateId));
+}
+
+/**
+ * Applies Policy Phase F1 eligibility gating to template diagnostics.
+ *
+ * Behavior:
+ * - eligible promote/suppress signals keep their hint
+ * - conflict/below-threshold/stale/missing-recent signals become neutral
+ * - returns reversible safe metadata only (eligible/reason/isReversible)
+ */
+export function applyActionRankingEligibilityToDiagnostics(
+  diagnostics: (ActionTemplateRankingDiagnostic & {
+    lastFeedbackAt?: string | Date | null;
+  })[],
+  options: ActionRankingEligibilityOptions = {}
+): ActionTemplateRankingDiagnosticWithEligibility[] {
+  return diagnostics
+    .map((diagnostic) => {
+      const eligibility = evaluateActionRankingEligibility(
+        {
+          templateId: diagnostic.templateId,
+          helpedCount: diagnostic.helpedCount,
+          didntHelpCount: diagnostic.didntHelpCount,
+          lastFeedbackAt: diagnostic.lastFeedbackAt ?? null,
+        },
+        options
+      );
+
+      return {
+        templateId: diagnostic.templateId,
+        helpedCount: diagnostic.helpedCount,
+        didntHelpCount: diagnostic.didntHelpCount,
+        repeatedHelped: diagnostic.repeatedHelped,
+        repeatedDidntHelp: diagnostic.repeatedDidntHelp,
+        suggestedRankingHint: eligibility.suggestedRankingHint,
+        eligible: eligibility.eligible,
+        reason: eligibility.reason,
+        isReversible: eligibility.isReversible,
+      };
+    })
+    .sort((left, right) => left.templateId.localeCompare(right.templateId));
+}
+
 const RANKING_HINT_PRIORITY: Record<ActionTemplateRankingHint, number> = {
   promote: 0,
   neutral: 1,
@@ -664,5 +733,49 @@ export async function loadActionRankingDiagnosticsForUser({
 
   return buildActionTemplateRankingDiagnostics(
     aggregateActionFeedback(rowsWithInferredEffort)
+  );
+}
+
+/**
+ * Loads eligibility-gated ranking diagnostics for debug/simulated ranking use.
+ * This remains query-only and reversible; no live ranking activation.
+ */
+export async function loadEligibleActionRankingDiagnosticsForUser({
+  userId,
+  db = prismadb as unknown as ActionFeedbackDiagnosticsDb,
+  options = {},
+}: {
+  userId: string;
+  db?: ActionFeedbackDiagnosticsDb;
+  options?: ActionRankingEligibilityOptions;
+}): Promise<ActionTemplateRankingDiagnosticWithEligibility[]> {
+  const normalizedUserId = normalizeNonEmptyString(userId);
+  if (!normalizedUserId) {
+    return [];
+  }
+
+  const rows = await db.surfacedAction.findMany({
+    where: { userId: normalizedUserId },
+    select: {
+      templateId: true,
+      bucket: true,
+      linkedFamily: true,
+      status: true,
+      updatedAt: true,
+    },
+  });
+
+  const rowsWithInferredEffort = rows.map((row) => ({
+    ...row,
+    effort: inferEffortFromTemplateId(row.templateId),
+  }));
+
+  const summary = aggregateActionFeedback(rowsWithInferredEffort);
+  const diagnosticsWithLastFeedback =
+    buildActionTemplateRankingDiagnosticsWithLastFeedback(summary);
+
+  return applyActionRankingEligibilityToDiagnostics(
+    diagnosticsWithLastFeedback,
+    options
   );
 }

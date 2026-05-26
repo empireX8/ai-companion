@@ -11,7 +11,7 @@ import {
   type VisibleGoalReference,
 } from "@/lib/actions-v1";
 import {
-  loadActionRankingDiagnosticsForUser,
+  loadEligibleActionRankingDiagnosticsForUser,
   simulateActionRankingWithDiagnostics,
 } from "../../../lib/actions-feedback";
 import type { PatternClaimView } from "@/lib/patterns-api";
@@ -145,7 +145,7 @@ export async function GET(req?: Request) {
     return NextResponse.json(payload);
   }
 
-  const rankingDiagnostics = await loadActionRankingDiagnosticsForUser({
+  const rankingDiagnostics = await loadEligibleActionRankingDiagnosticsForUser({
     userId,
     db: prismadb,
   });

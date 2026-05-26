@@ -109,6 +109,9 @@ function makeAction(
   };
 }
 
+const daysAgo = (days: number) =>
+  new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
 beforeEach(() => {
   vi.clearAllMocks();
 
@@ -152,7 +155,7 @@ beforeEach(() => {
         linkedFamily: "trigger_condition",
         effort: "Low",
         status: "helped",
-        updatedAt: new Date("2026-05-01T10:00:00.000Z"),
+        updatedAt: daysAgo(5),
       },
       {
         templateId: "s1",
@@ -160,7 +163,7 @@ beforeEach(() => {
         linkedFamily: "trigger_condition",
         effort: "Low",
         status: "helped",
-        updatedAt: new Date("2026-05-02T10:00:00.000Z"),
+        updatedAt: daysAgo(4),
       },
       {
         templateId: "s1",
@@ -168,7 +171,7 @@ beforeEach(() => {
         linkedFamily: "trigger_condition",
         effort: "Low",
         status: "helped",
-        updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+        updatedAt: daysAgo(3),
       },
       {
         templateId: "b2",
@@ -176,7 +179,7 @@ beforeEach(() => {
         linkedFamily: null,
         effort: "Low",
         status: "didnt_help",
-        updatedAt: new Date("2026-05-01T10:00:00.000Z"),
+        updatedAt: daysAgo(5),
       },
       {
         templateId: "b2",
@@ -184,7 +187,7 @@ beforeEach(() => {
         linkedFamily: null,
         effort: "Low",
         status: "didnt_help",
-        updatedAt: new Date("2026-05-02T10:00:00.000Z"),
+        updatedAt: daysAgo(4),
       },
       {
         templateId: "b2",
@@ -192,7 +195,7 @@ beforeEach(() => {
         linkedFamily: null,
         effort: "Low",
         status: "didnt_help",
-        updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+        updatedAt: daysAgo(3),
       },
       {
         templateId: "s3",
@@ -200,7 +203,7 @@ beforeEach(() => {
         linkedFamily: "trigger_condition",
         effort: "Low",
         status: "helped",
-        updatedAt: new Date("2026-05-01T10:00:00.000Z"),
+        updatedAt: daysAgo(6),
       },
       {
         templateId: "s3",
@@ -208,7 +211,7 @@ beforeEach(() => {
         linkedFamily: "trigger_condition",
         effort: "Low",
         status: "helped",
-        updatedAt: new Date("2026-05-02T10:00:00.000Z"),
+        updatedAt: daysAgo(5),
       },
       {
         templateId: "s3",
@@ -216,7 +219,7 @@ beforeEach(() => {
         linkedFamily: "trigger_condition",
         effort: "Low",
         status: "helped",
-        updatedAt: new Date("2026-05-03T10:00:00.000Z"),
+        updatedAt: daysAgo(4),
       },
       {
         templateId: "s3",
@@ -224,7 +227,7 @@ beforeEach(() => {
         linkedFamily: "trigger_condition",
         effort: "Low",
         status: "didnt_help",
-        updatedAt: new Date("2026-05-04T10:00:00.000Z"),
+        updatedAt: daysAgo(3),
       },
       {
         templateId: "s3",
@@ -232,7 +235,7 @@ beforeEach(() => {
         linkedFamily: "trigger_condition",
         effort: "Low",
         status: "didnt_help",
-        updatedAt: new Date("2026-05-05T10:00:00.000Z"),
+        updatedAt: daysAgo(2),
       },
       {
         templateId: "s3",
@@ -240,7 +243,7 @@ beforeEach(() => {
         linkedFamily: "trigger_condition",
         effort: "Low",
         status: "didnt_help",
-        updatedAt: new Date("2026-05-06T10:00:00.000Z"),
+        updatedAt: daysAgo(1),
       },
     ];
   });
@@ -292,6 +295,9 @@ describe("GET /api/actions debugRanking simulation gate", () => {
         repeatedHelped: false,
         repeatedDidntHelp: true,
         suggestedRankingHint: "suppress",
+        eligible: true,
+        reason: "suppress_signal",
+        isReversible: true,
       },
       {
         templateId: "s1",
@@ -300,6 +306,9 @@ describe("GET /api/actions debugRanking simulation gate", () => {
         repeatedHelped: true,
         repeatedDidntHelp: false,
         suggestedRankingHint: "promote",
+        eligible: true,
+        reason: "promote_signal",
+        isReversible: true,
       },
       {
         templateId: "s3",
@@ -308,6 +317,9 @@ describe("GET /api/actions debugRanking simulation gate", () => {
         repeatedHelped: true,
         repeatedDidntHelp: true,
         suggestedRankingHint: "neutral",
+        eligible: false,
+        reason: "conflict",
+        isReversible: true,
       },
     ]);
 
@@ -410,5 +422,92 @@ describe("GET /api/actions debugRanking simulation gate", () => {
     expect(
       new Set(payload.buildForward.map((action: { id: string }) => action.id))
     ).toEqual(new Set(["a2", "a4"]));
+  });
+
+  it("uses eligibility-gated hints for debug simulation", async () => {
+    surfacedActionFindManyMock.mockImplementation(async (args) => {
+      if ("id" in args.select) {
+        return [
+          { id: "a1", templateId: "s1" },
+          { id: "a2", templateId: "b2" },
+          { id: "a3", templateId: "s3" },
+          { id: "a4", templateId: "b4" },
+        ];
+      }
+
+      return [
+        {
+          templateId: "s1",
+          bucket: "stabilize",
+          linkedFamily: "trigger_condition",
+          effort: "Low",
+          status: "helped",
+          updatedAt: daysAgo(2),
+        },
+        {
+          templateId: "s1",
+          bucket: "stabilize",
+          linkedFamily: "trigger_condition",
+          effort: "Low",
+          status: "helped",
+          updatedAt: daysAgo(1),
+        },
+        {
+          templateId: "s1",
+          bucket: "stabilize",
+          linkedFamily: "trigger_condition",
+          effort: "Low",
+          status: "helped",
+          updatedAt: daysAgo(1),
+        },
+        {
+          templateId: "b2",
+          bucket: "build",
+          linkedFamily: null,
+          effort: "Low",
+          status: "didnt_help",
+          updatedAt: new Date("2020-01-01T00:00:00.000Z"),
+        },
+        {
+          templateId: "b2",
+          bucket: "build",
+          linkedFamily: null,
+          effort: "Low",
+          status: "didnt_help",
+          updatedAt: new Date("2020-01-02T00:00:00.000Z"),
+        },
+        {
+          templateId: "b2",
+          bucket: "build",
+          linkedFamily: null,
+          effort: "Low",
+          status: "didnt_help",
+          updatedAt: new Date("2020-01-03T00:00:00.000Z"),
+        },
+      ];
+    });
+
+    const route = await import("../../app/api/actions/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/actions?debugRanking=1&simulateRanking=1")
+    );
+    const payload = await response.json();
+
+    const b2 = payload.rankingDiagnostics.find(
+      (diagnostic: { templateId: string }) => diagnostic.templateId === "b2"
+    );
+
+    expect(payload.rankingMode).toBe("simulated_debug");
+    expect(b2).toMatchObject({
+      templateId: "b2",
+      suggestedRankingHint: "neutral",
+      eligible: false,
+      reason: "stale_signal",
+      isReversible: true,
+    });
+    expect(payload.buildForward.map((action: { id: string }) => action.id)).toEqual([
+      "a2",
+      "a4",
+    ]);
   });
 });
