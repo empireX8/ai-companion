@@ -264,8 +264,144 @@ Hard constraints:
 - No automatic experiments.
 - No "model learned" user-facing claims.
 
-## 16. Final Recommendation
+## 16. Current Recommendation
 
-- Do not implement ModelUpdates or PatternClaim mutation next.
-- If implementation resumes, start with debug-only ranking diagnostics surfacing or feature-flagged ranking simulation.
-- Keep all model-belief changes deferred until evidence thresholds, reversibility, conflict handling, and lifecycle policy are implemented.
+- Policy ranking groundwork is complete through `G1` (diagnostics, simulation, eligibility gating, env+query-gated live simulation, and feedback-signal read model).
+- The next safe policy workstream is this ModelUpdate Candidate Policy Contract (`Phase H`) and its review/acceptance cycle.
+- Do not implement `ModelUpdate` creation yet.
+- Do not mutate `PatternClaim` from action/fieldwork feedback.
+- Do not add schema, candidate storage, routes, or API write paths in this phase.
+- Do not activate default always-on production live ranking.
+- Keep `Phase H` contract-only until reviewed and explicitly closed.
+
+## 17. Policy Phase H - ModelUpdate Candidate Policy Contract
+
+### 17.1 Purpose
+
+- A ModelUpdate candidate is a reviewable proposed change, not a durable model belief.
+- A candidate layer must sit between feedback signals and actual `ModelUpdate` creation.
+- This layer exists to prevent single-click feedback, weak fieldwork, or one-off reflection from being treated as model learning.
+- Candidate outputs are policy objects for review/gating, not user-visible truth claims.
+
+### 17.2 Source Hierarchy
+
+Relative strength order (lowest -> highest):
+- Thin action status click (`helped`, `didnt_help`, `done`) is weakest.
+- Action status + note is still weak unless repeated and coherent across time.
+- Completed `FieldworkAssignment` linked to `surfaced_action` is stronger structured observation.
+- Explore reflection linked to action context is interpretive evidence; useful but still user-authored and non-conclusive by itself.
+- Repeated cross-source agreement (action + fieldwork + reflection) is strongest for candidate proposal.
+
+Priority rule:
+- Existing `PatternClaim` / `UserMapConclusion` evidence remains higher-trust than isolated action-outcome signals.
+
+### 17.3 Candidate Proposal Thresholds
+
+A ModelUpdate candidate may be proposed only when all baseline gates pass:
+- repeated `helped`/`didnt_help` signals alone are not sufficient
+- require one of:
+  - repeated action signal + completed fieldwork
+  - repeated action signal + reflective Explore interpretation
+  - repeated structured observations across time windows
+- require a recency window
+- require a minimum repeated count
+- require no unresolved conflict strong enough to neutralize
+- require meaningful delta versus current model state (avoid no-op restatements)
+
+Default policy baseline for minimums:
+- minimum repeated count should start at `>= 3` unless a stricter gate is approved
+- recency/staleness handling should stay aligned with current reversible ranking windows until superseded by a stricter candidate policy
+
+### 17.4 Rejection Rules
+
+A candidate must not be created when any of the following holds:
+- only one action status exists
+- signal is stale
+- signal is conflicted
+- signal reflects format preference only (for example, wording/tone/template style) rather than user state/pattern change
+- feedback is convenience/UI/timing wording feedback rather than behavioral or state change evidence
+- evidence source is only recommendation outcome with no corroborating signal
+- proposal would directly mutate/overrule a `PatternClaim`
+- proposal would expose raw action notes, raw fieldwork notes, or raw evidence text
+
+### 17.5 Candidate Lifecycle (Conceptual States)
+
+Candidate lifecycle states are policy-level only in this phase:
+- `proposed`
+- `held_for_more_evidence`
+- `rejected`
+- `promoted_to_model_update`
+- `superseded`
+- `expired`
+
+This section defines lifecycle semantics only. It does not introduce schema enums or storage changes yet.
+
+### 17.6 Conflict Handling
+
+- Conflict reduces confidence and should increase gate strictness.
+- Conflict can hold a candidate (`held_for_more_evidence`) or reject it.
+- Conflict should not force a negative conclusion by default.
+- Repeated conflicting `helped`/`didnt_help` signals should usually resolve to "needs more evidence", not immediate `ModelUpdate` creation.
+
+### 17.7 Reversibility and Provenance
+
+- Candidates are reversible policy objects.
+- Later contradictory signals can downgrade, expire, or supersede prior candidates.
+- Promotion to `ModelUpdate` must preserve provenance links instead of erasing earlier interpretation history.
+- Reversibility must prefer conservative fallback behavior when evidence quality declines.
+
+### 17.8 User-Facing Language Rules
+
+Allowed cautious wording patterns:
+- "This may suggest..."
+- "There is early evidence..."
+- "This looks worth watching..."
+- "This is not enough to conclude..."
+
+Disallowed wording patterns:
+- "The model learned..."
+- "You are now..."
+- "This proves..."
+- "This pattern changed..." unless backed by stronger multi-source model evidence
+- any language implying thin feedback is durable self-knowledge
+
+### 17.9 Relationship to PatternClaims
+
+- Action/fieldwork feedback cannot directly mutate `PatternClaim` strength or status.
+- ModelUpdate candidates may reference related `PatternClaim` IDs as context in future policy work.
+- PatternClaim mutation requires a separate future policy phase with stronger evidence and review gates.
+- Action usefulness and pattern truth must remain separate concepts.
+
+### 17.10 Relationship to Default Live Ranking
+
+- Default production live ranking activation remains deferred until this candidate policy is validated.
+- Ranking may continue to use reversible eligibility-gated signals for ordering behavior.
+- Ranking outcomes must not be framed as model truth or durable self-knowledge.
+
+### 17.11 Relationship to Phase 2 Dark Engine
+
+- This section is narrower than Phase 2 Dark Engine scope.
+- It governs only the path from action/fieldwork feedback signals to ModelUpdate candidates.
+- It does not implement Dark Engine packet assembly, synthesis, or gate execution.
+- Phase 2 gates should later absorb or explicitly reference this candidate policy.
+
+### 17.12 Explicit Non-Goals for Phase H Contract Pass
+
+This docs-only pass does not:
+- create `ModelUpdate` rows
+- create candidate storage
+- add schema or enums
+- add routes or API handlers
+- mutate `PatternClaim` rows
+- expose raw notes or raw evidence text
+- activate default live ranking
+- implement Phase 2 Dark Engine
+- implement agents, lenses, or Intelligence Library behavior
+
+### 17.13 Open Questions / Deferred Decisions
+
+The following policy decisions are intentionally deferred and must not trigger implementation yet:
+- Exact rule for what qualifies as a linked Explore reflection is not yet canonical.
+- "Meaningful delta" is directionally defined but not yet numerically gated.
+- Boundary between `held_for_more_evidence` and `rejected` is not yet quantified.
+- Promotion governance is implied, but reviewer/approval workflow is not yet formalized.
