@@ -10,6 +10,7 @@ import {
 import { patternBatchOrchestrator } from "./pattern-batch-orchestrator";
 import { createPatternRerunDebugCollector } from "./pattern-rerun-debug";
 import prismadb from "./prismadb";
+import { evaluateNoWriteDarkRunTriggerEligibility } from "./understanding-dark-engine/no-write-trigger-eligibility";
 
 const runningSessions = new Set<string>();
 
@@ -22,6 +23,22 @@ async function onImportComplete({
   sessionId: string;
   userId: string;
 }): Promise<void> {
+  try {
+    evaluateNoWriteDarkRunTriggerEligibility({
+      userId,
+      eventType: "import_completed",
+      now: new Date(),
+      noWriteOnly: true,
+    });
+  } catch (error) {
+    console.error("[IMPORT_NO_WRITE_TRIGGER_ELIGIBILITY_ERROR]", {
+      sessionId,
+      userId,
+      eventType: "import_completed",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+
   const debugCollector = createPatternRerunDebugCollector();
   const patternResult = await patternBatchOrchestrator.runForUser({
     userId,

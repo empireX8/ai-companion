@@ -2,12 +2,15 @@
  * import-upload-queue — post-import pattern detection trigger (P3-03)
  *
  * Tests that enqueueImportProcessing wires onImportComplete correctly, that
- * the hook calls patternBatchOrchestrator with trigger="import", and that the
- * dedup guard prevents duplicate concurrent processing of the same session.
+ * the hook calls no-write trigger eligibility + patternBatchOrchestrator with
+ * trigger="import", and that the dedup guard prevents duplicate concurrent
+ * processing of the same session.
  *
  * Each test uses a unique sessionId to avoid interference from the module-level
  * runningSessions Set that persists across tests within a file.
  */
+
+import { readFile } from "node:fs/promises";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -64,11 +67,24 @@ vi.mock("../import-diagnostics", () => ({
   toTopReasonCounts: vi.fn().mockReturnValue([]),
 }));
 
+vi.mock("../understanding-dark-engine/no-write-trigger-eligibility", () => ({
+  evaluateNoWriteDarkRunTriggerEligibility: vi.fn().mockReturnValue({
+    eligible: true,
+    decision: "eligible",
+    reason: "No-write trigger is eligible.",
+    shouldMarkPending: false,
+    cooldownRemainingMs: 0,
+    eventType: "import_completed",
+    noWriteOnly: true,
+  }),
+}));
+
 // ── Imports (after mocks) ─────────────────────────────────────────────────────
 
 import { processChatImportSession } from "../import-upload-processor";
 import { patternBatchOrchestrator } from "../pattern-batch-orchestrator";
 import { enqueueImportProcessing } from "../import-upload-queue";
+import { evaluateNoWriteDarkRunTriggerEligibility } from "../understanding-dark-engine/no-write-trigger-eligibility";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -167,6 +183,23 @@ describe("onImportComplete hook — pattern orchestrator call", () => {
     );
   });
 
+  it("calls no-write trigger eligibility helper for completed imports", async () => {
+    const hook = await captureHook("ses-elig-1");
+    expect(hook).toBeDefined();
+
+    await hook!({ sessionId: "ses-elig-1", userId: "user-1" });
+
+    expect(evaluateNoWriteDarkRunTriggerEligibility).toHaveBeenCalledOnce();
+    expect(evaluateNoWriteDarkRunTriggerEligibility).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        eventType: "import_completed",
+        noWriteOnly: true,
+        now: expect.any(Date),
+      })
+    );
+  });
+
   it("calls patternBatchOrchestrator only once per import completion", async () => {
     const hook = await captureHook("ses-orch-2");
     expect(hook).toBeDefined();
@@ -201,5 +234,24 @@ describe("onImportComplete hook — pattern orchestrator call", () => {
     await expect(hook!({ sessionId: "ses-orch-4", userId: "user-1" })).rejects.toThrow(
       "orchestrator crash"
     );
+  });
+
+  it("fails open when no-write eligibility helper throws", async () => {
+    (
+      evaluateNoWriteDarkRunTriggerEligibility as ReturnType<typeof vi.fn>
+    ).mockImplementationOnce(() => {
+      throw new Error("eligibility crash");
+    });
+    const hook = await captureHook("ses-elig-2");
+    expect(hook).toBeDefined();
+
+    await expect(hook!({ sessionId: "ses-elig-2", userId: "user-1" })).resolves.toBeUndefined();
+    expect(patternBatchOrchestrator.runForUser).toHaveBeenCalledOnce();
+  });
+
+  it("does not wire dark-run orchestrator or evaluation harness into import completion", async () => {
+    const source = await readFile(new URL("../import-upload-queue.ts", import.meta.url), "utf8");
+    expect(source).not.toContain("runNoWriteUnderstandingDarkRun");
+    expect(source).not.toContain("evaluateNoWriteDarkRunOutput");
   });
 });
