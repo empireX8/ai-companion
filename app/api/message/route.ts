@@ -25,6 +25,7 @@ import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
 import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
 import { triggerNativeDerivationIfDue } from "@/lib/native-derivation-trigger";
 import { processMessageForProfile } from "@/lib/profile-derivation";
+import { evaluateNoWriteDarkRunTriggerEligibility } from "@/lib/understanding-dark-engine/no-write-trigger-eligibility";
 
 type GovernedType = "preference" | "goal" | "constraint";
 const NATIVE_PROFILE_SURFACE_TYPES = new Set(["journal_chat", "explore_chat"]);
@@ -110,6 +111,13 @@ export async function processNativeUserMessageForProfile({
   } catch (error) {
     console.error(`[MESSAGE_PROFILE_BG_ERROR][${reqId}]`, error);
   }
+}
+
+function shouldEvaluateNoWriteTriggerForSession(session: {
+  origin: string | null;
+  surfaceType: string | null;
+}) {
+  return shouldDeriveNativeProfileForSession(session);
 }
 
 export async function POST(req: Request) {
@@ -276,6 +284,27 @@ export async function POST(req: Request) {
           sessionSurfaceType: session.surfaceType,
           reqId,
         });
+
+        if (
+          shouldEvaluateNoWriteTriggerForSession({
+            origin: session.origin,
+            surfaceType: session.surfaceType,
+          })
+        ) {
+          try {
+            evaluateNoWriteDarkRunTriggerEligibility({
+              userId,
+              eventType: "app_user_message",
+              now: userMessage.createdAt,
+              noWriteOnly: true,
+            });
+          } catch (error) {
+            console.error(
+              `[MESSAGE_NO_WRITE_TRIGGER_ELIGIBILITY_ERROR][${reqId}]`,
+              error
+            );
+          }
+        }
 
         // Contradiction detection (LLM call) — moved off critical path
         console.debug(tag, "contradiction_detection_start (async)", Date.now() - tServer);
