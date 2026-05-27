@@ -7,5 +7,6 @@ export * from "./evidence-packet";
 export * from "./objectivity-gates";
 export * from "./dark-run-evaluator";
 export * from "./dark-run-orchestrator";
+export * from "./dark-run-evaluation-harness";
 export * from "./diagnostics-persistence";
 export * from "./user-map-candidate-persistence";
