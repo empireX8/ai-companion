@@ -128,4 +128,66 @@
 
 ---
 
+## Phase 2L — UserMapConclusion Candidate Lifecycle Persistence Helper
+
+- **Status:** complete
+- **Scope:** Create a narrow internal persistence helper for changing `UserMapConclusion.candidateLifecycleStatus` safely using the Phase 2K transition policy.
+- **Runtime behavior:** unchanged — no existing code calls the new helper yet
+- **Files changed:**
+  - `lib/candidate-lifecycle-persistence.ts` — created (lifecycle persistence helper)
+  - `lib/__tests__/candidate-lifecycle-persistence.test.ts` — created (15 focused unit tests)
+- **Helper added:**
+  - `updateCandidateLifecycleStatus(userId, conclusionId, newStatus, options?)` — async function that:
+    1. Fetches the conclusion with ownership check (`findFirst` with `userId` + `id`)
+    2. Enforces non-null existing status (null = legacy/pre-lifecycle)
+    3. Enforces legal transition via `transitionOrThrow` from Phase 2K
+    4. Performs the Prisma `update` with `candidateLifecycleStatus` and `updatedAt`
+    5. Returns `UpdateLifecycleStatusResult` with `id`, `userId`, `previousStatus`, `newStatus`, `updatedAt`
+- **Error types:**
+  - `LifecyclePersistenceError` with machine-readable `code` field
+  - `CONCLUSION_NOT_FOUND` — conclusion doesn't exist or wrong user
+  - `NULL_LIFECYCLE_STATUS` — existing status is null (legacy/pre-lifecycle)
+  - `FORBIDDEN_TRANSITION` — transition not allowed by Phase 2K policy
+- **Transition enforcement behavior:**
+  - Uses `transitionOrThrow` from Phase 2K to enforce all legal/forbidden transitions
+  - Wraps plain `Error` from `transitionOrThrow` into `LifecyclePersistenceError` with code `FORBIDDEN_TRANSITION`
+- **Null/legacy behavior:**
+  - `null` means legacy/pre-lifecycle/not lifecycle-managed
+  - Helper throws `LifecyclePersistenceError` with code `NULL_LIFECYCLE_STATUS` if existing `candidateLifecycleStatus` is null
+  - Legacy records must be explicitly initialized before lifecycle management
+- **Tests added/changed:**
+  - 15 new tests covering:
+    - 7 valid transitions (proposed→rejected, held→promoted, proposed→held, proposed→expired, promoted→superseded, rejected→proposed, expired→proposed)
+    - 3 invalid transitions (promoted→proposed, superseded→any, proposed→promoted)
+    - Null legacy records (null candidateLifecycleStatus)
+    - Missing records (conclusion not found)
+    - Wrong user ownership
+    - Error code verification (NULL_LIFECYCLE_STATUS, CONCLUSION_NOT_FOUND)
+- **What did not change:**
+  - No schema changes (no new fields, no new enums)
+  - No changes to `Investigation`, `ModelUpdate`, or `FieldworkAssignment`
+  - No public/mobile API route
+  - No user-facing review UI
+  - No ModelUpdate records created
+  - No automatic promotion/rejection from dark-run output
+  - No message/import route behavior changes
+  - No dark-run execution behavior changes
+  - No promoted candidates made user-visible
+  - No unrelated lifecycle code refactored
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (138 files, 2345 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - No promotion/rejection workflow yet (next step)
+  - No candidate expiry/cleanup yet
+  - No cross-family candidate query yet
+  - No user-facing candidate review UI yet
+- **Next step:** Phase 2M — Candidate Promotion/Rejection Workflow (wire `updateCandidateLifecycleStatus` into a promotion/rejection action)
+
+---
+
 *Future entries will be appended below this line.*
