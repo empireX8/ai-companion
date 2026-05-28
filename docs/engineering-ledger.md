@@ -47,4 +47,31 @@
 
 ---
 
+## Phase 2I — Candidate Lifecycle Implementation
+
+- **Status:** complete
+- **Scope:** Add `CandidateLifecycleStatus` enum and `candidateLifecycleStatus` field to `UserMapConclusion` model, with migration, persistence code update, and tests.
+- **Runtime behavior:** New candidates are created with `candidateLifecycleStatus = proposed`. Existing records remain nullable (backward compatible).
+- **Files changed:**
+  - `prisma/schema.prisma` — added `CandidateLifecycleStatus` enum, added `candidateLifecycleStatus` field to `UserMapConclusion`
+  - `prisma/migrations/20260528215130_add_candidate_lifecycle_status/` — new migration
+  - `lib/understanding-dark-engine/user-map-candidate-persistence.ts` — import `CandidateLifecycleStatus`, set `candidateLifecycleStatus: CandidateLifecycleStatus.proposed` on create
+  - `lib/__tests__/understanding-dark-engine-user-map-candidate-persistence.test.ts` — updated `InMemoryConclusion` type, mock create, seed data, and added assertion for `candidateLifecycleStatus: "proposed"`
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (136 files, 2279 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - `Investigation`, `ModelUpdate`, and `FieldworkAssignment` still lack lifecycle status (deferred per audit recommendation)
+  - No candidate promotion/rejection workflow yet
+  - No candidate expiry/cleanup yet
+  - No cross-family candidate query yet
+  - No user-facing candidate review UI yet
+- **Next step:** Phase 2J — Candidate Promotion/Rejection Workflow Design
+
+---
+
 *Future entries will be appended below this line.*

@@ -686,6 +686,15 @@ enum UserMapConclusionVisibility {
   internal_only
 }
 
+enum CandidateLifecycleStatus {
+  proposed
+  held_for_more_evidence
+  rejected
+  promoted
+  superseded
+  expired
+}
+
 enum UserMapConfidenceLevel {
   low
   medium
@@ -791,6 +800,7 @@ model UserMapConclusion {
   area                     UserMapConclusionArea
   status                   UserMapConclusionStatus
   visibility               UserMapConclusionVisibility @default(user_visible)
+  candidateLifecycleStatus CandidateLifecycleStatus?
   title                    String
   summary                  String
   confidenceScore          Float

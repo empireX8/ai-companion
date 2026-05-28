@@ -1,4 +1,5 @@
 import {
+  CandidateLifecycleStatus,
   type PrismaClient,
   UserMapConfidenceLevel,
   UserMapConclusionArea,
@@ -523,6 +524,7 @@ export async function persistInternalUserMapConclusionCandidate(
                   area: input.area,
                   status: persistedStatus,
                   visibility: UserMapConclusionVisibility.internal_only,
+                  candidateLifecycleStatus: CandidateLifecycleStatus.proposed,
                   title: truncateText(title, TITLE_MAX_LENGTH),
                   summary: truncateText(summary, SUMMARY_MAX_LENGTH),
                   confidenceScore,

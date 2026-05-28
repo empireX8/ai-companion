@@ -33,6 +33,7 @@ type InMemoryConclusion = {
   area: string;
   status: string;
   visibility: string;
+  candidateLifecycleStatus: string | null;
   title: string;
   summary: string;
   supersededById: string | null;
@@ -250,6 +251,7 @@ function createCandidateDbMock(args?: {
           area: data.area as string,
           status: data.status as string,
           visibility: data.visibility as string,
+          candidateLifecycleStatus: (data.candidateLifecycleStatus as string | null | undefined) ?? null,
           title: data.title as string,
           summary: data.summary as string,
           supersededById: (data.supersededById as string | null | undefined) ?? null,
@@ -475,6 +477,7 @@ describe("user-map candidate persistence (manual/internal)", () => {
       visibility: "internal_only",
       status: "emerging",
       area: "operating_logic",
+      candidateLifecycleStatus: "proposed",
     });
 
     expect(mock.links).toHaveLength(2);
@@ -759,6 +762,7 @@ describe("user-map candidate persistence (manual/internal)", () => {
           area: "operating_logic",
           status: "emerging",
           visibility: "internal_only",
+          candidateLifecycleStatus: null,
           title: "Conflict   Shutdown Pattern",
           summary: "Candidate pattern across multiple owned sources.",
           supersededById: null,
