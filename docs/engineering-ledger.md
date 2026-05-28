@@ -28,4 +28,23 @@
 
 ---
 
+## Phase 2I — Candidate Lifecycle/Schema Design Audit
+
+- **Status:** complete
+- **Scope:** docs-only audit of current implemented truth vs. required candidate lifecycle
+- **Runtime behavior:** unchanged
+- **Files changed:**
+  - `docs/phase2i-candidate-lifecycle-schema-design-audit.md` — created (audit document)
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: skipped (no code changes)
+  - `npx vitest run`: skipped (no code changes)
+  - `npm run build`: skipped (no code changes)
+  - `bash scripts/check-trust-language.sh`: skipped (no code changes)
+  - `bash scripts/check-legacy-surfaces.sh`: skipped (no code changes)
+- **What remains partial:** N/A — this is a docs-only audit. No implementation was attempted.
+- **Next step:** Review the recommended implementation slice (add `candidateLifecycleStatus` to `UserMapConclusion` only) and decide whether to proceed with schema migration.
+
+---
+
 *Future entries will be appended below this line.*
