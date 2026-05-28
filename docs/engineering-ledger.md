@@ -74,4 +74,58 @@
 
 ---
 
+## Phase 2K — Candidate Lifecycle Transition Policy/Helpers
+
+- **Status:** complete
+- **Scope:** Define safe lifecycle transition semantics for `UserMapConclusion.candidateLifecycleStatus` before building promotion/rejection workflows.
+- **Runtime behavior:** unchanged — no existing code calls the new helpers yet
+- **Files changed:**
+  - `lib/candidate-lifecycle-transitions.ts` — created (lifecycle transition policy module)
+  - `lib/__tests__/candidate-lifecycle-transitions.test.ts` — created (51 focused unit tests)
+- **Transition rules added:**
+  - `proposed → held_for_more_evidence` (evidence exists but insufficient confidence)
+  - `proposed → rejected` (gates fail definitively)
+  - `proposed → expired` (timeout without sufficient evidence)
+  - `held_for_more_evidence → proposed` (new evidence arrives)
+  - `held_for_more_evidence → rejected` (gates fail after re-evaluation)
+  - `held_for_more_evidence → expired` (timeout)
+  - `held_for_more_evidence → promoted` (gates pass)
+  - `rejected → proposed` (only via new candidate cycle)
+  - `promoted → superseded` (replaced by newer candidate)
+  - `expired → proposed` (only via new candidate cycle)
+- **Null semantics:** `null` means legacy/pre-lifecycle/not lifecycle-managed. Transitions from `null` are forbidden — must set an explicit initial status first.
+- **Exported functions:**
+  - `canTransition(from, to)` → `LifecycleTransitionResult` (discriminated union)
+  - `transitionOrThrow(from, to)` → returns next status or throws
+  - `getAllowedNextStatuses(status)` → `Set<CandidateLifecycleStatus>`
+  - `isTerminalStatus(status)` → boolean (only `superseded` is terminal)
+  - `isDeadEndStatus(status)` → boolean (`rejected`, `expired`, `superseded`)
+- **Tests added/changed:**
+  - 51 new tests covering all allowed transitions, all forbidden transitions, null semantics, terminal/dead-end detection, and error handling
+- **What did not change:**
+  - No schema changes (no new fields, no new enums)
+  - No changes to `Investigation`, `ModelUpdate`, or `FieldworkAssignment`
+  - No public/mobile projection
+  - No user-facing review UI
+  - No ModelUpdate records created
+  - No automatic promotion/rejection
+  - No message/import route behavior changes
+  - No dark-run execution behavior changes
+  - No unrelated lifecycle code refactored
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (137 files, 2330 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - No promotion/rejection workflow yet (next step)
+  - No candidate expiry/cleanup yet
+  - No cross-family candidate query yet
+  - No user-facing candidate review UI yet
+- **Next step:** Phase 2L — Candidate Promotion/Rejection Workflow (use `transitionOrThrow` to gate promotion/rejection actions)
+
+---
+
 *Future entries will be appended below this line.*
