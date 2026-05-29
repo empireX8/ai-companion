@@ -19,7 +19,8 @@
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "check:trust": "bash scripts/check-trust-language.sh",
-    "check:legacy": "bash scripts/check-legacy-surfaces.sh"
+    "check:legacy": "bash scripts/check-legacy-surfaces.sh",
+    "verify": "bash scripts/verify-mindlab.sh"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.8",

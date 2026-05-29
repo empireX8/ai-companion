@@ -81,6 +81,12 @@ bash scripts/check-trust-language.sh   # No banned product language
 bash scripts/check-legacy-surfaces.sh  # Legacy surfaces are clean
 ```
 
+Or run the full gate in one command (`npm run verify` is an alias for `bash scripts/verify-mindlab.sh`):
+
+```bash
+npm run verify
+```
+
 If any step fails, the **Test Repair Agent** fixes only the verification failure — no scope expansion.
 
 ### 5. Closeout Ledger Records Truth
