@@ -283,6 +283,11 @@ describe("Phase 2Q internal candidate publish route", () => {
     expect(body).not.toHaveProperty("evidence");
     expect(body).not.toHaveProperty("evidenceLinks");
     expect(body).not.toHaveProperty("userId");
+    expect(body).not.toHaveProperty("modelUpdateId");
+    expect(body).not.toHaveProperty("modelUpdate");
+    expect(body).not.toHaveProperty("userFacingSummary");
+    expect(body).not.toHaveProperty("updateType");
+    expect(body).not.toHaveProperty("isMeaningful");
 
     // Response should contain only the safe fields
     expect(body).toHaveProperty("id");
