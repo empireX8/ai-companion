@@ -295,4 +295,41 @@
 
 ---
 
+## Phase 2O — Internal Candidate Lifecycle Route Audit/Closeout
+
+- **Status:** complete
+- **Scope:** Audit Phase 2N internal lifecycle mutation route against Phase 2M semantics contract. Docs only — no runtime changes.
+- **Runtime behavior:** unchanged
+- **Files changed:**
+  - `docs/phase2o-internal-candidate-lifecycle-route-audit.md` — created (audit document)
+- **Audit verdict:** **PASS** — all 9 audit questions pass. No scope violations, no product drift, no evidence-gate bypass, no fake/static output, no schema/route changes outside the named slice, and no unrelated refactors.
+- **Key findings:**
+  1. Route only mutates `candidateLifecycleStatus` — clean
+  2. Visibility/status/evidence fully preserved — clean
+  3. Auth pattern matches existing internal routes — clean
+  4. Uses `updateCandidateLifecycleStatus` — no duplication
+  5. Error mapping is safe and complete — clean
+  6. Response avoids leaking private fields — clean
+  7. Tests cover important boundaries — clean (minor gaps acceptable)
+  8. Ledger entry is accurate — clean
+  9. Blocked capabilities correctly documented — clean
+- **Risks:** None identified
+- **Repair prompt:** None required
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (139 files, 2357 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - No public review UI
+  - No publish/user-visible acceptance workflow
+  - No ModelUpdate creation
+  - No expiry scheduler
+  - No lifecycle fields for other families
+- **Next step:** Phase 2P — Publish/Acceptance Semantics Contract (docs only)
+
+---
+
 *Future entries will be appended below this line.*
