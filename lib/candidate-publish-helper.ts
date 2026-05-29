@@ -1,11 +1,11 @@
 /**
  * candidate-publish-helper.ts
  *
- * Phase 2Q — Internal helper for publishing a promoted UserMapConclusion candidate.
+ * Phase 2Q/2T — Internal helper for publishing a promoted UserMapConclusion candidate.
  *
- * Changes visibility from internal_only to user_visible.
+ * Changes visibility from internal_only to user_visible and creates a ModelUpdate
+ * synchronously in the same database transaction.
  * Does NOT change status, candidateLifecycleStatus, or evidence links.
- * Does NOT create ModelUpdate records.
  *
  * Preconditions:
  * - Conclusion must belong to the requesting user
@@ -14,7 +14,13 @@
  * - visibility must be "internal_only"
  */
 
-import { type PrismaClient, UserMapConclusionVisibility } from "@prisma/client";
+import {
+  type PrismaClient,
+  ModelUpdateType,
+  ModelUpdateVisibility,
+  UnderstandingLinkTargetType,
+  UserMapConclusionVisibility,
+} from "@prisma/client";
 
 import prismadb from "./prismadb";
 
@@ -42,6 +48,10 @@ export class PublishCandidateError extends Error {
   }
 }
 
+function defaultPublishSummary(title: string): string {
+  return `New conclusion: ${title}`;
+}
+
 /**
  * Internal helper to publish a promoted UserMapConclusion candidate.
  *
@@ -51,9 +61,12 @@ export class PublishCandidateError extends Error {
  * - candidateLifecycleStatus must be "promoted"
  * - visibility must be "internal_only"
  *
+ * On success, updates visibility to user_visible and creates a ModelUpdate
+ * (`conclusion_added`, `isMeaningful: true`) in one transaction.
+ *
  * @param userId - The user who owns the conclusion
  * @param conclusionId - The UserMapConclusion ID to publish
- * @param options - Optional db override and timestamp
+ * @param options - Optional db override, timestamp, and userFacingSummary override
  * @returns The publish result with previous and new visibility
  * @throws {PublishCandidateError} If preconditions are not met
  */
@@ -63,6 +76,7 @@ export async function publishCandidate(
   options?: {
     db?: PrismaClient;
     now?: Date;
+    userFacingSummary?: string;
   }
 ): Promise<PublishCandidateResult> {
   const db = options?.db ?? prismadb;
@@ -79,6 +93,7 @@ export async function publishCandidate(
       userId: true,
       visibility: true,
       candidateLifecycleStatus: true,
+      title: true,
     },
   });
 
@@ -115,19 +130,66 @@ export async function publishCandidate(
     );
   }
 
-  // 5. Perform the update — only mutate visibility and updatedAt
-  const updated = await db.userMapConclusion.update({
-    where: { id: conclusionId },
-    data: {
-      visibility: UserMapConclusionVisibility.user_visible,
-      updatedAt: now,
-    },
-    select: {
-      id: true,
-      userId: true,
-      visibility: true,
-      updatedAt: true,
-    },
+  const userFacingSummary =
+    options?.userFacingSummary ?? defaultPublishSummary(conclusion.title);
+
+  // 5. Conditionally publish visibility, then create ModelUpdate atomically.
+  // updateMany guards against concurrent publishes that both pass the precheck.
+  const updated = await db.$transaction(async (tx) => {
+    const updateResult = await tx.userMapConclusion.updateMany({
+      where: {
+        id: conclusionId,
+        userId,
+        visibility: UserMapConclusionVisibility.internal_only,
+        candidateLifecycleStatus: "promoted",
+      },
+      data: {
+        visibility: UserMapConclusionVisibility.user_visible,
+        updatedAt: now,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      throw new PublishCandidateError(
+        `Cannot publish UserMapConclusion id=${conclusionId}: visibility is not 'internal_only' or candidate is no longer publishable. ` +
+          "The conclusion may have been published concurrently.",
+        "ALREADY_VISIBLE"
+      );
+    }
+
+    const published = await tx.userMapConclusion.findFirst({
+      where: {
+        id: conclusionId,
+        userId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        visibility: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!published) {
+      throw new PublishCandidateError(
+        `UserMapConclusion not found for id=${conclusionId} and userId=${userId}`,
+        "CONCLUSION_NOT_FOUND"
+      );
+    }
+
+    await tx.modelUpdate.create({
+      data: {
+        userId,
+        updateType: ModelUpdateType.conclusion_added,
+        visibility: ModelUpdateVisibility.user_visible,
+        affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
+        affectedObjectId: conclusionId,
+        userFacingSummary,
+        isMeaningful: true,
+      },
+    });
+
+    return published;
   });
 
   return {

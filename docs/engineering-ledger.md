@@ -560,4 +560,53 @@
 
 ---
 
+## Phase 2T — ModelUpdate Creation on Publish
+
+- **Status:** complete
+- **Scope:** Create a `ModelUpdate` synchronously when a promoted `UserMapConclusion` candidate is published via the internal publish helper.
+- **Runtime behavior:** Successful publish now atomically sets `visibility: user_visible` and creates a `conclusion_added` ModelUpdate (`isMeaningful: true`). Transaction failure rolls back both mutations.
+- **Files changed:**
+  - `lib/candidate-publish-helper.ts` — publish + ModelUpdate creation in `$transaction`
+  - `lib/__tests__/phase2t-candidate-publish-helper.test.ts` — created (7 focused helper tests)
+  - `lib/__tests__/phase2q-internal-candidate-publish-route.test.ts` — extended response-safety assertions
+  - `docs/engineering-ledger.md` — this entry
+- **Helper behavior:**
+  - Fetches conclusion `title` for default summary template: `New conclusion: {title}`
+  - Optional `userFacingSummary` override in `publishCandidate` options
+  - `ModelUpdateType.conclusion_added`, `ModelUpdateVisibility.user_visible`, `affectedObjectType: usermap_conclusion`
+  - `beforeSummary` / `afterSummary` left unset
+  - Duplicate ModelUpdates prevented by existing `ALREADY_VISIBLE` precondition and a conditional `updateMany` guard inside the publish transaction (concurrency-safe)
+- **Tests added/changed:**
+  - Helper: successful ModelUpdate creation, transactional coupling, rollback on ModelUpdate failure, duplicate prevention, summary override, precondition errors
+  - Route: response still omits ModelUpdate internals
+- **What did not change:**
+  - No schema changes
+  - No public/mobile route changes
+  - No UI changes
+  - No changes to `UserMapConclusion.status`, `candidateLifecycleStatus`, or evidence links
+  - No unpublish, expiry/scheduler, or lifecycle fields on other families
+  - `scripts/verify-mindlab.sh` unchanged
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (141 files, 2374 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - No unpublish action
+  - No user-facing publish UI
+  - No batch publish
+  - No expiry scheduler
+  - No lifecycle fields for other families
+- **Next step:** Audit Phase 2T repair (concurrency-safe publish), then closeout if clean
+
+### Phase 2T repair — concurrency-safe publish (2026-05-29)
+
+- **Issue:** Two concurrent publish requests could both pass the pre-transaction visibility precheck and each create a `conclusion_added` ModelUpdate.
+- **Fix:** Replaced unconditional `update` with conditional `updateMany` inside an interactive `$transaction`. ModelUpdate creation runs only when the guarded update affects exactly one row; zero rows throws `ALREADY_VISIBLE`.
+- **Tests:** Added/adjusted helper tests for call ordering, zero-row guard, and concurrent publish simulation.
+
+---
+
 *Future entries will be appended below this line.*
