@@ -496,4 +496,68 @@
 
 ---
 
+## Phase 2S — ModelUpdate Creation on Publish Design Contract
+
+- **Status:** complete
+- **Scope:** Docs-only design contract defining whether and how publishing a promoted `UserMapConclusion` candidate should create a `ModelUpdate` record. No code, schema, routes, UI, or runtime behavior changes.
+- **Runtime behavior:** unchanged
+- **Files changed:**
+  - `docs/phase2s-modelupdate-creation-on-publish-design-contract.md` — created (design contract)
+- **Files inspected (15):**
+  - `prisma/schema.prisma` — `ModelUpdate` model, `ModelUpdateType` enum, `ModelUpdateVisibility` enum
+  - `lib/candidate-publish-helper.ts` — Phase 2Q publish helper
+  - `app/api/internal/user-map/candidates/[id]/publish/route.ts` — Phase 2Q publish route
+  - `app/api/model-updates/route.ts` — user-facing ModelUpdate GET/POST
+  - `app/api/model-updates/[id]/route.ts` — user-facing ModelUpdate GET/PATCH
+  - `lib/understanding-engine-api.ts` — `modelUpdateCreateSchema`
+  - `lib/__tests__/what-changed-route.test.ts` — What Changed surface tests
+  - `lib/__tests__/what-changed-evidence-route.test.ts` — What Changed evidence tests
+  - `lib/__tests__/today-intelligence-updates-route.test.ts` — Today surface tests
+  - `lib/__tests__/today-surface.test.ts` — Today surface tests
+  - `lib/__tests__/phase3-what-changed-page.test.ts` — What Changed page tests
+  - `lib/__tests__/understanding-engine-phase1b-api.test.ts` — ModelUpdate route tests
+  - `docs/phase2p-publish-acceptance-semantics-contract.md` — Phase 2P contract
+  - `docs/phase2r-internal-candidate-publish-route-audit.md` — Phase 2R audit
+  - `docs/engineering-ledger.md` — current ledger state
+- **Semantic decisions (11 questions answered):**
+  1. **Should publish create a ModelUpdate?** ✅ Yes — `conclusion_added` type
+  2. **Synchronous or deferred?** ✅ Synchronous (same transaction)
+  3. **What `ModelUpdateType`?** `conclusion_added`
+  4. **What `userFacingSummary`?** Template: `"New conclusion: {title}"` (overridable)
+  5. **What `beforeSummary`/`afterSummary`?** Both `null` (not set)
+  6. **Should `isMeaningful` be true?** ✅ Yes
+  7. **Evidence linking?** None needed — conclusion's existing evidence links suffice
+  8. **Duplicate prevention?** Handled by existing `ALREADY_VISIBLE` precondition
+  9. **Failure handling?** Transaction rollback — both operations or neither
+  10. **Public/mobile impact?** Immediate — ModelUpdate appears on all user-facing routes
+  11. **Safest next slice?** Phase 2T — ModelUpdate Creation on Publish (Implementation)
+- **Failure/idempotency policy:**
+  - Transaction failure: both operations roll back, caller can retry
+  - Retry after success: `ALREADY_VISIBLE` prevents duplicate ModelUpdates
+  - Database error: both operations fail, caller receives `INTERNAL_ERROR`
+- **Forbidden premature behaviors (10):**
+  - Schema changes to `ModelUpdate` model or enums
+  - LLM-generated summaries
+  - Evidence linking to ModelUpdate
+  - Async/deferred ModelUpdate creation
+  - ModelUpdate creation for unpublish or batch publish
+  - Changes to user-facing routes or public/mobile projection
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (140 files, 2367 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - No ModelUpdate creation on publish (next step)
+  - No unpublish action
+  - No user-facing publish UI
+  - No batch publish
+  - No expiry scheduler
+  - No lifecycle fields for other families
+- **Next step:** Phase 2T — ModelUpdate Creation on Publish (Implementation)
+
+---
+
 *Future entries will be appended below this line.*
