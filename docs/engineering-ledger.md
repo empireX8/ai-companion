@@ -186,7 +186,62 @@
   - No candidate expiry/cleanup yet
   - No cross-family candidate query yet
   - No user-facing candidate review UI yet
-- **Next step:** Phase 2M — Candidate Promotion/Rejection Workflow (wire `updateCandidateLifecycleStatus` into a promotion/rejection action)
+- **Next step:** Phase 2M — Candidate Promotion/Rejection Semantics Contract (docs-only)
+
+---
+
+## Phase 2M — Candidate Promotion/Rejection Semantics Contract
+
+- **Status:** complete
+- **Scope:** Docs-only semantic contract defining what promotion, rejection, expiry, hold, and supersession mean for `UserMapConclusion` candidates. No code, schema, routes, UI, or runtime behavior changes.
+- **Runtime behavior:** unchanged
+- **Files changed:**
+  - `docs/phase2m-candidate-promotion-rejection-semantics-contract.md` — created (semantic contract)
+- **Files inspected (14):**
+  - `prisma/schema.prisma` — current schema state
+  - `lib/candidate-lifecycle-transitions.ts` — Phase 2K transition policy
+  - `lib/candidate-lifecycle-persistence.ts` — Phase 2L persistence helper
+  - `lib/understanding-dark-engine/user-map-candidate-persistence.ts` — dark-engine candidate creation
+  - `lib/understanding-engine-api.ts` — existing `UserMapConclusionStatus` transition rules
+  - `lib/internal-user-map-review-candidates.ts` — internal review candidate query
+  - `lib/public-evidence-continuity.ts` — public evidence projection
+  - `lib/public-linked-object-continuity.ts` — public linked object projection
+  - `app/api/user-map/conclusions/route.ts` — user-facing GET/POST
+  - `app/api/user-map/conclusions/[id]/route.ts` — user-facing GET/PATCH
+  - `app/api/model-updates/route.ts` — ModelUpdate creation route
+  - `app/api/internal/user-map/review-candidates/route.ts` — internal review route
+  - `docs/phase2e-candidate-storage-policy-contract.md` — Phase 2E storage/lifecycle policy
+  - `docs/phase2i-candidate-lifecycle-schema-design-audit.md` — Phase 2I lifecycle/schema audit
+- **Semantic decisions:**
+  1. **`promoted` changes only `candidateLifecycleStatus`** — does NOT change `visibility` or `status`. Promotion and user-visibility are separate gates.
+  2. **Promoted candidates cannot become user-visible immediately** — requires an explicit separate action (future "publish" or "accept" workflow).
+  3. **Promotion does NOT create ModelUpdate records** — never in this slice. ModelUpdate creation is deferred until a candidate becomes user-visible.
+  4. **`rejected`** = dark engine determined candidate does not meet gates. Remains queryable. Evidence preserved. Can re-propose via new cycle.
+  5. **`held_for_more_evidence`** = passed baseline gates but insufficient for promotion. Waiting for more evidence.
+  6. **`expired`** = timed out without sufficient evidence. Remains queryable. Can re-propose via new cycle. Expiry policy (timeout duration) deferred.
+  7. **`superseded`** = replaced by newer candidate. Terminal state. Evidence preserved. Orthogonal to `UserMapConclusionStatus.superseded`.
+  8. **Evidence/provenance must remain attached** through all lifecycle transitions. No transition may delete or detach evidence links.
+- **Forbidden premature behaviors (10):**
+  - Changing `visibility` on promotion, changing `status` on lifecycle transition
+  - Creating `ModelUpdate` records, soft-deleting/hiding rejected/expired candidates
+  - Deleting evidence links, auto-expiring via scheduler/cron
+  - Exposing `candidateLifecycleStatus` in user-facing API responses
+  - Filtering user-facing routes by `candidateLifecycleStatus`
+  - Creating a promotion/rejection API route (next slice)
+  - Adding lifecycle to other families
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (138 files, 2345 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - No promotion/rejection API route yet (next step)
+  - No candidate expiry/cleanup yet
+  - No cross-family candidate query yet
+  - No user-facing candidate review UI yet
+- **Next step:** Phase 2N — Candidate Promotion/Rejection Action (Internal API) — wire `updateCandidateLifecycleStatus` into an internal API route
 
 ---
 
