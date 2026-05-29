@@ -332,4 +332,64 @@
 
 ---
 
+## Phase 2P — Publish/Acceptance Semantics Contract
+
+- **Status:** complete
+- **Scope:** Docs-only semantic contract defining what it means to turn a promoted `UserMapConclusion` candidate into a user-visible conclusion. No code, schema, routes, UI, or runtime behavior changes.
+- **Runtime behavior:** unchanged
+- **Files changed:**
+  - `docs/phase2p-publish-acceptance-semantics-contract.md` — created (semantic contract)
+- **Files inspected (12):**
+  - `prisma/schema.prisma` — current schema state
+  - `lib/candidate-lifecycle-transitions.ts` — Phase 2K transition policy
+  - `lib/candidate-lifecycle-persistence.ts` — Phase 2L persistence helper
+  - `app/api/internal/user-map/candidates/[id]/lifecycle/route.ts` — Phase 2N internal lifecycle route
+  - `app/api/user-map/conclusions/route.ts` — user-facing GET/POST
+  - `app/api/user-map/conclusions/[id]/route.ts` — user-facing GET/PATCH
+  - `app/api/model-updates/route.ts` — ModelUpdate creation route
+  - `lib/public-evidence-continuity.ts` — public evidence projection
+  - `lib/public-linked-object-continuity.ts` — public linked object projection
+  - `docs/phase2m-candidate-promotion-rejection-semantics-contract.md` — Phase 2M semantics contract
+  - `docs/phase2o-internal-candidate-lifecycle-route-audit.md` — Phase 2O audit
+  - `docs/engineering-ledger.md` — current ledger state
+- **Semantic decisions (10):**
+  1. **Preconditions for publishing:** `candidateLifecycleStatus` must be `promoted`, `visibility` must be `internal_only`, `candidateLifecycleStatus` must be non-null, conclusion must belong to authenticated user, user must be allowlisted internal reviewer.
+  2. **Publishing requires `candidateLifecycleStatus = promoted`** — only dark-engine-verified candidates may be published.
+  3. **Field changes on publish:** `visibility`: `internal_only` → `user_visible`; `updatedAt` updated. No other fields change.
+  4. **Publishing changes `visibility` only** — does NOT change `status` (`UserMapConclusionStatus`) or `candidateLifecycleStatus`.
+  5. **ModelUpdate creation deferred** — publishing does NOT create ModelUpdate records. Deferred to Phase 2R or later.
+  6. **Evidence/provenance must remain attached** — all evidence links preserved. After publish, evidence becomes queryable via public evidence projection.
+  7. **Publishing is reversible** — via separate "unpublish" action (deferred). Unpublishing changes `visibility` back to `internal_only`.
+  8. **Supersession after publishing is orthogonal** — lifecycle supersession and user supersession are independent of visibility.
+  9. **Public/mobile routes expose automatically** — no additional filtering by `candidateLifecycleStatus`. `candidateLifecycleStatus` must never be exposed in user-facing responses.
+  10. **Next slice:** Phase 2Q — Publish Action (Internal API).
+- **Forbidden premature behaviors (11):**
+  - Changing `status` on publish, changing `candidateLifecycleStatus` on publish
+  - Creating ModelUpdate records on publish
+  - Exposing `candidateLifecycleStatus` in user-facing API responses
+  - Filtering user-facing routes by `candidateLifecycleStatus`
+  - Auto-publishing promoted candidates, batch publishing
+  - Unpublish action (deferred)
+  - Deleting or detaching evidence links on publish
+  - Adding lifecycle fields to other families
+  - UI changes for publish workflow
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (139 files, 2357 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - No publish API route yet (next step)
+  - No ModelUpdate creation on publish
+  - No unpublish action
+  - No user-facing publish UI
+  - No batch publish
+  - No expiry scheduler
+  - No lifecycle fields for other families
+- **Next step:** Phase 2Q — Publish Action (Internal API)
+
+---
+
 *Future entries will be appended below this line.*
