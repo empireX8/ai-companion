@@ -1,0 +1,62 @@
+---
+description: MindLab agent operating loop — read AGENTS.md, bounded slices, verification
+alwaysApply: true
+---
+
+# MindLab Agent Workflow
+
+Before any substantive work in this repo, read and follow:
+
+- `AGENTS.md` — hard rules, roles, verification
+- `docs/agent-workflow.md` — implementation → audit → repair → closeout loop
+
+## Product truth
+
+MindLab is an **evidence-backed personal understanding engine**. The frame is **capture → reveal → understand**.
+
+Do **not** reframe it as therapy, productivity, generic journaling, coaching, or action-first self-help.
+
+## Non-negotiables
+
+Agents must avoid:
+
+- **Fake intelligence** — no mock insight, placeholder “AI” output, or simulated claims presented as real
+- **Scope creep** — no changes outside the named slice; no unrelated refactors
+- **Public evidence leaks** — no raw private evidence in public/mobile projections
+- **Premature persistence** — no new tables, columns, or storage until the phase explicitly requires it
+- **Product reframing** — no casual copy or UX drift away from product truth
+
+Also respect `AGENTS.md`: no schema/route/surface changes unless the task explicitly allows it; no bypassing evidence gates; no commits until verification passes.
+
+## Role prompts
+
+| Mode | Read and follow |
+|------|-----------------|
+| **Implementing** | `prompts/implementer.md` |
+| **Auditing** (reviewing uncommitted diff) | `prompts/auditor.md` |
+
+Use the handoff format from `docs/agent-workflow.md`: `PHASE`, `SLICE`, `ALLOWED`, `FORBIDDEN`, `VERIFICATION`, `CONTEXT`.
+
+## Bounded slices
+
+Implementation tasks must stay within **allowed** / **forbidden** scope from the architect slice or Kay’s task.
+
+If the task is **broad or ambiguous**, **ask for a bounded slice** (exact files, allowed/forbidden, verification) **before editing**.
+
+Make the **smallest sufficient change**; do not touch files outside the slice.
+
+## Verification
+
+Before signalling done or committing, run:
+
+```bash
+bash scripts/verify-mindlab.sh
+```
+
+Use individual commands from `AGENTS.md` only when explicitly told otherwise.
+
+On failure, fix within slice boundaries or hand off to test-repair per `docs/agent-workflow.md` — do not expand scope.
+
+## Operating loop
+
+Kay defines work → bounded implementation → audit (`PASS` / `FAIL` / `PASS WITH RISKS`) → verification → closeout in `docs/engineering-ledger.md` when requested → Kay merges when clean.
