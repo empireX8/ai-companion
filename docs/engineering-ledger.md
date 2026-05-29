@@ -392,4 +392,70 @@
 
 ---
 
+## Phase 2Q — Internal UserMapConclusion Candidate Publish Action
+
+- **Status:** complete
+- **Scope:** Internal-only publish action for promoted UserMapConclusion candidates
+- **Runtime behavior:** adds internal POST route only; no public/mobile projection
+- **Files changed:**
+  - `lib/candidate-publish-helper.ts` — created (publish helper with precondition enforcement)
+  - `app/api/internal/user-map/candidates/[id]/publish/route.ts` — created (internal publish route)
+  - `lib/__tests__/phase2q-internal-candidate-publish-route.test.ts` — created (10 focused route tests)
+- **Helper added:**
+  - `publishCandidate(userId, conclusionId, options?)` — async function that:
+    1. Fetches the conclusion with ownership check (`findFirst` with `userId` + `id`)
+    2. Enforces non-null `candidateLifecycleStatus` (null = legacy/pre-lifecycle)
+    3. Enforces `candidateLifecycleStatus === "promoted"`
+    4. Enforces `visibility === "internal_only"`
+    5. Performs the Prisma `update` with `visibility: user_visible` and `updatedAt`
+    6. Returns `PublishCandidateResult` with `id`, `userId`, `previousVisibility`, `newVisibility`, `updatedAt`
+- **Error types:**
+  - `PublishCandidateError` with machine-readable `code` field
+  - `CONCLUSION_NOT_FOUND` — conclusion doesn't exist or wrong user
+  - `NULL_LIFECYCLE_STATUS` — existing status is null (legacy/pre-lifecycle)
+  - `NOT_PROMOTED` — candidateLifecycleStatus is not "promoted"
+  - `ALREADY_VISIBLE` — visibility is already "user_visible"
+- **Route behavior:**
+  - `POST /api/internal/user-map/candidates/[id]/publish` — publishes a promoted candidate
+  - Auth: Clerk-based, restricted to `INTERNAL_USER_MAP_REVIEWER_IDS` allowlist
+  - Error mapping:
+    - `401` — unauthenticated
+    - `403` — non-allowlisted user or empty allowlist
+    - `404` — `CONCLUSION_NOT_FOUND` or `NULL_LIFECYCLE_STATUS`
+    - `422` — `NOT_PROMOTED` or `ALREADY_VISIBLE`
+    - `500` — unexpected errors
+  - Safe response: returns only `{ id, previousVisibility, newVisibility, updatedAt }` — no `candidateLifecycleStatus`, `status`, `evidence`, or `userId`
+- **Tests added/changed:**
+  - 10 new tests covering: auth (401/403), empty allowlist (403), success transition, missing conclusion (404), null lifecycle (404), non-promoted (422), already visible (422), unexpected error (500), and response safety (no lifecycle/status/evidence fields)
+- **What did not change:**
+  - No schema changes (no new fields, no new enums)
+  - No changes to `UserMapConclusion.status`
+  - No changes to `candidateLifecycleStatus`
+  - No ModelUpdate records created
+  - No changes to `Investigation`, `ModelUpdate`, or `FieldworkAssignment`
+  - No public/mobile API route
+  - No user-facing publish UI
+  - No unpublish action
+  - No batch publish
+  - No expiry scheduler
+  - No lifecycle fields for other families
+  - No evidence links altered
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (140 files, 2367 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - No ModelUpdate creation on publish
+  - No unpublish action
+  - No user-facing publish UI
+  - No batch publish
+  - No expiry scheduler
+  - No lifecycle fields for other families
+- **Next step:** Phase 2R — ModelUpdate Creation on Publish (or audit/closeout)
+
+---
+
 *Future entries will be appended below this line.*
