@@ -133,13 +133,34 @@ export async function publishCandidate(
   const userFacingSummary =
     options?.userFacingSummary ?? defaultPublishSummary(conclusion.title);
 
-  // 5. Publish visibility and create ModelUpdate atomically
-  const [updated] = await db.$transaction([
-    db.userMapConclusion.update({
-      where: { id: conclusionId },
+  // 5. Conditionally publish visibility, then create ModelUpdate atomically.
+  // updateMany guards against concurrent publishes that both pass the precheck.
+  const updated = await db.$transaction(async (tx) => {
+    const updateResult = await tx.userMapConclusion.updateMany({
+      where: {
+        id: conclusionId,
+        userId,
+        visibility: UserMapConclusionVisibility.internal_only,
+        candidateLifecycleStatus: "promoted",
+      },
       data: {
         visibility: UserMapConclusionVisibility.user_visible,
         updatedAt: now,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      throw new PublishCandidateError(
+        `Cannot publish UserMapConclusion id=${conclusionId}: visibility is not 'internal_only' or candidate is no longer publishable. ` +
+          "The conclusion may have been published concurrently.",
+        "ALREADY_VISIBLE"
+      );
+    }
+
+    const published = await tx.userMapConclusion.findFirst({
+      where: {
+        id: conclusionId,
+        userId,
       },
       select: {
         id: true,
@@ -147,8 +168,16 @@ export async function publishCandidate(
         visibility: true,
         updatedAt: true,
       },
-    }),
-    db.modelUpdate.create({
+    });
+
+    if (!published) {
+      throw new PublishCandidateError(
+        `UserMapConclusion not found for id=${conclusionId} and userId=${userId}`,
+        "CONCLUSION_NOT_FOUND"
+      );
+    }
+
+    await tx.modelUpdate.create({
       data: {
         userId,
         updateType: ModelUpdateType.conclusion_added,
@@ -158,8 +187,10 @@ export async function publishCandidate(
         userFacingSummary,
         isMeaningful: true,
       },
-    }),
-  ]);
+    });
+
+    return published;
+  });
 
   return {
     id: updated.id,

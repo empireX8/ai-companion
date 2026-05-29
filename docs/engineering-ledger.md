@@ -575,7 +575,7 @@
   - Optional `userFacingSummary` override in `publishCandidate` options
   - `ModelUpdateType.conclusion_added`, `ModelUpdateVisibility.user_visible`, `affectedObjectType: usermap_conclusion`
   - `beforeSummary` / `afterSummary` left unset
-  - Duplicate ModelUpdates prevented by existing `ALREADY_VISIBLE` precondition
+  - Duplicate ModelUpdates prevented by existing `ALREADY_VISIBLE` precondition and a conditional `updateMany` guard inside the publish transaction (concurrency-safe)
 - **Tests added/changed:**
   - Helper: successful ModelUpdate creation, transactional coupling, rollback on ModelUpdate failure, duplicate prevention, summary override, precondition errors
   - Route: response still omits ModelUpdate internals
@@ -599,7 +599,13 @@
   - No batch publish
   - No expiry scheduler
   - No lifecycle fields for other families
-- **Next step:** Audit Phase 2T implementation, then closeout if clean
+- **Next step:** Audit Phase 2T repair (concurrency-safe publish), then closeout if clean
+
+### Phase 2T repair — concurrency-safe publish (2026-05-29)
+
+- **Issue:** Two concurrent publish requests could both pass the pre-transaction visibility precheck and each create a `conclusion_added` ModelUpdate.
+- **Fix:** Replaced unconditional `update` with conditional `updateMany` inside an interactive `$transaction`. ModelUpdate creation runs only when the guarded update affects exactly one row; zero rows throws `ALREADY_VISIBLE`.
+- **Tests:** Added/adjusted helper tests for call ordering, zero-row guard, and concurrent publish simulation.
 
 ---
 
