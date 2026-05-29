@@ -245,4 +245,54 @@
 
 ---
 
+## Phase 2N — Internal UserMapConclusion Candidate Lifecycle Route
+
+- **Status:** complete
+- **Scope:** Internal-only lifecycle mutation route for UserMapConclusion candidates
+- **Runtime behavior:** adds internal POST route only; no public/mobile projection
+- **Files changed:**
+  - `app/api/internal/user-map/candidates/[id]/lifecycle/route.ts` — created internal route
+  - `lib/__tests__/phase2n-internal-candidate-lifecycle-route.test.ts` — created focused route tests
+- **Route behavior:**
+  - `POST /api/internal/user-map/candidates/[id]/lifecycle` — transitions candidate lifecycle status
+  - Auth: Clerk-based, restricted to `INTERNAL_USER_MAP_REVIEWER_IDS` allowlist
+  - Validation: Zod schema validates `newStatus` against `CandidateLifecycleStatus` enum
+  - Error mapping:
+    - `401` — unauthenticated
+    - `403` — non-allowlisted user or empty allowlist
+    - `400` — invalid JSON or invalid status value
+    - `404` — `CONCLUSION_NOT_FOUND` or `NULL_LIFECYCLE_STATUS`
+    - `422` — `FORBIDDEN_TRANSITION`
+    - `500` — unexpected errors
+  - Safe response: returns only `{ id, previousStatus, newStatus, updatedAt }` — no visibility, status, or evidence links leaked
+- **Tests added/changed:**
+  - 12 new tests covering: auth (401/403), validation (400), success transitions, error mapping (404/422/500), and response safety (no visibility/status/evidence fields)
+- **What did not change:**
+  - No schema changes (no new fields, no new enums)
+  - No changes to `Investigation`, `ModelUpdate`, or `FieldworkAssignment`
+  - No public/mobile API route
+  - No user-facing review UI
+  - No ModelUpdate records created
+  - No automatic promotion/rejection from dark-run output
+  - No message/import route behavior changes
+  - No dark-run execution behavior changes
+  - No promoted candidates made user-visible
+  - No unrelated lifecycle code refactored
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (139 files, 2357 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - No public review UI
+  - No publish/user-visible acceptance workflow
+  - No ModelUpdate creation
+  - No expiry scheduler
+  - No lifecycle fields for other families
+- **Next step:** Phase 2O internal route audit/closeout or Phase 2P publish/acceptance semantics contract
+
+---
+
 *Future entries will be appended below this line.*
