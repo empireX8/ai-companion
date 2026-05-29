@@ -458,4 +458,42 @@
 
 ---
 
+## Phase 2R — Internal Candidate Publish Route Audit/Closeout
+
+- **Status:** complete
+- **Scope:** Audit Phase 2Q publish helper and route against Phase 2P publish/acceptance semantics contract. Docs only — no runtime changes.
+- **Runtime behavior:** unchanged
+- **Files changed:**
+  - `docs/phase2r-internal-candidate-publish-route-audit.md` — created (audit document)
+- **Audit verdict:** **PASS** — all 9 audit questions pass. No scope violations, no product drift, no evidence-gate bypass, no fake/static output, no schema/route changes outside the named slice, and no unrelated refactors.
+- **Key findings:**
+  1. Requires `candidateLifecycleStatus = promoted` — clean
+  2. Requires `visibility = internal_only` — clean
+  3. Mutates only `visibility` and `updatedAt` — clean
+  4. Preserves `status`, `candidateLifecycleStatus`, evidence, and ownership — clean
+  5. Response avoids leaking private fields — clean
+  6. No public exposure of `candidateLifecycleStatus` — clean
+  7. Tests cover auth, preconditions, errors, and response safety — clean
+  8. Ledger entry is accurate — clean
+  9. Blocked capabilities correctly documented — clean
+- **Risks:** None identified
+- **Repair prompt:** None required
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (140 files, 2367 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - No ModelUpdate creation on publish
+  - No unpublish action
+  - No user-facing publish UI
+  - No batch publish
+  - No expiry scheduler
+  - No lifecycle fields for other families
+- **Next step:** Phase 2S — ModelUpdate Creation on Publish Design Contract (docs only)
+
+---
+
 *Future entries will be appended below this line.*
