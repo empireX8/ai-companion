@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
@@ -252,10 +252,11 @@ export async function POST(req: Request) {
       return resultFp.toTextStreamResponse();
     }
 
-    // ── Fire-and-forget: heavy work that does NOT affect the assistant reply ──
-    // Memory writes, audit, profile derivation, and contradiction detection all
-    // run in the background so the main stream can start immediately.
-    void (async () => {
+    // ── Background work scheduled via after() ──
+    // Memory writes, audit, profile derivation, contradiction detection, pattern
+    // derivation, and the app-message candidate bridge all run after the response
+    // is sent, so they never delay the main stream.
+    after(async () => {
       try {
         await memory.appendToTranscript(memoryKey, `Human: ${normalizedContent}`);
         await memory.upsertVector(memoryKey, {
@@ -322,7 +323,7 @@ export async function POST(req: Request) {
       // Runs independently so failures in transcript/vector/audit/profile tasks
       // do not prevent candidate bridge execution.
       if (
-        shouldEvaluateNoWriteTriggerForSession({
+        shouldRunAppMessageCandidateBridgeForSession({
           origin: session.origin,
           surfaceType: session.surfaceType,
         })
@@ -340,7 +341,7 @@ export async function POST(req: Request) {
           console.error(`[MESSAGE_APP_CANDIDATE_BRIDGE_ERROR][${reqId}]`, error);
         }
       }
-    })();
+    });
 
     // Retrieval parameters vary by mode:
     // standard — lighter context (faster, lower token cost)

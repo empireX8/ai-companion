@@ -256,6 +256,15 @@ vi.mock("@ai-sdk/openai", () => ({
   openai: openaiMock,
 }));
 
+vi.mock("next/server", () => ({
+  NextResponse: {
+    json: (body: unknown, init?: ResponseInit) => Response.json(body, init),
+  },
+  after: (callback: () => void | Promise<void>) => {
+    void callback();
+  },
+}));
+
 vi.mock("@/lib/contradiction-detection", () => ({
   detectContradictions: detectContradictionsMock,
 }));
