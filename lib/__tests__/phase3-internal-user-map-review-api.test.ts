@@ -80,6 +80,7 @@ describe("Phase 3 internal user-map review candidates API", () => {
         status: "emerging",
         confidenceLevel: "low",
         visibility: "internal_only",
+        candidateLifecycleStatus: "proposed",
         createdAt: new Date("2026-05-15T10:00:00.000Z"),
         updatedAt: new Date("2026-05-15T11:00:00.000Z"),
       },
@@ -91,6 +92,7 @@ describe("Phase 3 internal user-map review candidates API", () => {
         status: "tentative",
         confidenceLevel: "medium",
         visibility: "internal_only",
+        candidateLifecycleStatus: "held_for_more_evidence",
         createdAt: new Date("2026-05-15T09:00:00.000Z"),
         updatedAt: new Date("2026-05-15T10:30:00.000Z"),
       },
@@ -131,6 +133,7 @@ describe("Phase 3 internal user-map review candidates API", () => {
           status: "emerging",
           confidenceLevel: "low",
           visibility: "internal_only",
+          candidateLifecycleStatus: "proposed",
           createdAt: "2026-05-15T10:00:00.000Z",
           updatedAt: "2026-05-15T11:00:00.000Z",
           evidence: {
@@ -154,6 +157,7 @@ describe("Phase 3 internal user-map review candidates API", () => {
           status: "tentative",
           confidenceLevel: "medium",
           visibility: "internal_only",
+          candidateLifecycleStatus: "held_for_more_evidence",
           createdAt: "2026-05-15T09:00:00.000Z",
           updatedAt: "2026-05-15T10:30:00.000Z",
           evidence: {

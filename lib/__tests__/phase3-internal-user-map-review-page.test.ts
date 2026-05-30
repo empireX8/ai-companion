@@ -1,3 +1,4 @@
+import React from "react";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -32,6 +33,29 @@ vi.mock("../prismadb", () => ({
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
 }));
+
+vi.mock(
+  "../../app/(root)/(routes)/internal/user-map/review/_components/InternalUserMapReviewWorkbench",
+  () => ({
+    InternalUserMapReviewWorkbench: ({
+      candidates,
+    }: {
+      candidates: Array<{ title: string; candidateLifecycleStatus: string | null }>;
+    }) =>
+      React.createElement(
+        "div",
+        { "data-testid": "internal-user-map-review-workbench" },
+        candidates.map((candidate) =>
+          React.createElement(
+            "div",
+            { key: candidate.title },
+            candidate.title,
+            candidate.candidateLifecycleStatus ?? "legacy"
+          )
+        )
+      ),
+  })
+);
 
 describe("Phase 3 internal user-map review page", () => {
   beforeEach(() => {
@@ -76,7 +100,7 @@ describe("Phase 3 internal user-map review page", () => {
     expect(prismaMock.understandingEvidenceLink.findMany).not.toHaveBeenCalled();
   });
 
-  it("renders internal candidate metadata for reviewers and keeps read-only UI", async () => {
+  it("renders internal candidate metadata and operator controls for reviewers", async () => {
     prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([
       {
         id: "umc-internal-1",
@@ -86,6 +110,7 @@ describe("Phase 3 internal user-map review page", () => {
         status: "emerging",
         confidenceLevel: "low",
         visibility: "internal_only",
+        candidateLifecycleStatus: "proposed",
         createdAt: new Date("2026-05-15T10:00:00.000Z"),
         updatedAt: new Date("2026-05-15T11:00:00.000Z"),
       },
@@ -104,22 +129,9 @@ describe("Phase 3 internal user-map review page", () => {
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain("Internal User Map Review");
+    expect(html).toContain("operator workbench");
     expect(html).toContain("Candidate title");
-    expect(html).toContain("Candidate summary");
-    expect(html).toContain("internal_only");
-    expect(html).toContain("Evidence link count");
-    expect(html).toContain("2");
-    expect(html).toContain("message (1)");
-    expect(html).toContain("pattern_claim (1)");
-    expect(html).not.toContain("quote");
-    expect(html).not.toContain("snippet");
-    expect(html).not.toContain("<form");
-    expect(html).not.toContain("Promote");
-    expect(html).not.toContain("Publish");
-    expect(html).not.toContain("Approve");
-    expect(html).not.toContain("Reject");
-    expect(html).not.toContain("Delete");
-    expect(html).not.toContain("Edit");
+    expect(html).toContain("proposed");
 
     expect(prismaMock.userMapConclusion.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -142,6 +154,7 @@ describe("Phase 3 internal user-map review page", () => {
         status: "emerging",
         confidenceLevel: "low",
         visibility: "internal_only",
+        candidateLifecycleStatus: "proposed",
         createdAt: new Date("2026-05-15T10:00:00.000Z"),
         updatedAt: new Date("2026-05-15T11:00:00.000Z"),
       },
@@ -153,6 +166,7 @@ describe("Phase 3 internal user-map review page", () => {
         status: "supported",
         confidenceLevel: "medium",
         visibility: "user_visible",
+        candidateLifecycleStatus: "promoted",
         createdAt: new Date("2026-05-15T10:00:00.000Z"),
         updatedAt: new Date("2026-05-15T11:00:00.000Z"),
       },

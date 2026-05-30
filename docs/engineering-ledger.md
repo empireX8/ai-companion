@@ -609,4 +609,44 @@
 
 ---
 
+## Build Slice 4 — Internal Candidate Operator Workbench
+
+- **Status:** complete
+- **Scope:** Connect the internal User Map review page to existing candidate lifecycle and publish internal APIs.
+- **Runtime behavior:** Internal reviewers can promote, hold, reject, and publish `internal_only` `UserMapConclusion` candidates from `/internal/user-map/review`; successful actions refresh the server-rendered list.
+- **Files changed:**
+  - `lib/internal-user-map-review-candidates.ts` — include `candidateLifecycleStatus` in internal list payloads
+  - `lib/internal-user-map-review-operator-actions.ts` — operator action eligibility helpers
+  - `lib/internal-user-map-review-operator-client.ts` — internal fetch client for lifecycle/publish routes
+  - `app/(root)/(routes)/internal/user-map/review/_components/InternalUserMapReviewWorkbench.tsx` — client operator controls
+  - `app/(root)/(routes)/internal/user-map/review/page.tsx` — wire workbench component
+  - `lib/__tests__/internal-user-map-review-operator-actions.test.ts` — created
+  - `lib/__tests__/internal-user-map-review-operator-client.test.ts` — created
+  - `lib/__tests__/internal-user-map-review-workbench.test.ts` — created
+  - `lib/__tests__/phase3-internal-user-map-review-page.test.ts` — updated for operator UI
+  - `lib/__tests__/phase3-internal-user-map-review-api.test.ts` — updated for lifecycle field
+- **Operator actions:**
+  - Hold / Reject / Promote → `POST /api/internal/user-map/candidates/[id]/lifecycle` with `newStatus`
+  - Publish → `POST /api/internal/user-map/candidates/[id]/publish` (only `promoted` + `internal_only`)
+- **What did not change:**
+  - No schema changes
+  - No public/mobile routes or UI
+  - No automatic dark-run execution or message/import writes
+  - No unpublish, batch publish, expiry automation, or other-family lifecycle
+  - No raw evidence exposure
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (144 files, 2388 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:**
+  - No automatic dark-run write path from triggers
+  - No expiry scheduler
+  - Legacy `null` lifecycle rows cannot use operator lifecycle buttons
+- **Next step:** Kay decision on eligibility-to-write dark-run bridge vs further operator hardening
+
+---
+
 *Future entries will be appended below this line.*

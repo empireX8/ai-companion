@@ -1,4 +1,5 @@
 import {
+  CandidateLifecycleStatus,
   UnderstandingLinkTargetType,
   UserMapConfidenceLevel,
   UserMapConclusionArea,
@@ -20,6 +21,7 @@ export type InternalUserMapReviewCandidate = {
   status: UserMapConclusionStatus;
   confidenceLevel: UserMapConfidenceLevel;
   visibility: UserMapConclusionVisibility;
+  candidateLifecycleStatus: CandidateLifecycleStatus | null;
   createdAt: string;
   updatedAt: string;
   evidence: {
@@ -65,6 +67,7 @@ export async function listInternalUserMapReviewCandidates(
       status: true,
       confidenceLevel: true,
       visibility: true,
+      candidateLifecycleStatus: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -119,6 +122,7 @@ export async function listInternalUserMapReviewCandidates(
       status: candidate.status,
       confidenceLevel: candidate.confidenceLevel,
       visibility: candidate.visibility,
+      candidateLifecycleStatus: candidate.candidateLifecycleStatus,
       createdAt: candidate.createdAt.toISOString(),
       updatedAt: candidate.updatedAt.toISOString(),
       evidence: {
