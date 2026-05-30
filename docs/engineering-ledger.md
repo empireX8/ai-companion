@@ -650,3 +650,38 @@
 ---
 
 *Future entries will be appended below this line.*
+
+---
+
+## Build Slice 4 — APP Message Internal Candidate Creation Bridge
+
+- **Status:** complete
+- **Scope:** Wire APP `journal_chat` / `explore_chat` message background path to a gated internal candidate bridge over existing no-write dark-run evaluation and candidate persistence.
+- **Runtime behavior:** Eligible APP messages invoke the bridge in the message route background IIFE. The bridge runs trigger eligibility, no-write dark-run evaluation + harness, and only calls `persistInternalUserMapConclusionCandidate` when explicit structured `userMapCandidateProposal` data is present on dark-run output. Current orchestrator does not emit that field, so production messages abstain safely without writes.
+- **Files changed:**
+  - `lib/understanding-dark-engine/app-message-candidate-bridge.ts` — created bridge module
+  - `app/api/message/route.ts` — replaced no-op eligibility call with bridge invocation (fail-open)
+  - `lib/__tests__/understanding-dark-engine-app-message-candidate-bridge.test.ts` — created focused bridge tests
+  - `lib/__tests__/native-memory-reference-route.test.ts` — updated message route expectations for bridge wiring
+  - `docs/engineering-ledger.md` — this entry
+- **Bridge behavior:**
+  - Session gate: APP + `journal_chat` or `explore_chat` only
+  - Trigger gate: `evaluateNoWriteDarkRunTriggerEligibility` with `app_user_message`
+  - Evaluation: `runNoWriteUnderstandingDarkRun` + `evaluateNoWriteDarkRunOutput`
+  - Proposal gate: `extractStructuredUserMapCandidateProposal` requires explicit `userMapCandidateProposal` with `area`, `title`, `summary`, `target`
+  - Persistence: `persistInternalUserMapConclusionCandidate` when gates pass and proposal exists
+  - Fail-open: bridge errors logged; message stream unchanged
+- **What did not change:**
+  - No import wiring
+  - No schema/UI/mobile changes
+  - No user_visible writes or automatic publish
+  - No ModelUpdate creation from bridge path
+  - No invented candidate content in production
+- **Blocker noted:** `runNoWriteUnderstandingDarkRun` (`dark-run-orchestrator.ts`) does not yet emit structured `userMapCandidateProposal`; automatic candidate creation awaits a future proposal producer slice.
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run`: pass (145 files, 2394 tests)
+  - `npm run build`: pass
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass

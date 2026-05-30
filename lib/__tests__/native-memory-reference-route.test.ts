@@ -9,7 +9,7 @@ const getTop3WithOptionalSurfacingMock = vi.fn();
 const getRelevantReferenceMemoryMock = vi.fn();
 const ensureWeeklyAuditForCurrentWeekMock = vi.fn();
 const triggerNativeDerivationIfDueMock = vi.fn();
-const evaluateNoWriteDarkRunTriggerEligibilityMock = vi.fn();
+const tryCreateInternalUserMapCandidateFromAppMessageMock = vi.fn();
 const processMessageForProfileMock = vi.fn();
 const appendToTranscriptMock = vi.fn();
 const upsertVectorMock = vi.fn();
@@ -256,6 +256,15 @@ vi.mock("@ai-sdk/openai", () => ({
   openai: openaiMock,
 }));
 
+vi.mock("next/server", () => ({
+  NextResponse: {
+    json: (body: unknown, init?: ResponseInit) => Response.json(body, init),
+  },
+  after: (callback: () => void | Promise<void>) => {
+    void callback();
+  },
+}));
+
 vi.mock("@/lib/contradiction-detection", () => ({
   detectContradictions: detectContradictionsMock,
 }));
@@ -314,9 +323,16 @@ vi.mock("@/lib/native-derivation-trigger", () => ({
   triggerNativeDerivationIfDue: triggerNativeDerivationIfDueMock,
 }));
 
-vi.mock("@/lib/understanding-dark-engine/no-write-trigger-eligibility", () => ({
-  evaluateNoWriteDarkRunTriggerEligibility:
-    evaluateNoWriteDarkRunTriggerEligibilityMock,
+vi.mock("@/lib/understanding-dark-engine/app-message-candidate-bridge", () => ({
+  shouldRunAppMessageCandidateBridgeForSession: (session: {
+    origin: string | null;
+    surfaceType: string | null;
+  }) =>
+    session.origin === "APP" &&
+    !!session.surfaceType &&
+    (session.surfaceType === "journal_chat" || session.surfaceType === "explore_chat"),
+  tryCreateInternalUserMapCandidateFromAppMessage:
+    tryCreateInternalUserMapCandidateFromAppMessageMock,
 }));
 
 vi.mock("@/lib/profile-derivation", () => ({
@@ -363,14 +379,10 @@ describe("native chat memory/reference capture", () => {
       triggered: true,
       runId: "run_native_1",
     });
-    evaluateNoWriteDarkRunTriggerEligibilityMock.mockReturnValue({
-      eligible: true,
-      decision: "eligible",
-      reason: "No-write trigger is eligible.",
-      shouldMarkPending: false,
-      cooldownRemainingMs: 0,
-      eventType: "app_user_message",
-      noWriteOnly: true,
+    tryCreateInternalUserMapCandidateFromAppMessageMock.mockResolvedValue({
+      decision: "skipped_insufficient_proposal",
+      reason:
+        "Dark-run output lacks structured userMapCandidateProposal (area, title, summary, target).",
     });
     processMessageForProfileMock.mockResolvedValue(null);
     appendToTranscriptMock.mockResolvedValue(undefined);
@@ -402,13 +414,15 @@ describe("native chat memory/reference capture", () => {
 
     await flushAsyncWork();
 
-    expect(evaluateNoWriteDarkRunTriggerEligibilityMock).toHaveBeenCalledTimes(1);
-    expect(evaluateNoWriteDarkRunTriggerEligibilityMock).toHaveBeenCalledWith({
-      userId: "u1",
-      eventType: "app_user_message",
-      now: expect.any(Date),
-      noWriteOnly: true,
-    });
+    expect(tryCreateInternalUserMapCandidateFromAppMessageMock).toHaveBeenCalledTimes(1);
+    expect(tryCreateInternalUserMapCandidateFromAppMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u1",
+        sessionOrigin: "APP",
+        sessionSurfaceType: "journal_chat",
+        reqId: "native-memory-1",
+      })
+    );
 
     expect(references).toHaveLength(1);
     expect(references[0]).toMatchObject({
@@ -550,7 +564,7 @@ describe("native chat memory/reference capture", () => {
         messageId: "msg_2",
       })
     );
-    expect(evaluateNoWriteDarkRunTriggerEligibilityMock).toHaveBeenCalledTimes(1);
+    expect(tryCreateInternalUserMapCandidateFromAppMessageMock).toHaveBeenCalledTimes(1);
   });
 
   it("does not call profile processing for imported-archive sessions in this route", async () => {
@@ -575,10 +589,10 @@ describe("native chat memory/reference capture", () => {
     await flushAsyncWork();
     expect(processMessageForProfileMock).not.toHaveBeenCalled();
     expect(triggerNativeDerivationIfDueMock).toHaveBeenCalledTimes(1);
-    expect(evaluateNoWriteDarkRunTriggerEligibilityMock).not.toHaveBeenCalled();
+    expect(tryCreateInternalUserMapCandidateFromAppMessageMock).not.toHaveBeenCalled();
   });
 
-  it("evaluates no-write eligibility for APP explore_chat user messages", async () => {
+  it("runs APP candidate bridge for APP explore_chat user messages", async () => {
     sessions = [{ id: "sess1", userId: "u1", origin: "APP", surfaceType: "explore_chat" }];
     const route = await import("../../app/api/message/route");
     const response = await route.POST(
@@ -598,16 +612,18 @@ describe("native chat memory/reference capture", () => {
     expect(response.status).toBe(200);
     await flushAsyncWork();
 
-    expect(evaluateNoWriteDarkRunTriggerEligibilityMock).toHaveBeenCalledTimes(1);
-    expect(evaluateNoWriteDarkRunTriggerEligibilityMock).toHaveBeenCalledWith({
-      userId: "u1",
-      eventType: "app_user_message",
-      now: expect.any(Date),
-      noWriteOnly: true,
-    });
+    expect(tryCreateInternalUserMapCandidateFromAppMessageMock).toHaveBeenCalledTimes(1);
+    expect(tryCreateInternalUserMapCandidateFromAppMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u1",
+        sessionOrigin: "APP",
+        sessionSurfaceType: "explore_chat",
+        reqId: "native-memory-explore-trigger-1",
+      })
+    );
   });
 
-  it("does not evaluate no-write eligibility for unsupported APP surface types", async () => {
+  it("does not run APP candidate bridge for unsupported APP surface types", async () => {
     sessions = [{ id: "sess1", userId: "u1", origin: "APP", surfaceType: "timeline_view" }];
     const route = await import("../../app/api/message/route");
     const response = await route.POST(
@@ -627,13 +643,13 @@ describe("native chat memory/reference capture", () => {
     expect(response.status).toBe(200);
     await flushAsyncWork();
 
-    expect(evaluateNoWriteDarkRunTriggerEligibilityMock).not.toHaveBeenCalled();
+    expect(tryCreateInternalUserMapCandidateFromAppMessageMock).not.toHaveBeenCalled();
   });
 
-  it("keeps message creation successful when no-write eligibility evaluation throws", async () => {
-    evaluateNoWriteDarkRunTriggerEligibilityMock.mockImplementationOnce(() => {
-      throw new Error("eligibility-failed");
-    });
+  it("keeps message creation successful when APP candidate bridge throws", async () => {
+    tryCreateInternalUserMapCandidateFromAppMessageMock.mockRejectedValueOnce(
+      new Error("bridge-failed")
+    );
 
     const route = await import("../../app/api/message/route");
     const response = await route.POST(
@@ -641,7 +657,7 @@ describe("native chat memory/reference capture", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-request-id": "native-memory-eligibility-failure-1",
+          "x-request-id": "native-memory-bridge-failure-1",
         },
         body: JSON.stringify({
           sessionId: "sess1",
@@ -655,17 +671,18 @@ describe("native chat memory/reference capture", () => {
 
     await flushAsyncWork();
 
-    expect(evaluateNoWriteDarkRunTriggerEligibilityMock).toHaveBeenCalledTimes(1);
+    expect(tryCreateInternalUserMapCandidateFromAppMessageMock).toHaveBeenCalledTimes(1);
     expect(detectContradictionsMock).toHaveBeenCalledTimes(1);
     expect(triggerNativeDerivationIfDueMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not import or call dark-run execution or persistence write paths", async () => {
+  it("does not import dark-run execution or persistence write paths directly in the message route", async () => {
     const routePath = new URL("../../app/api/message/route.ts", import.meta.url);
     const source = await import("node:fs/promises").then(({ readFile }) =>
       readFile(routePath, "utf8")
     );
 
+    expect(source).toContain("tryCreateInternalUserMapCandidateFromAppMessage");
     expect(source).not.toContain("runNoWriteUnderstandingDarkRun");
     expect(source).not.toContain("evaluateNoWriteDarkRunOutput");
     expect(source).not.toContain("runManualUnderstandingDarkEngineDarkRun");

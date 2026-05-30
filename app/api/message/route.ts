@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
@@ -25,7 +25,10 @@ import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
 import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
 import { triggerNativeDerivationIfDue } from "@/lib/native-derivation-trigger";
 import { processMessageForProfile } from "@/lib/profile-derivation";
-import { evaluateNoWriteDarkRunTriggerEligibility } from "@/lib/understanding-dark-engine/no-write-trigger-eligibility";
+import {
+  shouldRunAppMessageCandidateBridgeForSession,
+  tryCreateInternalUserMapCandidateFromAppMessage,
+} from "@/lib/understanding-dark-engine/app-message-candidate-bridge";
 
 type GovernedType = "preference" | "goal" | "constraint";
 const NATIVE_PROFILE_SURFACE_TYPES = new Set(["journal_chat", "explore_chat"]);
@@ -117,7 +120,7 @@ function shouldEvaluateNoWriteTriggerForSession(session: {
   origin: string | null;
   surfaceType: string | null;
 }) {
-  return shouldDeriveNativeProfileForSession(session);
+  return shouldRunAppMessageCandidateBridgeForSession(session);
 }
 
 export async function POST(req: Request) {
@@ -249,10 +252,11 @@ export async function POST(req: Request) {
       return resultFp.toTextStreamResponse();
     }
 
-    // ── Fire-and-forget: heavy work that does NOT affect the assistant reply ──
-    // Memory writes, audit, profile derivation, and contradiction detection all
-    // run in the background so the main stream can start immediately.
-    void (async () => {
+    // ── Background work scheduled via after() ──
+    // Memory writes, audit, profile derivation, contradiction detection, pattern
+    // derivation, and the app-message candidate bridge all run after the response
+    // is sent, so they never delay the main stream.
+    after(async () => {
       try {
         await memory.appendToTranscript(memoryKey, `Human: ${normalizedContent}`);
         await memory.upsertVector(memoryKey, {
@@ -285,27 +289,6 @@ export async function POST(req: Request) {
           reqId,
         });
 
-        if (
-          shouldEvaluateNoWriteTriggerForSession({
-            origin: session.origin,
-            surfaceType: session.surfaceType,
-          })
-        ) {
-          try {
-            evaluateNoWriteDarkRunTriggerEligibility({
-              userId,
-              eventType: "app_user_message",
-              now: userMessage.createdAt,
-              noWriteOnly: true,
-            });
-          } catch (error) {
-            console.error(
-              `[MESSAGE_NO_WRITE_TRIGGER_ELIGIBILITY_ERROR][${reqId}]`,
-              error
-            );
-          }
-        }
-
         // Contradiction detection (LLM call) — moved off critical path
         console.debug(tag, "contradiction_detection_start (async)", Date.now() - tServer);
         if (normalizedContent.length >= 15) {
@@ -335,7 +318,30 @@ export async function POST(req: Request) {
       } catch (bgErr) {
         console.error(`[MESSAGE_BG_ERROR][${reqId}]`, bgErr);
       }
-    })();
+
+      // ── App-message candidate bridge (isolated from other background work) ──
+      // Runs independently so failures in transcript/vector/audit/profile tasks
+      // do not prevent candidate bridge execution.
+      if (
+        shouldRunAppMessageCandidateBridgeForSession({
+          origin: session.origin,
+          surfaceType: session.surfaceType,
+        })
+      ) {
+        try {
+          await tryCreateInternalUserMapCandidateFromAppMessage({
+            userId,
+            messageId: userMessage.id,
+            sessionOrigin: session.origin,
+            sessionSurfaceType: session.surfaceType,
+            now: userMessage.createdAt,
+            reqId,
+          });
+        } catch (error) {
+          console.error(`[MESSAGE_APP_CANDIDATE_BRIDGE_ERROR][${reqId}]`, error);
+        }
+      }
+    });
 
     // Retrieval parameters vary by mode:
     // standard — lighter context (faster, lower token cost)
