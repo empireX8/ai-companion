@@ -25,7 +25,10 @@ import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
 import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
 import { triggerNativeDerivationIfDue } from "@/lib/native-derivation-trigger";
 import { processMessageForProfile } from "@/lib/profile-derivation";
-import { evaluateNoWriteDarkRunTriggerEligibility } from "@/lib/understanding-dark-engine/no-write-trigger-eligibility";
+import {
+  shouldRunAppMessageCandidateBridgeForSession,
+  tryCreateInternalUserMapCandidateFromAppMessage,
+} from "@/lib/understanding-dark-engine/app-message-candidate-bridge";
 
 type GovernedType = "preference" | "goal" | "constraint";
 const NATIVE_PROFILE_SURFACE_TYPES = new Set(["journal_chat", "explore_chat"]);
@@ -117,7 +120,7 @@ function shouldEvaluateNoWriteTriggerForSession(session: {
   origin: string | null;
   surfaceType: string | null;
 }) {
-  return shouldDeriveNativeProfileForSession(session);
+  return shouldRunAppMessageCandidateBridgeForSession(session);
 }
 
 export async function POST(req: Request) {
@@ -292,17 +295,16 @@ export async function POST(req: Request) {
           })
         ) {
           try {
-            evaluateNoWriteDarkRunTriggerEligibility({
+            await tryCreateInternalUserMapCandidateFromAppMessage({
               userId,
-              eventType: "app_user_message",
+              messageId: userMessage.id,
+              sessionOrigin: session.origin,
+              sessionSurfaceType: session.surfaceType,
               now: userMessage.createdAt,
-              noWriteOnly: true,
+              reqId,
             });
           } catch (error) {
-            console.error(
-              `[MESSAGE_NO_WRITE_TRIGGER_ELIGIBILITY_ERROR][${reqId}]`,
-              error
-            );
+            console.error(`[MESSAGE_APP_CANDIDATE_BRIDGE_ERROR][${reqId}]`, error);
           }
         }
 
