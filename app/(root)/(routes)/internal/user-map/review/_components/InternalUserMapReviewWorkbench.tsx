@@ -322,6 +322,7 @@ export function InternalUserMapReviewWorkbench({ candidates }: Props) {
               {successMessage && (
                 <p
                   className="mt-3 text-sm text-primary"
+                  role="status"
                   data-testid={`operator-success-${item.id}`}
                 >
                   {successMessage}
