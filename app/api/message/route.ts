@@ -288,26 +288,6 @@ export async function POST(req: Request) {
           reqId,
         });
 
-        if (
-          shouldEvaluateNoWriteTriggerForSession({
-            origin: session.origin,
-            surfaceType: session.surfaceType,
-          })
-        ) {
-          try {
-            await tryCreateInternalUserMapCandidateFromAppMessage({
-              userId,
-              messageId: userMessage.id,
-              sessionOrigin: session.origin,
-              sessionSurfaceType: session.surfaceType,
-              now: userMessage.createdAt,
-              reqId,
-            });
-          } catch (error) {
-            console.error(`[MESSAGE_APP_CANDIDATE_BRIDGE_ERROR][${reqId}]`, error);
-          }
-        }
-
         // Contradiction detection (LLM call) — moved off critical path
         console.debug(tag, "contradiction_detection_start (async)", Date.now() - tServer);
         if (normalizedContent.length >= 15) {
@@ -336,6 +316,29 @@ export async function POST(req: Request) {
         );
       } catch (bgErr) {
         console.error(`[MESSAGE_BG_ERROR][${reqId}]`, bgErr);
+      }
+
+      // ── App-message candidate bridge (isolated from other background work) ──
+      // Runs independently so failures in transcript/vector/audit/profile tasks
+      // do not prevent candidate bridge execution.
+      if (
+        shouldEvaluateNoWriteTriggerForSession({
+          origin: session.origin,
+          surfaceType: session.surfaceType,
+        })
+      ) {
+        try {
+          await tryCreateInternalUserMapCandidateFromAppMessage({
+            userId,
+            messageId: userMessage.id,
+            sessionOrigin: session.origin,
+            sessionSurfaceType: session.surfaceType,
+            now: userMessage.createdAt,
+            reqId,
+          });
+        } catch (error) {
+          console.error(`[MESSAGE_APP_CANDIDATE_BRIDGE_ERROR][${reqId}]`, error);
+        }
       }
     })();
 

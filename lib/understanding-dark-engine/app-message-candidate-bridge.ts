@@ -188,6 +188,13 @@ export async function tryCreateInternalUserMapCandidateFromAppMessage(args: {
     };
   }
 
+  if (darkRunOutput.userMapEvaluation.decision === "abstain") {
+    return {
+      decision: "skipped_gate_abstain",
+      reason: "Objectivity gates abstained.",
+    };
+  }
+
   const proposal = extractStructuredUserMapCandidateProposal(darkRunOutput);
   if (!proposal) {
     console.info(logTag, "No structured candidate proposal in dark-run output; abstaining.", {
@@ -198,13 +205,6 @@ export async function tryCreateInternalUserMapCandidateFromAppMessage(args: {
       decision: "skipped_insufficient_proposal",
       reason:
         "Dark-run output lacks structured userMapCandidateProposal (area, title, summary, target).",
-    };
-  }
-
-  if (darkRunOutput.userMapEvaluation.decision === "abstain") {
-    return {
-      decision: "skipped_gate_abstain",
-      reason: "Objectivity gates abstained.",
     };
   }
 
