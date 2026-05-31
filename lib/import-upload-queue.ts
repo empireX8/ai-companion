@@ -10,7 +10,7 @@ import {
 import { patternBatchOrchestrator } from "./pattern-batch-orchestrator";
 import { createPatternRerunDebugCollector } from "./pattern-rerun-debug";
 import prismadb from "./prismadb";
-import { evaluateNoWriteDarkRunTriggerEligibility } from "./understanding-dark-engine/no-write-trigger-eligibility";
+import { tryCreateInternalUserMapCandidateFromImportCompletion } from "./understanding-dark-engine/import-completion-candidate-bridge";
 
 const runningSessions = new Set<string>();
 
@@ -24,17 +24,14 @@ async function onImportComplete({
   userId: string;
 }): Promise<void> {
   try {
-    evaluateNoWriteDarkRunTriggerEligibility({
+    await tryCreateInternalUserMapCandidateFromImportCompletion({
       userId,
-      eventType: "import_completed",
-      now: new Date(),
-      noWriteOnly: true,
+      sessionId,
     });
   } catch (error) {
-    console.error("[IMPORT_NO_WRITE_TRIGGER_ELIGIBILITY_ERROR]", {
+    console.error("[IMPORT_COMPLETION_CANDIDATE_BRIDGE_ERROR]", {
       sessionId,
       userId,
-      eventType: "import_completed",
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }

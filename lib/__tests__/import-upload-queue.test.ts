@@ -67,15 +67,10 @@ vi.mock("../import-diagnostics", () => ({
   toTopReasonCounts: vi.fn().mockReturnValue([]),
 }));
 
-vi.mock("../understanding-dark-engine/no-write-trigger-eligibility", () => ({
-  evaluateNoWriteDarkRunTriggerEligibility: vi.fn().mockReturnValue({
-    eligible: true,
-    decision: "eligible",
-    reason: "No-write trigger is eligible.",
-    shouldMarkPending: false,
-    cooldownRemainingMs: 0,
-    eventType: "import_completed",
-    noWriteOnly: true,
+vi.mock("../understanding-dark-engine/import-completion-candidate-bridge", () => ({
+  tryCreateInternalUserMapCandidateFromImportCompletion: vi.fn().mockResolvedValue({
+    decision: "skipped_ineligible_trigger",
+    reason: "Suppressed by no-write trigger cooldown.",
   }),
 }));
 
@@ -84,7 +79,7 @@ vi.mock("../understanding-dark-engine/no-write-trigger-eligibility", () => ({
 import { processChatImportSession } from "../import-upload-processor";
 import { patternBatchOrchestrator } from "../pattern-batch-orchestrator";
 import { enqueueImportProcessing } from "../import-upload-queue";
-import { evaluateNoWriteDarkRunTriggerEligibility } from "../understanding-dark-engine/no-write-trigger-eligibility";
+import { tryCreateInternalUserMapCandidateFromImportCompletion } from "../understanding-dark-engine/import-completion-candidate-bridge";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -183,21 +178,17 @@ describe("onImportComplete hook — pattern orchestrator call", () => {
     );
   });
 
-  it("calls no-write trigger eligibility helper for completed imports", async () => {
+  it("calls import completion candidate bridge for completed imports", async () => {
     const hook = await captureHook("ses-elig-1");
     expect(hook).toBeDefined();
 
     await hook!({ sessionId: "ses-elig-1", userId: "user-1" });
 
-    expect(evaluateNoWriteDarkRunTriggerEligibility).toHaveBeenCalledOnce();
-    expect(evaluateNoWriteDarkRunTriggerEligibility).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "user-1",
-        eventType: "import_completed",
-        noWriteOnly: true,
-        now: expect.any(Date),
-      })
-    );
+    expect(tryCreateInternalUserMapCandidateFromImportCompletion).toHaveBeenCalledOnce();
+    expect(tryCreateInternalUserMapCandidateFromImportCompletion).toHaveBeenCalledWith({
+      userId: "user-1",
+      sessionId: "ses-elig-1",
+    });
   });
 
   it("calls patternBatchOrchestrator only once per import completion", async () => {
@@ -236,12 +227,10 @@ describe("onImportComplete hook — pattern orchestrator call", () => {
     );
   });
 
-  it("fails open when no-write eligibility helper throws", async () => {
+  it("fails open when import completion candidate bridge throws", async () => {
     (
-      evaluateNoWriteDarkRunTriggerEligibility as ReturnType<typeof vi.fn>
-    ).mockImplementationOnce(() => {
-      throw new Error("eligibility crash");
-    });
+      tryCreateInternalUserMapCandidateFromImportCompletion as ReturnType<typeof vi.fn>
+    ).mockRejectedValueOnce(new Error("candidate bridge crash"));
     const hook = await captureHook("ses-elig-2");
     expect(hook).toBeDefined();
 
@@ -249,9 +238,10 @@ describe("onImportComplete hook — pattern orchestrator call", () => {
     expect(patternBatchOrchestrator.runForUser).toHaveBeenCalledOnce();
   });
 
-  it("does not wire dark-run orchestrator or evaluation harness into import completion", async () => {
+  it("does not wire dark-run orchestrator directly into import completion", async () => {
     const source = await readFile(new URL("../import-upload-queue.ts", import.meta.url), "utf8");
     expect(source).not.toContain("runNoWriteUnderstandingDarkRun");
     expect(source).not.toContain("evaluateNoWriteDarkRunOutput");
+    expect(source).toContain("tryCreateInternalUserMapCandidateFromImportCompletion");
   });
 });
