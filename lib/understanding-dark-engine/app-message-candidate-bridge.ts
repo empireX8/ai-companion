@@ -11,25 +11,18 @@ import {
   type RunNoWriteUnderstandingDarkRunResult,
 } from "./dark-run-orchestrator";
 import { evaluateNoWriteDarkRunTriggerEligibility } from "./no-write-trigger-eligibility";
-import type { GateEvaluationTarget } from "./types";
 import {
   persistInternalUserMapConclusionCandidate,
-  type UserMapCandidateEvidenceSelection,
 } from "./user-map-candidate-persistence";
+import {
+  type StructuredUserMapCandidateProposal,
+} from "./user-map-candidate-proposal";
+
+export type { StructuredUserMapCandidateProposal };
 
 const APP_MESSAGE_CANDIDATE_BRIDGE_SURFACES = new Set(["journal_chat", "explore_chat"]);
 
-export type StructuredUserMapCandidateProposal = {
-  area: UserMapConclusionArea;
-  title: string;
-  summary: string;
-  target: GateEvaluationTarget;
-  evidenceSelections?: UserMapCandidateEvidenceSelection[];
-};
-
-export type DarkRunOutputWithOptionalProposal = RunNoWriteUnderstandingDarkRunResult & {
-  userMapCandidateProposal?: StructuredUserMapCandidateProposal | null;
-};
+export type DarkRunOutputWithOptionalProposal = RunNoWriteUnderstandingDarkRunResult;
 
 export type AppMessageCandidateBridgeDecision =
   | "skipped_unsupported_session"
@@ -73,11 +66,7 @@ function isUserMapConclusionStatus(value: unknown): value is UserMapConclusionSt
   );
 }
 
-/**
- * Reads structured candidate proposal only when explicitly attached to dark-run output.
- * The current no-write orchestrator does not emit `userMapCandidateProposal`; the bridge
- * abstains until a future proposal producer attaches that field.
- */
+/** Reads structured candidate proposal attached to no-write dark-run output. */
 export function extractStructuredUserMapCandidateProposal(
   output: DarkRunOutputWithOptionalProposal
 ): StructuredUserMapCandidateProposal | null {

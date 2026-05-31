@@ -1,6 +1,7 @@
 import { UserMapConclusionStatus } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { extractStructuredUserMapCandidateProposal } from "../understanding-dark-engine/app-message-candidate-bridge";
 import * as candidatePersistenceModule from "../understanding-dark-engine/user-map-candidate-persistence";
 import * as evidenceLinkWriterModule from "../understanding-evidence-link-writer";
 import { runNoWriteUnderstandingDarkRun } from "../understanding-dark-engine/dark-run-orchestrator";
@@ -11,11 +12,13 @@ type NoWriteDbInput = NonNullable<
 
 type NoWriteDbMockOptions = {
   includeSurfacedAction?: boolean;
+  includePatternClaim?: boolean;
   empty?: boolean;
 };
 
 function createNoWriteDbMock(options: NoWriteDbMockOptions = {}) {
   const includeSurfacedAction = options.includeSurfacedAction ?? true;
+  const includePatternClaim = options.includePatternClaim ?? true;
   const empty = options.empty ?? false;
 
   const writes = {
@@ -34,22 +37,24 @@ function createNoWriteDbMock(options: NoWriteDbMockOptions = {}) {
     understandingEvidenceLinkUpdate: vi.fn(),
   };
 
-  const patternClaims = empty
-    ? []
-    : [
-        {
-          id: "pc-1",
-          summary: "Conflict spike pattern.",
-          status: "active",
-          sourceRunId: null,
-          createdAt: new Date("2026-05-02T00:00:00.000Z"),
-          updatedAt: new Date("2026-05-10T00:00:00.000Z"),
-        },
-      ];
+  const patternClaims =
+    empty || !includePatternClaim
+      ? []
+      : [
+          {
+            id: "pc-1",
+            summary: "Conflict spike pattern.",
+            status: "active",
+            sourceRunId: null,
+            createdAt: new Date("2026-05-02T00:00:00.000Z"),
+            updatedAt: new Date("2026-05-10T00:00:00.000Z"),
+          },
+        ];
 
-  const patternClaimEvidence = empty
-    ? []
-    : [
+  const patternClaimEvidence =
+    empty || !includePatternClaim
+      ? []
+      : [
         {
           id: "pce-1",
           claimId: "pc-1",
@@ -338,6 +343,74 @@ describe("Phase 2B no-write dark-run orchestrator", () => {
     expect(result.diagnostics.abstentions).toBe(1);
     expect(result.phaseHCompatibility.required).toBe(false);
 
+    expectNoWritePathCalls(db);
+  });
+
+  it("does not emit userMapCandidateProposal when gates abstain", async () => {
+    const db = createNoWriteDbMock({
+      includeSurfacedAction: false,
+      empty: true,
+    });
+
+    const result = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+      includeTimelineAggregationContext: false,
+      includeUserCorrectionContext: false,
+    });
+
+    expect(result.userMapEvaluation.decision).toBe("abstain");
+    expect(result.userMapCandidateProposal).toBeNull();
+    expect(extractStructuredUserMapCandidateProposal(result)).toBeNull();
+    expectNoWritePathCalls(db);
+  });
+
+  it("does not emit userMapCandidateProposal when evidence lacks a safe-summary anchor", async () => {
+    const db = createNoWriteDbMock({
+      includePatternClaim: false,
+      includeSurfacedAction: false,
+    });
+
+    const result = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    expect(result.userMapEvaluation.decision).not.toBe("abstain");
+    expect(result.userMapCandidateProposal).toBeNull();
+    expect(extractStructuredUserMapCandidateProposal(result)).toBeNull();
+    expectNoWritePathCalls(db);
+  });
+
+  it("emits structured userMapCandidateProposal when gates pass and evidence is sufficient", async () => {
+    const db = createNoWriteDbMock();
+
+    const result = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    expect(result.userMapEvaluation.decision).not.toBe("abstain");
+    expect(result.userMapCandidateProposal).toEqual({
+      area: "operating_logic",
+      title: "Conflict spike pattern.",
+      summary: "Conflict spike pattern.",
+      target: expect.objectContaining({
+        requestedStatus: result.userMapEvaluation.allowedStatus,
+        identityLevelClaim: false,
+        proposedSummary: "Conflict spike pattern.",
+        requiresReceipt: true,
+      }),
+      evidenceSelections: expect.arrayContaining([
+        { sourceType: "pattern_claim", sourceId: "pc-1" },
+      ]),
+    });
+    expect(extractStructuredUserMapCandidateProposal(result)).toEqual(
+      result.userMapCandidateProposal
+    );
     expectNoWritePathCalls(db);
   });
 });

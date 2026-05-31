@@ -17,6 +17,10 @@ import type {
   EvidencePacketMetrics,
   GateEvaluationTarget,
 } from "./types";
+import {
+  buildStructuredUserMapCandidateProposal,
+  type StructuredUserMapCandidateProposal,
+} from "./user-map-candidate-proposal";
 
 function defaultGateTarget(): GateEvaluationTarget {
   return {
@@ -139,6 +143,7 @@ export type RunNoWriteUnderstandingDarkRunResult = {
     required: boolean;
     reasons: string[];
   };
+  userMapCandidateProposal?: StructuredUserMapCandidateProposal | null;
 };
 
 export async function runNoWriteUnderstandingDarkRun(
@@ -169,6 +174,12 @@ export async function runNoWriteUnderstandingDarkRun(
     );
   }
 
+  const userMapCandidateProposal = buildStructuredUserMapCandidateProposal({
+    packet,
+    evaluation,
+    target,
+  });
+
   return {
     mode: "no_write_dark_run",
     userId: packet.userId,
@@ -182,5 +193,6 @@ export async function runNoWriteUnderstandingDarkRun(
     userMapEvaluation: evaluation.result,
     diagnostics,
     phaseHCompatibility,
+    userMapCandidateProposal,
   };
 }
