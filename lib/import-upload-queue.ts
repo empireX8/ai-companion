@@ -23,6 +23,14 @@ async function onImportComplete({
   sessionId: string;
   userId: string;
 }): Promise<void> {
+  const debugCollector = createPatternRerunDebugCollector();
+  const patternResult = await patternBatchOrchestrator.runForUser({
+    userId,
+    trigger: "import",
+    debugCollector,
+  });
+  const patternDiagnostics = debugCollector.buildDiagnostics();
+
   try {
     await tryCreateInternalUserMapCandidateFromImportCompletion({
       userId,
@@ -35,14 +43,6 @@ async function onImportComplete({
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }
-
-  const debugCollector = createPatternRerunDebugCollector();
-  const patternResult = await patternBatchOrchestrator.runForUser({
-    userId,
-    trigger: "import",
-    debugCollector,
-  });
-  const patternDiagnostics = debugCollector.buildDiagnostics();
 
   const session = await prismadb.importUploadSession.findUnique({
     where: { id: sessionId },

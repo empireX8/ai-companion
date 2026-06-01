@@ -78,6 +78,7 @@ vi.mock("../understanding-dark-engine/import-completion-candidate-bridge", () =>
 
 import { processChatImportSession } from "../import-upload-processor";
 import { patternBatchOrchestrator } from "../pattern-batch-orchestrator";
+import prismadb from "../prismadb";
 import { enqueueImportProcessing } from "../import-upload-queue";
 import { tryCreateInternalUserMapCandidateFromImportCompletion } from "../understanding-dark-engine/import-completion-candidate-bridge";
 
@@ -178,6 +179,38 @@ describe("onImportComplete hook — pattern orchestrator call", () => {
     );
   });
 
+  it("runs import pattern derivation before the candidate bridge", async () => {
+    const callOrder: string[] = [];
+    (patternBatchOrchestrator.runForUser as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      async () => {
+        callOrder.push("pattern_derivation");
+        return {
+          status: "completed",
+          claimsCreated: 3,
+          messageCount: 10,
+          sessionCount: 2,
+          runId: "run-1",
+        };
+      }
+    );
+    (
+      tryCreateInternalUserMapCandidateFromImportCompletion as ReturnType<typeof vi.fn>
+    ).mockImplementationOnce(async () => {
+      callOrder.push("candidate_bridge");
+      return {
+        decision: "skipped_ineligible_trigger",
+        reason: "Suppressed by no-write trigger cooldown.",
+      };
+    });
+
+    const hook = await captureHook("ses-order-1");
+    expect(hook).toBeDefined();
+
+    await hook!({ sessionId: "ses-order-1", userId: "user-1" });
+
+    expect(callOrder).toEqual(["pattern_derivation", "candidate_bridge"]);
+  });
+
   it("calls import completion candidate bridge for completed imports", async () => {
     const hook = await captureHook("ses-elig-1");
     expect(hook).toBeDefined();
@@ -227,7 +260,7 @@ describe("onImportComplete hook — pattern orchestrator call", () => {
     );
   });
 
-  it("fails open when import completion candidate bridge throws", async () => {
+  it("fails open when import completion candidate bridge throws after pattern derivation", async () => {
     (
       tryCreateInternalUserMapCandidateFromImportCompletion as ReturnType<typeof vi.fn>
     ).mockRejectedValueOnce(new Error("candidate bridge crash"));
@@ -236,6 +269,7 @@ describe("onImportComplete hook — pattern orchestrator call", () => {
 
     await expect(hook!({ sessionId: "ses-elig-2", userId: "user-1" })).resolves.toBeUndefined();
     expect(patternBatchOrchestrator.runForUser).toHaveBeenCalledOnce();
+    expect(prismadb.importUploadSession.update).toHaveBeenCalledOnce();
   });
 
   it("does not wire dark-run orchestrator directly into import completion", async () => {

@@ -225,6 +225,54 @@ describe("import completion internal candidate bridge", () => {
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
   });
 
+  it("writes nothing when no-write evaluation harness fails", async () => {
+    evaluateNoWriteDarkRunOutputMock.mockReturnValueOnce({
+      passed: false,
+      failures: [{ invariant: "no_write_invariant", message: "Harness failed." }],
+      warnings: [],
+      checkedInvariants: [],
+      summary: {
+        itemCount: 1,
+        failureCount: 1,
+        warningCount: 0,
+        rawLeakageFailureCount: 0,
+        sourceSafetyFailureCount: 0,
+        phaseHCompatibilityWarningCount: 0,
+      },
+    });
+
+    const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
+      userId: "user-1",
+      sessionId: "ses-1",
+    });
+
+    expect(result.decision).toBe("skipped_harness_failed");
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns blocked persistence reasons without a persisted conclusion id", async () => {
+    const proposal = makeStructuredProposal();
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({ userMapCandidateProposal: proposal })
+    );
+    persistInternalUserMapConclusionCandidateMock.mockResolvedValueOnce({
+      persistedConclusionId: null,
+      payload: {
+        blockedWriteReasons: ["INSUFFICIENT_LINKABLE_EVIDENCE_COUNT"],
+        candidatesWritten: 0,
+      },
+    });
+
+    const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
+      userId: "user-1",
+      sessionId: "ses-1",
+    });
+
+    expect(result.decision).toBe("skipped_persistence_blocked");
+    expect(result.persistedConclusionId).toBeUndefined();
+    expect(result.blockedWriteReasons).toEqual(["INSUFFICIENT_LINKABLE_EVIDENCE_COUNT"]);
+  });
+
   it("calls persistence when eligibility, harness, gates, and structured proposal are valid", async () => {
     const proposal = makeStructuredProposal();
     runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
