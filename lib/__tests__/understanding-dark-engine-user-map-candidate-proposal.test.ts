@@ -171,9 +171,9 @@ describe("structured UserMap candidate proposal builder", () => {
         requiresReceipt: true,
       },
       evidenceSelections: [
+        { sourceType: "message", sourceId: "m-1" },
         { sourceType: "pattern_claim", sourceId: "pc-1" },
         { sourceType: "pattern_claim_evidence", sourceId: "pce-1" },
-        { sourceType: "message", sourceId: "m-1" },
       ],
     } satisfies StructuredUserMapCandidateProposal);
   });
@@ -216,5 +216,167 @@ describe("structured UserMap candidate proposal builder", () => {
         userMapCandidateProposal: proposal,
       })
     ).toEqual(proposal);
+  });
+
+  it("truncates titles at word boundaries without cutting mid-word", () => {
+    const safeSummary = Array.from({ length: 30 }, (_, index) => `word${index}`).join(" ");
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: safeSummary,
+      },
+      {
+        sourceType: "message",
+        sourceId: "m-1",
+      },
+    ]);
+    const evaluation = evaluatePacket(packet);
+    const proposal = buildStructuredUserMapCandidateProposal({
+      packet,
+      evaluation,
+      target: DEFAULT_TARGET,
+    });
+
+    const normalizedSummary = safeSummary.trim().replace(/\s+/g, " ");
+    let expectedTitle = "";
+    for (const word of normalizedSummary.split(" ")) {
+      const candidate = expectedTitle ? `${expectedTitle} ${word}` : word;
+      if (candidate.length > 120) {
+        break;
+      }
+      expectedTitle = candidate;
+    }
+
+    expect(proposal).not.toBeNull();
+    expect(proposal!.title.length).toBeLessThanOrEqual(120);
+    expect(proposal!.title.endsWith(" ")).toBe(false);
+    expect(proposal!.title).toBe(expectedTitle);
+    expect(proposal!.summary).toBe(normalizedSummary);
+  });
+
+  it("hard-truncates very long single-token titles at the max length", () => {
+    const safeSummary = "x".repeat(150);
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: safeSummary,
+      },
+      {
+        sourceType: "message",
+        sourceId: "m-1",
+      },
+    ]);
+    const evaluation = evaluatePacket(packet);
+    const proposal = buildStructuredUserMapCandidateProposal({
+      packet,
+      evaluation,
+      target: DEFAULT_TARGET,
+    });
+
+    expect(proposal?.title).toHaveLength(120);
+    expect(proposal?.title).toBe("x".repeat(120));
+    expect(proposal?.summary).toHaveLength(150);
+  });
+
+  it("normalizes whitespace in title output", () => {
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: "  Conflict   spike   pattern.  ",
+      },
+      {
+        sourceType: "message",
+        sourceId: "m-1",
+      },
+    ]);
+    const evaluation = evaluatePacket(packet);
+    const proposal = buildStructuredUserMapCandidateProposal({
+      packet,
+      evaluation,
+      target: DEFAULT_TARGET,
+    });
+
+    expect(proposal?.title).toBe("Conflict spike pattern.");
+    expect(proposal?.summary).toBe("Conflict   spike   pattern.");
+  });
+
+  it("keeps summary truncation behavior unchanged for long safe summaries", () => {
+    const safeSummary = `${"word ".repeat(200).trim()} tailtoken`;
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: safeSummary,
+      },
+      {
+        sourceType: "message",
+        sourceId: "m-1",
+      },
+    ]);
+    const evaluation = evaluatePacket(packet);
+    const proposal = buildStructuredUserMapCandidateProposal({
+      packet,
+      evaluation,
+      target: DEFAULT_TARGET,
+    });
+
+    expect(proposal).not.toBeNull();
+    expect(proposal!.summary).toBe(safeSummary.trim().slice(0, 600));
+    expect(proposal!.summary.length).toBe(600);
+    expect(proposal!.title.length).toBeLessThanOrEqual(120);
+    expect(proposal!.title).not.toBe(proposal!.summary.slice(0, 120));
+  });
+
+  it("selects the same anchor deterministically regardless of packet item order", () => {
+    const items: PacketItemInput[] = [
+      {
+        sourceType: "message",
+        sourceId: "m-1",
+      },
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-b",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: "Secondary anchor should not win.",
+      },
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-a",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: "Primary anchor wins by stable source id.",
+      },
+    ];
+
+    const forwardPacket = buildPacket(items);
+    const reversePacket = buildPacket([...items].reverse());
+    const forwardEvaluation = evaluatePacket(forwardPacket);
+    const reverseEvaluation = evaluatePacket(reversePacket);
+
+    const forwardProposal = buildStructuredUserMapCandidateProposal({
+      packet: forwardPacket,
+      evaluation: forwardEvaluation,
+      target: DEFAULT_TARGET,
+    });
+    const reverseProposal = buildStructuredUserMapCandidateProposal({
+      packet: reversePacket,
+      evaluation: reverseEvaluation,
+      target: DEFAULT_TARGET,
+    });
+
+    expect(forwardProposal).not.toBeNull();
+    expect(reverseProposal).toEqual(forwardProposal);
+    expect(forwardProposal?.title).toBe("Primary anchor wins by stable source id.");
+    expect(forwardProposal?.evidenceSelections).toEqual([
+      { sourceType: "message", sourceId: "m-1" },
+      { sourceType: "pattern_claim", sourceId: "pc-a" },
+      { sourceType: "pattern_claim", sourceId: "pc-b" },
+    ]);
   });
 });

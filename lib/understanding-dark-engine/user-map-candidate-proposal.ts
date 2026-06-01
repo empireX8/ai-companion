@@ -35,12 +35,43 @@ export type StructuredUserMapCandidateProposal = {
   evidenceSelections?: UserMapCandidateEvidenceSelection[];
 };
 
-function truncateText(value: string, maxLength: number): string {
+function normalizeWhitespace(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function truncateSummaryText(value: string, maxLength: number): string {
   const trimmed = value.trim();
   if (trimmed.length <= maxLength) {
     return trimmed;
   }
   return trimmed.slice(0, maxLength);
+}
+
+function truncateTitleAtWordBoundary(value: string, maxLength: number): string {
+  const normalized = normalizeWhitespace(value);
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  const bounded = normalized.slice(0, maxLength);
+  const lastSpace = bounded.lastIndexOf(" ");
+  if (lastSpace > 0) {
+    return bounded.slice(0, lastSpace);
+  }
+
+  return normalized.slice(0, maxLength);
+}
+
+function compareProposalEvidenceSelections(
+  left: UserMapCandidateEvidenceSelection,
+  right: UserMapCandidateEvidenceSelection
+): number {
+  const sourceTypeCompare = left.sourceType.localeCompare(right.sourceType);
+  if (sourceTypeCompare !== 0) {
+    return sourceTypeCompare;
+  }
+
+  return left.sourceId.localeCompare(right.sourceId);
 }
 
 function packetItemKey(item: Pick<EvidencePacketItem, "sourceType" | "sourceId">): string {
@@ -75,7 +106,7 @@ function selectProposalEvidenceSelections(
     return null;
   }
 
-  return selections;
+  return [...selections].sort(compareProposalEvidenceSelections);
 }
 
 function pickSafeSummaryAnchorItem(args: {
@@ -165,8 +196,8 @@ export function buildStructuredUserMapCandidateProposal(args: {
     return null;
   }
 
-  const title = truncateText(evidenceBackedSummary, TITLE_MAX_LENGTH);
-  const summary = truncateText(evidenceBackedSummary, SUMMARY_MAX_LENGTH);
+  const title = truncateTitleAtWordBoundary(evidenceBackedSummary, TITLE_MAX_LENGTH);
+  const summary = truncateSummaryText(evidenceBackedSummary, SUMMARY_MAX_LENGTH);
 
   return {
     area,
