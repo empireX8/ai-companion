@@ -148,8 +148,65 @@ describe("internal user-map review provenance loader", () => {
           runId: { in: ["run-1"] },
           type: "understanding_dark_engine_diagnostics",
         }),
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       })
     );
+  });
+
+  it("selects the newest diagnostics artifact deterministically per runId", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([
+      {
+        id: "umc-1",
+        title: "Candidate",
+        summary: "Summary",
+        area: "operating_logic",
+        status: "emerging",
+        confidenceLevel: "low",
+        visibility: "internal_only",
+        candidateLifecycleStatus: "proposed",
+        notes: "sourceRun:run-1; decision:pass",
+        createdAt: new Date("2026-05-15T10:00:00.000Z"),
+        updatedAt: new Date("2026-05-15T11:00:00.000Z"),
+      },
+    ]);
+    prismaMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([]);
+
+    prismaMock.derivationArtifact.findMany.mockResolvedValueOnce([
+      {
+        id: "artifact-newest",
+        type: "understanding_dark_engine_diagnostics",
+        runId: "run-1",
+        payload: {
+          processorVersion: "understanding-dark-engine-v2",
+          warnings: ["NEWEST_WARNING"],
+          blockedWriteReasons: [],
+        },
+      },
+      {
+        id: "artifact-older",
+        type: "understanding_dark_engine_diagnostics",
+        runId: "run-1",
+        payload: {
+          processorVersion: "understanding-dark-engine-v1",
+          warnings: ["OLDER_WARNING"],
+          blockedWriteReasons: ["STALE_REASON"],
+        },
+      },
+    ]);
+
+    const items = await listInternalUserMapReviewCandidates(
+      { userId: "reviewer-1", limit: 10 },
+      prismaMock as never
+    );
+
+    expect(items[0]?.diagnostics).toEqual({
+      latestRunId: "run-1",
+      latestArtifactId: "artifact-newest",
+      latestArtifactType: "understanding_dark_engine_diagnostics",
+      processorVersion: "understanding-dark-engine-v2",
+      blockedWriteReasons: [],
+      warnings: ["NEWEST_WARNING"],
+    });
   });
 
   it("returns empty provenance state for candidates without evidence links", async () => {
@@ -198,6 +255,10 @@ describe("internal user-map review provenance loader", () => {
     expect(readSafetyLevelFromMeta({ publicSafetyLevel: "safe_summary" })).toBe(
       "safe_summary"
     );
+    expect(readSafetyLevelFromMeta({ publicSafetyLevel: "  safe_summary  " })).toBe(
+      "safe_summary"
+    );
+    expect(readSafetyLevelFromMeta({ publicSafetyLevel: "   " })).toBeNull();
     expect(
       extractSafeDiagnosticsFromPayload({
         processorVersion: "understanding-dark-engine-v1",

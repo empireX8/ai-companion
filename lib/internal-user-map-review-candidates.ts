@@ -95,7 +95,12 @@ export function readSafetyLevelFromMeta(meta: unknown): string | null {
   }
 
   const level = (meta as Record<string, unknown>).publicSafetyLevel;
-  return typeof level === "string" && level.trim().length > 0 ? level : null;
+  if (typeof level !== "string") {
+    return null;
+  }
+
+  const trimmed = level.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function extractSafeStringArray(value: unknown): string[] {
@@ -227,6 +232,7 @@ export async function listInternalUserMapReviewCandidates(
             runId: { in: uniqueRunIds },
             type: UNDERSTANDING_DARK_ENGINE_DIAGNOSTICS_ARTIFACT_TYPE,
           },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           select: {
             id: true,
             type: true,
@@ -236,9 +242,15 @@ export async function listInternalUserMapReviewCandidates(
         })
       : [];
 
-  const artifactByRunId = new Map(
-    diagnosticsArtifacts.map((artifact) => [artifact.runId, artifact])
-  );
+  const artifactByRunId = new Map<
+    string,
+    (typeof diagnosticsArtifacts)[number]
+  >();
+  for (const artifact of diagnosticsArtifacts) {
+    if (!artifactByRunId.has(artifact.runId)) {
+      artifactByRunId.set(artifact.runId, artifact);
+    }
+  }
 
   return candidates.map((candidate) => {
     const evidence = evidenceByTarget.get(candidate.id) ?? EMPTY_EVIDENCE;
