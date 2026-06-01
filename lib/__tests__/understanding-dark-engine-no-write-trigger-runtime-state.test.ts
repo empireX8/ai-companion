@@ -18,7 +18,7 @@ function withMsOffset(base: Date, offsetMs: number): Date {
 }
 
 function createDbMock(options: {
-  latestRunCreatedAt?: Date | null;
+  latestRun?: { createdAt: Date; windowEnd: Date | null } | null;
   inFlight?: boolean;
 }) {
   return {
@@ -27,9 +27,7 @@ function createDbMock(options: {
         if (args.where.status) {
           return options.inFlight ? { id: "run-in-flight" } : null;
         }
-        return options.latestRunCreatedAt
-          ? { createdAt: options.latestRunCreatedAt }
-          : null;
+        return options.latestRun ?? null;
       }),
     },
   };
@@ -45,9 +43,11 @@ describe("no-write trigger runtime state helper", () => {
     vi.useRealTimers();
   });
 
-  it("loads lastRunAt and inFlight from understanding-dark-engine DerivationRun rows", async () => {
+  it("loads lastRunAt from DerivationRun.createdAt and cutoff from windowEnd", async () => {
+    const createdAt = withMsOffset(NOW, -120_000);
+    const windowEnd = withMsOffset(NOW, -180_000);
     const db = createDbMock({
-      latestRunCreatedAt: withMsOffset(NOW, -120_000),
+      latestRun: { createdAt, windowEnd },
       inFlight: true,
     });
 
@@ -56,10 +56,10 @@ describe("no-write trigger runtime state helper", () => {
       db: db as never,
     });
 
-    expect(state.lastRunAt).toEqual(withMsOffset(NOW, -120_000));
+    expect(state.lastRunAt).toEqual(createdAt);
+    expect(state.lastEvidenceCutoffAt).toEqual(windowEnd);
     expect(state.inFlight).toBe(true);
-    expect(state.lastEvidenceAt).toBeNull();
-    expect(db.derivationRun.findFirst).toHaveBeenCalledTimes(2);
+    expect(state.triggerEvidenceAt).toBeNull();
     expect(db.derivationRun.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -67,29 +67,35 @@ describe("no-write trigger runtime state helper", () => {
           scope: UNDERSTANDING_DARK_ENGINE_NO_WRITE_DERIVATION_SCOPE,
           processorVersion: UNDERSTANDING_DARK_ENGINE_NO_WRITE_PROCESSOR_VERSION,
         }),
+        select: { createdAt: true, windowEnd: true },
       })
     );
   });
 
-  it("returns triggerEvidenceAt as lastEvidenceAt only when explicitly provided", async () => {
-    const db = createDbMock({ latestRunCreatedAt: null, inFlight: false });
-    const triggerEvidenceAt = withMsOffset(NOW, -1_000);
+  it("falls back evidence cutoff to createdAt when windowEnd is absent", async () => {
+    const createdAt = withMsOffset(NOW, -90_000);
+    const db = createDbMock({
+      latestRun: { createdAt, windowEnd: null },
+      inFlight: false,
+    });
 
     const state = await loadNoWriteDarkRunTriggerRuntimeState({
       userId: "user-1",
       db: db as never,
-      triggerEvidenceAt,
     });
 
-    expect(state.lastEvidenceAt).toEqual(triggerEvidenceAt);
+    expect(state.lastRunAt).toEqual(createdAt);
+    expect(state.lastEvidenceCutoffAt).toEqual(createdAt);
   });
 
-  it("passes loaded runtime values into eligibility evaluation", async () => {
+  it("passes createdAt as lastRunAt and windowEnd as lastEvidenceCutoffAt to eligibility", async () => {
+    const createdAt = withMsOffset(NOW, -5_000);
+    const windowEnd = withMsOffset(NOW, -8_000);
+    const triggerEvidenceAt = NOW;
     const db = createDbMock({
-      latestRunCreatedAt: withMsOffset(NOW, -5_000),
+      latestRun: { createdAt, windowEnd },
       inFlight: true,
     });
-    const triggerEvidenceAt = NOW;
 
     const result = await resolveCandidateBridgeNoWriteTriggerEligibility({
       userId: "user-1",
@@ -107,7 +113,8 @@ describe("no-write trigger runtime state helper", () => {
         userId: "user-1",
         eventType: "app_user_message",
         now: NOW,
-        lastRunAt: withMsOffset(NOW, -5_000),
+        lastRunAt: createdAt,
+        lastEvidenceCutoffAt: windowEnd,
         lastEvidenceAt: triggerEvidenceAt,
         inFlight: true,
         noWriteOnly: true,
@@ -115,9 +122,34 @@ describe("no-write trigger runtime state helper", () => {
     ).toEqual(result);
   });
 
-  it("suppresses eligibility on cooldown using loaded lastRunAt", async () => {
+  it("does not block no-new-evidence when trigger is after windowEnd but before createdAt", async () => {
+    const windowEnd = withMsOffset(NOW, -20_000);
+    const createdAt = withMsOffset(NOW, -5_000);
+    const triggerEvidenceAt = withMsOffset(NOW, -10_000);
     const db = createDbMock({
-      latestRunCreatedAt: withMsOffset(NOW, -5_000),
+      latestRun: { createdAt, windowEnd },
+      inFlight: false,
+    });
+
+    const result = await resolveCandidateBridgeNoWriteTriggerEligibility({
+      userId: "user-1",
+      eventType: "app_user_message",
+      now: NOW,
+      triggerEvidenceAt,
+      db: db as never,
+      logTag: "[TEST]",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.decision).toBe("suppressed_cooldown");
+    expect(result.decision).not.toBe("blocked_no_new_evidence");
+  });
+
+  it("suppresses eligibility on cooldown using createdAt rather than windowEnd", async () => {
+    const createdAt = withMsOffset(NOW, -5_000);
+    const windowEnd = withMsOffset(NOW, -120_000);
+    const db = createDbMock({
+      latestRun: { createdAt, windowEnd },
       inFlight: false,
     });
 
@@ -136,6 +168,28 @@ describe("no-write trigger runtime state helper", () => {
     expect(result.cooldownRemainingMs).toBeLessThanOrEqual(
       DEFAULT_NO_WRITE_DARK_RUN_COOLDOWN_MS
     );
+  });
+
+  it("blocks no-new-evidence when trigger evidence is not newer than windowEnd", async () => {
+    const windowEnd = withMsOffset(NOW, -2_000);
+    const createdAt = withMsOffset(NOW, -1_000);
+    const triggerEvidenceAt = withMsOffset(NOW, -3_000);
+    const db = createDbMock({
+      latestRun: { createdAt, windowEnd },
+      inFlight: false,
+    });
+
+    const result = await resolveCandidateBridgeNoWriteTriggerEligibility({
+      userId: "user-1",
+      eventType: "app_user_message",
+      now: NOW,
+      triggerEvidenceAt,
+      db: db as never,
+      logTag: "[TEST]",
+    });
+
+    expect(result.eligible).toBe(false);
+    expect(result.decision).toBe("blocked_no_new_evidence");
   });
 
   it("fails open when runtime state loading throws", async () => {
