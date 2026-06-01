@@ -378,5 +378,134 @@ describe("structured UserMap candidate proposal builder", () => {
       { sourceType: "pattern_claim", sourceId: "pc-a" },
       { sourceType: "pattern_claim", sourceId: "pc-b" },
     ]);
+    expect(forwardProposal?.summary).toBe(
+      "Primary anchor wins by stable source id. Secondary anchor should not win."
+    );
+    expect(forwardProposal?.summary).not.toBe(forwardProposal?.title);
+  });
+
+  it("combines multiple distinct safe summaries so summary differs from title", () => {
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: "Conflict spike pattern.",
+      },
+      {
+        sourceType: "contradiction_node",
+        sourceId: "cn-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: "Evening tension keeps resurfacing.",
+      },
+    ]);
+    const evaluation = evaluatePacket(packet);
+    const proposal = buildStructuredUserMapCandidateProposal({
+      packet,
+      evaluation,
+      target: DEFAULT_TARGET,
+    });
+
+    expect(proposal?.title).toBe("Conflict spike pattern.");
+    expect(proposal?.summary).toBe(
+      "Conflict spike pattern. Evening tension keeps resurfacing."
+    );
+    expect(proposal?.summary).not.toBe(proposal?.title);
+    expect(proposal?.summary).not.toContain("snippet-");
+    expect(proposal?.summary).not.toContain("quote-");
+  });
+
+  it("excludes import_record safe summaries from proposal summary text", () => {
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: "Conflict spike pattern.",
+      },
+      {
+        sourceType: "import_record",
+        sourceId: "imp-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: "completed conv=3 msg=120",
+      },
+      {
+        sourceType: "message",
+        sourceId: "m-1",
+      },
+    ]);
+    const evaluation = evaluatePacket(packet);
+    const proposal = buildStructuredUserMapCandidateProposal({
+      packet,
+      evaluation,
+      target: DEFAULT_TARGET,
+    });
+
+    expect(proposal?.title).toBe("Conflict spike pattern.");
+    expect(proposal?.summary).toBe("Conflict spike pattern.");
+    expect(proposal?.summary).not.toContain("conv=3");
+    expect(proposal?.summary).not.toContain("completed");
+    expect(proposal?.evidenceSelections).toEqual([
+      { sourceType: "import_record", sourceId: "imp-1" },
+      { sourceType: "message", sourceId: "m-1" },
+      { sourceType: "pattern_claim", sourceId: "pc-1" },
+    ]);
+  });
+
+  it("deduplicates repeated safe summaries after whitespace normalization", () => {
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: "Shared insight about pacing.",
+      },
+      {
+        sourceType: "message",
+        sourceId: "m-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: "  Shared   insight about pacing.  ",
+      },
+    ]);
+    const evaluation = evaluatePacket(packet);
+    const proposal = buildStructuredUserMapCandidateProposal({
+      packet,
+      evaluation,
+      target: DEFAULT_TARGET,
+    });
+
+    expect(proposal?.title).toBe("Shared insight about pacing.");
+    expect(proposal?.summary).toBe("Shared insight about pacing.");
+    expect(proposal?.summary).toBe(proposal?.title);
+  });
+
+  it("caps combined multi-summary output at 600 characters", () => {
+    const anchorSummary = "Anchor safe summary.";
+    const additionalSummary = "z".repeat(590);
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: anchorSummary,
+      },
+      {
+        sourceType: "contradiction_node",
+        sourceId: "cn-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: additionalSummary,
+      },
+    ]);
+    const evaluation = evaluatePacket(packet);
+    const proposal = buildStructuredUserMapCandidateProposal({
+      packet,
+      evaluation,
+      target: DEFAULT_TARGET,
+    });
+
+    expect(proposal?.summary.length).toBe(600);
+    expect(proposal?.summary).toBe(
+      `Anchor safe summary. ${additionalSummary}`.slice(0, 600)
+    );
   });
 });

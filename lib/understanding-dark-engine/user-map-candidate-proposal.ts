@@ -10,6 +10,11 @@ import type { EvidencePacket, EvidencePacketItem, GateEvaluationTarget } from ".
 const TITLE_MAX_LENGTH = 120;
 const SUMMARY_MAX_LENGTH = 600;
 
+const PROPOSAL_SUMMARY_WORDING_SOURCE_TYPES = new Set<UnderstandingLinkSourceType>([
+  "pattern_claim",
+  "contradiction_node",
+]);
+
 const DISALLOWED_PROPOSAL_SOURCE_TYPES = new Set<UnderstandingLinkSourceType>([
   "timeline_aggregation",
   "user_correction",
@@ -45,6 +50,117 @@ function truncateSummaryText(value: string, maxLength: number): string {
     return trimmed;
   }
   return trimmed.slice(0, maxLength);
+}
+
+function readNormalizedSafeSummary(item: EvidencePacketItem): string | null {
+  if (item.publicSafetyLevel !== "safe_summary") {
+    return null;
+  }
+
+  const summary = item.publicSafeSummary;
+  if (typeof summary !== "string" || summary.trim().length === 0) {
+    return null;
+  }
+
+  return normalizeWhitespace(summary);
+}
+
+function isProposalSummaryWordingSourceType(
+  sourceType: UnderstandingLinkSourceType
+): boolean {
+  return PROPOSAL_SUMMARY_WORDING_SOURCE_TYPES.has(sourceType);
+}
+
+function collectDistinctSafeSummariesFromSelections(args: {
+  packet: EvidencePacket;
+  evidenceSelections: UserMapCandidateEvidenceSelection[];
+}): string[] {
+  const packetLookup = new Map<string, EvidencePacketItem>();
+  for (const item of args.packet.items) {
+    packetLookup.set(packetItemKey(item), item);
+  }
+
+  const seen = new Set<string>();
+  const summaries: string[] = [];
+
+  for (const selection of args.evidenceSelections) {
+    if (!isProposalSummaryWordingSourceType(selection.sourceType)) {
+      continue;
+    }
+
+    const item = packetLookup.get(`${selection.sourceType}|${selection.sourceId}`);
+    if (!item) {
+      continue;
+    }
+
+    const normalized = readNormalizedSafeSummary(item);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    summaries.push(normalized);
+  }
+
+  return summaries;
+}
+
+function stripTrailingSentencePunctuation(value: string): string {
+  return value.replace(/[.!?]+\s*$/, "").trim();
+}
+
+function joinSafeSummarySegments(segments: string[]): string {
+  if (segments.length === 0) {
+    return "";
+  }
+
+  const normalizedSegments = segments.map((segment) => normalizeWhitespace(segment));
+  if (normalizedSegments.length === 1) {
+    return normalizedSegments[0] ?? "";
+  }
+
+  const lastIndex = normalizedSegments.length - 1;
+  return normalizeWhitespace(
+    normalizedSegments
+      .map((segment, index) =>
+        index === lastIndex ? segment : stripTrailingSentencePunctuation(segment)
+      )
+      .filter((segment) => segment.length > 0)
+      .join(". ")
+  );
+}
+
+function buildProposalSummary(args: {
+  packet: EvidencePacket;
+  evidenceSelections: UserMapCandidateEvidenceSelection[];
+  anchorItem: EvidencePacketItem;
+}): string {
+  const anchorRaw = args.anchorItem.publicSafeSummary?.trim() ?? "";
+  const distinctSafeSummaries = collectDistinctSafeSummariesFromSelections({
+    packet: args.packet,
+    evidenceSelections: args.evidenceSelections,
+  });
+
+  if (distinctSafeSummaries.length <= 1) {
+    return truncateSummaryText(anchorRaw, SUMMARY_MAX_LENGTH);
+  }
+
+  const anchorNormalized = normalizeWhitespace(anchorRaw);
+  const additionalSummaries = distinctSafeSummaries.filter(
+    (summary) => summary !== anchorNormalized
+  );
+
+  if (additionalSummaries.length === 0) {
+    return truncateSummaryText(anchorRaw, SUMMARY_MAX_LENGTH);
+  }
+
+  const combined = joinSafeSummarySegments([anchorNormalized, ...additionalSummaries]);
+
+  if (combined.length <= SUMMARY_MAX_LENGTH) {
+    return combined;
+  }
+
+  return combined.slice(0, SUMMARY_MAX_LENGTH);
 }
 
 function truncateTitleAtWordBoundary(value: string, maxLength: number): string {
@@ -197,7 +313,11 @@ export function buildStructuredUserMapCandidateProposal(args: {
   }
 
   const title = truncateTitleAtWordBoundary(evidenceBackedSummary, TITLE_MAX_LENGTH);
-  const summary = truncateSummaryText(evidenceBackedSummary, SUMMARY_MAX_LENGTH);
+  const summary = buildProposalSummary({
+    packet: args.packet,
+    evidenceSelections,
+    anchorItem,
+  });
 
   return {
     area,
