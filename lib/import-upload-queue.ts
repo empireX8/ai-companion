@@ -10,7 +10,7 @@ import {
 import { patternBatchOrchestrator } from "./pattern-batch-orchestrator";
 import { createPatternRerunDebugCollector } from "./pattern-rerun-debug";
 import prismadb from "./prismadb";
-import { evaluateNoWriteDarkRunTriggerEligibility } from "./understanding-dark-engine/no-write-trigger-eligibility";
+import { tryCreateInternalUserMapCandidateFromImportCompletion } from "./understanding-dark-engine/import-completion-candidate-bridge";
 
 const runningSessions = new Set<string>();
 
@@ -23,22 +23,6 @@ async function onImportComplete({
   sessionId: string;
   userId: string;
 }): Promise<void> {
-  try {
-    evaluateNoWriteDarkRunTriggerEligibility({
-      userId,
-      eventType: "import_completed",
-      now: new Date(),
-      noWriteOnly: true,
-    });
-  } catch (error) {
-    console.error("[IMPORT_NO_WRITE_TRIGGER_ELIGIBILITY_ERROR]", {
-      sessionId,
-      userId,
-      eventType: "import_completed",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-
   const debugCollector = createPatternRerunDebugCollector();
   const patternResult = await patternBatchOrchestrator.runForUser({
     userId,
@@ -46,6 +30,19 @@ async function onImportComplete({
     debugCollector,
   });
   const patternDiagnostics = debugCollector.buildDiagnostics();
+
+  try {
+    await tryCreateInternalUserMapCandidateFromImportCompletion({
+      userId,
+      sessionId,
+    });
+  } catch (error) {
+    console.error("[IMPORT_COMPLETION_CANDIDATE_BRIDGE_ERROR]", {
+      sessionId,
+      userId,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
 
   const session = await prismadb.importUploadSession.findUnique({
     where: { id: sessionId },
