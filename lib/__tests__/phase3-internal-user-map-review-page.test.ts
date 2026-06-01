@@ -14,6 +14,9 @@ const prismaMock = {
   understandingEvidenceLink: {
     findMany: vi.fn(),
   },
+  derivationArtifact: {
+    findMany: vi.fn(),
+  },
 };
 
 const OLD_ENV = process.env;
@@ -67,6 +70,7 @@ describe("Phase 3 internal user-map review page", () => {
     authMock.mockResolvedValue({ userId: "reviewer-1" });
     prismaMock.userMapConclusion.findMany.mockResolvedValue([]);
     prismaMock.understandingEvidenceLink.findMany.mockResolvedValue([]);
+    prismaMock.derivationArtifact.findMany.mockResolvedValue([]);
   });
 
   afterAll(() => {
@@ -111,14 +115,25 @@ describe("Phase 3 internal user-map review page", () => {
         confidenceLevel: "low",
         visibility: "internal_only",
         candidateLifecycleStatus: "proposed",
+        notes: null,
         createdAt: new Date("2026-05-15T10:00:00.000Z"),
         updatedAt: new Date("2026-05-15T11:00:00.000Z"),
       },
     ]);
 
     prismaMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([
-      { targetId: "umc-internal-1", sourceType: "message" },
-      { targetId: "umc-internal-1", sourceType: "pattern_claim" },
+      {
+        targetId: "umc-internal-1",
+        sourceType: "message",
+        sourceId: "msg-1",
+        meta: null,
+      },
+      {
+        targetId: "umc-internal-1",
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        meta: null,
+      },
     ]);
 
     const page = await import(
@@ -155,6 +170,7 @@ describe("Phase 3 internal user-map review page", () => {
         confidenceLevel: "low",
         visibility: "internal_only",
         candidateLifecycleStatus: "proposed",
+        notes: null,
         createdAt: new Date("2026-05-15T10:00:00.000Z"),
         updatedAt: new Date("2026-05-15T11:00:00.000Z"),
       },
