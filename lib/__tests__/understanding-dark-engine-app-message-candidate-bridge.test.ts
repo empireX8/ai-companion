@@ -2,19 +2,20 @@ import { UserMapConclusionStatus } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  evaluateNoWriteDarkRunTriggerEligibilityMock,
+  resolveCandidateBridgeNoWriteTriggerEligibilityMock,
   runNoWriteUnderstandingDarkRunMock,
   evaluateNoWriteDarkRunOutputMock,
   persistInternalUserMapConclusionCandidateMock,
 } = vi.hoisted(() => ({
-  evaluateNoWriteDarkRunTriggerEligibilityMock: vi.fn(),
+  resolveCandidateBridgeNoWriteTriggerEligibilityMock: vi.fn(),
   runNoWriteUnderstandingDarkRunMock: vi.fn(),
   evaluateNoWriteDarkRunOutputMock: vi.fn(),
   persistInternalUserMapConclusionCandidateMock: vi.fn(),
 }));
 
-vi.mock("../understanding-dark-engine/no-write-trigger-eligibility", () => ({
-  evaluateNoWriteDarkRunTriggerEligibility: evaluateNoWriteDarkRunTriggerEligibilityMock,
+vi.mock("../understanding-dark-engine/no-write-trigger-runtime-state", () => ({
+  resolveCandidateBridgeNoWriteTriggerEligibility:
+    resolveCandidateBridgeNoWriteTriggerEligibilityMock,
 }));
 
 vi.mock("../understanding-dark-engine/dark-run-orchestrator", () => ({
@@ -34,6 +35,8 @@ import {
   tryCreateInternalUserMapCandidateFromAppMessage,
   type DarkRunOutputWithOptionalProposal,
 } from "../understanding-dark-engine/app-message-candidate-bridge";
+
+const FIXED_NOW = new Date("2026-06-01T12:00:00.000Z");
 
 function makeDarkRunOutput(
   overrides: Partial<DarkRunOutputWithOptionalProposal> = {}
@@ -147,8 +150,10 @@ function makeStructuredProposal() {
 
 describe("APP message internal candidate bridge", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     vi.clearAllMocks();
-    evaluateNoWriteDarkRunTriggerEligibilityMock.mockReturnValue({
+    resolveCandidateBridgeNoWriteTriggerEligibilityMock.mockResolvedValue({
       eligible: true,
       decision: "eligible",
       reason: "No-write trigger is eligible.",
@@ -183,10 +188,32 @@ describe("APP message internal candidate bridge", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("passes triggerEvidenceAt into runtime eligibility resolution", async () => {
+    await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+      now: FIXED_NOW,
+    });
+
+    expect(resolveCandidateBridgeNoWriteTriggerEligibilityMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        eventType: "app_user_message",
+        now: FIXED_NOW,
+        triggerEvidenceAt: FIXED_NOW,
+        logTag: "[APP_MESSAGE_CANDIDATE_BRIDGE]",
+        context: { messageId: "msg-1" },
+      })
+    );
   });
 
   it("writes nothing when trigger eligibility is not eligible", async () => {
-    evaluateNoWriteDarkRunTriggerEligibilityMock.mockReturnValueOnce({
+    resolveCandidateBridgeNoWriteTriggerEligibilityMock.mockResolvedValueOnce({
       eligible: false,
       decision: "suppressed_cooldown",
       reason: "Suppressed by no-write trigger cooldown.",
@@ -204,8 +231,33 @@ describe("APP message internal candidate bridge", () => {
     });
 
     expect(result.decision).toBe("skipped_ineligible_trigger");
+    expect(result.eligibilityDecision).toBe("suppressed_cooldown");
     expect(runNoWriteUnderstandingDarkRunMock).not.toHaveBeenCalled();
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing when a prior run is still in flight", async () => {
+    resolveCandidateBridgeNoWriteTriggerEligibilityMock.mockResolvedValueOnce({
+      eligible: false,
+      decision: "mark_trailing_pending",
+      reason: "A no-write run is already in flight; mark a trailing pending run.",
+      shouldMarkPending: true,
+      cooldownRemainingMs: 20_000,
+      eventType: "app_user_message",
+      noWriteOnly: true,
+    });
+
+    const result = await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+      now: FIXED_NOW,
+    });
+
+    expect(result.decision).toBe("skipped_ineligible_trigger");
+    expect(result.eligibilityDecision).toBe("mark_trailing_pending");
+    expect(runNoWriteUnderstandingDarkRunMock).not.toHaveBeenCalled();
   });
 
   it("writes nothing when dark-run output lacks structured proposal data", async () => {

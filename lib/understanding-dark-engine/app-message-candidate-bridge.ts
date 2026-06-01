@@ -10,7 +10,7 @@ import {
   runNoWriteUnderstandingDarkRun,
   type RunNoWriteUnderstandingDarkRunResult,
 } from "./dark-run-orchestrator";
-import { evaluateNoWriteDarkRunTriggerEligibility } from "./no-write-trigger-eligibility";
+import { resolveCandidateBridgeNoWriteTriggerEligibility } from "./no-write-trigger-runtime-state";
 import {
   persistInternalUserMapConclusionCandidate,
 } from "./user-map-candidate-persistence";
@@ -142,11 +142,15 @@ export async function tryCreateInternalUserMapCandidateFromAppMessage(args: {
   }
 
   const now = args.now ?? new Date();
-  const eligibility = evaluateNoWriteDarkRunTriggerEligibility({
+  const db = args.db ?? prismadb;
+  const eligibility = await resolveCandidateBridgeNoWriteTriggerEligibility({
     userId: args.userId,
     eventType: "app_user_message",
     now,
-    noWriteOnly: true,
+    triggerEvidenceAt: now,
+    db,
+    logTag,
+    context: { messageId: args.messageId },
   });
 
   if (!eligibility.eligible) {
@@ -157,7 +161,6 @@ export async function tryCreateInternalUserMapCandidateFromAppMessage(args: {
     };
   }
 
-  const db = args.db ?? prismadb;
   const darkRunOutput = (await runNoWriteUnderstandingDarkRun({
     userId: args.userId,
     now,

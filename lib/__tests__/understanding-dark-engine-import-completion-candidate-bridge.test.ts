@@ -2,19 +2,20 @@ import { UserMapConclusionStatus } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  evaluateNoWriteDarkRunTriggerEligibilityMock,
+  resolveCandidateBridgeNoWriteTriggerEligibilityMock,
   runNoWriteUnderstandingDarkRunMock,
   evaluateNoWriteDarkRunOutputMock,
   persistInternalUserMapConclusionCandidateMock,
 } = vi.hoisted(() => ({
-  evaluateNoWriteDarkRunTriggerEligibilityMock: vi.fn(),
+  resolveCandidateBridgeNoWriteTriggerEligibilityMock: vi.fn(),
   runNoWriteUnderstandingDarkRunMock: vi.fn(),
   evaluateNoWriteDarkRunOutputMock: vi.fn(),
   persistInternalUserMapConclusionCandidateMock: vi.fn(),
 }));
 
-vi.mock("../understanding-dark-engine/no-write-trigger-eligibility", () => ({
-  evaluateNoWriteDarkRunTriggerEligibility: evaluateNoWriteDarkRunTriggerEligibilityMock,
+vi.mock("../understanding-dark-engine/no-write-trigger-runtime-state", () => ({
+  resolveCandidateBridgeNoWriteTriggerEligibility:
+    resolveCandidateBridgeNoWriteTriggerEligibilityMock,
 }));
 
 vi.mock("../understanding-dark-engine/dark-run-orchestrator", () => ({
@@ -33,6 +34,8 @@ import {
   type DarkRunOutputWithOptionalProposal,
 } from "../understanding-dark-engine/app-message-candidate-bridge";
 import { tryCreateInternalUserMapCandidateFromImportCompletion } from "../understanding-dark-engine/import-completion-candidate-bridge";
+
+const FIXED_NOW = new Date("2026-06-01T12:00:00.000Z");
 
 function makeDarkRunOutput(
   overrides: Partial<DarkRunOutputWithOptionalProposal> = {}
@@ -126,8 +129,10 @@ function makeStructuredProposal() {
 
 describe("import completion internal candidate bridge", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     vi.clearAllMocks();
-    evaluateNoWriteDarkRunTriggerEligibilityMock.mockReturnValue({
+    resolveCandidateBridgeNoWriteTriggerEligibilityMock.mockResolvedValue({
       eligible: true,
       decision: "eligible",
       reason: "No-write trigger is eligible.",
@@ -162,10 +167,30 @@ describe("import completion internal candidate bridge", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("passes triggerEvidenceAt into runtime eligibility resolution", async () => {
+    await tryCreateInternalUserMapCandidateFromImportCompletion({
+      userId: "user-1",
+      sessionId: "ses-1",
+      now: FIXED_NOW,
+    });
+
+    expect(resolveCandidateBridgeNoWriteTriggerEligibilityMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        eventType: "import_completed",
+        now: FIXED_NOW,
+        triggerEvidenceAt: FIXED_NOW,
+        logTag: "[IMPORT_COMPLETION_CANDIDATE_BRIDGE]",
+        context: { sessionId: "ses-1" },
+      })
+    );
   });
 
   it("writes nothing when import trigger eligibility is not eligible", async () => {
-    evaluateNoWriteDarkRunTriggerEligibilityMock.mockReturnValueOnce({
+    resolveCandidateBridgeNoWriteTriggerEligibilityMock.mockResolvedValueOnce({
       eligible: false,
       decision: "suppressed_cooldown",
       reason: "Suppressed by no-write trigger cooldown.",
@@ -178,17 +203,42 @@ describe("import completion internal candidate bridge", () => {
     const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
       userId: "user-1",
       sessionId: "ses-1",
+      now: FIXED_NOW,
     });
 
     expect(result.decision).toBe("skipped_ineligible_trigger");
+    expect(result.eligibilityDecision).toBe("suppressed_cooldown");
     expect(runNoWriteUnderstandingDarkRunMock).not.toHaveBeenCalled();
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing when a prior run is still in flight", async () => {
+    resolveCandidateBridgeNoWriteTriggerEligibilityMock.mockResolvedValueOnce({
+      eligible: false,
+      decision: "mark_trailing_pending",
+      reason: "A no-write run is already in flight; mark a trailing pending run.",
+      shouldMarkPending: true,
+      cooldownRemainingMs: 20_000,
+      eventType: "import_completed",
+      noWriteOnly: true,
+    });
+
+    const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
+      userId: "user-1",
+      sessionId: "ses-1",
+      now: FIXED_NOW,
+    });
+
+    expect(result.decision).toBe("skipped_ineligible_trigger");
+    expect(result.eligibilityDecision).toBe("mark_trailing_pending");
+    expect(runNoWriteUnderstandingDarkRunMock).not.toHaveBeenCalled();
   });
 
   it("writes nothing when dark-run output lacks structured proposal data", async () => {
     const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
       userId: "user-1",
       sessionId: "ses-1",
+      now: FIXED_NOW,
     });
 
     expect(result.decision).toBe("skipped_insufficient_proposal");
@@ -219,6 +269,7 @@ describe("import completion internal candidate bridge", () => {
     const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
       userId: "user-1",
       sessionId: "ses-1",
+      now: FIXED_NOW,
     });
 
     expect(result.decision).toBe("skipped_gate_abstain");
@@ -244,6 +295,7 @@ describe("import completion internal candidate bridge", () => {
     const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
       userId: "user-1",
       sessionId: "ses-1",
+      now: FIXED_NOW,
     });
 
     expect(result.decision).toBe("skipped_harness_failed");
@@ -266,6 +318,7 @@ describe("import completion internal candidate bridge", () => {
     const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
       userId: "user-1",
       sessionId: "ses-1",
+      now: FIXED_NOW,
     });
 
     expect(result.decision).toBe("skipped_persistence_blocked");
@@ -282,15 +335,16 @@ describe("import completion internal candidate bridge", () => {
     const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
       userId: "user-1",
       sessionId: "ses-1",
+      now: FIXED_NOW,
     });
 
     expect(result.decision).toBe("created");
     expect(result.persistedConclusionId).toBe("conclusion-1");
-    expect(evaluateNoWriteDarkRunTriggerEligibilityMock).toHaveBeenCalledWith(
+    expect(resolveCandidateBridgeNoWriteTriggerEligibilityMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",
         eventType: "import_completed",
-        noWriteOnly: true,
+        triggerEvidenceAt: FIXED_NOW,
       })
     );
     expect(persistInternalUserMapConclusionCandidateMock).toHaveBeenCalledWith(
