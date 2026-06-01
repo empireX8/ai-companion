@@ -25,11 +25,22 @@ const baseCandidate: InternalUserMapReviewCandidate = {
   evidence: {
     linkCount: 1,
     sourceTypes: { message: 1 },
+    safetyLevels: { internal_only: 1 },
+    linkedSources: [
+      {
+        sourceType: "message",
+        sourceId: "msg-1",
+        safetyLevel: "internal_only",
+      },
+    ],
   },
   diagnostics: {
-    latestRunId: null,
-    latestArtifactId: null,
-    latestArtifactType: null,
+    latestRunId: "run-1",
+    latestArtifactId: "artifact-1",
+    latestArtifactType: "understanding_dark_engine_diagnostics",
+    processorVersion: "understanding-dark-engine-v1",
+    blockedWriteReasons: [],
+    warnings: [],
   },
 };
 
@@ -41,12 +52,45 @@ describe("InternalUserMapReviewWorkbench", () => {
 
     expect(html).toContain("Lifecycle status");
     expect(html).toContain("proposed");
+    expect(html).toContain("Evidence / Provenance");
+    expect(html).toContain("Linked evidence count");
+    expect(html).toContain("message: 1");
     expect(html).toContain("Hold for more evidence");
     expect(html).toContain("Reject");
     expect(html).not.toContain("Promote");
     expect(html).not.toContain("Publish");
     expect(html).not.toContain("quote");
     expect(html).not.toContain("snippet");
+  });
+
+  it("renders empty provenance state without crashing", () => {
+    const html = renderToStaticMarkup(
+      <InternalUserMapReviewWorkbench
+        candidates={[
+          {
+            ...baseCandidate,
+            id: "umc-empty",
+            evidence: {
+              linkCount: 0,
+              sourceTypes: {},
+              safetyLevels: {},
+              linkedSources: [],
+            },
+            diagnostics: {
+              latestRunId: null,
+              latestArtifactId: null,
+              latestArtifactType: null,
+              processorVersion: null,
+              blockedWriteReasons: [],
+              warnings: [],
+            },
+          },
+        ]}
+      />
+    );
+
+    expect(html).toContain("No provenance metadata recorded for this candidate.");
+    expect(html).toContain("Hold for more evidence");
   });
 
   it("renders promote for held candidates and publish for promoted candidates", () => {

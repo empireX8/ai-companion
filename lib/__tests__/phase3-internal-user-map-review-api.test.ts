@@ -14,6 +14,9 @@ const prismaMock = {
     findMany: vi.fn(),
     create: vi.fn(),
   },
+  derivationArtifact: {
+    findMany: vi.fn(),
+  },
 };
 
 vi.mock("@clerk/nextjs/server", () => ({
@@ -36,6 +39,7 @@ describe("Phase 3 internal user-map review candidates API", () => {
       INTERNAL_USER_MAP_REVIEWER_IDS: "reviewer-1",
     };
     authMock.mockResolvedValue({ userId: "reviewer-1" });
+    prismaMock.derivationArtifact.findMany.mockResolvedValue([]);
   });
 
   afterAll(() => {
@@ -81,6 +85,7 @@ describe("Phase 3 internal user-map review candidates API", () => {
         confidenceLevel: "low",
         visibility: "internal_only",
         candidateLifecycleStatus: "proposed",
+        notes: "sourceRun:run-1; decision:pass",
         createdAt: new Date("2026-05-15T10:00:00.000Z"),
         updatedAt: new Date("2026-05-15T11:00:00.000Z"),
       },
@@ -93,6 +98,7 @@ describe("Phase 3 internal user-map review candidates API", () => {
         confidenceLevel: "medium",
         visibility: "internal_only",
         candidateLifecycleStatus: "held_for_more_evidence",
+        notes: null,
         createdAt: new Date("2026-05-15T09:00:00.000Z"),
         updatedAt: new Date("2026-05-15T10:30:00.000Z"),
       },
@@ -102,14 +108,33 @@ describe("Phase 3 internal user-map review candidates API", () => {
       {
         targetId: "umc-internal-1",
         sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        meta: { publicSafetyLevel: "safe_summary" },
       },
       {
         targetId: "umc-internal-1",
         sourceType: "message",
+        sourceId: "msg-1",
+        meta: null,
       },
       {
         targetId: "umc-internal-1",
         sourceType: "pattern_claim",
+        sourceId: "pc-2",
+        meta: null,
+      },
+    ]);
+
+    prismaMock.derivationArtifact.findMany.mockResolvedValueOnce([
+      {
+        id: "artifact-1",
+        type: "understanding_dark_engine_diagnostics",
+        runId: "run-1",
+        payload: {
+          processorVersion: "understanding-dark-engine-v1",
+          warnings: [],
+          blockedWriteReasons: [],
+        },
       },
     ]);
 
@@ -142,11 +167,34 @@ describe("Phase 3 internal user-map review candidates API", () => {
               pattern_claim: 2,
               message: 1,
             },
+            safetyLevels: {
+              safe_summary: 1,
+            },
+            linkedSources: [
+              {
+                sourceType: "pattern_claim",
+                sourceId: "pc-1",
+                safetyLevel: "safe_summary",
+              },
+              {
+                sourceType: "message",
+                sourceId: "msg-1",
+                safetyLevel: null,
+              },
+              {
+                sourceType: "pattern_claim",
+                sourceId: "pc-2",
+                safetyLevel: null,
+              },
+            ],
           },
           diagnostics: {
-            latestRunId: null,
-            latestArtifactId: null,
-            latestArtifactType: null,
+            latestRunId: "run-1",
+            latestArtifactId: "artifact-1",
+            latestArtifactType: "understanding_dark_engine_diagnostics",
+            processorVersion: "understanding-dark-engine-v1",
+            blockedWriteReasons: [],
+            warnings: [],
           },
         },
         {
@@ -163,11 +211,16 @@ describe("Phase 3 internal user-map review candidates API", () => {
           evidence: {
             linkCount: 0,
             sourceTypes: {},
+            safetyLevels: {},
+            linkedSources: [],
           },
           diagnostics: {
             latestRunId: null,
             latestArtifactId: null,
             latestArtifactType: null,
+            processorVersion: null,
+            blockedWriteReasons: [],
+            warnings: [],
           },
         },
       ],
@@ -196,6 +249,8 @@ describe("Phase 3 internal user-map review candidates API", () => {
         select: {
           targetId: true,
           sourceType: true,
+          sourceId: true,
+          meta: true,
         },
       })
     );
@@ -225,6 +280,36 @@ describe("Phase 3 internal user-map review candidates API", () => {
     expect((route as Record<string, unknown>).POST).toBeUndefined();
     expect((route as Record<string, unknown>).PATCH).toBeUndefined();
     expect((route as Record<string, unknown>).DELETE).toBeUndefined();
+  });
+
+  it("does not expose provenance fields on public user-map list responses", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([
+      {
+        id: "umc-visible-1",
+        area: "operating_logic",
+        status: "emerging",
+        visibility: "user_visible",
+        title: "Visible",
+        summary: "Visible summary",
+        confidenceScore: 0.4,
+        confidenceLevel: "low",
+        evidenceCount: 2,
+        sourceDiversity: 2,
+        timeSpreadDays: 3,
+        updatedAt: new Date("2026-05-15T10:00:00.000Z"),
+      },
+    ]);
+
+    const route = await import("../../app/api/user-map/conclusions/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/user-map/conclusions")
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(JSON.stringify(body)).not.toContain("linkedSources");
+    expect(JSON.stringify(body)).not.toContain("safetyLevels");
+    expect(JSON.stringify(body)).not.toContain("latestRunId");
   });
 
   it("keeps public user-map list route hiding internal_only rows", async () => {

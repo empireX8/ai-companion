@@ -40,16 +40,51 @@ function formatTimestamp(value: string): string {
   return date.toISOString();
 }
 
-function renderSourceTypeSummary(item: InternalUserMapReviewCandidate): string {
-  const entries = Object.entries(item.evidence.sourceTypes);
+function renderSourceTypeSummary(sourceTypes: Record<string, number>): string {
+  const entries = Object.entries(sourceTypes);
   if (entries.length === 0) {
     return "None";
   }
 
   return entries
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([sourceType, count]) => `${sourceType} (${count})`)
+    .map(([sourceType, count]) => `${sourceType}: ${count}`)
     .join(", ");
+}
+
+function renderSafetyLevelSummary(safetyLevels: Record<string, number>): string {
+  const entries = Object.entries(safetyLevels);
+  if (entries.length === 0) {
+    return "Not recorded";
+  }
+
+  return entries
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([level, count]) => `${level}: ${count}`)
+    .join(", ");
+}
+
+function renderLinkedSourceIds(item: InternalUserMapReviewCandidate): string {
+  if (item.evidence.linkedSources.length === 0) {
+    return "None";
+  }
+
+  return item.evidence.linkedSources
+    .map((source) => {
+      const safetySuffix = source.safetyLevel ? ` · ${source.safetyLevel}` : "";
+      return `${source.sourceType}/${source.sourceId}${safetySuffix}`;
+    })
+    .join("; ");
+}
+
+function hasProvenanceMetadata(item: InternalUserMapReviewCandidate): boolean {
+  return (
+    item.evidence.linkCount > 0 ||
+    Boolean(item.diagnostics.latestRunId) ||
+    Boolean(item.diagnostics.latestArtifactId) ||
+    item.diagnostics.blockedWriteReasons.length > 0 ||
+    item.diagnostics.warnings.length > 0
+  );
 }
 
 export function InternalUserMapReviewWorkbench({ candidates }: Props) {
@@ -227,27 +262,76 @@ export function InternalUserMapReviewWorkbench({ candidates }: Props) {
                 <dt className="label-meta text-xs">Updated</dt>
                 <dd>{formatTimestamp(item.updatedAt)}</dd>
               </div>
-              <div>
-                <dt className="label-meta text-xs">Evidence link count</dt>
-                <dd>{item.evidence.linkCount}</dd>
-              </div>
-              <div>
-                <dt className="label-meta text-xs">Evidence source types</dt>
-                <dd>{renderSourceTypeSummary(item)}</dd>
-              </div>
-              <div>
-                <dt className="label-meta text-xs">Latest run id</dt>
-                <dd>{item.diagnostics.latestRunId ?? "None"}</dd>
-              </div>
-              <div>
-                <dt className="label-meta text-xs">Latest artifact id</dt>
-                <dd>{item.diagnostics.latestArtifactId ?? "None"}</dd>
-              </div>
-              <div>
-                <dt className="label-meta text-xs">Latest artifact type</dt>
-                <dd>{item.diagnostics.latestArtifactType ?? "None"}</dd>
-              </div>
             </dl>
+
+            <section
+              className="mt-4 rounded-md border border-border/60 bg-muted/20 p-4"
+              aria-label="Evidence and provenance"
+              data-testid={`provenance-${item.id}`}
+            >
+              <h3 className="label-meta mb-3 text-xs font-semibold uppercase tracking-wide">
+                Evidence / Provenance
+              </h3>
+
+              {hasProvenanceMetadata(item) ? (
+                <dl className="grid grid-cols-1 gap-2 text-sm text-foreground md:grid-cols-2">
+                  <div>
+                    <dt className="label-meta text-xs">Linked evidence count</dt>
+                    <dd>{item.evidence.linkCount}</dd>
+                  </div>
+                  <div>
+                    <dt className="label-meta text-xs">Source type breakdown</dt>
+                    <dd>{renderSourceTypeSummary(item.evidence.sourceTypes)}</dd>
+                  </div>
+                  <div>
+                    <dt className="label-meta text-xs">Safety / projection levels</dt>
+                    <dd>{renderSafetyLevelSummary(item.evidence.safetyLevels)}</dd>
+                  </div>
+                  <div>
+                    <dt className="label-meta text-xs">Linked source ids</dt>
+                    <dd className="break-all">{renderLinkedSourceIds(item)}</dd>
+                  </div>
+                  <div>
+                    <dt className="label-meta text-xs">Derivation run</dt>
+                    <dd>{item.diagnostics.latestRunId ?? "None"}</dd>
+                  </div>
+                  <div>
+                    <dt className="label-meta text-xs">Derivation artifact</dt>
+                    <dd>
+                      {item.diagnostics.latestArtifactId
+                        ? `${item.diagnostics.latestArtifactId}${
+                            item.diagnostics.latestArtifactType
+                              ? ` (${item.diagnostics.latestArtifactType})`
+                              : ""
+                          }`
+                        : "None"}
+                    </dd>
+                  </div>
+                  {item.diagnostics.processorVersion && (
+                    <div>
+                      <dt className="label-meta text-xs">Processor version</dt>
+                      <dd>{item.diagnostics.processorVersion}</dd>
+                    </div>
+                  )}
+                  {item.diagnostics.warnings.length > 0 && (
+                    <div className="md:col-span-2">
+                      <dt className="label-meta text-xs">Persisted warnings</dt>
+                      <dd>{item.diagnostics.warnings.join(", ")}</dd>
+                    </div>
+                  )}
+                  {item.diagnostics.blockedWriteReasons.length > 0 && (
+                    <div className="md:col-span-2">
+                      <dt className="label-meta text-xs">Persisted blocked reasons</dt>
+                      <dd>{item.diagnostics.blockedWriteReasons.join(", ")}</dd>
+                    </div>
+                  )}
+                </dl>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No provenance metadata recorded for this candidate.
+                </p>
+              )}
+            </section>
 
             <div className="mt-4 border-t border-border/40 pt-4">
               <p className="label-meta mb-2 text-xs">Operator actions</p>
