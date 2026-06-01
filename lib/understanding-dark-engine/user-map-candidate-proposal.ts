@@ -10,6 +10,11 @@ import type { EvidencePacket, EvidencePacketItem, GateEvaluationTarget } from ".
 const TITLE_MAX_LENGTH = 120;
 const SUMMARY_MAX_LENGTH = 600;
 
+const PROPOSAL_SUMMARY_WORDING_SOURCE_TYPES = new Set<UnderstandingLinkSourceType>([
+  "pattern_claim",
+  "contradiction_node",
+]);
+
 const DISALLOWED_PROPOSAL_SOURCE_TYPES = new Set<UnderstandingLinkSourceType>([
   "timeline_aggregation",
   "user_correction",
@@ -60,6 +65,12 @@ function readNormalizedSafeSummary(item: EvidencePacketItem): string | null {
   return normalizeWhitespace(summary);
 }
 
+function isProposalSummaryWordingSourceType(
+  sourceType: UnderstandingLinkSourceType
+): boolean {
+  return PROPOSAL_SUMMARY_WORDING_SOURCE_TYPES.has(sourceType);
+}
+
 function collectDistinctSafeSummariesFromSelections(args: {
   packet: EvidencePacket;
   evidenceSelections: UserMapCandidateEvidenceSelection[];
@@ -73,6 +84,10 @@ function collectDistinctSafeSummariesFromSelections(args: {
   const summaries: string[] = [];
 
   for (const selection of args.evidenceSelections) {
+    if (!isProposalSummaryWordingSourceType(selection.sourceType)) {
+      continue;
+    }
+
     const item = packetLookup.get(`${selection.sourceType}|${selection.sourceId}`);
     if (!item) {
       continue;

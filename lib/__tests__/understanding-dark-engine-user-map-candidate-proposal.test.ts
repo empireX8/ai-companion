@@ -393,10 +393,10 @@ describe("structured UserMap candidate proposal builder", () => {
         publicSafeSummary: "Conflict spike pattern.",
       },
       {
-        sourceType: "message",
-        sourceId: "m-1",
+        sourceType: "contradiction_node",
+        sourceId: "cn-1",
         publicSafetyLevel: "safe_summary",
-        publicSafeSummary: "Evening messages show repeated tension.",
+        publicSafeSummary: "Evening tension keeps resurfacing.",
       },
     ]);
     const evaluation = evaluatePacket(packet);
@@ -408,11 +408,48 @@ describe("structured UserMap candidate proposal builder", () => {
 
     expect(proposal?.title).toBe("Conflict spike pattern.");
     expect(proposal?.summary).toBe(
-      "Conflict spike pattern. Evening messages show repeated tension."
+      "Conflict spike pattern. Evening tension keeps resurfacing."
     );
     expect(proposal?.summary).not.toBe(proposal?.title);
     expect(proposal?.summary).not.toContain("snippet-");
     expect(proposal?.summary).not.toContain("quote-");
+  });
+
+  it("excludes import_record safe summaries from proposal summary text", () => {
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: "Conflict spike pattern.",
+      },
+      {
+        sourceType: "import_record",
+        sourceId: "imp-1",
+        publicSafetyLevel: "safe_summary",
+        publicSafeSummary: "completed conv=3 msg=120",
+      },
+      {
+        sourceType: "message",
+        sourceId: "m-1",
+      },
+    ]);
+    const evaluation = evaluatePacket(packet);
+    const proposal = buildStructuredUserMapCandidateProposal({
+      packet,
+      evaluation,
+      target: DEFAULT_TARGET,
+    });
+
+    expect(proposal?.title).toBe("Conflict spike pattern.");
+    expect(proposal?.summary).toBe("Conflict spike pattern.");
+    expect(proposal?.summary).not.toContain("conv=3");
+    expect(proposal?.summary).not.toContain("completed");
+    expect(proposal?.evidenceSelections).toEqual([
+      { sourceType: "import_record", sourceId: "imp-1" },
+      { sourceType: "message", sourceId: "m-1" },
+      { sourceType: "pattern_claim", sourceId: "pc-1" },
+    ]);
   });
 
   it("deduplicates repeated safe summaries after whitespace normalization", () => {
@@ -453,8 +490,8 @@ describe("structured UserMap candidate proposal builder", () => {
         publicSafeSummary: anchorSummary,
       },
       {
-        sourceType: "message",
-        sourceId: "m-1",
+        sourceType: "contradiction_node",
+        sourceId: "cn-1",
         publicSafetyLevel: "safe_summary",
         publicSafeSummary: additionalSummary,
       },
