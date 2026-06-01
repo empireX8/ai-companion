@@ -7,7 +7,7 @@ import {
 } from "./app-message-candidate-bridge";
 import { evaluateNoWriteDarkRunOutput } from "./dark-run-evaluation-harness";
 import { runNoWriteUnderstandingDarkRun } from "./dark-run-orchestrator";
-import { evaluateNoWriteDarkRunTriggerEligibility } from "./no-write-trigger-eligibility";
+import { resolveCandidateBridgeNoWriteTriggerEligibility } from "./no-write-trigger-runtime-state";
 import { persistInternalUserMapConclusionCandidate } from "./user-map-candidate-persistence";
 
 export type ImportCompletionCandidateBridgeDecision =
@@ -35,11 +35,15 @@ export async function tryCreateInternalUserMapCandidateFromImportCompletion(args
   const logTag = "[IMPORT_COMPLETION_CANDIDATE_BRIDGE]";
 
   const now = args.now ?? new Date();
-  const eligibility = evaluateNoWriteDarkRunTriggerEligibility({
+  const db = args.db ?? prismadb;
+  const eligibility = await resolveCandidateBridgeNoWriteTriggerEligibility({
     userId: args.userId,
     eventType: "import_completed",
     now,
-    noWriteOnly: true,
+    triggerEvidenceAt: now,
+    db,
+    logTag,
+    context: { sessionId: args.sessionId },
   });
 
   if (!eligibility.eligible) {
@@ -50,7 +54,6 @@ export async function tryCreateInternalUserMapCandidateFromImportCompletion(args
     };
   }
 
-  const db = args.db ?? prismadb;
   const darkRunOutput = (await runNoWriteUnderstandingDarkRun({
     userId: args.userId,
     now,

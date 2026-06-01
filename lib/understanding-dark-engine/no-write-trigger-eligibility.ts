@@ -40,6 +40,11 @@ export type NoWriteDarkRunTriggerEligibilityInput = {
   now?: Date;
   lastRunAt?: Date | string | null;
   lastEvidenceAt?: Date | string | null;
+  /**
+   * Prior-run evidence window end used for no-new-evidence suppression.
+   * Falls back to lastRunAt when omitted.
+   */
+  lastEvidenceCutoffAt?: Date | string | null;
   inFlight?: boolean;
   pending?: boolean;
   cooldownMs?: number;
@@ -145,6 +150,7 @@ export function evaluateNoWriteDarkRunTriggerEligibility(
   const cooldownMs = Math.max(input.cooldownMs ?? DEFAULT_NO_WRITE_DARK_RUN_COOLDOWN_MS, 0);
   const lastRunAt = parseDate(input.lastRunAt);
   const lastEvidenceAt = parseDate(input.lastEvidenceAt);
+  const lastEvidenceCutoffAt = parseDate(input.lastEvidenceCutoffAt) ?? lastRunAt;
   const userId = typeof input.userId === "string" ? input.userId.trim() : "";
   const manualOverride = Boolean(
     input.allowManualOverride && eventType === "manual_internal"
@@ -187,9 +193,9 @@ export function evaluateNoWriteDarkRunTriggerEligibility(
 
   if (
     !manualOverride &&
-    lastRunAt &&
+    lastEvidenceCutoffAt &&
     lastEvidenceAt &&
-    lastEvidenceAt.getTime() <= lastRunAt.getTime()
+    lastEvidenceAt.getTime() <= lastEvidenceCutoffAt.getTime()
   ) {
     return buildResult({
       eligible: false,
