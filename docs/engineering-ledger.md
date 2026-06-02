@@ -643,7 +643,7 @@
 - **What remains partial:**
   - No expiry scheduler
   - Legacy `null` lifecycle rows cannot use operator lifecycle buttons
-- **Next step:** Operator expiry/legacy-row hardening only if product requests; UserMap candidate creation loop closed in PR #11–#16 (see ledger entries below)
+- **Next step:** Operator expiry/legacy-row hardening only if product requests; UserMap proposal/bridge path code-complete in PR #11–#16 with unresolved runtime persistence caveat (see ledger entries below)
 
 ---
 
@@ -687,8 +687,8 @@
 
 ## UserMapConclusion internal candidate loop — PR #11–#16 closeout (2026-06-02)
 
-- **Status:** code-complete for engineering closeout on `main` @ `7b871ad`
-- **Scope:** End-to-end internal `UserMapConclusion` candidate path: structured proposal → APP/import bridges → runtime trigger state → operator provenance readout → proposal title/summary hardening.
+- **Status:** proposal/bridge path code-complete with unresolved runtime persistence caveat on `main` @ `7b871ad` (PR #11–#16 merged; fresh e2e persistence validation still pending)
+- **Scope:** Internal `UserMapConclusion` candidate path (code): structured proposal → APP/import bridges → runtime trigger state → operator provenance readout → proposal title/summary hardening.
 
 ### PR #11 — Structured UserMap candidate proposal output (`3670988`, `cc3aea9`)
 
@@ -729,13 +729,13 @@
 
 Ephemeral validation against local dev DB on auto-selected user `user_34TUYA53pI1QRLK73O22Kve1a1G` at `7b871ad`:
 
-- **Passed:** trigger eligibility; dry-run gates `pass`; `userMapCandidateProposal` present; title shaping (≤120 chars, normalized); summary shaping (600 chars, distinct from title); targeted proposal + bridge tests (21 passed).
-- **Not re-proven on this user:** bridge persistence `skipped_persistence_blocked` with `blockedWriteReasons: ["LINK_WRITE_FAILED"]` — no `UserMapConclusion` row or evidence links observed. Orphan `DerivationRun` / diagnostics artifact from the attempt were removed after validation.
-- **Interpretation:** Loop is **code-complete**; treat `LINK_WRITE_FAILED` as a **data/environment caveat** on some dev users (evidence-link ownership), not a missing production slice. Earlier dev validation successfully created candidates end-to-end.
-- **No production code change required** from this audit.
+- **Proposal path validated:** trigger eligibility; dry-run gates `pass`; `userMapCandidateProposal` present; title shaping (≤120 chars, normalized); summary shaping (600 chars, distinct from title); targeted proposal + bridge unit tests (21 passed).
+- **Bridge persistence not re-proven on this dev user:** `skipped_persistence_blocked` with `blockedWriteReasons: ["LINK_WRITE_FAILED"]` — no `UserMapConclusion` row or evidence links observed. Orphan `DerivationRun` / diagnostics artifact from the attempt were removed after validation. `LINK_WRITE_FAILED` is unresolved (catch-all for evidence-link write exceptions other than ownership mapping to `UNRESOLVED_OWNERSHIP` in `persistInternalUserMapConclusionCandidate`); **LINK_WRITE_FAILED follow-up debug recommended** in a separate targeted slice before claiming fresh end-to-end persistence validation.
+- **Docs-only audit:** no production code change from this closeout pass.
 
-### What remains partial (loop-adjacent only)
+### What remains partial
 
+- **Fresh e2e persistence validation still pending** (bridge write path on dev/prod-like data after post-PR #16 run)
 - No expiry scheduler for `internal_only` candidates
 - Legacy `candidateLifecycleStatus: null` rows lack operator lifecycle buttons
 - No other candidate families (Investigation, FieldworkAssignment, ModelUpdate candidates, agents, Intelligence Library)
