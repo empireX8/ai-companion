@@ -3,12 +3,20 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPublicActiveInvestigationWhere,
+  buildPublicInvestigationCandidateLifecycleOrFilter,
   isPublicActiveInvestigationCandidateLifecycle,
-  PUBLIC_INVESTIGATION_EXCLUDED_CANDIDATE_LIFECYCLE_STATUSES,
+  PUBLIC_INVESTIGATION_ALLOWED_CANDIDATE_LIFECYCLE_STATUSES,
   PUBLIC_INVESTIGATION_VISIBILITY,
 } from "../investigation-public-visibility";
 
 describe("investigation public visibility guard", () => {
+  it("pins the fail-closed public lifecycle allow-list", () => {
+    expect(PUBLIC_INVESTIGATION_ALLOWED_CANDIDATE_LIFECYCLE_STATUSES).toEqual([
+      null,
+      CandidateLifecycleStatus.promoted,
+    ]);
+  });
+
   it("builds Active Questions where with user_visible and public lifecycle allowlist", () => {
     expect(buildPublicActiveInvestigationWhere({ userId: "user-1" })).toEqual({
       userId: "user-1",
@@ -16,10 +24,7 @@ describe("investigation public visibility guard", () => {
       status: {
         in: ["open", "gathering_evidence", "testing", "resolving", "reopened"],
       },
-      OR: [
-        { candidateLifecycleStatus: null },
-        { candidateLifecycleStatus: CandidateLifecycleStatus.promoted },
-      ],
+      OR: buildPublicInvestigationCandidateLifecycleOrFilter(),
     });
     expect(PUBLIC_INVESTIGATION_VISIBILITY).toBe(
       InvestigationVisibility.user_visible
@@ -36,45 +41,21 @@ describe("investigation public visibility guard", () => {
     });
   });
 
-  it("excludes internal candidate lifecycle states from public eligibility", () => {
-    expect(PUBLIC_INVESTIGATION_EXCLUDED_CANDIDATE_LIFECYCLE_STATUSES).toEqual([
+  it("uses the same allow-list for Prisma OR filters and lifecycle eligibility checks", () => {
+    for (const status of PUBLIC_INVESTIGATION_ALLOWED_CANDIDATE_LIFECYCLE_STATUSES) {
+      expect(isPublicActiveInvestigationCandidateLifecycle(status)).toBe(true);
+    }
+
+    expect(isPublicActiveInvestigationCandidateLifecycle(undefined)).toBe(false);
+
+    for (const status of [
       CandidateLifecycleStatus.proposed,
       CandidateLifecycleStatus.held_for_more_evidence,
       CandidateLifecycleStatus.rejected,
       CandidateLifecycleStatus.superseded,
       CandidateLifecycleStatus.expired,
-    ]);
-
-    expect(isPublicActiveInvestigationCandidateLifecycle(null)).toBe(true);
-    expect(
-      isPublicActiveInvestigationCandidateLifecycle(
-        CandidateLifecycleStatus.promoted
-      )
-    ).toBe(true);
-    expect(
-      isPublicActiveInvestigationCandidateLifecycle(
-        CandidateLifecycleStatus.proposed
-      )
-    ).toBe(false);
-    expect(
-      isPublicActiveInvestigationCandidateLifecycle(
-        CandidateLifecycleStatus.held_for_more_evidence
-      )
-    ).toBe(false);
-    expect(
-      isPublicActiveInvestigationCandidateLifecycle(
-        CandidateLifecycleStatus.rejected
-      )
-    ).toBe(false);
-    expect(
-      isPublicActiveInvestigationCandidateLifecycle(
-        CandidateLifecycleStatus.superseded
-      )
-    ).toBe(false);
-    expect(
-      isPublicActiveInvestigationCandidateLifecycle(
-        CandidateLifecycleStatus.expired
-      )
-    ).toBe(false);
+    ]) {
+      expect(isPublicActiveInvestigationCandidateLifecycle(status)).toBe(false);
+    }
   });
 });

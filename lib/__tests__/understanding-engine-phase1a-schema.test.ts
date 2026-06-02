@@ -1,7 +1,9 @@
 import {
+  CandidateLifecycleStatus,
   FieldworkStatus,
   InvestigationSeedType,
   InvestigationStatus,
+  InvestigationVisibility,
   ModelUpdateType,
   ModelUpdateVisibility,
   UnderstandingLinkRole,
@@ -86,6 +88,25 @@ describe("Phase 1A enum contracts", () => {
         "fieldwork_result",
         "model_uncertainty",
         "user_correction",
+      ])
+    );
+  });
+
+  it("locks InvestigationVisibility", () => {
+    expect(new Set(Object.values(InvestigationVisibility))).toEqual(
+      new Set(["user_visible", "internal_only"])
+    );
+  });
+
+  it("locks CandidateLifecycleStatus", () => {
+    expect(new Set(Object.values(CandidateLifecycleStatus))).toEqual(
+      new Set([
+        "proposed",
+        "held_for_more_evidence",
+        "rejected",
+        "promoted",
+        "superseded",
+        "expired",
       ])
     );
   });

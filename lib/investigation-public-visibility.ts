@@ -11,17 +11,19 @@ export const PUBLIC_INVESTIGATION_VISIBILITY =
   InvestigationVisibility.user_visible;
 
 /**
- * Candidate lifecycle values that must not appear on public Active Questions surfaces.
- * Null (legacy/manual rows) and promoted (operator-accepted) remain eligible when user_visible.
+ * Fail-closed allow-list for Investigation rows on public Active Questions surfaces.
+ * Only legacy/manual null and operator-promoted lifecycle values are eligible.
  */
-export const PUBLIC_INVESTIGATION_EXCLUDED_CANDIDATE_LIFECYCLE_STATUSES: CandidateLifecycleStatus[] =
-  [
-    CandidateLifecycleStatus.proposed,
-    CandidateLifecycleStatus.held_for_more_evidence,
-    CandidateLifecycleStatus.rejected,
-    CandidateLifecycleStatus.superseded,
-    CandidateLifecycleStatus.expired,
-  ];
+export const PUBLIC_INVESTIGATION_ALLOWED_CANDIDATE_LIFECYCLE_STATUSES: readonly (
+  | null
+  | CandidateLifecycleStatus
+)[] = [null, CandidateLifecycleStatus.promoted];
+
+export function buildPublicInvestigationCandidateLifecycleOrFilter(): Prisma.InvestigationWhereInput["OR"] {
+  return PUBLIC_INVESTIGATION_ALLOWED_CANDIDATE_LIFECYCLE_STATUSES.map(
+    (candidateLifecycleStatus) => ({ candidateLifecycleStatus })
+  );
+}
 
 export type PublicActiveInvestigationWhereInput = {
   userId: string;
@@ -42,23 +44,17 @@ export function buildPublicActiveInvestigationWhere(
     ...(input.id ? { id: input.id } : {}),
     visibility: PUBLIC_INVESTIGATION_VISIBILITY,
     status: statusFilter,
-    OR: [
-      { candidateLifecycleStatus: null },
-      { candidateLifecycleStatus: CandidateLifecycleStatus.promoted },
-    ],
+    OR: buildPublicInvestigationCandidateLifecycleOrFilter(),
   };
 }
 
 export function isPublicActiveInvestigationCandidateLifecycle(
   status: CandidateLifecycleStatus | null | undefined
 ): boolean {
-  if (status === null || status === undefined) {
-    return true;
+  if (status === undefined) {
+    return false;
   }
-  if (status === CandidateLifecycleStatus.promoted) {
-    return true;
-  }
-  return !PUBLIC_INVESTIGATION_EXCLUDED_CANDIDATE_LIFECYCLE_STATUSES.includes(
+  return PUBLIC_INVESTIGATION_ALLOWED_CANDIDATE_LIFECYCLE_STATUSES.includes(
     status
   );
 }
