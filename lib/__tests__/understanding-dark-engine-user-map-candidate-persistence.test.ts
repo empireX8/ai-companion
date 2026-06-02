@@ -1,9 +1,14 @@
 import {
+  Prisma,
   UserMapConclusionStatus,
   type UnderstandingLinkSourceType,
 } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  UnderstandingEvidenceLinkDuplicateError,
+  UnderstandingEvidenceLinkValidationError,
+} from "../understanding-evidence-link-writer";
 import {
   persistInternalUserMapConclusionCandidate,
   type PersistInternalUserMapConclusionCandidateInput,
@@ -198,9 +203,53 @@ function buildEvaluation(args: {
   };
 }
 
+function expectTransactionFailureDiagnostics(
+  payload: Awaited<
+    ReturnType<typeof persistInternalUserMapConclusionCandidate>
+  >["payload"],
+  expected: {
+    blockedReason: string;
+    beforeAnyLinkAttempt: boolean;
+    evidenceLinksAttempted: number;
+    errorName?: string;
+    prismaCode?: string | null;
+  }
+) {
+  expect(payload.blockedWriteReasons).toContain(expected.blockedReason);
+  expect(payload.transactionFailureErrorName).toBe(
+    expected.errorName ?? "Error"
+  );
+  expect(payload.transactionFailureErrorMessage).toEqual(expect.any(String));
+  expect(payload.transactionFailurePrismaCode).toBe(expected.prismaCode ?? null);
+  expect(payload.transactionFailureBeforeAnyLinkAttempt).toBe(
+    expected.beforeAnyLinkAttempt
+  );
+  expect(payload.transactionFailureEvidenceLinksAttempted).toBe(
+    expected.evidenceLinksAttempted
+  );
+  expect(
+    payload.notes.some((note) => note.startsWith("transactionFailureErrorName:"))
+  ).toBe(true);
+  expect(
+    payload.notes.some((note) => note.startsWith("transactionFailureErrorMessage:"))
+  ).toBe(true);
+  expect(
+    payload.notes.some((note) =>
+      note.startsWith("transactionFailureBeforeAnyLinkAttempt:")
+    )
+  ).toBe(true);
+  expect(
+    payload.notes.some((note) =>
+      note.startsWith("transactionFailureEvidenceLinksAttempted:")
+    )
+  ).toBe(true);
+}
+
 function createCandidateDbMock(args?: {
   seedConclusions?: InMemoryConclusion[];
+  failConclusionCreate?: boolean;
   failLinkWriteAtCall?: number;
+  failLinkWriteError?: Error;
 }) {
   const runs: Array<Record<string, unknown>> = [];
   const artifacts: Array<Record<string, unknown>> = [];
@@ -245,6 +294,16 @@ function createCandidateDbMock(args?: {
         );
       }),
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        if (args?.failConclusionCreate) {
+          throw new Prisma.PrismaClientKnownRequestError(
+            "Foreign key constraint failed on userMapConclusion.create",
+            {
+              code: "P2003",
+              clientVersion: "test",
+            }
+          );
+        }
+
         const created: InMemoryConclusion = {
           id: `umc-${conclusions.length + 1}`,
           userId: data.userId as string,
@@ -266,7 +325,7 @@ function createCandidateDbMock(args?: {
         linkWriteCalls += 1;
 
         if (args?.failLinkWriteAtCall && linkWriteCalls === args.failLinkWriteAtCall) {
-          throw new Error("forced link write failure");
+          throw args.failLinkWriteError ?? new Error("forced link write failure");
         }
 
         linkSeq += 1;
@@ -467,6 +526,8 @@ describe("user-map candidate persistence (manual/internal)", () => {
     expect(result.payload.evidenceLinksAttempted).toBe(2);
     expect(result.payload.evidenceLinksWritten).toBe(2);
     expect(result.payload.blockedWriteReasons).toHaveLength(0);
+    expect(result.payload.transactionFailureErrorName).toBeNull();
+    expect(result.payload.transactionFailureBeforeAnyLinkAttempt).toBeNull();
     expect(result.payload.dryRunOnly).toBe(false);
     expect(result.payload.candidateWritesEnabled).toBe(true);
     expect(result.payload.evidenceLinkWritesEnabled).toBe(true);
@@ -727,8 +788,190 @@ describe("user-map candidate persistence (manual/internal)", () => {
 
     expect(result.payload.candidatesWritten).toBe(0);
     expect(result.payload.rollbackCount).toBe(1);
-    expect(result.payload.blockedWriteReasons).toContain("LINK_WRITE_FAILED");
+    expectTransactionFailureDiagnostics(result.payload, {
+      blockedReason: "LINK_WRITE_FAILED",
+      beforeAnyLinkAttempt: false,
+      evidenceLinksAttempted: 2,
+      errorName: "Error",
+    });
     expect(result.payload.evidenceLinksWritten).toBe(0);
+    expect(mock.conclusions).toHaveLength(0);
+    expect(mock.links).toHaveLength(0);
+  });
+
+  it("classifies conclusion create failure separately from link write failure", async () => {
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "claim-1",
+        role: "signal",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      },
+      {
+        sourceType: "message",
+        sourceId: "msg-1",
+        role: "receipt",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      },
+    ]);
+    const evaluation = buildEvaluation({ packet, decision: "pass" });
+    const mock = createCandidateDbMock({ failConclusionCreate: true });
+
+    const result = await persistInternalUserMapConclusionCandidate({
+      userId: "user-1",
+      area: "operating_logic",
+      title: "Conclusion create failure",
+      summary: "Should fail before any evidence link attempt.",
+      target: {
+        requestedStatus: UserMapConclusionStatus.emerging,
+        identityLevelClaim: false,
+        proposedSummary: "Should fail before any evidence link attempt.",
+        requiresReceipt: true,
+      },
+      db: mock.db,
+      now: FIXED_NOW,
+      packet,
+      evaluation,
+      evidenceSelections: [
+        { sourceType: "pattern_claim", sourceId: "claim-1" },
+        { sourceType: "message", sourceId: "msg-1" },
+      ],
+    });
+
+    expect(result.payload.candidatesWritten).toBe(0);
+    expect(result.payload.rollbackCount).toBe(1);
+    expectTransactionFailureDiagnostics(result.payload, {
+      blockedReason: "CONCLUSION_WRITE_FAILED",
+      beforeAnyLinkAttempt: true,
+      evidenceLinksAttempted: 0,
+      errorName: "PrismaClientKnownRequestError",
+      prismaCode: "P2003",
+    });
+    expect(result.payload.blockedWriteReasons).not.toContain("LINK_WRITE_FAILED");
+    expect(mock.conclusions).toHaveLength(0);
+    expect(mock.links).toHaveLength(0);
+  });
+
+  it("classifies duplicate evidence-link errors separately from generic link failures", async () => {
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "claim-1",
+        role: "signal",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      },
+      {
+        sourceType: "message",
+        sourceId: "msg-1",
+        role: "receipt",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      },
+    ]);
+    const evaluation = buildEvaluation({ packet, decision: "pass" });
+    const mock = createCandidateDbMock({
+      failLinkWriteAtCall: 1,
+      failLinkWriteError: new UnderstandingEvidenceLinkDuplicateError(),
+    });
+
+    const result = await persistInternalUserMapConclusionCandidate({
+      userId: "user-1",
+      area: "operating_logic",
+      title: "Duplicate link candidate",
+      summary: "First evidence link write is a duplicate.",
+      target: {
+        requestedStatus: UserMapConclusionStatus.emerging,
+        identityLevelClaim: false,
+        proposedSummary: "First evidence link write is a duplicate.",
+        requiresReceipt: true,
+      },
+      db: mock.db,
+      now: FIXED_NOW,
+      packet,
+      evaluation,
+      evidenceSelections: [
+        { sourceType: "pattern_claim", sourceId: "claim-1" },
+        { sourceType: "message", sourceId: "msg-1" },
+      ],
+    });
+
+    expect(result.payload.rollbackCount).toBe(1);
+    expectTransactionFailureDiagnostics(result.payload, {
+      blockedReason: "EVIDENCE_LINK_DUPLICATE",
+      beforeAnyLinkAttempt: false,
+      evidenceLinksAttempted: 1,
+      errorName: "UnderstandingEvidenceLinkDuplicateError",
+    });
+    expect(result.payload.blockedWriteReasons).not.toContain("LINK_WRITE_FAILED");
+    expect(mock.conclusions).toHaveLength(0);
+    expect(mock.links).toHaveLength(0);
+  });
+
+  it("maps evidence-link ownership validation failures to UNRESOLVED_OWNERSHIP", async () => {
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "claim-1",
+        role: "signal",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      },
+      {
+        sourceType: "message",
+        sourceId: "msg-1",
+        role: "receipt",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      },
+    ]);
+    const evaluation = buildEvaluation({ packet, decision: "pass" });
+    const mock = createCandidateDbMock({
+      failLinkWriteAtCall: 2,
+      failLinkWriteError: new UnderstandingEvidenceLinkValidationError({
+        field: "sourceId",
+        message:
+          "Source not found for authenticated user or source type is not verifiable in Phase 1B",
+      }),
+    });
+
+    const result = await persistInternalUserMapConclusionCandidate({
+      userId: "user-1",
+      area: "operating_logic",
+      title: "Ownership validation failure",
+      summary: "Second link fails ownership validation at write time.",
+      target: {
+        requestedStatus: UserMapConclusionStatus.emerging,
+        identityLevelClaim: false,
+        proposedSummary: "Second link fails ownership validation at write time.",
+        requiresReceipt: true,
+      },
+      db: mock.db,
+      now: FIXED_NOW,
+      packet,
+      evaluation,
+      evidenceSelections: [
+        { sourceType: "pattern_claim", sourceId: "claim-1" },
+        { sourceType: "message", sourceId: "msg-1" },
+      ],
+    });
+
+    expect(result.payload.rollbackCount).toBe(1);
+    expectTransactionFailureDiagnostics(result.payload, {
+      blockedReason: "UNRESOLVED_OWNERSHIP",
+      beforeAnyLinkAttempt: false,
+      evidenceLinksAttempted: 2,
+      errorName: "UnderstandingEvidenceLinkValidationError",
+    });
+    expect(result.payload.blockedWriteReasons).not.toContain("LINK_WRITE_FAILED");
     expect(mock.conclusions).toHaveLength(0);
     expect(mock.links).toHaveLength(0);
   });
