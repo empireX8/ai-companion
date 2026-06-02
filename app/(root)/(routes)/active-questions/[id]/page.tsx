@@ -7,10 +7,8 @@ import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../../../../../lib/public-continuity-registry";
 import { resolvePublicLinkedObjectHref } from "@/lib/public-linked-object-continuity";
 import prismadb from "@/lib/prismadb";
-import {
-  ACTIVE_QUESTION_VISIBLE_STATUSES,
-  toActiveQuestionDetailItem,
-} from "@/lib/public-intelligence-safe-slice";
+import { buildPublicActiveInvestigationWhere } from "@/lib/active-questions";
+import { toActiveQuestionDetailItem } from "@/lib/public-intelligence-safe-slice";
 
 export const dynamic = "force-dynamic";
 
@@ -59,11 +57,7 @@ export default async function ActiveQuestionDetailPage({
 
   const { id } = await params;
   const row = await prismadb.investigation.findFirst({
-    where: {
-      id,
-      userId,
-      status: { in: ACTIVE_QUESTION_VISIBLE_STATUSES },
-    },
+    where: buildPublicActiveInvestigationWhere({ userId, id }),
     select: {
       id: true,
       title: true,

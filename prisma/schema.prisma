@@ -711,6 +711,11 @@ enum InvestigationStatus {
   abandoned
 }
 
+enum InvestigationVisibility {
+  user_visible
+  internal_only
+}
+
 enum InvestigationSeedType {
   contradiction
   pattern
@@ -832,25 +837,28 @@ model UserMapConclusion {
 }
 
 model Investigation {
-  id                              String                @id @default(cuid())
-  userId                          String
-  title                           String
-  organizingQuestion              String
-  status                          InvestigationStatus
-  seedType                        InvestigationSeedType
-  competingTheories               Json
-  evidenceNeeded                  Json
-  resolutionSummary               String?
-  resolvedAt                      DateTime?
+  id                       String                     @id @default(cuid())
+  userId                   String
+  title                    String
+  organizingQuestion       String
+  status                   InvestigationStatus
+  visibility               InvestigationVisibility    @default(user_visible)
+  candidateLifecycleStatus CandidateLifecycleStatus?
+  seedType                 InvestigationSeedType
+  competingTheories        Json
+  evidenceNeeded           Json
+  resolutionSummary        String?
+  resolvedAt               DateTime?
   resolvedIntoUserMapConclusionId String?
-  reopenedAt                      DateTime?
-  reopenReason                    String?
-  priority                        Int?
-  createdAt                       DateTime              @default(now())
-  updatedAt                       DateTime              @updatedAt
-  resolvedIntoUserMapConclusion   UserMapConclusion?    @relation("InvestigationResolvedIntoConclusion", fields: [resolvedIntoUserMapConclusionId], references: [id], onDelete: SetNull)
+  reopenedAt               DateTime?
+  reopenReason             String?
+  priority                 Int?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  resolvedIntoUserMapConclusion UserMapConclusion?     @relation("InvestigationResolvedIntoConclusion", fields: [resolvedIntoUserMapConclusionId], references: [id], onDelete: SetNull)
 
   @@index([userId, status, updatedAt])
+  @@index([userId, visibility, status, updatedAt])
   @@index([userId, seedType, createdAt])
   @@index([userId, resolvedAt])
 }

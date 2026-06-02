@@ -214,6 +214,9 @@ describe("Phase 1A schema model contracts", () => {
     expect(userMap).toContain("@@index([userId, supersededById])");
 
     expect(investigation).toContain("@@index([userId, status, updatedAt])");
+    expect(investigation).toContain(
+      "@@index([userId, visibility, status, updatedAt])"
+    );
     expect(investigation).toContain("@@index([userId, seedType, createdAt])");
     expect(investigation).toContain("@@index([userId, resolvedAt])");
 
@@ -237,6 +240,17 @@ describe("Phase 1A schema model contracts", () => {
 
     expect(userMap).toMatch(
       /\bvisibility\s+UserMapConclusionVisibility\s+@default\(user_visible\)/
+    );
+  });
+
+  it("pins Investigation visibility default and nullable candidate lifecycle", () => {
+    const investigation = modelBlock("Investigation");
+
+    expect(investigation).toMatch(
+      /\bvisibility\s+InvestigationVisibility\s+@default\(user_visible\)/
+    );
+    expect(investigation).toMatch(
+      /\bcandidateLifecycleStatus\s+CandidateLifecycleStatus\?/
     );
   });
 
@@ -318,6 +332,8 @@ describe("Phase 1A create-input coverage", () => {
       title: "Criticism-response mechanism",
       organizingQuestion: "What actually triggers shutdown after feedback?",
       status: "open",
+      visibility: "user_visible",
+      candidateLifecycleStatus: null,
       seedType: "contradiction",
       competingTheories: [
         { label: "theory_a", summary: "Workload-driven" },

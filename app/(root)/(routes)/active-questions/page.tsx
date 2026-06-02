@@ -4,10 +4,8 @@ import { auth } from "@clerk/nextjs/server";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import prismadb from "@/lib/prismadb";
-import {
-  ACTIVE_QUESTION_VISIBLE_STATUSES,
-  toActiveQuestionListItem,
-} from "@/lib/public-intelligence-safe-slice";
+import { buildPublicActiveInvestigationWhere } from "@/lib/active-questions";
+import { toActiveQuestionListItem } from "@/lib/public-intelligence-safe-slice";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +31,7 @@ export default async function ActiveQuestionsPage() {
   }
 
   const rows = await prismadb.investigation.findMany({
-    where: {
-      userId,
-      status: { in: ACTIVE_QUESTION_VISIBLE_STATUSES },
-    },
+    where: buildPublicActiveInvestigationWhere({ userId }),
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     take: 50,
     select: {

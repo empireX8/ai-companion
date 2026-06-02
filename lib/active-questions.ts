@@ -54,6 +54,12 @@ export const ACTIVE_QUESTIONS_LIMIT = 20;
 export const ACTIVE_QUESTION_SAFE_VISIBLE_STATUSES =
   ACTIVE_QUESTION_VISIBLE_STATUSES;
 
+export {
+  buildPublicActiveInvestigationWhere,
+  PUBLIC_INVESTIGATION_EXCLUDED_CANDIDATE_LIFECYCLE_STATUSES,
+  PUBLIC_INVESTIGATION_VISIBILITY,
+} from "./investigation-public-visibility";
+
 export function toActiveQuestionItem(
   row: ActiveQuestionRecord
 ): ActiveQuestionItem | null {

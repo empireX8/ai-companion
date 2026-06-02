@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import prismadb from "@/lib/prismadb";
 import { resolvePublicLinkedObjectHref } from "@/lib/public-linked-object-continuity";
 import {
-  ACTIVE_QUESTION_SAFE_VISIBLE_STATUSES,
+  buildPublicActiveInvestigationWhere,
   toActiveQuestionDetailItem,
 } from "../../../../lib/active-questions";
 
@@ -23,11 +23,7 @@ export async function GET(
 
   try {
     const row = await prismadb.investigation.findFirst({
-      where: {
-        id,
-        userId,
-        status: { in: ACTIVE_QUESTION_SAFE_VISIBLE_STATUSES },
-      },
+      where: buildPublicActiveInvestigationWhere({ userId, id }),
       select: {
         id: true,
         title: true,

@@ -743,3 +743,15 @@ Ephemeral validation against local dev DB on auto-selected user `user_34TUYA53pI
 ### Verification (docs closeout)
 
 - `git diff --check`: pass (docs-only)
+
+---
+
+## Investigation candidate schema + public leak guard (investigation-candidate-schema-guard)
+
+- **Status:** complete (schema guard only; no dark-engine Investigation candidates)
+- **Scope:** Add `InvestigationVisibility` + nullable `candidateLifecycleStatus` on `Investigation`; filter Active Questions public surfaces to `user_visible` rows with null or `promoted` lifecycle only.
+- **Schema:** `InvestigationVisibility` enum (`user_visible`, `internal_only`); `Investigation.visibility` defaults `user_visible`; `Investigation.candidateLifecycleStatus` nullable; index `[userId, visibility, status, updatedAt]`.
+- **Migration:** `20260602171545_add_investigation_visibility_and_candidate_lifecycle`
+- **Public filters:** `buildPublicActiveInvestigationWhere()` in `lib/investigation-public-visibility.ts` wired into Active Questions API routes, evidence route, and web Active Questions pages.
+- **Forbidden (deferred):** dark-engine Investigation proposal/persistence/bridges; internal Investigation review UI; Fieldwork/ModelUpdate changes.
+- **Next step:** Investigation no-write proposal slice, then `persistInternalInvestigationCandidate`, then bridge fork on UserMap abstain.

@@ -3,8 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 
 import prismadb from "@/lib/prismadb";
 import {
-  ACTIVE_QUESTION_SAFE_VISIBLE_STATUSES,
   ACTIVE_QUESTIONS_LIMIT,
+  buildPublicActiveInvestigationWhere,
   toActiveQuestionItem,
 } from "../../../lib/active-questions";
 
@@ -18,10 +18,7 @@ export async function GET() {
 
   try {
     const rows = await prismadb.investigation.findMany({
-      where: {
-        userId,
-        status: { in: ACTIVE_QUESTION_SAFE_VISIBLE_STATUSES },
-      },
+      where: buildPublicActiveInvestigationWhere({ userId }),
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take: ACTIVE_QUESTIONS_LIMIT,
       select: {
