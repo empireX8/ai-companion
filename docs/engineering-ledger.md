@@ -631,7 +631,6 @@
 - **What did not change:**
   - No schema changes
   - No public/mobile routes or UI
-  - No automatic dark-run execution or message/import writes
   - No unpublish, batch publish, expiry automation, or other-family lifecycle
   - No raw evidence exposure
 - **Verification results:**
@@ -642,10 +641,9 @@
   - `bash scripts/check-trust-language.sh`: pass
   - `bash scripts/check-legacy-surfaces.sh`: pass
 - **What remains partial:**
-  - No automatic dark-run write path from triggers
   - No expiry scheduler
   - Legacy `null` lifecycle rows cannot use operator lifecycle buttons
-- **Next step:** Kay decision on eligibility-to-write dark-run bridge vs further operator hardening
+- **Next step:** Operator expiry/legacy-row hardening only if product requests; UserMap proposal/bridge path code-complete in PR #11–#16 with unresolved runtime persistence caveat (see ledger entries below)
 
 ---
 
@@ -657,7 +655,7 @@
 
 - **Status:** complete
 - **Scope:** Wire APP `journal_chat` / `explore_chat` message background path to a gated internal candidate bridge over existing no-write dark-run evaluation and candidate persistence.
-- **Runtime behavior:** Eligible APP messages invoke the bridge in the message route background IIFE. The bridge runs trigger eligibility, no-write dark-run evaluation + harness, and only calls `persistInternalUserMapConclusionCandidate` when explicit structured `userMapCandidateProposal` data is present on dark-run output. Current orchestrator does not emit that field, so production messages abstain safely without writes.
+- **Runtime behavior:** Eligible APP messages invoke the bridge in the message route background IIFE. The bridge runs trigger eligibility, no-write dark-run evaluation + harness, and calls `persistInternalUserMapConclusionCandidate` when structured `userMapCandidateProposal` data is present on dark-run output (orchestrator emits proposal since PR #11). Import-completion bridge follows the same pattern after pattern derivation (PR #12).
 - **Files changed:**
   - `lib/understanding-dark-engine/app-message-candidate-bridge.ts` — created bridge module
   - `app/api/message/route.ts` — replaced no-op eligibility call with bridge invocation (fail-open)
@@ -666,22 +664,82 @@
   - `docs/engineering-ledger.md` — this entry
 - **Bridge behavior:**
   - Session gate: APP + `journal_chat` or `explore_chat` only
-  - Trigger gate: `evaluateNoWriteDarkRunTriggerEligibility` with `app_user_message`
+  - Trigger gate: `resolveCandidateBridgeNoWriteTriggerEligibility` with `app_user_message` (runtime state from DerivationRun rows; PR #13)
   - Evaluation: `runNoWriteUnderstandingDarkRun` + `evaluateNoWriteDarkRunOutput`
   - Proposal gate: `extractStructuredUserMapCandidateProposal` requires explicit `userMapCandidateProposal` with `area`, `title`, `summary`, `target`
   - Persistence: `persistInternalUserMapConclusionCandidate` when gates pass and proposal exists
   - Fail-open: bridge errors logged; message stream unchanged
 - **What did not change:**
-  - No import wiring
   - No schema/UI/mobile changes
-  - No user_visible writes or automatic publish
+  - No user_visible writes or automatic publish from bridge paths
   - No ModelUpdate creation from bridge path
   - No invented candidate content in production
-- **Blocker noted:** `runNoWriteUnderstandingDarkRun` (`dark-run-orchestrator.ts`) does not yet emit structured `userMapCandidateProposal`; automatic candidate creation awaits a future proposal producer slice.
-- **Verification results:**
+- **Superseded note:** Structured proposal emission and automatic bridge persistence were added in PR #11–#16; see ledger entries below.
+- **Verification results (initial slice):**
   - `git diff --check`: pass
   - `npx tsc --noEmit`: pass
   - `npx vitest run`: pass (145 files, 2394 tests)
   - `npm run build`: pass
   - `bash scripts/check-trust-language.sh`: pass
   - `bash scripts/check-legacy-surfaces.sh`: pass
+
+---
+
+## UserMapConclusion internal candidate loop — PR #11–#16 closeout (2026-06-02)
+
+- **Status:** proposal/bridge path code-complete with unresolved runtime persistence caveat on `main` @ `7b871ad` (PR #11–#16 merged; fresh e2e persistence validation still pending)
+- **Scope:** Internal `UserMapConclusion` candidate path (code): structured proposal → APP/import bridges → runtime trigger state → operator provenance readout → proposal title/summary hardening.
+
+### PR #11 — Structured UserMap candidate proposal output (`3670988`, `cc3aea9`)
+
+- **Commits:** `3670988` — Emit structured user map candidate proposals; merge `cc3aea9` — PR #11
+- **Behavior:** `buildStructuredUserMapCandidateProposal()` attaches `userMapCandidateProposal` to `runNoWriteUnderstandingDarkRun` output when gates pass and a safe-summary anchor exists.
+- **Files:** `lib/understanding-dark-engine/user-map-candidate-proposal.ts`, `lib/understanding-dark-engine/dark-run-orchestrator.ts`, bridge extractors, focused tests.
+
+### PR #12 — Import-completion candidate bridge (`22a3cd2`, `0718bab`, `1390fe1`)
+
+- **Commits:** `22a3cd2` — Wire import completion to candidate bridge; repair `0718bab` — Run import candidate bridge after pattern derivation; merge `1390fe1` — PR #12
+- **Behavior:** `tryCreateInternalUserMapCandidateFromImportCompletion()` on successful import completion; runs **after** `patternBatchOrchestrator.runForUser({ trigger: "import" })` so packet assembly sees derived pattern evidence; fail-open.
+- **Files:** `lib/understanding-dark-engine/import-completion-candidate-bridge.ts`, `lib/import-upload-queue.ts`, tests.
+
+### PR #13 — No-write trigger eligibility runtime state (`90212c6`, `73e2c38`, `9b6d77b`)
+
+- **Commits:** `90212c6` — Wire no-write trigger eligibility runtime state; repair `73e2c38` — Use run window end for no-write evidence cutoff; merge `9b6d77b` — PR #13
+- **Behavior:** `resolveCandidateBridgeNoWriteTriggerEligibility()` loads `DerivationRun` state (`lastRunAt` from `createdAt`, no-new-evidence cutoff from `windowEnd` with `createdAt` fallback); wired into APP and import bridges; fail-open on load errors.
+- **Files:** `lib/understanding-dark-engine/no-write-trigger-runtime-state.ts`, both bridges, tests.
+
+### PR #14 — Internal candidate provenance readout (`50e4ef0`, `7da8706`, `5af58db`)
+
+- **Commits:** `50e4ef0` — Add internal candidate provenance readout; repair `7da8706` — Fix internal candidate provenance normalization; merge `5af58db` — PR #14
+- **Behavior:** Internal review list API and workbench show safe provenance: evidence counts, source-type breakdown, linked source IDs, safety levels from link meta, derivation run/artifact refs, safe diagnostics payload fields; no raw snippets/quotes.
+- **Files:** `lib/internal-user-map-review-candidates.ts`, `InternalUserMapReviewWorkbench.tsx`, tests.
+
+### PR #15 — Candidate proposal title hardening (`8d05926`, `4fea1ef`)
+
+- **Commits:** `8d05926` — Harden user map candidate proposal titles; merge `4fea1ef` — PR #15
+- **Behavior:** Titles use word-boundary truncation (120 char max), whitespace normalization, deterministic evidence-selection ordering before anchor pick.
+- **Files:** `lib/understanding-dark-engine/user-map-candidate-proposal.ts`, tests.
+
+### PR #16 — Candidate proposal summary shaping (`154dd3b`, `a26c6a9`, `7b871ad`)
+
+- **Commits:** `154dd3b` — Shape user map candidate proposal summaries; repair `a26c6a9` — Filter proposal summary wording sources; merge `7b871ad` — PR #16
+- **Behavior:** `buildProposalSummary()` combines distinct safe summaries from wording-eligible source types (`pattern_claim`, `contradiction_node` only); single-summary fallback unchanged; excludes `import_record` and other metadata/admin types from persisted summary text; 600 char cap.
+
+### Post-PR #16 runtime validation caveat (2026-06-02, dev DB)
+
+Ephemeral validation against local dev DB on auto-selected user `user_34TUYA53pI1QRLK73O22Kve1a1G` at `7b871ad`:
+
+- **Proposal path validated:** trigger eligibility; dry-run gates `pass`; `userMapCandidateProposal` present; title shaping (≤120 chars, normalized); summary shaping (600 chars, distinct from title); targeted proposal + bridge unit tests (21 passed).
+- **Bridge persistence not re-proven on this dev user:** `skipped_persistence_blocked` with `blockedWriteReasons: ["LINK_WRITE_FAILED"]` — no `UserMapConclusion` row or evidence links observed. Orphan `DerivationRun` / diagnostics artifact from the attempt were removed after validation. `LINK_WRITE_FAILED` is unresolved (catch-all for evidence-link write exceptions other than ownership mapping to `UNRESOLVED_OWNERSHIP` in `persistInternalUserMapConclusionCandidate`); **LINK_WRITE_FAILED follow-up debug recommended** in a separate targeted slice before claiming fresh end-to-end persistence validation.
+- **Docs-only audit:** no production code change from this closeout pass.
+
+### What remains partial
+
+- **Fresh e2e persistence validation still pending** (bridge write path on dev/prod-like data after post-PR #16 run)
+- No expiry scheduler for `internal_only` candidates
+- Legacy `candidateLifecycleStatus: null` rows lack operator lifecycle buttons
+- No other candidate families (Investigation, FieldworkAssignment, ModelUpdate candidates, agents, Intelligence Library)
+
+### Verification (docs closeout)
+
+- `git diff --check`: pass (docs-only)

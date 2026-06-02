@@ -62,14 +62,19 @@ From each candidate:
 - `createdAt`
 - `updatedAt`
 
-Evidence summary only:
+Evidence / provenance summary only (no raw text):
 - `evidence.linkCount`
-- `evidence.sourceTypes`
+- `evidence.sourceTypes` (counts by source type)
+- `evidence.safetyLevels` (counts by `meta.publicSafetyLevel` when recorded on links)
+- `evidence.linkedSources` (`sourceType`, `sourceId`, optional `safetyLevel` per link — IDs only)
 
-Nullable diagnostics references only:
+Diagnostics references only (safe persisted fields):
 - `diagnostics.latestRunId`
 - `diagnostics.latestArtifactId`
 - `diagnostics.latestArtifactType`
+- `diagnostics.processorVersion` (when present on diagnostics artifact payload)
+- `diagnostics.blockedWriteReasons` (when present)
+- `diagnostics.warnings` (when present)
 
 ### Blocked from rendering
 
