@@ -746,6 +746,20 @@ Ephemeral validation against local dev DB on auto-selected user `user_34TUYA53pI
 
 ---
 
+## Investigation candidate schema + public leak guard (investigation-candidate-schema-guard)
+
+- **Status:** complete (schema guard only; no dark-engine Investigation candidates)
+- **Scope:** Add `InvestigationVisibility` + nullable `candidateLifecycleStatus` on `Investigation`; filter Active Questions public surfaces to `user_visible` rows with null or `promoted` lifecycle only.
+- **Schema:** `InvestigationVisibility` enum (`user_visible`, `internal_only`); `Investigation.visibility` defaults `user_visible`; `Investigation.candidateLifecycleStatus` nullable; index `[userId, visibility, status, updatedAt]`.
+- **Migration:** `20260602171545_add_investigation_visibility_and_candidate_lifecycle`
+- **Runtime behavior:** Public Active Questions list/detail/evidence queries use `buildPublicActiveInvestigationWhere()`; only `user_visible` investigations with `candidateLifecycleStatus` in `PUBLIC_INVESTIGATION_ALLOWED_CANDIDATE_LIFECYCLE_STATUSES` (`null`, `promoted`) are eligible. Prisma OR filters and `isPublicActiveInvestigationCandidateLifecycle()` share that single allow-list (fail-closed; `undefined` ineligible).
+- **Files changed:** `prisma/schema.prisma`, migration above, `lib/investigation-public-visibility.ts`, `lib/active-questions.ts`, Active Questions API routes/pages, `lib/__tests__/investigation-public-visibility.test.ts`, `lib/__tests__/investigation-active-questions-public-guard.test.ts`, Active Questions route/page tests, `lib/__tests__/understanding-engine-phase1a-schema.test.ts`.
+- **Verification results:** `git diff --check`, `npx prisma generate`, `npx tsc --noEmit`, targeted Investigation/Active Questions vitest, `npm run verify` — pass on branch after CodeRabbit repair.
+- **What remains partial:** dark-engine Investigation proposal/persistence/bridges; internal Investigation review UI; Fieldwork/ModelUpdate candidate lifecycle; generic Candidate table.
+- **Next step:** Investigation no-write proposal slice, then `persistInternalInvestigationCandidate`, then bridge fork on UserMap abstain.
+
+---
+
 ## LINK_WRITE_FAILED diagnostics classification (fix-link-write-failed-diagnostics)
 
 - **Status:** complete (implementation + tests; runtime root-cause still unknown)

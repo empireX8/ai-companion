@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { buildPublicActiveInvestigationWhere } from "../investigation-public-visibility";
+
 vi.mock("server-only", () => ({}));
 
 const authMock = vi.fn();
@@ -76,13 +78,10 @@ describe("/api/active-questions/[id] and /api/watch-for/[id] safe mobile detail 
 
     expect(activeQuestionsResponse.status).toBe(404);
     expect(prismaMock.investigation.findFirst).toHaveBeenCalledWith({
-      where: {
-        id: "inv-hidden",
+      where: buildPublicActiveInvestigationWhere({
         userId: "user-1",
-        status: {
-          in: ["open", "gathering_evidence", "testing", "resolving", "reopened"],
-        },
-      },
+        id: "inv-hidden",
+      }),
       select: {
         id: true,
         title: true,

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { buildPublicActiveInvestigationWhere } from "../investigation-public-visibility";
+
 const authMock = vi.fn();
 const notFoundMock = vi.fn(() => {
   throw new Error("NEXT_NOT_FOUND");
@@ -25,6 +27,11 @@ vi.mock("@/components/AppShell", () => ({
 
 vi.mock("@/lib/public-intelligence-safe-slice", async () => {
   const actual = await import("../public-intelligence-safe-slice");
+  return actual;
+});
+
+vi.mock("@/lib/active-questions", async () => {
+  const actual = await import("../active-questions");
   return actual;
 });
 
@@ -61,12 +68,7 @@ describe("Phase 3 Active Questions page", () => {
     expect(html).toContain("No active questions right now.");
     expect(prismaMock.investigation.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          userId: "user-1",
-          status: {
-            in: ["open", "gathering_evidence", "testing", "resolving", "reopened"],
-          },
-        },
+        where: buildPublicActiveInvestigationWhere({ userId: "user-1" }),
       })
     );
   });
@@ -113,13 +115,10 @@ describe("Phase 3 Active Questions page", () => {
 
     expect(prismaMock.investigation.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          id: "inv-resolved",
+        where: buildPublicActiveInvestigationWhere({
           userId: "user-1",
-          status: {
-            in: ["open", "gathering_evidence", "testing", "resolving", "reopened"],
-          },
-        },
+          id: "inv-resolved",
+        }),
       })
     );
   });

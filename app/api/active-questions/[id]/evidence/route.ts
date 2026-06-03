@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { UnderstandingLinkTargetType } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
-import { ACTIVE_QUESTION_SAFE_VISIBLE_STATUSES } from "../../../../../lib/active-questions";
+import { buildPublicActiveInvestigationWhere } from "../../../../../lib/active-questions";
 import { listPublicEvidenceContinuityForTarget } from "../../../../../lib/public-evidence-continuity";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +21,7 @@ export async function GET(
 
   try {
     const target = await prismadb.investigation.findFirst({
-      where: {
-        id,
-        userId,
-        status: { in: ACTIVE_QUESTION_SAFE_VISIBLE_STATUSES },
-      },
+      where: buildPublicActiveInvestigationWhere({ userId, id }),
       select: { id: true },
     });
 
