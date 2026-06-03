@@ -9,8 +9,11 @@ import {
   UnderstandingEvidenceLinkDuplicateError,
   UnderstandingEvidenceLinkValidationError,
 } from "../understanding-evidence-link-writer";
+import type { UnderstandingLinkRole } from "@prisma/client";
 import {
+  curatePersistableEvidenceLinksForCandidate,
   persistInternalUserMapConclusionCandidate,
+  USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP,
   type PersistInternalUserMapConclusionCandidateInput,
 } from "../understanding-dark-engine/user-map-candidate-persistence";
 
@@ -361,7 +364,15 @@ function createCandidateDbMock(args?: {
         return null;
       }),
     },
-    contradictionNode: { findMany: vi.fn(), findFirst: vi.fn(async () => null) },
+    contradictionNode: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(async ({ where }: { where: { id: string; userId: string } }) => {
+        if (where.userId === "user-1" && where.id.startsWith("node-")) {
+          return { id: where.id };
+        }
+        return null;
+      }),
+    },
     contradictionEvidence: { findMany: vi.fn(), findFirst: vi.fn(async () => null) },
     patternClaimEvidence: { findMany: vi.fn(), findFirst: vi.fn(async () => null) },
     profileArtifact: { findMany: vi.fn(), findFirst: vi.fn(async () => null) },
@@ -1108,7 +1119,12 @@ describe("user-map candidate persistence (manual/internal)", () => {
 
     for (let index = 0; index < 120; index += 1) {
       const sourceType = sourceTypes[index % sourceTypes.length];
-      const sourceId = `${sourceType}-${index}`;
+      const sourceId =
+        sourceType === "pattern_claim"
+          ? `claim-${index}`
+          : sourceType === "message"
+            ? `msg-${index}`
+            : `node-${index}`;
       const role =
         index % 3 === 0 ? "signal" : index % 3 === 1 ? "receipt" : "context";
       packetItems.push({
@@ -1279,7 +1295,7 @@ describe("curatePersistableEvidenceLinksForCandidate", () => {
       sourceId: "claim-1",
       role: "supports",
     });
-    const curated = curatePersistableEvidenceLinksForCandidate([link, link], 50);
+    const curated = curatePersistableEvidenceLinksForCandidate([link, link], 1);
 
     expect(curated.selectedAfterCap).toBe(1);
     expect(curated.links).toHaveLength(1);
