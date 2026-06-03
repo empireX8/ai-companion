@@ -1,5 +1,6 @@
 import {
   CandidateLifecycleStatus,
+  Prisma,
   type PrismaClient,
   UserMapConfidenceLevel,
   UserMapConclusionArea,
@@ -19,6 +20,7 @@ import {
 } from "../derivation-layer";
 import prismadb from "../prismadb";
 import {
+  UnderstandingEvidenceLinkDuplicateError,
   UnderstandingEvidenceLinkValidationError,
   createUnderstandingEvidenceLinkForUser,
   type UnderstandingEvidenceLinkWriteInput,
@@ -106,6 +108,11 @@ export type UnderstandingDarkRunCandidatePersistencePayload = {
   evidenceLinksAttempted: number;
   evidenceLinksWritten: number;
   blockedWriteReasons: string[];
+  transactionFailureErrorName: string | null;
+  transactionFailureErrorMessage: string | null;
+  transactionFailurePrismaCode: string | null;
+  transactionFailureBeforeAnyLinkAttempt: boolean | null;
+  transactionFailureEvidenceLinksAttempted: number | null;
   duplicateCandidates: number;
   rollbackCount: number;
   persistedConclusionId: string | null;
@@ -226,6 +233,96 @@ function addBlockedReason(blockedWriteReasons: string[], reason: string): void {
   if (!blockedWriteReasons.includes(reason)) {
     blockedWriteReasons.push(reason);
   }
+}
+
+const TRANSACTION_FAILURE_NOTE_MESSAGE_MAX_LENGTH = 500;
+
+type TransactionPersistenceFailureClassification = {
+  blockedReason: string;
+  errorName: string;
+  errorMessage: string;
+  prismaCode: string | null;
+  beforeAnyLinkAttempt: boolean;
+};
+
+function sanitizeTransactionFailureNoteValue(value: string): string {
+  const collapsed = value.replace(/\s+/g, " ").trim();
+  if (collapsed.length <= TRANSACTION_FAILURE_NOTE_MESSAGE_MAX_LENGTH) {
+    return collapsed;
+  }
+  return collapsed.slice(0, TRANSACTION_FAILURE_NOTE_MESSAGE_MAX_LENGTH);
+}
+
+function classifyTransactionPersistenceFailure(
+  error: unknown,
+  evidenceLinksAttemptedAtFailure: number
+): TransactionPersistenceFailureClassification {
+  const errorName = error instanceof Error ? error.name : "UnknownError";
+  const errorMessage =
+    error instanceof Error ? error.message : String(error);
+  const prismaCode =
+    error instanceof Prisma.PrismaClientKnownRequestError ? error.code : null;
+  const beforeAnyLinkAttempt = evidenceLinksAttemptedAtFailure === 0;
+
+  if (error instanceof UnderstandingEvidenceLinkValidationError) {
+    return {
+      blockedReason: "UNRESOLVED_OWNERSHIP",
+      errorName,
+      errorMessage,
+      prismaCode,
+      beforeAnyLinkAttempt,
+    };
+  }
+
+  if (error instanceof UnderstandingEvidenceLinkDuplicateError) {
+    return {
+      blockedReason: "EVIDENCE_LINK_DUPLICATE",
+      errorName,
+      errorMessage,
+      prismaCode,
+      beforeAnyLinkAttempt,
+    };
+  }
+
+  if (beforeAnyLinkAttempt) {
+    return {
+      blockedReason: "CONCLUSION_WRITE_FAILED",
+      errorName,
+      errorMessage,
+      prismaCode,
+      beforeAnyLinkAttempt: true,
+    };
+  }
+
+  return {
+    blockedReason: "LINK_WRITE_FAILED",
+    errorName,
+    errorMessage,
+    prismaCode,
+    beforeAnyLinkAttempt: false,
+  };
+}
+
+function appendTransactionFailureDiagnostics(args: {
+  notes: string[];
+  failure: TransactionPersistenceFailureClassification;
+  evidenceLinksAttemptedAtFailure: number;
+}): void {
+  const { failure, evidenceLinksAttemptedAtFailure, notes } = args;
+
+  notes.push(`transactionFailureErrorName:${failure.errorName}`);
+  notes.push(
+    `transactionFailureErrorMessage:${sanitizeTransactionFailureNoteValue(failure.errorMessage)}`
+  );
+  if (failure.prismaCode) {
+    notes.push(`transactionFailurePrismaCode:${failure.prismaCode}`);
+  }
+  notes.push(
+    `transactionFailureBeforeAnyLinkAttempt:${failure.beforeAnyLinkAttempt ? "true" : "false"}`
+  );
+  notes.push(
+    `transactionFailureEvidenceLinksAttempted:${evidenceLinksAttemptedAtFailure}`
+  );
 }
 
 function dedupeLinks(links: PersistableLink[]): PersistableLink[] {
@@ -413,6 +510,9 @@ export async function persistInternalUserMapConclusionCandidate(
     let rollbackCount = 0;
     let persistedConclusionId: string | null = null;
     let createdCandidate = false;
+    let transactionFailure: TransactionPersistenceFailureClassification | null =
+      null;
+    let transactionFailureEvidenceLinksAttempted: number | null = null;
 
     const title = input.title.trim();
     const summary = input.summary.trim();
@@ -570,16 +670,20 @@ export async function persistInternalUserMapConclusionCandidate(
               }
             });
           } catch (error) {
+            const evidenceLinksAttemptedAtFailure = evidenceLinksAttempted;
+            const failure = classifyTransactionPersistenceFailure(
+              error,
+              evidenceLinksAttemptedAtFailure
+            );
+
             rollbackCount += 1;
             evidenceLinksWritten = 0;
             createdCandidate = false;
-
-            if (error instanceof UnderstandingEvidenceLinkValidationError) {
-              addBlockedReason(blockedWriteReasons, "UNRESOLVED_OWNERSHIP");
-            } else {
-              addBlockedReason(blockedWriteReasons, "LINK_WRITE_FAILED");
-            }
+            addBlockedReason(blockedWriteReasons, failure.blockedReason);
             persistedConclusionId = null;
+
+            transactionFailure = failure;
+            transactionFailureEvidenceLinksAttempted = evidenceLinksAttemptedAtFailure;
           }
         }
       }
@@ -595,6 +699,13 @@ export async function persistInternalUserMapConclusionCandidate(
     notes.push(`allowedStatus:${evaluation.result.allowedStatus}`);
     if (blockedWriteReasons.length > 0) {
       notes.push(`blockedWriteReasons:${blockedWriteReasons.join(",")}`);
+    }
+    if (transactionFailure) {
+      appendTransactionFailureDiagnostics({
+        notes,
+        failure: transactionFailure,
+        evidenceLinksAttemptedAtFailure: transactionFailureEvidenceLinksAttempted ?? 0,
+      });
     }
     if (persistedConclusionId) {
       notes.push(`persistedConclusionId:${persistedConclusionId}`);
@@ -624,6 +735,12 @@ export async function persistInternalUserMapConclusionCandidate(
       evidenceLinksAttempted,
       evidenceLinksWritten,
       blockedWriteReasons,
+      transactionFailureErrorName: transactionFailure?.errorName ?? null,
+      transactionFailureErrorMessage: transactionFailure?.errorMessage ?? null,
+      transactionFailurePrismaCode: transactionFailure?.prismaCode ?? null,
+      transactionFailureBeforeAnyLinkAttempt:
+        transactionFailure?.beforeAnyLinkAttempt ?? null,
+      transactionFailureEvidenceLinksAttempted,
       duplicateCandidates,
       rollbackCount,
       persistedConclusionId,

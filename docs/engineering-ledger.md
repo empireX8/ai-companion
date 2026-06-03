@@ -757,3 +757,30 @@ Ephemeral validation against local dev DB on auto-selected user `user_34TUYA53pI
 - **Verification results:** `git diff --check`, `npx prisma generate`, `npx tsc --noEmit`, targeted Investigation/Active Questions vitest, `npm run verify` — pass on branch after CodeRabbit repair.
 - **What remains partial:** dark-engine Investigation proposal/persistence/bridges; internal Investigation review UI; Fieldwork/ModelUpdate candidate lifecycle; generic Candidate table.
 - **Next step:** Investigation no-write proposal slice, then `persistInternalInvestigationCandidate`, then bridge fork on UserMap abstain.
+
+---
+
+## LINK_WRITE_FAILED diagnostics classification (fix-link-write-failed-diagnostics)
+
+- **Status:** complete (implementation + tests; runtime root-cause still unknown)
+- **Scope:** Narrow transaction catch diagnostics in `persistInternalUserMapConclusionCandidate`; no schema, UI, or bridge changes.
+- **Runtime behavior:** Public/user-facing outcomes unchanged; transaction rollback unchanged. Internal diagnostics artifact payload and notes gain transaction-failure fields; blocked reasons split by failure path.
+- **Blocked reason changes:**
+  - `CONCLUSION_WRITE_FAILED` — transaction error before any evidence link attempt (`evidenceLinksAttempted === 0` at catch)
+  - `EVIDENCE_LINK_DUPLICATE` — `UnderstandingEvidenceLinkDuplicateError`
+  - `UNRESOLVED_OWNERSHIP` — `UnderstandingEvidenceLinkValidationError` (unchanged semantics)
+  - `LINK_WRITE_FAILED` — generic failures after at least one link attempt only
+- **Diagnostics payload fields added:** `transactionFailureErrorName`, `transactionFailureErrorMessage`, `transactionFailurePrismaCode`, `transactionFailureBeforeAnyLinkAttempt`, `transactionFailureEvidenceLinksAttempted` (mirrored in `notes` with `transactionFailure*` prefixes).
+- **Files changed:**
+  - `lib/understanding-dark-engine/user-map-candidate-persistence.ts`
+  - `lib/__tests__/understanding-dark-engine-user-map-candidate-persistence.test.ts`
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: pass
+  - `npx vitest run lib/__tests__/understanding-dark-engine-user-map-candidate-persistence.test.ts`: pass (11 tests)
+  - `npx vitest run`: pass (149 files, 2437 tests on branch)
+  - `npm run build`: pass (after clean `.next`; first verify attempt hit transient `routes.js` / manifest flake)
+  - `bash scripts/check-trust-language.sh`: pass
+  - `bash scripts/check-legacy-surfaces.sh`: pass
+- **What remains partial:** Post-PR #16 dev `LINK_WRITE_FAILED` root cause not fixed; **runtime validation on dev user still required** after merge to read new blocked reason + transaction failure fields from the next bridge persistence attempt.
+- **Next step:** Re-run import/APP candidate bridge persistence on dev; inspect diagnostics artifact for classified `blockedWriteReasons` and `transactionFailure*` fields.
