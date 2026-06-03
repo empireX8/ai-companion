@@ -525,6 +525,12 @@ describe("user-map candidate persistence (manual/internal)", () => {
     expect(result.payload.candidatesWritten).toBe(1);
     expect(result.payload.evidenceLinksAttempted).toBe(2);
     expect(result.payload.evidenceLinksWritten).toBe(2);
+    expect(result.payload.evidenceLinksSelectedBeforeCap).toBe(2);
+    expect(result.payload.evidenceLinksSelectedAfterCap).toBe(2);
+    expect(result.payload.evidenceLinkCapApplied).toBe(false);
+    expect(result.payload.evidenceLinkCapLimit).toBe(
+      USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP
+    );
     expect(result.payload.blockedWriteReasons).toHaveLength(0);
     expect(result.payload.transactionFailureErrorName).toBeNull();
     expect(result.payload.transactionFailureBeforeAnyLinkAttempt).toBeNull();
