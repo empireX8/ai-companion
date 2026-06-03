@@ -2,6 +2,7 @@ import { UserMapConclusionStatus } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { extractStructuredUserMapCandidateProposal } from "../understanding-dark-engine/app-message-candidate-bridge";
+import { extractStructuredInvestigationCandidateProposal } from "../understanding-dark-engine/investigation-candidate-proposal";
 import * as candidatePersistenceModule from "../understanding-dark-engine/user-map-candidate-persistence";
 import * as evidenceLinkWriterModule from "../understanding-evidence-link-writer";
 import { runNoWriteUnderstandingDarkRun } from "../understanding-dark-engine/dark-run-orchestrator";
@@ -13,12 +14,14 @@ type NoWriteDbInput = NonNullable<
 type NoWriteDbMockOptions = {
   includeSurfacedAction?: boolean;
   includePatternClaim?: boolean;
+  patternClaimOnly?: boolean;
   empty?: boolean;
 };
 
 function createNoWriteDbMock(options: NoWriteDbMockOptions = {}) {
   const includeSurfacedAction = options.includeSurfacedAction ?? true;
   const includePatternClaim = options.includePatternClaim ?? true;
+  const patternClaimOnly = options.patternClaimOnly ?? false;
   const empty = options.empty ?? false;
 
   const writes = {
@@ -52,7 +55,7 @@ function createNoWriteDbMock(options: NoWriteDbMockOptions = {}) {
         ];
 
   const patternClaimEvidence =
-    empty || !includePatternClaim
+    empty || !includePatternClaim || patternClaimOnly
       ? []
       : [
         {
@@ -82,7 +85,7 @@ function createNoWriteDbMock(options: NoWriteDbMockOptions = {}) {
           },
         ];
 
-  const sessions = empty
+  const sessions = empty || patternClaimOnly
     ? []
     : [
         {
@@ -94,7 +97,7 @@ function createNoWriteDbMock(options: NoWriteDbMockOptions = {}) {
         },
       ];
 
-  const messages = empty
+  const messages = empty || patternClaimOnly
     ? []
     : [
         {
@@ -109,7 +112,7 @@ function createNoWriteDbMock(options: NoWriteDbMockOptions = {}) {
         },
       ];
 
-  const messageOrigins = empty
+  const messageOrigins = empty || patternClaimOnly
     ? []
     : [
         {
@@ -411,6 +414,55 @@ describe("Phase 2B no-write dark-run orchestrator", () => {
     expect(extractStructuredUserMapCandidateProposal(result)).toEqual(
       result.userMapCandidateProposal
     );
+    expectNoWritePathCalls(db);
+  });
+
+  it("emits investigationCandidateProposal on abstain when UserMap conclusion is not appropriate", async () => {
+    const db = createNoWriteDbMock({
+      includeSurfacedAction: false,
+      patternClaimOnly: true,
+    });
+
+    const result = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    expect(result.userMapEvaluation.decision).toBe("abstain");
+    expect(result.userMapCandidateProposal).toBeNull();
+    expect(result.investigationCandidateProposal).toEqual({
+      seedType: "pattern",
+      title: "Worth exploring: Conflict spike pattern.",
+      organizingQuestion: expect.stringMatching(/\?$/),
+      summary:
+        "This looks worth watching as an open question. Conflict spike pattern.",
+      abstainReasons: expect.arrayContaining([
+        "INSUFFICIENT_EVIDENCE_COUNT",
+        "INSUFFICIENT_SOURCE_DIVERSITY",
+      ]),
+      evidenceSelections: [{ sourceType: "pattern_claim", sourceId: "pc-1" }],
+    });
+    expect(extractStructuredInvestigationCandidateProposal(result)).toEqual(
+      result.investigationCandidateProposal
+    );
+    expect(result.investigationCandidateProposal?.summary).not.toContain(
+      "I panic when conflict"
+    );
+    expectNoWritePathCalls(db);
+  });
+
+  it("does not emit investigationCandidateProposal when UserMap proposal is present", async () => {
+    const db = createNoWriteDbMock({ includeSurfacedAction: false });
+
+    const result = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    expect(result.userMapCandidateProposal).not.toBeNull();
+    expect(result.investigationCandidateProposal).toBeNull();
     expectNoWritePathCalls(db);
   });
 });

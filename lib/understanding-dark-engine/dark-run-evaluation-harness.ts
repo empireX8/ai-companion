@@ -1,3 +1,7 @@
+import {
+  extractStructuredInvestigationCandidateProposal,
+  usesInvestigationCandidateSafeWording,
+} from "./investigation-candidate-proposal";
 import type {
   NoWriteDarkRunSanitizedPacketItem,
   RunNoWriteUnderstandingDarkRunResult,
@@ -31,6 +35,8 @@ const INVARIANT_SOURCE_SAFETY_COMPLIANCE = "source_safety_compliance";
 const INVARIANT_PHASE_H_COMPATIBILITY = "phase_h_compatibility";
 const INVARIANT_EVALUATION_GATE_QUALITY = "evaluation_gate_quality";
 const INVARIANT_NO_WRITE = "no_write_invariant";
+const INVARIANT_INVESTIGATION_PROPOSAL_SAFETY =
+  "investigation_candidate_proposal_safety";
 
 const RAW_LIKE_KEY_TOKENS = [
   "snippet",
@@ -118,6 +124,7 @@ export function evaluateNoWriteDarkRunOutput(
     INVARIANT_PHASE_H_COMPATIBILITY,
     INVARIANT_EVALUATION_GATE_QUALITY,
     INVARIANT_NO_WRITE,
+    INVARIANT_INVESTIGATION_PROPOSAL_SAFETY,
   ];
 
   const packetItems = asArray(output?.packet?.items) as Array<
@@ -339,6 +346,45 @@ export function evaluateNoWriteDarkRunOutput(
       message:
         "No-write invariant violated: diagnostics.candidatesWritten must remain 0.",
     });
+  }
+
+  const investigationProposal = extractStructuredInvestigationCandidateProposal(
+    output ?? {}
+  );
+  if (investigationProposal) {
+    if (!usesInvestigationCandidateSafeWording(investigationProposal)) {
+      pushFailure({
+        invariant: INVARIANT_INVESTIGATION_PROPOSAL_SAFETY,
+        message:
+          "investigationCandidateProposal must use approved public-safe framing.",
+      });
+    }
+
+    if (!investigationProposal.organizingQuestion.trim().endsWith("?")) {
+      pushFailure({
+        invariant: INVARIANT_INVESTIGATION_PROPOSAL_SAFETY,
+        message: "investigationCandidateProposal.organizingQuestion must end with ?.",
+      });
+    }
+
+    const proposalRecord = investigationProposal as Record<string, unknown>;
+    for (const key of Object.keys(proposalRecord)) {
+      if (isRawLikeKey(key)) {
+        pushFailure({
+          invariant: INVARIANT_INVESTIGATION_PROPOSAL_SAFETY,
+          message: `investigationCandidateProposal exposes raw-like field "${key}".`,
+        });
+      }
+    }
+
+    const serialized = JSON.stringify(investigationProposal);
+    if (/\bsnippet\b/i.test(serialized) || /\bquote\b/i.test(serialized)) {
+      pushFailure({
+        invariant: INVARIANT_INVESTIGATION_PROPOSAL_SAFETY,
+        message:
+          "investigationCandidateProposal must not include snippet/quote payload keys.",
+      });
+    }
   }
 
   return {

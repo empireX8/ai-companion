@@ -1,4 +1,10 @@
-import { UserMapConclusionStatus } from "@prisma/client";
+import {
+  InvestigationSeedType,
+  UnderstandingLinkSourceType,
+  UserMapConclusionStatus,
+} from "@prisma/client";
+
+import type { RejectionReasonCode } from "../understanding-dark-engine/constants";
 import { describe, expect, it, vi } from "vitest";
 
 import { runNoWriteUnderstandingDarkRun } from "../understanding-dark-engine/dark-run-orchestrator";
@@ -352,6 +358,41 @@ describe("Phase 2C no-write dark-run evaluation harness", () => {
       result.failures.some(
         (failure) => failure.invariant === "evaluation_gate_quality"
       )
+    ).toBe(true);
+    expectNoWritePathCalls(db);
+  });
+
+  it("passes investigation proposal safety checks on thin-evidence abstain output", async () => {
+    const db = createNoWriteDbMock({ includeSurfacedAction: false, empty: false });
+    const output = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    const thinAbstainOutput = {
+      ...output,
+      userMapCandidateProposal: null,
+      investigationCandidateProposal: {
+        seedType: InvestigationSeedType.pattern,
+        title: "Worth exploring: Conflict spike pattern.",
+        organizingQuestion: "What would clarify whether conflict spike pattern?",
+        summary:
+          "This looks worth watching as an open question. Conflict spike pattern.",
+        abstainReasons: ["INSUFFICIENT_EVIDENCE_COUNT" as RejectionReasonCode],
+        evidenceSelections: [
+          {
+            sourceType: UnderstandingLinkSourceType.pattern_claim,
+            sourceId: "pc-1",
+          },
+        ],
+      },
+    };
+
+    const result = evaluateNoWriteDarkRunOutput(thinAbstainOutput);
+    expect(result.passed).toBe(true);
+    expect(
+      result.checkedInvariants.includes("investigation_candidate_proposal_safety")
     ).toBe(true);
     expectNoWritePathCalls(db);
   });
