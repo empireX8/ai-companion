@@ -668,7 +668,7 @@ describe("investigation candidate persistence (manual/internal)", () => {
           organizingQuestion: proposal.organizingQuestion,
           status: "open",
           visibility: "user_visible",
-          candidateLifecycleStatus: null,
+          candidateLifecycleStatus: "proposed",
           seedType: "pattern",
           evidenceNeeded: ["public summary"],
         },
