@@ -3,8 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 
 import prismadb from "@/lib/prismadb";
 import { resolvePublicLinkedObjectHref } from "@/lib/public-linked-object-continuity";
-import { buildPublicWatchForWhere } from "@/lib/fieldwork-public-visibility";
-import { toWatchForDetailItem } from "@/lib/watch-for";
+import { buildPublicWatchForWhere } from "../../../../lib/fieldwork-public-visibility";
+import { toWatchForDetailItem } from "../../../../lib/watch-for";
 
 export const dynamic = "force-dynamic";
 
