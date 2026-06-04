@@ -147,8 +147,8 @@ function makeFieldworkProposal() {
     linkedObjectId: "pc-1",
     abstainReasons: ["PROFILE_ARTIFACT_CAP" as const],
     evidenceSelections: [
-      { sourceType: "pattern_claim" as const, sourceId: "pc-1" },
       { sourceType: "message" as const, sourceId: "msg-1" },
+      { sourceType: "pattern_claim" as const, sourceId: "pc-1" },
     ],
   };
 }
@@ -459,6 +459,7 @@ describe("import completion internal candidate bridge", () => {
           reason: fieldworkProposal.reason,
           linkedObjectType: fieldworkProposal.linkedObjectType,
           linkedObjectId: fieldworkProposal.linkedObjectId,
+          evidenceSelections: fieldworkProposal.evidenceSelections,
         }),
       })
     );
@@ -517,7 +518,6 @@ describe("import completion internal candidate bridge", () => {
     });
 
     expect(result.decision).toBe("skipped_fieldwork_persistence_blocked");
-    expect(result.decision).not.toBe("created_fieldwork_candidate");
     expect(result.persistedFieldworkAssignmentId).toBe("fw-existing");
     expect(result.blockedWriteReasons).toEqual(["DUPLICATE_CANDIDATE"]);
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
