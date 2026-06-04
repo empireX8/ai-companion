@@ -328,9 +328,10 @@ export function extractStructuredInvestigationCandidateProposal(output: {
     return null;
   }
 
-  if (!usesInvestigationCandidateSafeWording({ title, summary })) {
-    return null;
-  }
-
-  return proposal;
+  return {
+    ...proposal,
+    title,
+    summary,
+    organizingQuestion,
+  };
 }

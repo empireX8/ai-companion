@@ -348,10 +348,21 @@ export function evaluateNoWriteDarkRunOutput(
     });
   }
 
-  const investigationProposal = extractStructuredInvestigationCandidateProposal(
-    output ?? {}
-  );
-  if (investigationProposal) {
+  const rawInvestigationProposal = output?.investigationCandidateProposal;
+  const isRawInvestigationProposalPresent =
+    rawInvestigationProposal !== undefined && rawInvestigationProposal !== null;
+
+  const investigationProposal = isRawInvestigationProposalPresent
+    ? extractStructuredInvestigationCandidateProposal(output ?? {})
+    : null;
+
+  if (isRawInvestigationProposalPresent && !investigationProposal) {
+    pushFailure({
+      invariant: INVARIANT_INVESTIGATION_PROPOSAL_SAFETY,
+      message:
+        "investigationCandidateProposal is present but missing required string fields (title, summary, organizingQuestion).",
+    });
+  } else if (investigationProposal) {
     if (!usesInvestigationCandidateSafeWording(investigationProposal)) {
       pushFailure({
         invariant: INVARIANT_INVESTIGATION_PROPOSAL_SAFETY,

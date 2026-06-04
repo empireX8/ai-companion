@@ -229,7 +229,7 @@ describe("structured Investigation candidate proposal builder", () => {
     ).toBeNull();
   });
 
-  it("extractStructuredInvestigationCandidateProposal rejects unsafe wording", () => {
+  it("extractStructuredInvestigationCandidateProposal returns structurally valid proposals including unsafe wording", () => {
     const valid = extractStructuredInvestigationCandidateProposal({
       investigationCandidateProposal: {
         seedType: InvestigationSeedType.pattern,
@@ -241,9 +241,17 @@ describe("structured Investigation candidate proposal builder", () => {
         evidenceSelections: [{ sourceType: "pattern_claim", sourceId: "pc-1" }],
       },
     });
-    expect(valid).not.toBeNull();
+    expect(valid).toEqual(
+      expect.objectContaining({
+        title: "Worth exploring: Conflict spike pattern.",
+        summary:
+          "This looks worth watching as an open question. Conflict spike pattern.",
+        organizingQuestion: "What would clarify whether conflict spike pattern?",
+      })
+    );
+    expect(usesInvestigationCandidateSafeWording(valid!)).toBe(true);
 
-    const invalid = extractStructuredInvestigationCandidateProposal({
+    const unsafe = extractStructuredInvestigationCandidateProposal({
       investigationCandidateProposal: {
         seedType: InvestigationSeedType.pattern,
         title: "Raw leak title",
@@ -253,6 +261,28 @@ describe("structured Investigation candidate proposal builder", () => {
         evidenceSelections: [{ sourceType: "pattern_claim", sourceId: "pc-1" }],
       },
     });
-    expect(invalid).toBeNull();
+    expect(unsafe).toEqual(
+      expect.objectContaining({
+        title: "Raw leak title",
+        summary: "private-snippet leaked",
+        organizingQuestion: "What happened?",
+      })
+    );
+    expect(usesInvestigationCandidateSafeWording(unsafe!)).toBe(false);
+  });
+
+  it("extractStructuredInvestigationCandidateProposal returns null when required strings are missing", () => {
+    expect(
+      extractStructuredInvestigationCandidateProposal({
+        investigationCandidateProposal: {
+          seedType: InvestigationSeedType.pattern,
+          title: "   ",
+          organizingQuestion: "What happened?",
+          summary: "private-snippet leaked",
+          abstainReasons: ["INSUFFICIENT_EVIDENCE_COUNT"],
+          evidenceSelections: [{ sourceType: "pattern_claim", sourceId: "pc-1" }],
+        },
+      })
+    ).toBeNull();
   });
 });

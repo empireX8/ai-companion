@@ -396,4 +396,84 @@ describe("Phase 2C no-write dark-run evaluation harness", () => {
     ).toBe(true);
     expectNoWritePathCalls(db);
   });
+
+  it("fails investigation proposal safety when raw proposal uses unsafe wording", async () => {
+    const db = createNoWriteDbMock();
+    const output = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    const unsafeOutput = {
+      ...output,
+      investigationCandidateProposal: {
+        seedType: InvestigationSeedType.pattern,
+        title: "Raw leak title",
+        organizingQuestion: "What happened?",
+        summary: "private-snippet leaked",
+        abstainReasons: ["INSUFFICIENT_EVIDENCE_COUNT" as RejectionReasonCode],
+        evidenceSelections: [
+          {
+            sourceType: UnderstandingLinkSourceType.pattern_claim,
+            sourceId: "pc-1",
+          },
+        ],
+      },
+    };
+
+    const result = evaluateNoWriteDarkRunOutput(unsafeOutput);
+    expect(result.passed).toBe(false);
+    expect(
+      result.failures.some(
+        (failure) => failure.invariant === "investigation_candidate_proposal_safety"
+      )
+    ).toBe(true);
+    expect(
+      result.checkedInvariants.includes("investigation_candidate_proposal_safety")
+    ).toBe(true);
+    expectNoWritePathCalls(db);
+  });
+
+  it("fails investigation proposal safety when organizingQuestion is invalid", async () => {
+    const db = createNoWriteDbMock();
+    const output = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    const invalidQuestionOutput = {
+      ...output,
+      investigationCandidateProposal: {
+        seedType: InvestigationSeedType.pattern,
+        title: "Worth exploring: Conflict spike pattern.",
+        organizingQuestion: "What would clarify whether conflict spike pattern",
+        summary:
+          "This looks worth watching as an open question. Conflict spike pattern.",
+        abstainReasons: ["INSUFFICIENT_EVIDENCE_COUNT" as RejectionReasonCode],
+        evidenceSelections: [
+          {
+            sourceType: UnderstandingLinkSourceType.pattern_claim,
+            sourceId: "pc-1",
+          },
+        ],
+      },
+    };
+
+    const result = evaluateNoWriteDarkRunOutput(invalidQuestionOutput);
+    expect(result.passed).toBe(false);
+    expect(
+      result.failures.some(
+        (failure) =>
+          failure.invariant === "investigation_candidate_proposal_safety" &&
+          failure.message.includes("organizingQuestion")
+      )
+    ).toBe(true);
+    expect(
+      result.checkedInvariants.includes("investigation_candidate_proposal_safety")
+    ).toBe(true);
+    expectNoWritePathCalls(db);
+  });
+
 });
