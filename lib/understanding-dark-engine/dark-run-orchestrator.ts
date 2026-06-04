@@ -18,6 +18,10 @@ import type {
   GateEvaluationTarget,
 } from "./types";
 import {
+  buildStructuredFieldworkCandidateProposal,
+  type StructuredFieldworkCandidateProposal,
+} from "./fieldwork-candidate-proposal";
+import {
   buildStructuredInvestigationCandidateProposal,
   type StructuredInvestigationCandidateProposal,
 } from "./investigation-candidate-proposal";
@@ -149,6 +153,7 @@ export type RunNoWriteUnderstandingDarkRunResult = {
   };
   userMapCandidateProposal?: StructuredUserMapCandidateProposal | null;
   investigationCandidateProposal?: StructuredInvestigationCandidateProposal | null;
+  fieldworkCandidateProposal?: StructuredFieldworkCandidateProposal | null;
 };
 
 export async function runNoWriteUnderstandingDarkRun(
@@ -192,6 +197,14 @@ export async function runNoWriteUnderstandingDarkRun(
         evaluation,
       });
 
+  const fieldworkCandidateProposal =
+    userMapCandidateProposal || investigationCandidateProposal
+      ? null
+      : buildStructuredFieldworkCandidateProposal({
+          packet,
+          evaluation,
+        });
+
   return {
     mode: "no_write_dark_run",
     userId: packet.userId,
@@ -207,5 +220,6 @@ export async function runNoWriteUnderstandingDarkRun(
     phaseHCompatibility,
     userMapCandidateProposal,
     investigationCandidateProposal,
+    fieldworkCandidateProposal,
   };
 }

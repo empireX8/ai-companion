@@ -1,6 +1,7 @@
 import {
   InvestigationSeedType,
   UnderstandingLinkSourceType,
+  UnderstandingLinkTargetType,
   UserMapConclusionStatus,
 } from "@prisma/client";
 
@@ -472,6 +473,114 @@ describe("Phase 2C no-write dark-run evaluation harness", () => {
     ).toBe(true);
     expect(
       result.checkedInvariants.includes("investigation_candidate_proposal_safety")
+    ).toBe(true);
+    expectNoWritePathCalls(db);
+  });
+
+  it("passes fieldwork proposal safety checks on valid fieldwork proposal output", async () => {
+    const db = createNoWriteDbMock();
+    const output = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    const fieldworkOutput = {
+      ...output,
+      userMapCandidateProposal: null,
+      investigationCandidateProposal: null,
+      fieldworkCandidateProposal: {
+        prompt: "Notice whether energy drops after meetings.",
+        reason:
+          "This may be worth watching in practice. Energy drops after meetings.",
+        linkedObjectType: UnderstandingLinkTargetType.pattern_claim,
+        linkedObjectId: "pc-1",
+        abstainReasons: ["PROFILE_ARTIFACT_CAP" as RejectionReasonCode],
+        evidenceSelections: [
+          {
+            sourceType: UnderstandingLinkSourceType.pattern_claim,
+            sourceId: "pc-1",
+          },
+        ],
+      },
+    };
+
+    const result = evaluateNoWriteDarkRunOutput(fieldworkOutput);
+    expect(result.passed).toBe(true);
+    expect(
+      result.checkedInvariants.includes("fieldwork_candidate_proposal_safety")
+    ).toBe(true);
+    expectNoWritePathCalls(db);
+  });
+
+  it("fails fieldwork proposal safety when raw proposal uses unsafe wording", async () => {
+    const db = createNoWriteDbMock();
+    const output = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    const unsafeOutput = {
+      ...output,
+      fieldworkCandidateProposal: {
+        prompt: "Raw leak prompt",
+        reason: "private-snippet leaked",
+        linkedObjectType: UnderstandingLinkTargetType.pattern_claim,
+        linkedObjectId: "pc-1",
+        abstainReasons: ["PROFILE_ARTIFACT_CAP" as RejectionReasonCode],
+        evidenceSelections: [
+          {
+            sourceType: UnderstandingLinkSourceType.pattern_claim,
+            sourceId: "pc-1",
+          },
+        ],
+      },
+    };
+
+    const result = evaluateNoWriteDarkRunOutput(unsafeOutput);
+    expect(result.passed).toBe(false);
+    expect(
+      result.failures.some(
+        (failure) => failure.invariant === "fieldwork_candidate_proposal_safety"
+      )
+    ).toBe(true);
+    expectNoWritePathCalls(db);
+  });
+
+  it("fails fieldwork proposal safety when prompt is structurally invalid", async () => {
+    const db = createNoWriteDbMock();
+    const output = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    const invalidOutput = {
+      ...output,
+      fieldworkCandidateProposal: {
+        prompt: "   ",
+        reason: "This may be worth watching in practice. Energy drops.",
+        linkedObjectType: UnderstandingLinkTargetType.pattern_claim,
+        linkedObjectId: "pc-1",
+        abstainReasons: ["PROFILE_ARTIFACT_CAP" as RejectionReasonCode],
+        evidenceSelections: [
+          {
+            sourceType: UnderstandingLinkSourceType.pattern_claim,
+            sourceId: "pc-1",
+          },
+        ],
+      },
+    };
+
+    const result = evaluateNoWriteDarkRunOutput(invalidOutput);
+    expect(result.passed).toBe(false);
+    expect(
+      result.failures.some(
+        (failure) =>
+          failure.invariant === "fieldwork_candidate_proposal_safety" &&
+          failure.message.includes("prompt, reason")
+      )
     ).toBe(true);
     expectNoWritePathCalls(db);
   });
