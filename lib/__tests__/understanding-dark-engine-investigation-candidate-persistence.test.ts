@@ -168,6 +168,8 @@ function expectTransactionFailureDiagnostics(
   expect(payload.transactionFailureEvidenceLinksAttempted).toBe(
     expected.evidenceLinksAttempted
   );
+  expect(payload.candidatesWritten).toBe(0);
+  expect(payload.evidenceLinksWritten).toBe(0);
 }
 
 function matchesPublicActiveInvestigationWhere(
@@ -229,10 +231,17 @@ function createInvestigationDbMock(args?: {
   const db: InvestigationDb = {
     investigation: {
       findMany: vi.fn(async ({ where }: { where?: Record<string, unknown> }) => {
-        if (!where?.userId) {
-          return investigations;
-        }
-        return investigations.filter((row) => row.userId === where.userId);
+        return investigations.filter((row) => {
+          if (where?.userId && row.userId !== where.userId) return false;
+          if (where?.visibility && row.visibility !== where.visibility) return false;
+          if (
+            where?.candidateLifecycleStatus &&
+            row.candidateLifecycleStatus !== where.candidateLifecycleStatus
+          ) {
+            return false;
+          }
+          return true;
+        });
       }),
       findFirst: vi.fn(async ({ where }: { where?: Record<string, unknown> }) => {
         if (!where) {
@@ -586,6 +595,102 @@ describe("investigation candidate persistence (manual/internal)", () => {
     expect(mock.links).toHaveLength(0);
   });
 
+  it("records proposal abstain reasons in diagnostics payload", async () => {
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "claim-1",
+        role: "signal",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      },
+      {
+        sourceType: "message",
+        sourceId: "msg-1",
+        role: "receipt",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      },
+    ]);
+
+    const mock = createInvestigationDbMock();
+    const result = await persistInternalInvestigationCandidate({
+      userId: "user-1",
+      proposal: buildProposal({
+        abstainReasons: [
+          "INSUFFICIENT_EVIDENCE_COUNT",
+          "INSUFFICIENT_SOURCE_DIVERSITY",
+        ],
+      }),
+      db: mock.db,
+      now: FIXED_NOW,
+      packet,
+    });
+
+    expect(result.payload.candidatesProposed).toBe(1);
+    expect(result.payload.abstentions).toBe(2);
+    expect(result.payload.rejectionCountsByReason).toEqual({
+      INSUFFICIENT_EVIDENCE_COUNT: 1,
+      INSUFFICIENT_SOURCE_DIVERSITY: 1,
+    });
+    expect(result.diagnostics.abstentions).toBe(2);
+  });
+
+  it("does not treat matching user_visible investigations as internal duplicates", async () => {
+    const packet = buildPacket([
+      {
+        sourceType: "pattern_claim",
+        sourceId: "claim-1",
+        role: "signal",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      },
+      {
+        sourceType: "message",
+        sourceId: "msg-1",
+        role: "receipt",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      },
+    ]);
+
+    const proposal = buildProposal();
+    const mock = createInvestigationDbMock({
+      seedInvestigations: [
+        {
+          id: "inv-public-1",
+          userId: "user-1",
+          title: proposal.title,
+          organizingQuestion: proposal.organizingQuestion,
+          status: "open",
+          visibility: "user_visible",
+          candidateLifecycleStatus: null,
+          seedType: "pattern",
+          evidenceNeeded: ["public summary"],
+        },
+      ],
+    });
+
+    const result = await persistInternalInvestigationCandidate({
+      userId: "user-1",
+      proposal,
+      db: mock.db,
+      now: FIXED_NOW,
+      packet,
+    });
+
+    expect(result.payload.blockedWriteReasons).not.toContain("DUPLICATE_CANDIDATE");
+    expect(result.payload.candidatesWritten).toBe(1);
+    expect(mock.investigations).toHaveLength(2);
+    expect(
+      mock.investigations.filter((row) => row.visibility === "internal_only")
+    ).toHaveLength(1);
+  });
+
   it("suppresses exact duplicate candidates and increments duplicate counter", async () => {
     const packet = buildPacket([
       {
@@ -773,5 +878,55 @@ describe("investigation candidate persistence (manual/internal)", () => {
     expect(result.payload.blockedWriteReasons).not.toContain("LINK_WRITE_FAILED");
     expect(mock.investigations).toHaveLength(0);
     expect(mock.links).toHaveLength(0);
+  });
+
+  it("caps persisted evidence links at USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP", async () => {
+    const cap = USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP;
+    const selectionCount = cap + 2;
+    const packetItems: PacketItemInput[] = Array.from(
+      { length: selectionCount },
+      (_, index) => ({
+        sourceType: "pattern_claim",
+        sourceId: `claim-${index + 1}`,
+        role: "signal",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native" as const,
+      })
+    );
+    packetItems.push({
+      sourceType: "message",
+      sourceId: "msg-1",
+      role: "receipt",
+      linkable: true,
+      ownershipResolvable: true,
+      origin: "native",
+      messageId: "msg-1",
+    });
+
+    const packet = buildPacket(packetItems);
+    const evidenceSelections = [
+      ...Array.from({ length: selectionCount }, (_, index) => ({
+        sourceType: "pattern_claim" as const,
+        sourceId: `claim-${index + 1}`,
+      })),
+      { sourceType: "message" as const, sourceId: "msg-1" },
+    ];
+
+    const mock = createInvestigationDbMock();
+
+    const result = await persistInternalInvestigationCandidate({
+      userId: "user-1",
+      proposal: buildProposal({ evidenceSelections }),
+      db: mock.db,
+      now: FIXED_NOW,
+      packet,
+    });
+
+    expect(result.payload.evidenceLinksSelectedBeforeCap).toBeGreaterThan(cap);
+    expect(result.payload.evidenceLinksSelectedAfterCap).toBe(cap);
+    expect(result.payload.evidenceLinkCapApplied).toBe(true);
+    expect(result.payload.evidenceLinksWritten).toBe(cap);
+    expect(mock.links).toHaveLength(cap);
   });
 });

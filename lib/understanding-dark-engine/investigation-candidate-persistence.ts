@@ -23,7 +23,10 @@ import {
   type UnderstandingEvidenceLinkWriteInput,
   type UnderstandingEvidenceLinkWriterDb,
 } from "../understanding-evidence-link-writer";
-import { createDarkRunDiagnosticsFromPacket } from "./diagnostics";
+import {
+  createDarkRunDiagnosticsFromPacket,
+  incrementRejectionReasonCounts,
+} from "./diagnostics";
 import {
   assembleEvidencePacketV1,
   type AssembleEvidencePacketInput,
@@ -266,6 +269,10 @@ export async function persistInternalInvestigationCandidate(
 
   const diagnostics = createDarkRunDiagnosticsFromPacket(packet);
   diagnostics.candidatesProposed += 1;
+  if (proposal.abstainReasons.length > 0) {
+    diagnostics.abstentions = proposal.abstainReasons.length;
+    incrementRejectionReasonCounts(diagnostics, proposal.abstainReasons);
+  }
 
   const messageIds = buildRunMessageIdsFromPacket(packet);
   const sessionCount = buildRunSessionCountFromPacket(packet);
@@ -352,38 +359,41 @@ export async function persistInternalInvestigationCandidate(
       blockedWriteReasons,
     });
 
-    const canAttemptCreate = blockedWriteReasons.length === 0;
-
-    if (canAttemptCreate) {
+    if (blockedWriteReasons.length === 0) {
       const normalizedTitle = normalizeForDedupe(title);
       const normalizedOrganizingQuestion = normalizeForDedupe(organizingQuestion);
 
-      const existingCandidates = await db.investigation.findMany({
-        where: { userId: input.userId },
-        select: {
-          id: true,
-          title: true,
-          organizingQuestion: true,
-        },
-      });
-
-      const duplicate = existingCandidates.find(
-        (row) =>
-          normalizeForDedupe(row.title) === normalizedTitle &&
-          normalizeForDedupe(row.organizingQuestion) === normalizedOrganizingQuestion
-      );
-
-      if (duplicate) {
-        duplicateCandidates += 1;
-        addBlockedReason(blockedWriteReasons, "DUPLICATE_CANDIDATE");
-        persistedInvestigationId = duplicate.id;
-      }
-    }
-
-    if (blockedWriteReasons.length === 0) {
       try {
         await db.$transaction(async (tx) => {
           const transactionalDb = tx as unknown as InvestigationPersistenceDb;
+
+          const existingInternalCandidates =
+            await transactionalDb.investigation.findMany({
+              where: {
+                userId: input.userId,
+                visibility: InvestigationVisibility.internal_only,
+                candidateLifecycleStatus: CandidateLifecycleStatus.proposed,
+              },
+              select: {
+                id: true,
+                title: true,
+                organizingQuestion: true,
+              },
+            });
+
+          const duplicate = existingInternalCandidates.find(
+            (row) =>
+              normalizeForDedupe(row.title) === normalizedTitle &&
+              normalizeForDedupe(row.organizingQuestion) ===
+                normalizedOrganizingQuestion
+          );
+
+          if (duplicate) {
+            duplicateCandidates += 1;
+            addBlockedReason(blockedWriteReasons, "DUPLICATE_CANDIDATE");
+            persistedInvestigationId = duplicate.id;
+            return;
+          }
 
           const created = await transactionalDb.investigation.create({
             data: {
