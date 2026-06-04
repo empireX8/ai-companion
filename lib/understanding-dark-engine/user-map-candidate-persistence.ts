@@ -47,6 +47,20 @@ const DEFAULT_PROCESSOR_VERSION = "understanding-dark-engine-v1";
 const TITLE_MAX_LENGTH = 120;
 const SUMMARY_MAX_LENGTH = 600;
 
+/** Conservative per-candidate cap to keep interactive transactions bounded. */
+export const USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP = 50;
+
+const PERSISTED_EVIDENCE_LINK_ROLE_PRIORITY: Record<UnderstandingLinkRole, number> = {
+  supports: 0,
+  contradicts: 1,
+  context: 2,
+  seed: 3,
+  outcome: 4,
+  correction: 5,
+  temporal_anchor: 6,
+  derived_from: 7,
+};
+
 const DISALLOWED_PERSISTED_SOURCE_TYPES = new Set<UnderstandingLinkSourceType>([
   "timeline_aggregation",
   "user_correction",
@@ -107,6 +121,10 @@ export type UnderstandingDarkRunCandidatePersistencePayload = {
   notes: string[];
   evidenceLinksAttempted: number;
   evidenceLinksWritten: number;
+  evidenceLinksSelectedBeforeCap: number;
+  evidenceLinksSelectedAfterCap: number;
+  evidenceLinkCapApplied: boolean;
+  evidenceLinkCapLimit: number;
   blockedWriteReasons: string[];
   transactionFailureErrorName: string | null;
   transactionFailureErrorMessage: string | null;
@@ -341,6 +359,201 @@ function dedupeLinks(links: PersistableLink[]): PersistableLink[] {
   return deduped;
 }
 
+function persistableLinkKey(link: PersistableLink): string {
+  return `${link.sourceType}|${link.sourceId}|${link.role}`;
+}
+
+function comparePersistableLinksForPersistenceCap(
+  left: PersistableLink,
+  right: PersistableLink
+): number {
+  const sourceTypeCompare = left.sourceType.localeCompare(right.sourceType);
+  if (sourceTypeCompare !== 0) {
+    return sourceTypeCompare;
+  }
+  const sourceIdCompare = left.sourceId.localeCompare(right.sourceId);
+  if (sourceIdCompare !== 0) {
+    return sourceIdCompare;
+  }
+  return left.role.localeCompare(right.role);
+}
+
+function persistedEvidenceLinkRoleRank(role: UnderstandingLinkRole): number {
+  return PERSISTED_EVIDENCE_LINK_ROLE_PRIORITY[role] ?? Number.MAX_SAFE_INTEGER;
+}
+
+function normalizePersistedEvidenceLinkCapLimit(capLimit: number): number {
+  if (!Number.isFinite(capLimit)) {
+    return USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP;
+  }
+  return Math.max(0, Math.floor(capLimit));
+}
+
+export type CuratedPersistableEvidenceLinksResult = {
+  links: PersistableLink[];
+  selectedBeforeCap: number;
+  selectedAfterCap: number;
+  capApplied: boolean;
+  capLimit: number;
+};
+
+export function curatePersistableEvidenceLinksForCandidate(
+  links: PersistableLink[],
+  capLimit: number = USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP
+): CuratedPersistableEvidenceLinksResult {
+  const selectedBeforeCap = links.length;
+  const normalizedCapLimit = normalizePersistedEvidenceLinkCapLimit(capLimit);
+  const sorted = dedupeLinks([...links]).sort(comparePersistableLinksForPersistenceCap);
+
+  if (sorted.length <= normalizedCapLimit) {
+    return {
+      links: sorted,
+      selectedBeforeCap,
+      selectedAfterCap: sorted.length,
+      capApplied: false,
+      capLimit: normalizedCapLimit,
+    };
+  }
+
+  const pickedKeys = new Set<string>();
+  const curated: PersistableLink[] = [];
+
+  const bySourceType = new Map<
+    UnderstandingLinkSourceType,
+    Map<UnderstandingLinkRole, PersistableLink[]>
+  >();
+
+  for (const link of sorted) {
+    let roleMap = bySourceType.get(link.sourceType);
+    if (!roleMap) {
+      roleMap = new Map();
+      bySourceType.set(link.sourceType, roleMap);
+    }
+    const roleLinks = roleMap.get(link.role);
+    if (roleLinks) {
+      roleLinks.push(link);
+    } else {
+      roleMap.set(link.role, [link]);
+    }
+  }
+
+  const sourceTypes = [...bySourceType.keys()].sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+  const pickFromRoleBucket = (bucket: PersistableLink[]): PersistableLink | null => {
+    for (const link of bucket) {
+      const key = persistableLinkKey(link);
+      if (!pickedKeys.has(key)) {
+        return link;
+      }
+    }
+    return null;
+  };
+
+  const addLink = (link: PersistableLink): void => {
+    const key = persistableLinkKey(link);
+    if (pickedKeys.has(key)) {
+      return;
+    }
+    pickedKeys.add(key);
+    curated.push(link);
+  };
+
+  for (const sourceType of sourceTypes) {
+    if (curated.length >= normalizedCapLimit) {
+      break;
+    }
+    const roleMap = bySourceType.get(sourceType)!;
+    const roles = [...roleMap.keys()].sort(
+      (left, right) =>
+        persistedEvidenceLinkRoleRank(left) - persistedEvidenceLinkRoleRank(right)
+    );
+    for (const role of roles) {
+      const link = pickFromRoleBucket(roleMap.get(role)!);
+      if (link) {
+        addLink(link);
+        break;
+      }
+    }
+  }
+
+  for (const sourceType of sourceTypes) {
+    if (curated.length >= normalizedCapLimit) {
+      break;
+    }
+    const roleMap = bySourceType.get(sourceType)!;
+    const roles = [...roleMap.keys()].sort(
+      (left, right) =>
+        persistedEvidenceLinkRoleRank(left) - persistedEvidenceLinkRoleRank(right)
+    );
+    for (const role of roles) {
+      if (curated.length >= normalizedCapLimit) {
+        break;
+      }
+      const link = pickFromRoleBucket(roleMap.get(role)!);
+      if (link) {
+        addLink(link);
+      }
+    }
+  }
+
+  const flatBuckets = sourceTypes.map((sourceType) => {
+    const roleMap = bySourceType.get(sourceType)!;
+    const roles = [...roleMap.keys()].sort(
+      (left, right) =>
+        persistedEvidenceLinkRoleRank(left) - persistedEvidenceLinkRoleRank(right)
+    );
+    const flat: PersistableLink[] = [];
+    for (const role of roles) {
+      flat.push(...roleMap.get(role)!);
+    }
+    return flat;
+  });
+  const bucketCursors = new Array(flatBuckets.length).fill(0);
+
+  while (curated.length < normalizedCapLimit) {
+    let added = false;
+    for (let index = 0; index < flatBuckets.length; index += 1) {
+      if (curated.length >= normalizedCapLimit) {
+        break;
+      }
+      const bucket = flatBuckets[index];
+      while (bucketCursors[index] < bucket.length) {
+        const link = bucket[bucketCursors[index]];
+        bucketCursors[index] += 1;
+        const key = persistableLinkKey(link);
+        if (!pickedKeys.has(key)) {
+          pickedKeys.add(key);
+          curated.push(link);
+          added = true;
+          break;
+        }
+      }
+    }
+    if (!added) {
+      break;
+    }
+  }
+
+  for (const link of sorted) {
+    if (curated.length >= normalizedCapLimit) {
+      break;
+    }
+    addLink(link);
+  }
+
+  curated.sort(comparePersistableLinksForPersistenceCap);
+
+  return {
+    links: curated,
+    selectedBeforeCap,
+    selectedAfterCap: curated.length,
+    capApplied: true,
+    capLimit: normalizedCapLimit,
+  };
+}
+
 function buildPersistableLinks(args: {
   packet: EvidencePacket;
   evidenceSelections?: UserMapCandidateEvidenceSelection[];
@@ -547,11 +760,18 @@ export async function persistInternalUserMapConclusionCandidate(
       addBlockedReason(blockedWriteReasons, "CORRECTION_DOWNGRADE_ACTIVE");
     }
 
-    const links = buildPersistableLinks({
+    const builtLinks = buildPersistableLinks({
       packet,
       evidenceSelections: input.evidenceSelections,
       blockedWriteReasons,
     });
+
+    const curatedLinks = curatePersistableEvidenceLinksForCandidate(builtLinks);
+    const links = curatedLinks.links;
+    const evidenceLinksSelectedBeforeCap = curatedLinks.selectedBeforeCap;
+    const evidenceLinksSelectedAfterCap = curatedLinks.selectedAfterCap;
+    const evidenceLinkCapApplied = curatedLinks.capApplied;
+    const evidenceLinkCapLimit = curatedLinks.capLimit;
 
     applyEvidencePolicyChecks({
       links,
@@ -710,6 +930,10 @@ export async function persistInternalUserMapConclusionCandidate(
     if (persistedConclusionId) {
       notes.push(`persistedConclusionId:${persistedConclusionId}`);
     }
+    notes.push(`evidenceLinksSelectedBeforeCap:${evidenceLinksSelectedBeforeCap}`);
+    notes.push(`evidenceLinksSelectedAfterCap:${evidenceLinksSelectedAfterCap}`);
+    notes.push(`evidenceLinkCapApplied:${evidenceLinkCapApplied ? "true" : "false"}`);
+    notes.push(`evidenceLinkCapLimit:${evidenceLinkCapLimit}`);
 
     const payload: UnderstandingDarkRunCandidatePersistencePayload = {
       runId: run.id,
@@ -734,6 +958,10 @@ export async function persistInternalUserMapConclusionCandidate(
       notes,
       evidenceLinksAttempted,
       evidenceLinksWritten,
+      evidenceLinksSelectedBeforeCap,
+      evidenceLinksSelectedAfterCap,
+      evidenceLinkCapApplied,
+      evidenceLinkCapLimit,
       blockedWriteReasons,
       transactionFailureErrorName: transactionFailure?.errorName ?? null,
       transactionFailureErrorMessage: transactionFailure?.errorMessage ?? null,

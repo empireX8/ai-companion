@@ -9,8 +9,11 @@ import {
   UnderstandingEvidenceLinkDuplicateError,
   UnderstandingEvidenceLinkValidationError,
 } from "../understanding-evidence-link-writer";
+import type { UnderstandingLinkRole } from "@prisma/client";
 import {
+  curatePersistableEvidenceLinksForCandidate,
   persistInternalUserMapConclusionCandidate,
+  USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP,
   type PersistInternalUserMapConclusionCandidateInput,
 } from "../understanding-dark-engine/user-map-candidate-persistence";
 
@@ -361,7 +364,15 @@ function createCandidateDbMock(args?: {
         return null;
       }),
     },
-    contradictionNode: { findMany: vi.fn(), findFirst: vi.fn(async () => null) },
+    contradictionNode: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(async ({ where }: { where: { id: string; userId: string } }) => {
+        if (where.userId === "user-1" && where.id.startsWith("node-")) {
+          return { id: where.id };
+        }
+        return null;
+      }),
+    },
     contradictionEvidence: { findMany: vi.fn(), findFirst: vi.fn(async () => null) },
     patternClaimEvidence: { findMany: vi.fn(), findFirst: vi.fn(async () => null) },
     profileArtifact: { findMany: vi.fn(), findFirst: vi.fn(async () => null) },
@@ -525,6 +536,12 @@ describe("user-map candidate persistence (manual/internal)", () => {
     expect(result.payload.candidatesWritten).toBe(1);
     expect(result.payload.evidenceLinksAttempted).toBe(2);
     expect(result.payload.evidenceLinksWritten).toBe(2);
+    expect(result.payload.evidenceLinksSelectedBeforeCap).toBe(2);
+    expect(result.payload.evidenceLinksSelectedAfterCap).toBe(2);
+    expect(result.payload.evidenceLinkCapApplied).toBe(false);
+    expect(result.payload.evidenceLinkCapLimit).toBe(
+      USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP
+    );
     expect(result.payload.blockedWriteReasons).toHaveLength(0);
     expect(result.payload.transactionFailureErrorName).toBeNull();
     expect(result.payload.transactionFailureBeforeAnyLinkAttempt).toBeNull();
@@ -1091,4 +1108,274 @@ describe("user-map candidate persistence (manual/internal)", () => {
     expect(mock.conclusions).toHaveLength(0);
     expect(mock.links).toHaveLength(0);
   });
+
+  it("caps huge evidence selections deterministically while preserving source and role diversity", async () => {
+    const sourceTypes = ["pattern_claim", "message", "contradiction_node"] as const;
+    const packetItems: PacketItemInput[] = [];
+    const evidenceSelections: Array<{
+      sourceType: (typeof sourceTypes)[number];
+      sourceId: string;
+    }> = [];
+
+    for (let index = 0; index < 120; index += 1) {
+      const sourceType = sourceTypes[index % sourceTypes.length];
+      const sourceId =
+        sourceType === "pattern_claim"
+          ? `claim-${index}`
+          : sourceType === "message"
+            ? `msg-${index}`
+            : `node-${index}`;
+      const role =
+        index % 3 === 0 ? "signal" : index % 3 === 1 ? "receipt" : "context";
+      packetItems.push({
+        sourceType,
+        sourceId,
+        role,
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      });
+      evidenceSelections.push({ sourceType, sourceId });
+    }
+
+    const packet = buildPacket(packetItems);
+    const evaluation = buildEvaluation({ packet, decision: "pass" });
+    const mock = createCandidateDbMock();
+
+    const result = await persistInternalUserMapConclusionCandidate({
+      userId: "user-1",
+      area: "operating_logic",
+      title: "High-volume evidence candidate",
+      summary: "Should persist a bounded curated evidence set.",
+      target: {
+        requestedStatus: UserMapConclusionStatus.emerging,
+        identityLevelClaim: false,
+        proposedSummary: "Should persist a bounded curated evidence set.",
+        requiresReceipt: true,
+      },
+      db: mock.db,
+      now: FIXED_NOW,
+      packet,
+      evaluation,
+      evidenceSelections,
+    });
+
+    expect(result.payload.candidatesWritten).toBe(1);
+    expect(result.payload.evidenceLinksSelectedBeforeCap).toBe(120);
+    expect(result.payload.evidenceLinksSelectedAfterCap).toBe(
+      USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP
+    );
+    expect(result.payload.evidenceLinkCapApplied).toBe(true);
+    expect(result.payload.evidenceLinksAttempted).toBe(
+      USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP
+    );
+    expect(result.payload.evidenceLinksWritten).toBe(
+      USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP
+    );
+    expect(mock.conclusions).toHaveLength(1);
+    expect(mock.links).toHaveLength(USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP);
+    expect(new Set(mock.links.map((link) => link.sourceType)).size).toBeGreaterThanOrEqual(
+      2
+    );
+    expect(new Set(mock.links.map((link) => link.role)).size).toBeGreaterThanOrEqual(2);
+  });
+
+  it("still blocks insufficient diversity after cap when only one source type is linkable", async () => {
+    const packetItems: PacketItemInput[] = [];
+    const evidenceSelections: Array<{
+      sourceType: "pattern_claim";
+      sourceId: string;
+    }> = [];
+
+    for (let index = 0; index < 80; index += 1) {
+      const sourceId = `claim-${index}`;
+      packetItems.push({
+        sourceType: "pattern_claim",
+        sourceId,
+        role: "signal",
+        linkable: true,
+        ownershipResolvable: true,
+        origin: "native",
+      });
+      evidenceSelections.push({ sourceType: "pattern_claim", sourceId });
+    }
+
+    const packet = buildPacket(packetItems);
+    const evaluation = buildEvaluation({ packet, decision: "pass" });
+    const mock = createCandidateDbMock();
+
+    const result = await persistInternalUserMapConclusionCandidate({
+      userId: "user-1",
+      area: "operating_logic",
+      title: "Single-source high volume",
+      summary: "Cap must not bypass source diversity gates.",
+      target: {
+        requestedStatus: UserMapConclusionStatus.emerging,
+        identityLevelClaim: false,
+        proposedSummary: "Cap must not bypass source diversity gates.",
+        requiresReceipt: true,
+      },
+      db: mock.db,
+      now: FIXED_NOW,
+      packet,
+      evaluation,
+      evidenceSelections,
+    });
+
+    expect(result.payload.candidatesWritten).toBe(0);
+    expect(result.payload.evidenceLinksSelectedBeforeCap).toBe(80);
+    expect(result.payload.evidenceLinkCapApplied).toBe(true);
+    expect(result.payload.blockedWriteReasons).toContain(
+      "INSUFFICIENT_LINKABLE_SOURCE_DIVERSITY"
+    );
+    expect(mock.conclusions).toHaveLength(0);
+    expect(mock.links).toHaveLength(0);
+  });
 });
+
+describe("curatePersistableEvidenceLinksForCandidate", () => {
+  function buildCapLink(args: {
+    sourceType: "message" | "pattern_claim" | "contradiction_node";
+    sourceId: string;
+    role: UnderstandingLinkRole;
+  }) {
+    return {
+      sourceType: args.sourceType,
+      sourceId: args.sourceId,
+      role: args.role,
+    };
+  }
+
+  it("returns deterministic ordering and preserves diversity under cap", () => {
+    const links = [
+      buildCapLink({
+        sourceType: "message",
+        sourceId: "msg-b",
+        role: "context",
+      }),
+      buildCapLink({
+        sourceType: "pattern_claim",
+        sourceId: "claim-b",
+        role: "supports",
+      }),
+      buildCapLink({
+        sourceType: "message",
+        sourceId: "msg-a",
+        role: "supports",
+      }),
+      buildCapLink({
+        sourceType: "pattern_claim",
+        sourceId: "claim-a",
+        role: "contradicts",
+      }),
+      buildCapLink({
+        sourceType: "contradiction_node",
+        sourceId: "node-1",
+        role: "supports",
+      }),
+    ];
+
+    const first = curatePersistableEvidenceLinksForCandidate(links, 4);
+    const second = curatePersistableEvidenceLinksForCandidate(links, 4);
+
+    expect(first.links).toEqual(second.links);
+    expect(new Set(first.links.map((link) => link.sourceType)).size).toBe(3);
+    expect(new Set(first.links.map((link) => link.role)).size).toBeGreaterThanOrEqual(2);
+    expect(first.links.map(persistableLinkSortKey)).toEqual([
+      "contradiction_node|node-1|supports",
+      "message|msg-a|supports",
+      "message|msg-b|context",
+      "pattern_claim|claim-b|supports",
+    ]);
+  });
+
+  it("dedupes duplicate links on the fast path when length is within cap", () => {
+    const link = buildCapLink({
+      sourceType: "pattern_claim",
+      sourceId: "claim-1",
+      role: "supports",
+    });
+    const curated = curatePersistableEvidenceLinksForCandidate(
+      [link, link],
+      USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP
+    );
+
+    expect(curated.selectedBeforeCap).toBe(2);
+    expect(curated.selectedAfterCap).toBe(1);
+    expect(curated.capApplied).toBe(false);
+    expect(curated.capLimit).toBe(USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP);
+    expect(curated.links).toHaveLength(1);
+    expect(curated.links[0]).toEqual(link);
+  });
+
+  it("normalizes negative cap limits to zero", () => {
+    const link = buildCapLink({
+      sourceType: "pattern_claim",
+      sourceId: "claim-1",
+      role: "supports",
+    });
+
+    const curated = curatePersistableEvidenceLinksForCandidate([link], -3);
+
+    expect(curated.capLimit).toBe(0);
+    expect(curated.selectedBeforeCap).toBe(1);
+    expect(curated.selectedAfterCap).toBe(0);
+    expect(curated.capApplied).toBe(true);
+    expect(curated.links).toHaveLength(0);
+  });
+
+  it("floors non-integer cap limits", () => {
+    const links = [
+      buildCapLink({
+        sourceType: "pattern_claim",
+        sourceId: "claim-1",
+        role: "supports",
+      }),
+      buildCapLink({
+        sourceType: "message",
+        sourceId: "msg-1",
+        role: "context",
+      }),
+      buildCapLink({
+        sourceType: "contradiction_node",
+        sourceId: "node-1",
+        role: "supports",
+      }),
+      buildCapLink({
+        sourceType: "pattern_claim",
+        sourceId: "claim-2",
+        role: "contradicts",
+      }),
+    ];
+
+    const curated = curatePersistableEvidenceLinksForCandidate(links, 3.9);
+
+    expect(curated.capLimit).toBe(3);
+    expect(curated.selectedAfterCap).toBe(3);
+    expect(curated.capApplied).toBe(true);
+    expect(curated.links).toHaveLength(3);
+  });
+
+  it("falls back to the default cap when cap limit is non-finite", () => {
+    const link = buildCapLink({
+      sourceType: "pattern_claim",
+      sourceId: "claim-1",
+      role: "supports",
+    });
+
+    const curated = curatePersistableEvidenceLinksForCandidate([link], Number.NaN);
+
+    expect(curated.capLimit).toBe(USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP);
+    expect(curated.selectedBeforeCap).toBe(1);
+    expect(curated.selectedAfterCap).toBe(1);
+    expect(curated.capApplied).toBe(false);
+  });
+});
+
+function persistableLinkSortKey(link: {
+  sourceType: string;
+  sourceId: string;
+  role: string;
+}): string {
+  return `${link.sourceType}|${link.sourceId}|${link.role}`;
+}
