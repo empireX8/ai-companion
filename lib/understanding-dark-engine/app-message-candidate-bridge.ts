@@ -1,8 +1,4 @@
-import {
-  UserMapConclusionArea,
-  UserMapConclusionStatus,
-  type PrismaClient,
-} from "@prisma/client";
+import { type PrismaClient } from "@prisma/client";
 
 import prismadb from "../prismadb";
 import { evaluateNoWriteDarkRunOutput } from "./dark-run-evaluation-harness";
@@ -13,9 +9,11 @@ import {
 import { persistInternalCandidateFromNoWriteDarkRunOutput } from "./candidate-bridge-dark-run-persistence";
 import { resolveCandidateBridgeNoWriteTriggerEligibility } from "./no-write-trigger-runtime-state";
 import {
+  extractStructuredUserMapCandidateProposal,
   type StructuredUserMapCandidateProposal,
 } from "./user-map-candidate-proposal";
 
+export { extractStructuredUserMapCandidateProposal };
 export type { StructuredUserMapCandidateProposal };
 
 const APP_MESSAGE_CANDIDATE_BRIDGE_SURFACES = new Set(["journal_chat", "explore_chat"]);
@@ -51,70 +49,6 @@ export function shouldRunAppMessageCandidateBridgeForSession(session: {
     !!session.surfaceType &&
     APP_MESSAGE_CANDIDATE_BRIDGE_SURFACES.has(session.surfaceType)
   );
-}
-
-function isUserMapConclusionArea(value: unknown): value is UserMapConclusionArea {
-  return (
-    typeof value === "string" &&
-    Object.values(UserMapConclusionArea).includes(value as UserMapConclusionArea)
-  );
-}
-
-function isUserMapConclusionStatus(value: unknown): value is UserMapConclusionStatus {
-  return (
-    typeof value === "string" &&
-    Object.values(UserMapConclusionStatus).includes(value as UserMapConclusionStatus)
-  );
-}
-
-/** Reads structured candidate proposal attached to no-write dark-run output. */
-export function extractStructuredUserMapCandidateProposal(
-  output: DarkRunOutputWithOptionalProposal
-): StructuredUserMapCandidateProposal | null {
-  const proposal = output.userMapCandidateProposal;
-  if (!proposal || typeof proposal !== "object") {
-    return null;
-  }
-
-  if (!isUserMapConclusionArea(proposal.area)) {
-    return null;
-  }
-
-  const title = typeof proposal.title === "string" ? proposal.title.trim() : "";
-  const summary = typeof proposal.summary === "string" ? proposal.summary.trim() : "";
-  if (!title || !summary) {
-    return null;
-  }
-
-  if (!proposal.target || typeof proposal.target !== "object") {
-    return null;
-  }
-
-  const proposedSummary =
-    typeof proposal.target.proposedSummary === "string"
-      ? proposal.target.proposedSummary.trim()
-      : "";
-  if (
-    !isUserMapConclusionStatus(proposal.target.requestedStatus) ||
-    typeof proposal.target.identityLevelClaim !== "boolean" ||
-    typeof proposal.target.requiresReceipt !== "boolean" ||
-    !proposedSummary
-  ) {
-    return null;
-  }
-
-  return {
-    area: proposal.area,
-    title,
-    summary,
-    target: {
-      requestedStatus: proposal.target.requestedStatus,
-      identityLevelClaim: proposal.target.identityLevelClaim,
-      proposedSummary,
-      requiresReceipt: proposal.target.requiresReceipt,
-    },
-    evidenceSelections: proposal.evidenceSelections,
-  };
 }
 
 export async function tryCreateInternalUserMapCandidateFromAppMessage(args: {

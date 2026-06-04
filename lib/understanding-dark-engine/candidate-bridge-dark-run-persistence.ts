@@ -1,11 +1,9 @@
 import type { PrismaClient } from "@prisma/client";
 
 import prismadb from "../prismadb";
-import {
-  extractStructuredUserMapCandidateProposal,
-  type DarkRunOutputWithOptionalProposal,
-} from "./app-message-candidate-bridge";
+import type { RunNoWriteUnderstandingDarkRunResult } from "./dark-run-orchestrator";
 import { extractStructuredInvestigationCandidateProposal } from "./investigation-candidate-proposal";
+import { extractStructuredUserMapCandidateProposal } from "./user-map-candidate-proposal";
 import { persistInternalInvestigationCandidate } from "./investigation-candidate-persistence";
 import { persistInternalUserMapConclusionCandidate } from "./user-map-candidate-persistence";
 
@@ -27,7 +25,7 @@ export type CandidateBridgeDarkRunPersistenceResult = {
 
 export async function persistInternalCandidateFromNoWriteDarkRunOutput(args: {
   userId: string;
-  darkRunOutput: DarkRunOutputWithOptionalProposal;
+  darkRunOutput: RunNoWriteUnderstandingDarkRunResult;
   now?: Date;
   db?: PrismaClient;
   logTag: string;

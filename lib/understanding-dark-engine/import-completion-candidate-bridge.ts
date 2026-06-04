@@ -1,7 +1,7 @@
 import { type PrismaClient } from "@prisma/client";
 
 import prismadb from "../prismadb";
-import { type DarkRunOutputWithOptionalProposal } from "./app-message-candidate-bridge";
+import { type RunNoWriteUnderstandingDarkRunResult } from "./dark-run-orchestrator";
 import { persistInternalCandidateFromNoWriteDarkRunOutput } from "./candidate-bridge-dark-run-persistence";
 import { evaluateNoWriteDarkRunOutput } from "./dark-run-evaluation-harness";
 import { runNoWriteUnderstandingDarkRun } from "./dark-run-orchestrator";
@@ -58,7 +58,7 @@ export async function tryCreateInternalUserMapCandidateFromImportCompletion(args
     userId: args.userId,
     now,
     db: db as unknown as Parameters<typeof runNoWriteUnderstandingDarkRun>[0]["db"],
-  })) as DarkRunOutputWithOptionalProposal;
+  })) as RunNoWriteUnderstandingDarkRunResult;
 
   const harness = evaluateNoWriteDarkRunOutput(darkRunOutput);
   if (!harness.passed) {

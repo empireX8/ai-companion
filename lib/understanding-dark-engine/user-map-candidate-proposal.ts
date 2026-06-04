@@ -1,9 +1,11 @@
 import {
   UserMapConclusionArea,
+  UserMapConclusionStatus,
   type UnderstandingLinkSourceType,
 } from "@prisma/client";
 
 import type { DarkRunUserMapEvaluation } from "./dark-run-evaluator";
+import type { RunNoWriteUnderstandingDarkRunResult } from "./dark-run-orchestrator";
 import type { UserMapCandidateEvidenceSelection } from "./user-map-candidate-persistence";
 import type { EvidencePacket, EvidencePacketItem, GateEvaluationTarget } from "./types";
 
@@ -330,5 +332,69 @@ export function buildStructuredUserMapCandidateProposal(args: {
       requiresReceipt: args.target.requiresReceipt,
     },
     evidenceSelections,
+  };
+}
+
+function isUserMapConclusionArea(value: unknown): value is UserMapConclusionArea {
+  return (
+    typeof value === "string" &&
+    Object.values(UserMapConclusionArea).includes(value as UserMapConclusionArea)
+  );
+}
+
+function isUserMapConclusionStatus(value: unknown): value is UserMapConclusionStatus {
+  return (
+    typeof value === "string" &&
+    Object.values(UserMapConclusionStatus).includes(value as UserMapConclusionStatus)
+  );
+}
+
+/** Reads structured candidate proposal attached to no-write dark-run output. */
+export function extractStructuredUserMapCandidateProposal(
+  output: RunNoWriteUnderstandingDarkRunResult
+): StructuredUserMapCandidateProposal | null {
+  const proposal = output.userMapCandidateProposal;
+  if (!proposal || typeof proposal !== "object") {
+    return null;
+  }
+
+  if (!isUserMapConclusionArea(proposal.area)) {
+    return null;
+  }
+
+  const title = typeof proposal.title === "string" ? proposal.title.trim() : "";
+  const summary = typeof proposal.summary === "string" ? proposal.summary.trim() : "";
+  if (!title || !summary) {
+    return null;
+  }
+
+  if (!proposal.target || typeof proposal.target !== "object") {
+    return null;
+  }
+
+  const proposedSummary =
+    typeof proposal.target.proposedSummary === "string"
+      ? proposal.target.proposedSummary.trim()
+      : "";
+  if (
+    !isUserMapConclusionStatus(proposal.target.requestedStatus) ||
+    typeof proposal.target.identityLevelClaim !== "boolean" ||
+    typeof proposal.target.requiresReceipt !== "boolean" ||
+    !proposedSummary
+  ) {
+    return null;
+  }
+
+  return {
+    area: proposal.area,
+    title,
+    summary,
+    target: {
+      requestedStatus: proposal.target.requestedStatus,
+      identityLevelClaim: proposal.target.identityLevelClaim,
+      proposedSummary,
+      requiresReceipt: proposal.target.requiresReceipt,
+    },
+    evidenceSelections: proposal.evidenceSelections,
   };
 }
