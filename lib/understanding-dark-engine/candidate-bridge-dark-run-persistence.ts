@@ -2,6 +2,11 @@ import type { PrismaClient } from "@prisma/client";
 
 import prismadb from "../prismadb";
 import type { RunNoWriteUnderstandingDarkRunResult } from "./dark-run-orchestrator";
+import { extractStructuredFieldworkCandidateProposal } from "./fieldwork-candidate-proposal";
+import {
+  persistInternalFieldworkCandidate,
+  type PersistInternalFieldworkCandidateResult,
+} from "./fieldwork-candidate-persistence";
 import { extractStructuredInvestigationCandidateProposal } from "./investigation-candidate-proposal";
 import { extractStructuredUserMapCandidateProposal } from "./user-map-candidate-proposal";
 import {
@@ -20,19 +25,32 @@ function investigationCandidateWasCreated(
   );
 }
 
+function fieldworkCandidateWasCreated(
+  persistence: PersistInternalFieldworkCandidateResult
+): boolean {
+  return (
+    !!persistence.persistedFieldworkAssignmentId &&
+    persistence.payload.candidatesWritten > 0 &&
+    persistence.payload.blockedWriteReasons.length === 0
+  );
+}
+
 export type CandidateBridgeDarkRunPersistenceDecision =
   | "skipped_gate_abstain"
   | "skipped_insufficient_proposal"
   | "skipped_persistence_blocked"
   | "skipped_investigation_persistence_blocked"
+  | "skipped_fieldwork_persistence_blocked"
   | "created"
-  | "created_investigation_candidate";
+  | "created_investigation_candidate"
+  | "created_fieldwork_candidate";
 
 export type CandidateBridgeDarkRunPersistenceResult = {
   decision: CandidateBridgeDarkRunPersistenceDecision;
   reason: string;
   persistedConclusionId?: string | null;
   persistedInvestigationId?: string | null;
+  persistedFieldworkAssignmentId?: string | null;
   blockedWriteReasons?: string[];
 };
 
@@ -126,6 +144,44 @@ export async function persistInternalCandidateFromNoWriteDarkRunOutput(args: {
     };
   }
 
+  const fieldworkProposal = extractStructuredFieldworkCandidateProposal(
+    args.darkRunOutput
+  );
+  if (fieldworkProposal) {
+    const persistence = await persistInternalFieldworkCandidate({
+      userId: args.userId,
+      proposal: fieldworkProposal,
+      now,
+      db: db as unknown as Parameters<typeof persistInternalFieldworkCandidate>[0]["db"],
+    });
+
+    if (!fieldworkCandidateWasCreated(persistence)) {
+      console.info(
+        args.logTag,
+        "Fieldwork persistence blocked; no candidate written.",
+        {
+          userId: args.userId,
+          ...args.context,
+          blockedWriteReasons: persistence.payload.blockedWriteReasons,
+          persistedFieldworkAssignmentId: persistence.persistedFieldworkAssignmentId,
+          candidatesWritten: persistence.payload.candidatesWritten,
+        }
+      );
+      return {
+        decision: "skipped_fieldwork_persistence_blocked",
+        reason: "Persistence gates blocked Fieldwork candidate write.",
+        blockedWriteReasons: persistence.payload.blockedWriteReasons,
+        persistedFieldworkAssignmentId: persistence.persistedFieldworkAssignmentId,
+      };
+    }
+
+    return {
+      decision: "created_fieldwork_candidate",
+      reason: "Internal Fieldwork candidate persisted.",
+      persistedFieldworkAssignmentId: persistence.persistedFieldworkAssignmentId,
+    };
+  }
+
   if (args.darkRunOutput.userMapEvaluation.decision === "abstain") {
     return {
       decision: "skipped_gate_abstain",
@@ -135,7 +191,7 @@ export async function persistInternalCandidateFromNoWriteDarkRunOutput(args: {
 
   console.info(
     args.logTag,
-    "No structured UserMap or Investigation candidate proposal in dark-run output; abstaining.",
+    "No structured UserMap, Investigation, or Fieldwork candidate proposal in dark-run output; abstaining.",
     {
       userId: args.userId,
       ...args.context,
@@ -145,6 +201,6 @@ export async function persistInternalCandidateFromNoWriteDarkRunOutput(args: {
   return {
     decision: "skipped_insufficient_proposal",
     reason:
-      "Dark-run output lacks structured userMapCandidateProposal and investigationCandidateProposal.",
+      "Dark-run output lacks structured userMapCandidateProposal, investigationCandidateProposal, and fieldworkCandidateProposal.",
   };
 }
