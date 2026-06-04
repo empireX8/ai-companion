@@ -382,6 +382,13 @@ function persistedEvidenceLinkRoleRank(role: UnderstandingLinkRole): number {
   return PERSISTED_EVIDENCE_LINK_ROLE_PRIORITY[role] ?? Number.MAX_SAFE_INTEGER;
 }
 
+function normalizePersistedEvidenceLinkCapLimit(capLimit: number): number {
+  if (!Number.isFinite(capLimit)) {
+    return USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP;
+  }
+  return Math.max(0, Math.floor(capLimit));
+}
+
 export type CuratedPersistableEvidenceLinksResult = {
   links: PersistableLink[];
   selectedBeforeCap: number;
@@ -395,15 +402,16 @@ export function curatePersistableEvidenceLinksForCandidate(
   capLimit: number = USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP
 ): CuratedPersistableEvidenceLinksResult {
   const selectedBeforeCap = links.length;
-  const sorted = [...links].sort(comparePersistableLinksForPersistenceCap);
+  const normalizedCapLimit = normalizePersistedEvidenceLinkCapLimit(capLimit);
+  const sorted = dedupeLinks([...links]).sort(comparePersistableLinksForPersistenceCap);
 
-  if (sorted.length <= capLimit) {
+  if (sorted.length <= normalizedCapLimit) {
     return {
       links: sorted,
       selectedBeforeCap,
       selectedAfterCap: sorted.length,
       capApplied: false,
-      capLimit,
+      capLimit: normalizedCapLimit,
     };
   }
 
@@ -453,7 +461,7 @@ export function curatePersistableEvidenceLinksForCandidate(
   };
 
   for (const sourceType of sourceTypes) {
-    if (curated.length >= capLimit) {
+    if (curated.length >= normalizedCapLimit) {
       break;
     }
     const roleMap = bySourceType.get(sourceType)!;
@@ -471,7 +479,7 @@ export function curatePersistableEvidenceLinksForCandidate(
   }
 
   for (const sourceType of sourceTypes) {
-    if (curated.length >= capLimit) {
+    if (curated.length >= normalizedCapLimit) {
       break;
     }
     const roleMap = bySourceType.get(sourceType)!;
@@ -480,7 +488,7 @@ export function curatePersistableEvidenceLinksForCandidate(
         persistedEvidenceLinkRoleRank(left) - persistedEvidenceLinkRoleRank(right)
     );
     for (const role of roles) {
-      if (curated.length >= capLimit) {
+      if (curated.length >= normalizedCapLimit) {
         break;
       }
       const link = pickFromRoleBucket(roleMap.get(role)!);
@@ -504,10 +512,10 @@ export function curatePersistableEvidenceLinksForCandidate(
   });
   const bucketCursors = new Array(flatBuckets.length).fill(0);
 
-  while (curated.length < capLimit) {
+  while (curated.length < normalizedCapLimit) {
     let added = false;
     for (let index = 0; index < flatBuckets.length; index += 1) {
-      if (curated.length >= capLimit) {
+      if (curated.length >= normalizedCapLimit) {
         break;
       }
       const bucket = flatBuckets[index];
@@ -529,7 +537,7 @@ export function curatePersistableEvidenceLinksForCandidate(
   }
 
   for (const link of sorted) {
-    if (curated.length >= capLimit) {
+    if (curated.length >= normalizedCapLimit) {
       break;
     }
     addLink(link);
@@ -542,7 +550,7 @@ export function curatePersistableEvidenceLinksForCandidate(
     selectedBeforeCap,
     selectedAfterCap: curated.length,
     capApplied: true,
-    capLimit,
+    capLimit: normalizedCapLimit,
   };
 }
 

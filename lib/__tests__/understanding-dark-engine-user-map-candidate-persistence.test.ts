@@ -1289,16 +1289,86 @@ describe("curatePersistableEvidenceLinksForCandidate", () => {
     ]);
   });
 
-  it("does not emit duplicate source keys when input contains repeated rows", () => {
+  it("dedupes duplicate links on the fast path when length is within cap", () => {
     const link = buildCapLink({
       sourceType: "pattern_claim",
       sourceId: "claim-1",
       role: "supports",
     });
-    const curated = curatePersistableEvidenceLinksForCandidate([link, link], 1);
+    const curated = curatePersistableEvidenceLinksForCandidate(
+      [link, link],
+      USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP
+    );
 
+    expect(curated.selectedBeforeCap).toBe(2);
     expect(curated.selectedAfterCap).toBe(1);
+    expect(curated.capApplied).toBe(false);
+    expect(curated.capLimit).toBe(USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP);
     expect(curated.links).toHaveLength(1);
+    expect(curated.links[0]).toEqual(link);
+  });
+
+  it("normalizes negative cap limits to zero", () => {
+    const link = buildCapLink({
+      sourceType: "pattern_claim",
+      sourceId: "claim-1",
+      role: "supports",
+    });
+
+    const curated = curatePersistableEvidenceLinksForCandidate([link], -3);
+
+    expect(curated.capLimit).toBe(0);
+    expect(curated.selectedBeforeCap).toBe(1);
+    expect(curated.selectedAfterCap).toBe(0);
+    expect(curated.capApplied).toBe(true);
+    expect(curated.links).toHaveLength(0);
+  });
+
+  it("floors non-integer cap limits", () => {
+    const links = [
+      buildCapLink({
+        sourceType: "pattern_claim",
+        sourceId: "claim-1",
+        role: "supports",
+      }),
+      buildCapLink({
+        sourceType: "message",
+        sourceId: "msg-1",
+        role: "context",
+      }),
+      buildCapLink({
+        sourceType: "contradiction_node",
+        sourceId: "node-1",
+        role: "supports",
+      }),
+      buildCapLink({
+        sourceType: "pattern_claim",
+        sourceId: "claim-2",
+        role: "contradicts",
+      }),
+    ];
+
+    const curated = curatePersistableEvidenceLinksForCandidate(links, 3.9);
+
+    expect(curated.capLimit).toBe(3);
+    expect(curated.selectedAfterCap).toBe(3);
+    expect(curated.capApplied).toBe(true);
+    expect(curated.links).toHaveLength(3);
+  });
+
+  it("falls back to the default cap when cap limit is non-finite", () => {
+    const link = buildCapLink({
+      sourceType: "pattern_claim",
+      sourceId: "claim-1",
+      role: "supports",
+    });
+
+    const curated = curatePersistableEvidenceLinksForCandidate([link], Number.NaN);
+
+    expect(curated.capLimit).toBe(USERMAP_CANDIDATE_PERSISTED_EVIDENCE_LINK_CAP);
+    expect(curated.selectedBeforeCap).toBe(1);
+    expect(curated.selectedAfterCap).toBe(1);
+    expect(curated.capApplied).toBe(false);
   });
 });
 
