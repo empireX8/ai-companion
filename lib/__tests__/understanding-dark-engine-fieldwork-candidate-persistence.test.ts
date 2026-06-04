@@ -417,12 +417,20 @@ function createFieldworkDbMock(args?: {
 
       const fieldworkSnapshot = fieldwork.map((row) => ({ ...row }));
       const linkSnapshot = links.map((row) => ({ ...row }));
+      const derivationRunSnapshot = derivationRun.map((row) => ({ ...row }));
+      const derivationArtifactSnapshot = derivationArtifact.map((row) => ({ ...row }));
 
       try {
         return await (arg as (tx: FieldworkDb) => Promise<unknown>)(db);
       } catch (error) {
         fieldwork.splice(0, fieldwork.length, ...fieldworkSnapshot);
         links.splice(0, links.length, ...linkSnapshot);
+        derivationRun.splice(0, derivationRun.length, ...derivationRunSnapshot);
+        derivationArtifact.splice(
+          0,
+          derivationArtifact.length,
+          ...derivationArtifactSnapshot
+        );
         throw error;
       }
     }),

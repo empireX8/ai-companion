@@ -435,7 +435,7 @@ export async function persistInternalFieldworkCandidate(
           persistedFieldworkAssignmentId = created.id;
           createdCandidate = true;
 
-          const targetType = "fieldwork_assignment" as const;
+          const targetType = UnderstandingLinkTargetType.fieldwork_assignment;
 
           for (const link of links) {
             evidenceLinksAttempted += 1;
