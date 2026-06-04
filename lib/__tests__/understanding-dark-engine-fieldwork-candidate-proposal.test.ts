@@ -289,4 +289,125 @@ describe("structured FieldworkAssignment candidate proposal builder", () => {
       })
     ).toBeNull();
   });
+
+  it("requires both safe prompt and safe reason wording", () => {
+    expect(
+      usesFieldworkCandidateSafeWording({
+        prompt: "Raw leak prompt",
+        reason: "This may be worth watching in practice. Energy drops.",
+      })
+    ).toBe(false);
+
+    expect(
+      usesFieldworkCandidateSafeWording({
+        prompt: "Notice whether energy drops after meetings.",
+        reason: "private-snippet leaked",
+      })
+    ).toBe(false);
+
+    expect(
+      usesFieldworkCandidateSafeWording({
+        prompt: "Notice whether energy drops after meetings.",
+        reason: "This may be worth watching in practice. Energy drops.",
+      })
+    ).toBe(true);
+  });
+
+  it("extractStructuredFieldworkCandidateProposal returns null for malformed linked objects and evidence", () => {
+    const base = {
+      prompt: "Notice whether energy drops after meetings.",
+      reason: "This may be worth watching in practice. Energy drops.",
+      abstainReasons: ["PROFILE_ARTIFACT_CAP" as RejectionReasonCode],
+      evidenceSelections: [
+        { sourceType: "pattern_claim" as const, sourceId: "pc-1" },
+      ],
+    };
+
+    expect(
+      extractStructuredFieldworkCandidateProposal({
+        fieldworkCandidateProposal: {
+          ...base,
+          linkedObjectType: undefined as unknown as UnderstandingLinkTargetType,
+          linkedObjectId: "pc-1",
+        },
+      })
+    ).toBeNull();
+
+    expect(
+      extractStructuredFieldworkCandidateProposal({
+        fieldworkCandidateProposal: {
+          ...base,
+          linkedObjectType: "not_a_real_target" as UnderstandingLinkTargetType,
+          linkedObjectId: "pc-1",
+        },
+      })
+    ).toBeNull();
+
+    expect(
+      extractStructuredFieldworkCandidateProposal({
+        fieldworkCandidateProposal: {
+          ...base,
+          linkedObjectType: UnderstandingLinkTargetType.pattern_claim,
+          linkedObjectId: "   ",
+        },
+      })
+    ).toBeNull();
+
+    expect(
+      extractStructuredFieldworkCandidateProposal({
+        fieldworkCandidateProposal: {
+          ...base,
+          linkedObjectType: UnderstandingLinkTargetType.pattern_claim,
+          linkedObjectId: "pc-1",
+          evidenceSelections: "not-an-array" as unknown as typeof base.evidenceSelections,
+        },
+      })
+    ).toBeNull();
+
+    expect(
+      extractStructuredFieldworkCandidateProposal({
+        fieldworkCandidateProposal: {
+          ...base,
+          linkedObjectType: UnderstandingLinkTargetType.pattern_claim,
+          linkedObjectId: "pc-1",
+          evidenceSelections: [{ sourceType: "pattern_claim", sourceId: "  " }],
+        },
+      })
+    ).toBeNull();
+
+    expect(
+      extractStructuredFieldworkCandidateProposal({
+        fieldworkCandidateProposal: {
+          ...base,
+          linkedObjectType: UnderstandingLinkTargetType.pattern_claim,
+          linkedObjectId: "pc-1",
+          evidenceSelections: [
+            { sourceType: "not_a_source" as UnderstandingLinkSourceType, sourceId: "pc-1" },
+          ],
+        },
+      })
+    ).toBeNull();
+  });
+
+  it("extractStructuredFieldworkCandidateProposal returns cleaned valid payloads", () => {
+    expect(
+      extractStructuredFieldworkCandidateProposal({
+        fieldworkCandidateProposal: {
+          prompt: "  Notice whether energy drops. ",
+          reason: "  This may be worth watching in practice. Energy drops. ",
+          linkedObjectType: UnderstandingLinkTargetType.pattern_claim,
+          linkedObjectId: "  pc-1  ",
+          abstainReasons: [" PROFILE_ARTIFACT_CAP " as RejectionReasonCode],
+          evidenceSelections: [{ sourceType: "pattern_claim", sourceId: " pc-1 " }],
+        },
+      })
+    ).toEqual({
+      prompt: "Notice whether energy drops.",
+      reason: "This may be worth watching in practice. Energy drops.",
+      linkedObjectType: UnderstandingLinkTargetType.pattern_claim,
+      linkedObjectId: "pc-1",
+      abstainReasons: ["PROFILE_ARTIFACT_CAP"],
+      evidenceSelections: [{ sourceType: "pattern_claim", sourceId: "pc-1" }],
+    });
+  });
 });

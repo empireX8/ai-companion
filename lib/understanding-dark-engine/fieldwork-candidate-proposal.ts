@@ -1,6 +1,6 @@
 import {
   UnderstandingLinkTargetType,
-  type UnderstandingLinkSourceType,
+  UnderstandingLinkSourceType,
 } from "@prisma/client";
 
 import type { RejectionReasonCode } from "./constants";
@@ -50,10 +50,17 @@ export type StructuredFieldworkCandidateProposal = {
   evidenceSelections: UserMapCandidateEvidenceSelection[];
 };
 
-export const FIELDWORK_CANDIDATE_SAFE_WORDING_PATTERNS = [
-  /^Notice whether\b/i,
-  /^This may be worth watching in practice\./i,
-] as const;
+export const FIELDWORK_CANDIDATE_SAFE_PROMPT_PATTERN = /^Notice whether\b/i;
+export const FIELDWORK_CANDIDATE_SAFE_REASON_PATTERN =
+  /^This may be worth watching in practice\./i;
+
+const ALLOWED_LINKED_OBJECT_TYPES = new Set<string>(
+  Object.values(UnderstandingLinkTargetType)
+);
+
+const ALLOWED_EVIDENCE_SOURCE_TYPES = new Set<string>(
+  Object.values(UnderstandingLinkSourceType)
+);
 
 function normalizeWhitespace(value: string): string {
   return value.trim().replace(/\s+/g, " ");
@@ -228,9 +235,91 @@ export function usesFieldworkCandidateSafeWording(proposal: {
   prompt: string;
   reason: string;
 }): boolean {
-  return FIELDWORK_CANDIDATE_SAFE_WORDING_PATTERNS.some(
-    (pattern) => pattern.test(proposal.prompt) || pattern.test(proposal.reason)
+  return (
+    FIELDWORK_CANDIDATE_SAFE_PROMPT_PATTERN.test(proposal.prompt) &&
+    FIELDWORK_CANDIDATE_SAFE_REASON_PATTERN.test(proposal.reason)
   );
+}
+
+function parseLinkedObjectType(value: unknown): UnderstandingLinkTargetType | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed || !ALLOWED_LINKED_OBJECT_TYPES.has(trimmed)) {
+    return null;
+  }
+
+  return trimmed as UnderstandingLinkTargetType;
+}
+
+function parseLinkedObjectId(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function parseEvidenceSelections(
+  value: unknown
+): UserMapCandidateEvidenceSelection[] | null {
+  if (!Array.isArray(value) || value.length === 0) {
+    return null;
+  }
+
+  const parsed: UserMapCandidateEvidenceSelection[] = [];
+
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+
+    const record = entry as {
+      sourceType?: unknown;
+      sourceId?: unknown;
+    };
+    const sourceType =
+      typeof record.sourceType === "string" ? record.sourceType.trim() : "";
+    const sourceId = typeof record.sourceId === "string" ? record.sourceId.trim() : "";
+
+    if (!sourceType || !sourceId) {
+      return null;
+    }
+
+    if (!ALLOWED_EVIDENCE_SOURCE_TYPES.has(sourceType)) {
+      return null;
+    }
+
+    parsed.push({
+      sourceType: sourceType as UnderstandingLinkSourceType,
+      sourceId,
+    });
+  }
+
+  return [...parsed].sort(compareProposalEvidenceSelections);
+}
+
+function parseAbstainReasons(value: unknown): RejectionReasonCode[] | null {
+  if (!Array.isArray(value) || value.length === 0) {
+    return null;
+  }
+
+  const parsed: RejectionReasonCode[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") {
+      return null;
+    }
+    const trimmed = entry.trim();
+    if (!trimmed) {
+      return null;
+    }
+    parsed.push(trimmed as RejectionReasonCode);
+  }
+
+  return parsed;
 }
 
 /**
@@ -309,14 +398,25 @@ export function extractStructuredFieldworkCandidateProposal(output: {
 
   const prompt = typeof proposal.prompt === "string" ? proposal.prompt.trim() : "";
   const reason = typeof proposal.reason === "string" ? proposal.reason.trim() : "";
+  const linkedObjectType = parseLinkedObjectType(proposal.linkedObjectType);
+  const linkedObjectId = parseLinkedObjectId(proposal.linkedObjectId);
+  const evidenceSelections = parseEvidenceSelections(proposal.evidenceSelections);
+  const abstainReasons = parseAbstainReasons(proposal.abstainReasons);
 
-  if (!prompt || !reason) {
+  if (!prompt || !reason || !linkedObjectType || !linkedObjectId || !evidenceSelections) {
+    return null;
+  }
+
+  if (!abstainReasons) {
     return null;
   }
 
   return {
-    ...proposal,
     prompt,
     reason,
+    linkedObjectType,
+    linkedObjectId,
+    abstainReasons,
+    evidenceSelections,
   };
 }
