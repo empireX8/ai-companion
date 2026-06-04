@@ -1,14 +1,11 @@
 import { type PrismaClient } from "@prisma/client";
 
 import prismadb from "../prismadb";
-import {
-  extractStructuredUserMapCandidateProposal,
-  type DarkRunOutputWithOptionalProposal,
-} from "./app-message-candidate-bridge";
+import { type RunNoWriteUnderstandingDarkRunResult } from "./dark-run-orchestrator";
+import { persistInternalCandidateFromNoWriteDarkRunOutput } from "./candidate-bridge-dark-run-persistence";
 import { evaluateNoWriteDarkRunOutput } from "./dark-run-evaluation-harness";
 import { runNoWriteUnderstandingDarkRun } from "./dark-run-orchestrator";
 import { resolveCandidateBridgeNoWriteTriggerEligibility } from "./no-write-trigger-runtime-state";
-import { persistInternalUserMapConclusionCandidate } from "./user-map-candidate-persistence";
 
 export type ImportCompletionCandidateBridgeDecision =
   | "skipped_ineligible_trigger"
@@ -16,13 +13,16 @@ export type ImportCompletionCandidateBridgeDecision =
   | "skipped_harness_failed"
   | "skipped_gate_abstain"
   | "skipped_persistence_blocked"
-  | "created";
+  | "skipped_investigation_persistence_blocked"
+  | "created"
+  | "created_investigation_candidate";
 
 export type ImportCompletionCandidateBridgeResult = {
   decision: ImportCompletionCandidateBridgeDecision;
   reason: string;
   eligibilityDecision?: string;
   persistedConclusionId?: string | null;
+  persistedInvestigationId?: string | null;
   blockedWriteReasons?: string[];
 };
 
@@ -58,7 +58,7 @@ export async function tryCreateInternalUserMapCandidateFromImportCompletion(args
     userId: args.userId,
     now,
     db: db as unknown as Parameters<typeof runNoWriteUnderstandingDarkRun>[0]["db"],
-  })) as DarkRunOutputWithOptionalProposal;
+  })) as RunNoWriteUnderstandingDarkRunResult;
 
   const harness = evaluateNoWriteDarkRunOutput(darkRunOutput);
   if (!harness.passed) {
@@ -73,53 +73,20 @@ export async function tryCreateInternalUserMapCandidateFromImportCompletion(args
     };
   }
 
-  if (darkRunOutput.userMapEvaluation.decision === "abstain") {
-    return {
-      decision: "skipped_gate_abstain",
-      reason: "Objectivity gates abstained.",
-    };
-  }
-
-  const proposal = extractStructuredUserMapCandidateProposal(darkRunOutput);
-  if (!proposal) {
-    console.info(logTag, "No structured candidate proposal in dark-run output; abstaining.", {
-      userId: args.userId,
-      sessionId: args.sessionId,
-    });
-    return {
-      decision: "skipped_insufficient_proposal",
-      reason:
-        "Dark-run output lacks structured userMapCandidateProposal (area, title, summary, target).",
-    };
-  }
-
-  const persistence = await persistInternalUserMapConclusionCandidate({
+  const persistenceOutcome = await persistInternalCandidateFromNoWriteDarkRunOutput({
     userId: args.userId,
-    area: proposal.area,
-    title: proposal.title,
-    summary: proposal.summary,
-    target: proposal.target,
-    evidenceSelections: proposal.evidenceSelections,
+    darkRunOutput,
     now,
-    db: db as unknown as Parameters<typeof persistInternalUserMapConclusionCandidate>[0]["db"],
+    db,
+    logTag,
+    context: { sessionId: args.sessionId },
   });
 
-  if (!persistence.persistedConclusionId) {
-    console.info(logTag, "Persistence blocked; no candidate written.", {
-      userId: args.userId,
-      sessionId: args.sessionId,
-      blockedWriteReasons: persistence.payload.blockedWriteReasons,
-    });
-    return {
-      decision: "skipped_persistence_blocked",
-      reason: "Persistence gates blocked candidate write.",
-      blockedWriteReasons: persistence.payload.blockedWriteReasons,
-    };
-  }
-
   return {
-    decision: "created",
-    reason: "Internal candidate persisted.",
-    persistedConclusionId: persistence.persistedConclusionId,
+    decision: persistenceOutcome.decision,
+    reason: persistenceOutcome.reason,
+    persistedConclusionId: persistenceOutcome.persistedConclusionId,
+    persistedInvestigationId: persistenceOutcome.persistedInvestigationId,
+    blockedWriteReasons: persistenceOutcome.blockedWriteReasons,
   };
 }
