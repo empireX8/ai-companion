@@ -28,8 +28,10 @@ export type AppMessageCandidateBridgeDecision =
   | "skipped_gate_abstain"
   | "skipped_persistence_blocked"
   | "skipped_investigation_persistence_blocked"
+  | "skipped_fieldwork_persistence_blocked"
   | "created"
-  | "created_investigation_candidate";
+  | "created_investigation_candidate"
+  | "created_fieldwork_candidate";
 
 export type AppMessageCandidateBridgeResult = {
   decision: AppMessageCandidateBridgeDecision;
@@ -37,6 +39,7 @@ export type AppMessageCandidateBridgeResult = {
   eligibilityDecision?: string;
   persistedConclusionId?: string | null;
   persistedInvestigationId?: string | null;
+  persistedFieldworkAssignmentId?: string | null;
   blockedWriteReasons?: string[];
 };
 
@@ -129,6 +132,7 @@ export async function tryCreateInternalUserMapCandidateFromAppMessage(args: {
     reason: persistenceOutcome.reason,
     persistedConclusionId: persistenceOutcome.persistedConclusionId,
     persistedInvestigationId: persistenceOutcome.persistedInvestigationId,
+    persistedFieldworkAssignmentId: persistenceOutcome.persistedFieldworkAssignmentId,
     blockedWriteReasons: persistenceOutcome.blockedWriteReasons,
   };
 }
