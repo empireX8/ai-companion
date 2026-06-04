@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { extractStructuredUserMapCandidateProposal } from "../understanding-dark-engine/app-message-candidate-bridge";
 import { extractStructuredFieldworkCandidateProposal } from "../understanding-dark-engine/fieldwork-candidate-proposal";
 import { extractStructuredInvestigationCandidateProposal } from "../understanding-dark-engine/investigation-candidate-proposal";
+import { extractStructuredModelUpdateCandidateProposal } from "../understanding-dark-engine/model-update-candidate-proposal";
 import * as candidatePersistenceModule from "../understanding-dark-engine/user-map-candidate-persistence";
 import * as evidenceLinkWriterModule from "../understanding-evidence-link-writer";
 import { runNoWriteUnderstandingDarkRun } from "../understanding-dark-engine/dark-run-orchestrator";
@@ -465,6 +466,7 @@ describe("Phase 2B no-write dark-run orchestrator", () => {
     expect(result.userMapCandidateProposal).not.toBeNull();
     expect(result.investigationCandidateProposal).toBeNull();
     expect(result.fieldworkCandidateProposal).toBeNull();
+    expect(result.modelUpdateCandidateProposal).toBeNull();
     expectNoWritePathCalls(db);
   });
 
@@ -482,6 +484,7 @@ describe("Phase 2B no-write dark-run orchestrator", () => {
 
     expect(result.investigationCandidateProposal).not.toBeNull();
     expect(result.fieldworkCandidateProposal).toBeNull();
+    expect(result.modelUpdateCandidateProposal).toBeNull();
     expectNoWritePathCalls(db);
   });
 
@@ -500,7 +503,53 @@ describe("Phase 2B no-write dark-run orchestrator", () => {
     expect(result.userMapCandidateProposal).toBeNull();
     expect(result.investigationCandidateProposal).not.toBeNull();
     expect(result.fieldworkCandidateProposal).toBeNull();
+    expect(result.modelUpdateCandidateProposal).toBeNull();
     expect(extractStructuredFieldworkCandidateProposal(result)).toBeNull();
+    expectNoWritePathCalls(db);
+  });
+
+  it("emits modelUpdateCandidateProposal when higher-priority proposals are absent", async () => {
+    const db = createNoWriteDbMock({
+      includePatternClaim: false,
+      includeSurfacedAction: true,
+    });
+
+    const result = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    expect(result.userMapCandidateProposal).toBeNull();
+    expect(result.investigationCandidateProposal).toBeNull();
+    expect(result.fieldworkCandidateProposal).toBeNull();
+    expect(result.modelUpdateCandidateProposal).not.toBeNull();
+    expect(result.modelUpdateCandidateProposal?.userFacingSummary).toMatch(
+      /^There is early evidence that\b/i
+    );
+    expect(result.modelUpdateCandidateProposal?.userFacingSummary).not.toContain(
+      "Raw private action note."
+    );
+    expect(extractStructuredModelUpdateCandidateProposal(result)).toEqual(
+      result.modelUpdateCandidateProposal
+    );
+    expectNoWritePathCalls(db);
+  });
+
+  it("does not emit modelUpdateCandidateProposal when investigation proposal is present", async () => {
+    const db = createNoWriteDbMock({
+      includeSurfacedAction: false,
+      patternClaimOnly: true,
+    });
+
+    const result = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    expect(result.investigationCandidateProposal).not.toBeNull();
+    expect(result.modelUpdateCandidateProposal).toBeNull();
     expectNoWritePathCalls(db);
   });
 });

@@ -3,6 +3,10 @@ import {
   usesFieldworkCandidateSafeWording,
 } from "./fieldwork-candidate-proposal";
 import {
+  extractStructuredModelUpdateCandidateProposal,
+  usesModelUpdateCandidateSafeWording,
+} from "./model-update-candidate-proposal";
+import {
   extractStructuredInvestigationCandidateProposal,
   usesInvestigationCandidateSafeWording,
 } from "./investigation-candidate-proposal";
@@ -42,6 +46,8 @@ const INVARIANT_NO_WRITE = "no_write_invariant";
 const INVARIANT_INVESTIGATION_PROPOSAL_SAFETY =
   "investigation_candidate_proposal_safety";
 const INVARIANT_FIELDWORK_PROPOSAL_SAFETY = "fieldwork_candidate_proposal_safety";
+const INVARIANT_MODEL_UPDATE_PROPOSAL_SAFETY =
+  "model_update_candidate_proposal_safety";
 
 const RAW_LIKE_KEY_TOKENS = [
   "snippet",
@@ -131,6 +137,7 @@ export function evaluateNoWriteDarkRunOutput(
     INVARIANT_NO_WRITE,
     INVARIANT_INVESTIGATION_PROPOSAL_SAFETY,
     INVARIANT_FIELDWORK_PROPOSAL_SAFETY,
+    INVARIANT_MODEL_UPDATE_PROPOSAL_SAFETY,
   ];
 
   const packetItems = asArray(output?.packet?.items) as Array<
@@ -442,6 +449,49 @@ export function evaluateNoWriteDarkRunOutput(
         invariant: INVARIANT_FIELDWORK_PROPOSAL_SAFETY,
         message:
           "fieldworkCandidateProposal must not include snippet/quote payload keys.",
+      });
+    }
+  }
+
+  const rawModelUpdateProposal = output?.modelUpdateCandidateProposal;
+  const isRawModelUpdateProposalPresent =
+    rawModelUpdateProposal !== undefined && rawModelUpdateProposal !== null;
+
+  const modelUpdateProposal = isRawModelUpdateProposalPresent
+    ? extractStructuredModelUpdateCandidateProposal(output ?? {})
+    : null;
+
+  if (isRawModelUpdateProposalPresent && !modelUpdateProposal) {
+    pushFailure({
+      invariant: INVARIANT_MODEL_UPDATE_PROPOSAL_SAFETY,
+      message:
+        "modelUpdateCandidateProposal is present but missing required string fields (userFacingSummary, affectedObjectId).",
+    });
+  } else if (modelUpdateProposal) {
+    if (!usesModelUpdateCandidateSafeWording(modelUpdateProposal)) {
+      pushFailure({
+        invariant: INVARIANT_MODEL_UPDATE_PROPOSAL_SAFETY,
+        message:
+          "modelUpdateCandidateProposal must use approved public-safe framing without model-change overclaims.",
+      });
+    }
+
+    const proposalRecord = modelUpdateProposal as Record<string, unknown>;
+    for (const key of Object.keys(proposalRecord)) {
+      if (isRawLikeKey(key)) {
+        pushFailure({
+          invariant: INVARIANT_MODEL_UPDATE_PROPOSAL_SAFETY,
+          message: `modelUpdateCandidateProposal exposes raw-like field "${key}".`,
+        });
+      }
+    }
+
+    const serialized = JSON.stringify(modelUpdateProposal);
+    if (/\bsnippet\b/i.test(serialized) || /\bquote\b/i.test(serialized)) {
+      pushFailure({
+        invariant: INVARIANT_MODEL_UPDATE_PROPOSAL_SAFETY,
+        message:
+          "modelUpdateCandidateProposal must not include snippet/quote payload keys.",
       });
     }
   }

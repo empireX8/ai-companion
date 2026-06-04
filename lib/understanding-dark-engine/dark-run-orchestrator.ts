@@ -26,6 +26,10 @@ import {
   type StructuredInvestigationCandidateProposal,
 } from "./investigation-candidate-proposal";
 import {
+  buildStructuredModelUpdateCandidateProposal,
+  type StructuredModelUpdateCandidateProposal,
+} from "./model-update-candidate-proposal";
+import {
   buildStructuredUserMapCandidateProposal,
   type StructuredUserMapCandidateProposal,
 } from "./user-map-candidate-proposal";
@@ -154,6 +158,7 @@ export type RunNoWriteUnderstandingDarkRunResult = {
   userMapCandidateProposal?: StructuredUserMapCandidateProposal | null;
   investigationCandidateProposal?: StructuredInvestigationCandidateProposal | null;
   fieldworkCandidateProposal?: StructuredFieldworkCandidateProposal | null;
+  modelUpdateCandidateProposal?: StructuredModelUpdateCandidateProposal | null;
 };
 
 export async function runNoWriteUnderstandingDarkRun(
@@ -205,6 +210,16 @@ export async function runNoWriteUnderstandingDarkRun(
           evaluation,
         });
 
+  const modelUpdateCandidateProposal =
+    userMapCandidateProposal ||
+    investigationCandidateProposal ||
+    fieldworkCandidateProposal
+      ? null
+      : buildStructuredModelUpdateCandidateProposal({
+          packet,
+          evaluation,
+        });
+
   return {
     mode: "no_write_dark_run",
     userId: packet.userId,
@@ -221,5 +236,6 @@ export async function runNoWriteUnderstandingDarkRun(
     userMapCandidateProposal,
     investigationCandidateProposal,
     fieldworkCandidateProposal,
+    modelUpdateCandidateProposal,
   };
 }
