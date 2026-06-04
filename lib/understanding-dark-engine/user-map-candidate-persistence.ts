@@ -1020,3 +1020,8 @@ export function createDarkRunDiagnosticsBaselineFromPacket(
 ): DarkRunDiagnostics {
   return createDarkRunDiagnosticsFromPacket(packet);
 }
+
+export {
+  buildPersistableLinks as buildPersistableEvidenceLinksFromPacket,
+  applyEvidencePolicyChecks as applyPersistableEvidenceLinkPolicyChecks,
+};
