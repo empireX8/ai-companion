@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { buildPublicWatchForWhere } from "../fieldwork-public-visibility";
+
 const authMock = vi.fn();
 const notFoundMock = vi.fn(() => {
   throw new Error("NEXT_NOT_FOUND");
@@ -23,6 +25,11 @@ vi.mock("@/components/AppShell", () => ({
   PageHeader: () => null,
   SectionLabel: ({ children }: { children: unknown }) => children,
 }));
+
+vi.mock("@/lib/watch-for", async () => {
+  const actual = await import("../watch-for");
+  return actual;
+});
 
 vi.mock("@/lib/public-intelligence-safe-slice", async () => {
   const actual = await import("../public-intelligence-safe-slice");
@@ -77,10 +84,7 @@ describe("Phase 3 Watch For page", () => {
     expect(html).toContain("No watch-for prompts right now.");
     expect(prismaMock.fieldworkAssignment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          userId: "user-1",
-          status: { in: ["assigned", "active"] },
-        },
+        where: buildPublicWatchForWhere({ userId: "user-1" }),
       })
     );
   });
@@ -178,11 +182,10 @@ describe("Phase 3 Watch For page", () => {
 
     expect(prismaMock.fieldworkAssignment.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          id: "fw-completed",
+        where: buildPublicWatchForWhere({
           userId: "user-1",
-          status: { in: ["assigned", "active"] },
-        },
+          id: "fw-completed",
+        }),
       })
     );
   });
