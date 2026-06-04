@@ -398,6 +398,48 @@ describe("import completion internal candidate bridge", () => {
     expect(result.blockedWriteReasons).toEqual(["INSUFFICIENT_LINKABLE_EVIDENCE_COUNT"]);
   });
 
+  it("returns skipped_investigation_persistence_blocked for duplicate Investigation candidate", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: {
+          decision: "abstain",
+          allowedStatus: UserMapConclusionStatus.emerging,
+          confidenceCap: 0.3,
+          reasons: ["INSUFFICIENT_EVIDENCE_COUNT"],
+          warnings: [],
+          metrics: {
+            evidenceCount: 1,
+            sourceDiversity: 1,
+            timeSpreadDays: 0,
+            highEmotionDominanceRatio: 0,
+            distinctEpisodeCount: 1,
+          },
+        },
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: makeInvestigationProposal(),
+      })
+    );
+    persistInternalInvestigationCandidateMock.mockResolvedValueOnce({
+      persistedInvestigationId: "inv-existing",
+      payload: {
+        blockedWriteReasons: ["DUPLICATE_CANDIDATE"],
+        candidatesWritten: 0,
+      },
+    });
+
+    const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
+      userId: "user-1",
+      sessionId: "ses-1",
+      now: FIXED_NOW,
+    });
+
+    expect(result.decision).toBe("skipped_investigation_persistence_blocked");
+    expect(result.decision).not.toBe("created_investigation_candidate");
+    expect(result.persistedInvestigationId).toBe("inv-existing");
+    expect(result.blockedWriteReasons).toEqual(["DUPLICATE_CANDIDATE"]);
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+  });
+
   it("writes nothing when no-write evaluation harness fails", async () => {
     evaluateNoWriteDarkRunOutputMock.mockReturnValueOnce({
       passed: false,

@@ -4,8 +4,21 @@ import prismadb from "../prismadb";
 import type { RunNoWriteUnderstandingDarkRunResult } from "./dark-run-orchestrator";
 import { extractStructuredInvestigationCandidateProposal } from "./investigation-candidate-proposal";
 import { extractStructuredUserMapCandidateProposal } from "./user-map-candidate-proposal";
-import { persistInternalInvestigationCandidate } from "./investigation-candidate-persistence";
+import {
+  persistInternalInvestigationCandidate,
+  type PersistInternalInvestigationCandidateResult,
+} from "./investigation-candidate-persistence";
 import { persistInternalUserMapConclusionCandidate } from "./user-map-candidate-persistence";
+
+function investigationCandidateWasCreated(
+  persistence: PersistInternalInvestigationCandidateResult
+): boolean {
+  return (
+    !!persistence.persistedInvestigationId &&
+    persistence.payload.candidatesWritten > 0 &&
+    persistence.payload.blockedWriteReasons.length === 0
+  );
+}
 
 export type CandidateBridgeDarkRunPersistenceDecision =
   | "skipped_gate_abstain"
@@ -86,7 +99,7 @@ export async function persistInternalCandidateFromNoWriteDarkRunOutput(args: {
       db: db as unknown as Parameters<typeof persistInternalInvestigationCandidate>[0]["db"],
     });
 
-    if (!persistence.persistedInvestigationId) {
+    if (!investigationCandidateWasCreated(persistence)) {
       console.info(
         args.logTag,
         "Investigation persistence blocked; no candidate written.",
@@ -94,6 +107,8 @@ export async function persistInternalCandidateFromNoWriteDarkRunOutput(args: {
           userId: args.userId,
           ...args.context,
           blockedWriteReasons: persistence.payload.blockedWriteReasons,
+          persistedInvestigationId: persistence.persistedInvestigationId,
+          candidatesWritten: persistence.payload.candidatesWritten,
         }
       );
       return {
