@@ -3,6 +3,7 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildPublicActiveInvestigationWhere } from "../investigation-public-visibility";
+import { buildPublicWatchForWhere } from "../fieldwork-public-visibility";
 
 vi.mock("server-only", () => ({}));
 
@@ -185,10 +186,7 @@ describe("/api/active-questions and /api/watch-for safe mobile list routes", () 
 
     expect(response.status).toBe(200);
     expect(prismaMock.fieldworkAssignment.findMany).toHaveBeenCalledWith({
-      where: {
-        userId: "user-1",
-        status: { in: ["assigned", "active"] },
-      },
+      where: buildPublicWatchForWhere({ userId: "user-1" }),
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take: 20,
       select: {

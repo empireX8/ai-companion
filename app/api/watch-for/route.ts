@@ -6,11 +6,8 @@ import {
   linkedObjectHrefMapKey,
   resolvePublicLinkedObjectHrefs,
 } from "../../../lib/public-linked-object-continuity";
-import {
-  WATCH_FOR_LIMIT,
-  WATCH_FOR_SAFE_VISIBLE_STATUSES,
-  toWatchForItem,
-} from "../../../lib/watch-for";
+import { buildPublicWatchForWhere } from "../../../lib/fieldwork-public-visibility";
+import { WATCH_FOR_LIMIT, toWatchForItem } from "../../../lib/watch-for";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +19,7 @@ export async function GET() {
 
   try {
     const rows = await prismadb.fieldworkAssignment.findMany({
-      where: {
-        userId,
-        status: { in: WATCH_FOR_SAFE_VISIBLE_STATUSES },
-      },
+      where: buildPublicWatchForWhere({ userId }),
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take: WATCH_FOR_LIMIT,
       select: {

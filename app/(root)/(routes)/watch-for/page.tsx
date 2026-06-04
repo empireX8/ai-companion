@@ -9,10 +9,8 @@ import {
   resolvePublicLinkedObjectHrefs,
 } from "@/lib/public-linked-object-continuity";
 import prismadb from "@/lib/prismadb";
-import {
-  WATCH_FOR_VISIBLE_STATUSES,
-  toWatchForListItem,
-} from "@/lib/public-intelligence-safe-slice";
+import { toWatchForListItem } from "@/lib/public-intelligence-safe-slice";
+import { buildPublicWatchForWhere } from "@/lib/watch-for";
 
 export const dynamic = "force-dynamic";
 
@@ -37,10 +35,7 @@ export default async function WatchForPage() {
   }
 
   const rows = await prismadb.fieldworkAssignment.findMany({
-    where: {
-      userId,
-      status: { in: WATCH_FOR_VISIBLE_STATUSES },
-    },
+    where: buildPublicWatchForWhere({ userId }),
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     take: 50,
     select: {

@@ -56,6 +56,13 @@ export type WatchForDetailItem = {
   updatedAt: string;
 };
 
+export {
+  buildPublicWatchForWhere,
+  isPublicWatchForCandidateLifecycle,
+  PUBLIC_FIELDWORK_ALLOWED_CANDIDATE_LIFECYCLE_STATUSES,
+  PUBLIC_FIELDWORK_ASSIGNMENT_VISIBILITY,
+} from "./fieldwork-public-visibility";
+
 export const WATCH_FOR_ENDPOINT = "/api/watch-for";
 export const WATCH_FOR_LIMIT = 20;
 export const WATCH_FOR_SAFE_VISIBLE_STATUSES = WATCH_FOR_VISIBLE_STATUSES;

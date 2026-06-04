@@ -10,8 +10,8 @@ import prismadb from "@/lib/prismadb";
 import {
   formatFieldworkStatus,
   formatLinkedObjectType,
-  WATCH_FOR_VISIBLE_STATUSES,
 } from "@/lib/public-intelligence-safe-slice";
+import { buildPublicWatchForWhere } from "@/lib/watch-for";
 
 export const dynamic = "force-dynamic";
 
@@ -48,11 +48,7 @@ export default async function WatchForDetailPage({
 
   const { id } = await params;
   const item = await prismadb.fieldworkAssignment.findFirst({
-    where: {
-      id,
-      userId,
-      status: { in: WATCH_FOR_VISIBLE_STATUSES },
-    },
+    where: buildPublicWatchForWhere({ userId, id }),
     select: {
       id: true,
       prompt: true,

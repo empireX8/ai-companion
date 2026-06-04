@@ -4,7 +4,7 @@ import { UnderstandingLinkTargetType } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
 import { listPublicEvidenceContinuityForTarget } from "../../../../../lib/public-evidence-continuity";
-import { WATCH_FOR_SAFE_VISIBLE_STATUSES } from "../../../../../lib/watch-for";
+import { buildPublicWatchForWhere } from "../../../../../lib/fieldwork-public-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +21,7 @@ export async function GET(
 
   try {
     const target = await prismadb.fieldworkAssignment.findFirst({
-      where: {
-        id,
-        userId,
-        status: { in: WATCH_FOR_SAFE_VISIBLE_STATUSES },
-      },
+      where: buildPublicWatchForWhere({ userId, id }),
       select: { id: true },
     });
 

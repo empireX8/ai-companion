@@ -1,5 +1,6 @@
 import {
   CandidateLifecycleStatus,
+  FieldworkAssignmentVisibility,
   FieldworkStatus,
   InvestigationSeedType,
   InvestigationStatus,
@@ -145,6 +146,12 @@ describe("Phase 1A enum contracts", () => {
     );
   });
 
+  it("locks FieldworkAssignmentVisibility", () => {
+    expect(new Set(Object.values(FieldworkAssignmentVisibility))).toEqual(
+      new Set(["user_visible", "internal_only"])
+    );
+  });
+
   it("locks UnderstandingLinkTargetType", () => {
     expect(new Set(Object.values(UnderstandingLinkTargetType))).toEqual(
       new Set([
@@ -246,6 +253,9 @@ describe("Phase 1A schema model contracts", () => {
     expect(modelUpdate).toContain("@@index([userId, affectedObjectType, affectedObjectId])");
 
     expect(fieldwork).toContain("@@index([userId, status, updatedAt])");
+    expect(fieldwork).toContain(
+      "@@index([userId, visibility, status, updatedAt])"
+    );
     expect(fieldwork).toContain("@@index([userId, linkedObjectType, linkedObjectId])");
     expect(fieldwork).toContain("@@index([userId, createdAt])");
 
@@ -273,6 +283,18 @@ describe("Phase 1A schema model contracts", () => {
     expect(investigation).toMatch(
       /\bcandidateLifecycleStatus\s+CandidateLifecycleStatus\?/
     );
+  });
+
+  it("pins FieldworkAssignment visibility default and nullable candidate lifecycle", () => {
+    const fieldwork = modelBlock("FieldworkAssignment");
+
+    expect(fieldwork).toMatch(
+      /\bvisibility\s+FieldworkAssignmentVisibility\s+@default\(user_visible\)/
+    );
+    expect(fieldwork).toMatch(
+      /\bcandidateLifecycleStatus\s+CandidateLifecycleStatus\?/
+    );
+    expect(fieldwork).toMatch(/\bstatus\s+FieldworkStatus\b/);
   });
 
   it("keeps weight and confidenceContribution nullable for Phase 1A", () => {

@@ -759,6 +759,11 @@ enum FieldworkStatus {
   expired
 }
 
+enum FieldworkAssignmentVisibility {
+  user_visible
+  internal_only
+}
+
 enum UnderstandingLinkTargetType {
   usermap_conclusion
   investigation
@@ -886,22 +891,25 @@ model ModelUpdate {
 }
 
 model FieldworkAssignment {
-  id                 String                      @id @default(cuid())
-  userId             String
-  prompt             String
-  reason             String
-  status             FieldworkStatus
-  linkedObjectType   UnderstandingLinkTargetType
-  linkedObjectId     String
-  observationNote    String?
-  observationOutcome String?
-  completedAt        DateTime?
-  expiresAt          DateTime?
-  priority           Int?
-  createdAt          DateTime                    @default(now())
-  updatedAt          DateTime                    @updatedAt
+  id                       String                        @id @default(cuid())
+  userId                   String
+  prompt                   String
+  reason                   String
+  status                   FieldworkStatus
+  visibility               FieldworkAssignmentVisibility @default(user_visible)
+  candidateLifecycleStatus CandidateLifecycleStatus?
+  linkedObjectType         UnderstandingLinkTargetType
+  linkedObjectId           String
+  observationNote          String?
+  observationOutcome       String?
+  completedAt              DateTime?
+  expiresAt                DateTime?
+  priority                 Int?
+  createdAt                DateTime                      @default(now())
+  updatedAt                DateTime                      @updatedAt
 
   @@index([userId, status, updatedAt])
+  @@index([userId, visibility, status, updatedAt])
   @@index([userId, linkedObjectType, linkedObjectId])
   @@index([userId, createdAt])
 }
