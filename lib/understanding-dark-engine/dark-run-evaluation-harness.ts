@@ -1,4 +1,8 @@
 import {
+  extractStructuredFieldworkCandidateProposal,
+  usesFieldworkCandidateSafeWording,
+} from "./fieldwork-candidate-proposal";
+import {
   extractStructuredInvestigationCandidateProposal,
   usesInvestigationCandidateSafeWording,
 } from "./investigation-candidate-proposal";
@@ -37,6 +41,7 @@ const INVARIANT_EVALUATION_GATE_QUALITY = "evaluation_gate_quality";
 const INVARIANT_NO_WRITE = "no_write_invariant";
 const INVARIANT_INVESTIGATION_PROPOSAL_SAFETY =
   "investigation_candidate_proposal_safety";
+const INVARIANT_FIELDWORK_PROPOSAL_SAFETY = "fieldwork_candidate_proposal_safety";
 
 const RAW_LIKE_KEY_TOKENS = [
   "snippet",
@@ -125,6 +130,7 @@ export function evaluateNoWriteDarkRunOutput(
     INVARIANT_EVALUATION_GATE_QUALITY,
     INVARIANT_NO_WRITE,
     INVARIANT_INVESTIGATION_PROPOSAL_SAFETY,
+    INVARIANT_FIELDWORK_PROPOSAL_SAFETY,
   ];
 
   const packetItems = asArray(output?.packet?.items) as Array<
@@ -394,6 +400,48 @@ export function evaluateNoWriteDarkRunOutput(
         invariant: INVARIANT_INVESTIGATION_PROPOSAL_SAFETY,
         message:
           "investigationCandidateProposal must not include snippet/quote payload keys.",
+      });
+    }
+  }
+
+  const rawFieldworkProposal = output?.fieldworkCandidateProposal;
+  const isRawFieldworkProposalPresent =
+    rawFieldworkProposal !== undefined && rawFieldworkProposal !== null;
+
+  const fieldworkProposal = isRawFieldworkProposalPresent
+    ? extractStructuredFieldworkCandidateProposal(output ?? {})
+    : null;
+
+  if (isRawFieldworkProposalPresent && !fieldworkProposal) {
+    pushFailure({
+      invariant: INVARIANT_FIELDWORK_PROPOSAL_SAFETY,
+      message:
+        "fieldworkCandidateProposal is present but missing required string fields (prompt, reason).",
+    });
+  } else if (fieldworkProposal) {
+    if (!usesFieldworkCandidateSafeWording(fieldworkProposal)) {
+      pushFailure({
+        invariant: INVARIANT_FIELDWORK_PROPOSAL_SAFETY,
+        message: "fieldworkCandidateProposal must use approved public-safe framing.",
+      });
+    }
+
+    const proposalRecord = fieldworkProposal as Record<string, unknown>;
+    for (const key of Object.keys(proposalRecord)) {
+      if (isRawLikeKey(key)) {
+        pushFailure({
+          invariant: INVARIANT_FIELDWORK_PROPOSAL_SAFETY,
+          message: `fieldworkCandidateProposal exposes raw-like field "${key}".`,
+        });
+      }
+    }
+
+    const serialized = JSON.stringify(fieldworkProposal);
+    if (/\bsnippet\b/i.test(serialized) || /\bquote\b/i.test(serialized)) {
+      pushFailure({
+        invariant: INVARIANT_FIELDWORK_PROPOSAL_SAFETY,
+        message:
+          "fieldworkCandidateProposal must not include snippet/quote payload keys.",
       });
     }
   }
