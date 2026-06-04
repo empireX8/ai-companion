@@ -4,7 +4,7 @@ import { UnderstandingLinkTargetType } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
 import { listPublicEvidenceContinuityForTarget } from "../../../../../lib/public-evidence-continuity";
-import { buildPublicWatchForWhere } from "../../../../../lib/fieldwork-public-visibility";
+import { buildPublicWatchForWhere } from "@/lib/fieldwork-public-visibility";
 
 export const dynamic = "force-dynamic";
 

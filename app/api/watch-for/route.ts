@@ -6,8 +6,8 @@ import {
   linkedObjectHrefMapKey,
   resolvePublicLinkedObjectHrefs,
 } from "../../../lib/public-linked-object-continuity";
-import { buildPublicWatchForWhere } from "../../../lib/fieldwork-public-visibility";
-import { WATCH_FOR_LIMIT, toWatchForItem } from "../../../lib/watch-for";
+import { buildPublicWatchForWhere } from "@/lib/fieldwork-public-visibility";
+import { WATCH_FOR_LIMIT, toWatchForItem } from "@/lib/watch-for";
 
 export const dynamic = "force-dynamic";
 

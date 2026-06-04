@@ -41,6 +41,18 @@ describe("fieldwork public visibility guard", () => {
     });
   });
 
+  it("preserves empty-string id in the where clause for fail-closed detail lookups", () => {
+    expect(buildPublicWatchForWhere({ userId: "user-1", id: "" })).toEqual({
+      userId: "user-1",
+      id: "",
+      visibility: PUBLIC_FIELDWORK_ASSIGNMENT_VISIBILITY,
+      status: {
+        in: ["assigned", "active"],
+      },
+      OR: buildPublicFieldworkCandidateLifecycleOrFilter(),
+    });
+  });
+
   it("uses the same allow-list for Prisma OR filters and lifecycle eligibility checks", () => {
     for (const status of PUBLIC_FIELDWORK_ALLOWED_CANDIDATE_LIFECYCLE_STATUSES) {
       expect(isPublicWatchForCandidateLifecycle(status)).toBe(true);

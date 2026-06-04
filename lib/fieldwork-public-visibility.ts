@@ -41,7 +41,7 @@ export function buildPublicWatchForWhere(
 
   return {
     userId: input.userId,
-    ...(input.id ? { id: input.id } : {}),
+    ...(input.id !== undefined ? { id: input.id } : {}),
     visibility: PUBLIC_FIELDWORK_ASSIGNMENT_VISIBILITY,
     status: statusFilter,
     OR: buildPublicFieldworkCandidateLifecycleOrFilter(),
