@@ -6,11 +6,13 @@ const {
   runNoWriteUnderstandingDarkRunMock,
   evaluateNoWriteDarkRunOutputMock,
   persistInternalUserMapConclusionCandidateMock,
+  persistInternalInvestigationCandidateMock,
 } = vi.hoisted(() => ({
   resolveCandidateBridgeNoWriteTriggerEligibilityMock: vi.fn(),
   runNoWriteUnderstandingDarkRunMock: vi.fn(),
   evaluateNoWriteDarkRunOutputMock: vi.fn(),
   persistInternalUserMapConclusionCandidateMock: vi.fn(),
+  persistInternalInvestigationCandidateMock: vi.fn(),
 }));
 
 vi.mock("../understanding-dark-engine/no-write-trigger-runtime-state", () => ({
@@ -30,6 +32,13 @@ vi.mock("../understanding-dark-engine/user-map-candidate-persistence", () => ({
   persistInternalUserMapConclusionCandidate: persistInternalUserMapConclusionCandidateMock,
 }));
 
+vi.mock("../understanding-dark-engine/investigation-candidate-persistence", () => ({
+  persistInternalInvestigationCandidate: persistInternalInvestigationCandidateMock,
+}));
+
+import { InvestigationSeedType } from "@prisma/client";
+
+import { buildPublicActiveInvestigationWhere } from "../investigation-public-visibility";
 import {
   extractStructuredUserMapCandidateProposal,
   tryCreateInternalUserMapCandidateFromAppMessage,
@@ -130,6 +139,21 @@ function makeDarkRunOutput(
   };
 }
 
+function makeInvestigationProposal() {
+  return {
+    seedType: InvestigationSeedType.pattern,
+    title: "Worth exploring: Conflict shutdown pattern",
+    organizingQuestion: "What would clarify whether conflict shutdown pattern?",
+    summary:
+      "This looks worth watching as an open question. Conflict shutdown pattern.",
+    abstainReasons: ["INSUFFICIENT_EVIDENCE_COUNT" as const],
+    evidenceSelections: [
+      { sourceType: "pattern_claim" as const, sourceId: "pc-1" },
+      { sourceType: "message" as const, sourceId: "msg-1" },
+    ],
+  };
+}
+
 function makeStructuredProposal() {
   return {
     area: "operating_logic" as const,
@@ -179,6 +203,13 @@ describe("APP message internal candidate bridge", () => {
     });
     persistInternalUserMapConclusionCandidateMock.mockResolvedValue({
       persistedConclusionId: "conclusion-1",
+      payload: {
+        blockedWriteReasons: [],
+        candidatesWritten: 1,
+      },
+    });
+    persistInternalInvestigationCandidateMock.mockResolvedValue({
+      persistedInvestigationId: "inv-1",
       payload: {
         blockedWriteReasons: [],
         candidatesWritten: 1,
@@ -273,6 +304,171 @@ describe("APP message internal candidate bridge", () => {
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
   });
 
+  it("writes nothing when objectivity gates abstain without investigation proposal", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: {
+          decision: "abstain",
+          allowedStatus: UserMapConclusionStatus.emerging,
+          confidenceCap: 0.3,
+          reasons: ["INSUFFICIENT_EVIDENCE_COUNT"],
+          warnings: [],
+          metrics: {
+            evidenceCount: 1,
+            sourceDiversity: 1,
+            timeSpreadDays: 0,
+            highEmotionDominanceRatio: 0,
+            distinctEpisodeCount: 1,
+          },
+        },
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: null,
+      })
+    );
+
+    const result = await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(result.decision).toBe("skipped_gate_abstain");
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("prefers UserMap persistence when userMapCandidateProposal is present", async () => {
+    const userMapProposal = makeStructuredProposal();
+    const investigationProposal = makeInvestigationProposal();
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapCandidateProposal: userMapProposal,
+        investigationCandidateProposal: investigationProposal,
+      })
+    );
+
+    const result = await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(result.decision).toBe("created");
+    expect(persistInternalUserMapConclusionCandidateMock).toHaveBeenCalledTimes(1);
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("persists Investigation candidate on abstain when only investigationCandidateProposal is present", async () => {
+    const investigationProposal = makeInvestigationProposal();
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: {
+          decision: "abstain",
+          allowedStatus: UserMapConclusionStatus.emerging,
+          confidenceCap: 0.3,
+          reasons: ["INSUFFICIENT_EVIDENCE_COUNT"],
+          warnings: [],
+          metrics: {
+            evidenceCount: 1,
+            sourceDiversity: 1,
+            timeSpreadDays: 0,
+            highEmotionDominanceRatio: 0,
+            distinctEpisodeCount: 1,
+          },
+        },
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: investigationProposal,
+      })
+    );
+
+    const result = await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(result.decision).toBe("created_investigation_candidate");
+    expect(result.persistedInvestigationId).toBe("inv-1");
+    expect(persistInternalInvestigationCandidateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        proposal: investigationProposal,
+      })
+    );
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns skipped_investigation_persistence_blocked when Investigation persistence blocks", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: {
+          decision: "abstain",
+          allowedStatus: UserMapConclusionStatus.emerging,
+          confidenceCap: 0.3,
+          reasons: ["INSUFFICIENT_EVIDENCE_COUNT"],
+          warnings: [],
+          metrics: {
+            evidenceCount: 1,
+            sourceDiversity: 1,
+            timeSpreadDays: 0,
+            highEmotionDominanceRatio: 0,
+            distinctEpisodeCount: 1,
+          },
+        },
+        investigationCandidateProposal: makeInvestigationProposal(),
+      })
+    );
+    persistInternalInvestigationCandidateMock.mockResolvedValueOnce({
+      persistedInvestigationId: null,
+      payload: {
+        blockedWriteReasons: ["INSUFFICIENT_LINKABLE_EVIDENCE_COUNT"],
+        candidatesWritten: 0,
+      },
+    });
+
+    const result = await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(result.decision).toBe("skipped_investigation_persistence_blocked");
+    expect(result.blockedWriteReasons).toEqual(["INSUFFICIENT_LINKABLE_EVIDENCE_COUNT"]);
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing when harness fails", async () => {
+    evaluateNoWriteDarkRunOutputMock.mockReturnValueOnce({
+      passed: false,
+      failures: [{ invariant: "no_write_invariant", message: "Harness failed." }],
+      warnings: [],
+      checkedInvariants: [],
+      summary: {
+        itemCount: 1,
+        failureCount: 1,
+        warningCount: 0,
+        rawLeakageFailureCount: 0,
+        sourceSafetyFailureCount: 0,
+        phaseHCompatibilityWarningCount: 0,
+      },
+    });
+
+    const result = await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(result.decision).toBe("skipped_harness_failed");
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+  });
+
   it("calls persistence when eligibility, harness, gates, and structured proposal are valid", async () => {
     const proposal = makeStructuredProposal();
     runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
@@ -322,6 +518,44 @@ describe("APP message internal candidate bridge", () => {
         })
       )
     ).toBeNull();
+  });
+
+  it("does not surface Investigation candidates on Active Questions public guard", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: {
+          decision: "abstain",
+          allowedStatus: UserMapConclusionStatus.emerging,
+          confidenceCap: 0.3,
+          reasons: ["INSUFFICIENT_EVIDENCE_COUNT"],
+          warnings: [],
+          metrics: {
+            evidenceCount: 1,
+            sourceDiversity: 1,
+            timeSpreadDays: 0,
+            highEmotionDominanceRatio: 0,
+            distinctEpisodeCount: 1,
+          },
+        },
+        investigationCandidateProposal: makeInvestigationProposal(),
+      })
+    );
+
+    await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    const publicWhere = buildPublicActiveInvestigationWhere({ userId: "user-1" });
+    expect(publicWhere.visibility).toBe("user_visible");
+    expect(publicWhere.OR).toEqual([
+      { candidateLifecycleStatus: null },
+      { candidateLifecycleStatus: "promoted" },
+    ]);
+    expect(persistInternalInvestigationCandidateMock).toHaveBeenCalled();
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
   });
 
   it("does not create user_visible conclusions or ModelUpdates through the bridge path", async () => {

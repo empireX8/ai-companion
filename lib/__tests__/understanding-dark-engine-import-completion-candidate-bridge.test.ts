@@ -1,4 +1,4 @@
-import { UserMapConclusionStatus } from "@prisma/client";
+import { InvestigationSeedType, UserMapConclusionStatus } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -6,11 +6,13 @@ const {
   runNoWriteUnderstandingDarkRunMock,
   evaluateNoWriteDarkRunOutputMock,
   persistInternalUserMapConclusionCandidateMock,
+  persistInternalInvestigationCandidateMock,
 } = vi.hoisted(() => ({
   resolveCandidateBridgeNoWriteTriggerEligibilityMock: vi.fn(),
   runNoWriteUnderstandingDarkRunMock: vi.fn(),
   evaluateNoWriteDarkRunOutputMock: vi.fn(),
   persistInternalUserMapConclusionCandidateMock: vi.fn(),
+  persistInternalInvestigationCandidateMock: vi.fn(),
 }));
 
 vi.mock("../understanding-dark-engine/no-write-trigger-runtime-state", () => ({
@@ -28,6 +30,10 @@ vi.mock("../understanding-dark-engine/dark-run-evaluation-harness", () => ({
 
 vi.mock("../understanding-dark-engine/user-map-candidate-persistence", () => ({
   persistInternalUserMapConclusionCandidate: persistInternalUserMapConclusionCandidateMock,
+}));
+
+vi.mock("../understanding-dark-engine/investigation-candidate-persistence", () => ({
+  persistInternalInvestigationCandidate: persistInternalInvestigationCandidateMock,
 }));
 
 import {
@@ -109,6 +115,21 @@ function makeDarkRunOutput(
   };
 }
 
+function makeInvestigationProposal() {
+  return {
+    seedType: InvestigationSeedType.pattern,
+    title: "Worth exploring: Conflict shutdown pattern",
+    organizingQuestion: "What would clarify whether conflict shutdown pattern?",
+    summary:
+      "This looks worth watching as an open question. Conflict shutdown pattern.",
+    abstainReasons: ["INSUFFICIENT_EVIDENCE_COUNT" as const],
+    evidenceSelections: [
+      { sourceType: "pattern_claim" as const, sourceId: "pc-1" },
+      { sourceType: "message" as const, sourceId: "msg-1" },
+    ],
+  };
+}
+
 function makeStructuredProposal() {
   return {
     area: "operating_logic" as const,
@@ -158,6 +179,13 @@ describe("import completion internal candidate bridge", () => {
     });
     persistInternalUserMapConclusionCandidateMock.mockResolvedValue({
       persistedConclusionId: "conclusion-1",
+      payload: {
+        blockedWriteReasons: [],
+        candidatesWritten: 1,
+      },
+    });
+    persistInternalInvestigationCandidateMock.mockResolvedValue({
+      persistedInvestigationId: "inv-1",
       payload: {
         blockedWriteReasons: [],
         candidatesWritten: 1,
@@ -246,7 +274,7 @@ describe("import completion internal candidate bridge", () => {
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
   });
 
-  it("writes nothing when objectivity gates abstain", async () => {
+  it("writes nothing when objectivity gates abstain without investigation proposal", async () => {
     runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
       makeDarkRunOutput({
         userMapEvaluation: {
@@ -263,6 +291,8 @@ describe("import completion internal candidate bridge", () => {
             distinctEpisodeCount: 1,
           },
         },
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: null,
       })
     );
 
@@ -274,6 +304,98 @@ describe("import completion internal candidate bridge", () => {
 
     expect(result.decision).toBe("skipped_gate_abstain");
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("prefers UserMap persistence when userMapCandidateProposal is present", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapCandidateProposal: makeStructuredProposal(),
+        investigationCandidateProposal: makeInvestigationProposal(),
+      })
+    );
+
+    const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
+      userId: "user-1",
+      sessionId: "ses-1",
+      now: FIXED_NOW,
+    });
+
+    expect(result.decision).toBe("created");
+    expect(persistInternalUserMapConclusionCandidateMock).toHaveBeenCalledTimes(1);
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("persists Investigation candidate on abstain when only investigationCandidateProposal is present", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: {
+          decision: "abstain",
+          allowedStatus: UserMapConclusionStatus.emerging,
+          confidenceCap: 0.3,
+          reasons: ["INSUFFICIENT_EVIDENCE_COUNT"],
+          warnings: [],
+          metrics: {
+            evidenceCount: 1,
+            sourceDiversity: 1,
+            timeSpreadDays: 0,
+            highEmotionDominanceRatio: 0,
+            distinctEpisodeCount: 1,
+          },
+        },
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: makeInvestigationProposal(),
+      })
+    );
+
+    const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
+      userId: "user-1",
+      sessionId: "ses-1",
+      now: FIXED_NOW,
+    });
+
+    expect(result.decision).toBe("created_investigation_candidate");
+    expect(result.persistedInvestigationId).toBe("inv-1");
+    expect(persistInternalInvestigationCandidateMock).toHaveBeenCalled();
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns skipped_investigation_persistence_blocked when Investigation persistence blocks", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: {
+          decision: "abstain",
+          allowedStatus: UserMapConclusionStatus.emerging,
+          confidenceCap: 0.3,
+          reasons: ["INSUFFICIENT_EVIDENCE_COUNT"],
+          warnings: [],
+          metrics: {
+            evidenceCount: 1,
+            sourceDiversity: 1,
+            timeSpreadDays: 0,
+            highEmotionDominanceRatio: 0,
+            distinctEpisodeCount: 1,
+          },
+        },
+        investigationCandidateProposal: makeInvestigationProposal(),
+      })
+    );
+    persistInternalInvestigationCandidateMock.mockResolvedValueOnce({
+      persistedInvestigationId: null,
+      payload: {
+        blockedWriteReasons: ["INSUFFICIENT_LINKABLE_EVIDENCE_COUNT"],
+        candidatesWritten: 0,
+      },
+    });
+
+    const result = await tryCreateInternalUserMapCandidateFromImportCompletion({
+      userId: "user-1",
+      sessionId: "ses-1",
+      now: FIXED_NOW,
+    });
+
+    expect(result.decision).toBe("skipped_investigation_persistence_blocked");
+    expect(result.blockedWriteReasons).toEqual(["INSUFFICIENT_LINKABLE_EVIDENCE_COUNT"]);
   });
 
   it("writes nothing when no-write evaluation harness fails", async () => {
@@ -300,6 +422,7 @@ describe("import completion internal candidate bridge", () => {
 
     expect(result.decision).toBe("skipped_harness_failed");
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
   });
 
   it("returns blocked persistence reasons without a persisted conclusion id", async () => {
@@ -322,7 +445,7 @@ describe("import completion internal candidate bridge", () => {
     });
 
     expect(result.decision).toBe("skipped_persistence_blocked");
-    expect(result.persistedConclusionId).toBeUndefined();
+    expect(result.persistedConclusionId).toBeNull();
     expect(result.blockedWriteReasons).toEqual(["INSUFFICIENT_LINKABLE_EVIDENCE_COUNT"]);
   });
 

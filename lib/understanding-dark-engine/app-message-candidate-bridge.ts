@@ -10,10 +10,8 @@ import {
   runNoWriteUnderstandingDarkRun,
   type RunNoWriteUnderstandingDarkRunResult,
 } from "./dark-run-orchestrator";
+import { persistInternalCandidateFromNoWriteDarkRunOutput } from "./candidate-bridge-dark-run-persistence";
 import { resolveCandidateBridgeNoWriteTriggerEligibility } from "./no-write-trigger-runtime-state";
-import {
-  persistInternalUserMapConclusionCandidate,
-} from "./user-map-candidate-persistence";
 import {
   type StructuredUserMapCandidateProposal,
 } from "./user-map-candidate-proposal";
@@ -31,13 +29,16 @@ export type AppMessageCandidateBridgeDecision =
   | "skipped_harness_failed"
   | "skipped_gate_abstain"
   | "skipped_persistence_blocked"
-  | "created";
+  | "skipped_investigation_persistence_blocked"
+  | "created"
+  | "created_investigation_candidate";
 
 export type AppMessageCandidateBridgeResult = {
   decision: AppMessageCandidateBridgeDecision;
   reason: string;
   eligibilityDecision?: string;
   persistedConclusionId?: string | null;
+  persistedInvestigationId?: string | null;
   blockedWriteReasons?: string[];
 };
 
@@ -180,53 +181,20 @@ export async function tryCreateInternalUserMapCandidateFromAppMessage(args: {
     };
   }
 
-  if (darkRunOutput.userMapEvaluation.decision === "abstain") {
-    return {
-      decision: "skipped_gate_abstain",
-      reason: "Objectivity gates abstained.",
-    };
-  }
-
-  const proposal = extractStructuredUserMapCandidateProposal(darkRunOutput);
-  if (!proposal) {
-    console.info(logTag, "No structured candidate proposal in dark-run output; abstaining.", {
-      userId: args.userId,
-      messageId: args.messageId,
-    });
-    return {
-      decision: "skipped_insufficient_proposal",
-      reason:
-        "Dark-run output lacks structured userMapCandidateProposal (area, title, summary, target).",
-    };
-  }
-
-  const persistence = await persistInternalUserMapConclusionCandidate({
+  const persistenceOutcome = await persistInternalCandidateFromNoWriteDarkRunOutput({
     userId: args.userId,
-    area: proposal.area,
-    title: proposal.title,
-    summary: proposal.summary,
-    target: proposal.target,
-    evidenceSelections: proposal.evidenceSelections,
+    darkRunOutput,
     now,
-    db: db as unknown as Parameters<typeof persistInternalUserMapConclusionCandidate>[0]["db"],
+    db,
+    logTag,
+    context: { messageId: args.messageId },
   });
 
-  if (!persistence.persistedConclusionId) {
-    console.info(logTag, "Persistence blocked; no candidate written.", {
-      userId: args.userId,
-      messageId: args.messageId,
-      blockedWriteReasons: persistence.payload.blockedWriteReasons,
-    });
-    return {
-      decision: "skipped_persistence_blocked",
-      reason: "Persistence gates blocked candidate write.",
-      blockedWriteReasons: persistence.payload.blockedWriteReasons,
-    };
-  }
-
   return {
-    decision: "created",
-    reason: "Internal candidate persisted.",
-    persistedConclusionId: persistence.persistedConclusionId,
+    decision: persistenceOutcome.decision,
+    reason: persistenceOutcome.reason,
+    persistedConclusionId: persistenceOutcome.persistedConclusionId,
+    persistedInvestigationId: persistenceOutcome.persistedInvestigationId,
+    blockedWriteReasons: persistenceOutcome.blockedWriteReasons,
   };
 }
