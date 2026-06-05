@@ -8,6 +8,7 @@ import {
 } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
+import { buildPublicActiveInvestigationWhere } from "./investigation-public-visibility";
 import {
   buildPublicObjectHref,
   isPublicObjectLinkType,
@@ -74,8 +75,9 @@ export async function resolvePublicLinkedObjectHrefs(args: {
 }): Promise<Map<string, string>> {
   const resolved = new Map<string, string>();
 
-  const grouped = {
+  const grouped: Record<PublicObjectLinkType, Set<string>> = {
     usermap_conclusion: new Set<string>(),
+    investigation: new Set<string>(),
     pattern_claim: new Set<string>(),
     contradiction_node: new Set<string>(),
   };
@@ -91,13 +93,23 @@ export async function resolvePublicLinkedObjectHrefs(args: {
     grouped[safeType].add(safeId);
   }
 
-  const [safeConclusions, safePatterns, safeContradictions] = await Promise.all([
+  const [safeConclusions, safeInvestigations, safePatterns, safeContradictions] =
+    await Promise.all([
     grouped.usermap_conclusion.size > 0
       ? prismadb.userMapConclusion.findMany({
           where: {
             userId: args.userId,
             visibility: UserMapConclusionVisibility.user_visible,
             id: { in: [...grouped.usermap_conclusion] },
+          },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+    grouped.investigation.size > 0
+      ? prismadb.investigation.findMany({
+          where: {
+            ...buildPublicActiveInvestigationWhere({ userId: args.userId }),
+            id: { in: [...grouped.investigation] },
           },
           select: { id: true },
         })
@@ -128,6 +140,13 @@ export async function resolvePublicLinkedObjectHrefs(args: {
     resolved.set(
       toKey(UnderstandingLinkTargetType.usermap_conclusion, row.id),
       toHref("usermap_conclusion", row.id)
+    );
+  }
+
+  for (const row of safeInvestigations) {
+    resolved.set(
+      toKey(UnderstandingLinkTargetType.investigation, row.id),
+      toHref("investigation", row.id)
     );
   }
 

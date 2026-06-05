@@ -5,6 +5,7 @@ export const PUBLIC_EVIDENCE_FALLBACK_COPY =
 
 export const PUBLIC_OBJECT_LINK_TYPES = [
   "usermap_conclusion",
+  "investigation",
   "pattern_claim",
   "contradiction_node",
 ] as const;
@@ -13,6 +14,7 @@ export type PublicObjectLinkType = (typeof PUBLIC_OBJECT_LINK_TYPES)[number];
 
 export const PUBLIC_OBJECT_LINK_HREF_PREFIXES: Record<PublicObjectLinkType, string> = {
   usermap_conclusion: "/your-map",
+  investigation: "/active-questions",
   pattern_claim: "/patterns",
   contradiction_node: "/contradictions",
 };

@@ -20,6 +20,9 @@ const prismaMock = {
   contradictionNode: {
     findMany: vi.fn(),
   },
+  investigation: {
+    findMany: vi.fn(),
+  },
 };
 
 vi.mock("@clerk/nextjs/server", () => ({
@@ -52,6 +55,7 @@ describe("Phase 3 What Changed page", () => {
     prismaMock.userMapConclusion.findMany.mockResolvedValue([]);
     prismaMock.patternClaim.findMany.mockResolvedValue([]);
     prismaMock.contradictionNode.findMany.mockResolvedValue([]);
+    prismaMock.investigation.findMany.mockResolvedValue([]);
   });
 
   it("filters to authenticated user-owned meaningful user_visible updates and shows honest empty state", async () => {

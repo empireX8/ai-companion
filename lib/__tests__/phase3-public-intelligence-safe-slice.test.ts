@@ -50,17 +50,17 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
         affectedObjectId: "cn-4",
       })
     ).toBe(buildPublicObjectHref({ type: "contradiction_node", id: "cn-4" }));
+    expect(
+      buildWhatChangedAffectedObjectHref({
+        affectedObjectType: "investigation",
+        affectedObjectId: "inv-9",
+      })
+    ).toBe(buildPublicObjectHref({ type: "investigation", id: "inv-9" }));
 
     expect(
       buildWhatChangedAffectedObjectHref({
         affectedObjectType: "model_update",
         affectedObjectId: "mu-1",
-      })
-    ).toBeNull();
-    expect(
-      buildWhatChangedAffectedObjectHref({
-        affectedObjectType: "investigation",
-        affectedObjectId: "inv-9",
       })
     ).toBeNull();
     expect(
@@ -90,13 +90,12 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
         linkedObjectId: "cn-4",
       })
     ).toBe(buildPublicObjectHref({ type: "contradiction_node", id: "cn-4" }));
-
     expect(
       buildLinkedObjectHref({
         linkedObjectType: "investigation",
         linkedObjectId: "inv-1",
       })
-    ).toBeNull();
+    ).toBe(buildPublicObjectHref({ type: "investigation", id: "inv-1" }));
     expect(
       buildLinkedObjectHref({
         linkedObjectType: "fieldwork_assignment",
@@ -194,7 +193,9 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
 
     expect(item).not.toBeNull();
     expect(item?.linkedObjectId).toBe("inv-still-fallback");
-    expect(item?.linkedObjectHref).toBeNull();
+    expect(item?.linkedObjectHref).toBe(
+      buildPublicObjectHref({ type: "investigation", id: "inv-still-fallback" })
+    );
   });
 
   it("does not reference internal review APIs or forbidden receipt semantics in new public surfaces", () => {

@@ -19,6 +19,9 @@ const prismaMock = {
   contradictionNode: {
     findMany: vi.fn(),
   },
+  investigation: {
+    findMany: vi.fn(),
+  },
 };
 
 vi.mock("@clerk/nextjs/server", () => ({
@@ -41,6 +44,7 @@ describe("/api/what-changed", () => {
     prismaMock.userMapConclusion.findMany.mockResolvedValue([]);
     prismaMock.patternClaim.findMany.mockResolvedValue([]);
     prismaMock.contradictionNode.findMany.mockResolvedValue([]);
+    prismaMock.investigation.findMany.mockResolvedValue([]);
   });
 
   it("blocks unauthenticated requests with 401", async () => {

@@ -6,6 +6,9 @@ const prismaMock = {
   userMapConclusion: {
     findMany: vi.fn(),
   },
+  investigation: {
+    findMany: vi.fn(),
+  },
   patternClaim: {
     findMany: vi.fn(),
   },
@@ -26,6 +29,7 @@ describe("public linked-object continuity helper", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     prismaMock.userMapConclusion.findMany.mockResolvedValue([]);
+    prismaMock.investigation.findMany.mockResolvedValue([]);
     prismaMock.patternClaim.findMany.mockResolvedValue([]);
     prismaMock.contradictionNode.findMany.mockResolvedValue([]);
   });
@@ -51,6 +55,45 @@ describe("public linked-object continuity helper", () => {
       },
       select: { id: true },
     });
+  });
+
+  it("resolves investigation href only when user-owned and public-eligible", async () => {
+    const { buildPublicActiveInvestigationWhere } = await import(
+      "../investigation-public-visibility"
+    );
+    prismaMock.investigation.findMany.mockResolvedValueOnce([{ id: "inv-public" }]);
+
+    const { resolvePublicLinkedObjectHref } = await import(
+      "../public-linked-object-continuity"
+    );
+    const href = await resolvePublicLinkedObjectHref({
+      userId: "user-1",
+      linkedObjectType: "investigation",
+      linkedObjectId: "inv-public",
+    });
+
+    expect(href).toBe("/active-questions/inv-public");
+    expect(prismaMock.investigation.findMany).toHaveBeenCalledWith({
+      where: {
+        ...buildPublicActiveInvestigationWhere({ userId: "user-1" }),
+        id: { in: ["inv-public"] },
+      },
+      select: { id: true },
+    });
+  });
+
+  it("returns null for internal_only or proposed investigations", async () => {
+    const { resolvePublicLinkedObjectHref } = await import(
+      "../public-linked-object-continuity"
+    );
+
+    const href = await resolvePublicLinkedObjectHref({
+      userId: "user-1",
+      linkedObjectType: "investigation",
+      linkedObjectId: "inv-internal-proposed",
+    });
+
+    expect(href).toBeNull();
   });
 
   it("returns null for hidden, unowned, or missing usermap_conclusion", async () => {
@@ -107,7 +150,6 @@ describe("public linked-object continuity helper", () => {
     );
 
     const unsupported = [
-      "investigation",
       "fieldwork_assignment",
       "model_update",
       "surfaced_action",
@@ -194,6 +236,7 @@ describe("public linked-object continuity helper", () => {
 
   it("applies verified affected-object hrefs and clears unverified links", async () => {
     prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
+    prismaMock.investigation.findMany.mockResolvedValueOnce([{ id: "inv-public" }]);
     prismaMock.patternClaim.findMany.mockResolvedValueOnce([{ id: "pc-safe" }]);
     prismaMock.contradictionNode.findMany.mockResolvedValueOnce([]);
 
@@ -225,7 +268,14 @@ describe("public linked-object continuity helper", () => {
         {
           id: "mu-4",
           affectedObjectType: "investigation",
-          affectedObjectId: "inv-1",
+          affectedObjectId: "inv-public",
+          affectedObjectHref: null,
+        },
+        {
+          id: "mu-5",
+          updateType: "investigation_opened",
+          affectedObjectType: "investigation",
+          affectedObjectId: "inv-internal",
           affectedObjectHref: null,
         },
       ],
@@ -253,7 +303,14 @@ describe("public linked-object continuity helper", () => {
       {
         id: "mu-4",
         affectedObjectType: "investigation",
-        affectedObjectId: "inv-1",
+        affectedObjectId: "inv-public",
+        affectedObjectHref: "/active-questions/inv-public",
+      },
+      {
+        id: "mu-5",
+        updateType: "investigation_opened",
+        affectedObjectType: "investigation",
+        affectedObjectId: "inv-internal",
         affectedObjectHref: null,
       },
     ]);
