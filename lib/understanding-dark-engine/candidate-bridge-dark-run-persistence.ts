@@ -207,6 +207,7 @@ export async function persistInternalCandidateFromNoWriteDarkRunOutput(args: {
     const persistence = await persistInternalModelUpdateCandidate({
       userId: args.userId,
       proposal: modelUpdateProposal,
+      abstainReasons: args.darkRunOutput.userMapEvaluation.reasons,
       now,
       db: db as unknown as Parameters<typeof persistInternalModelUpdateCandidate>[0]["db"],
     });

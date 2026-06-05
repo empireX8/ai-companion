@@ -555,9 +555,10 @@ describe("import completion internal candidate bridge", () => {
 
   it("persists ModelUpdate candidate when all higher proposals are absent", async () => {
     const modelUpdateProposal = makeModelUpdateProposal();
+    const abstainEvaluation = makeAbstainEvaluation();
     runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
       makeDarkRunOutput({
-        userMapEvaluation: makeAbstainEvaluation(),
+        userMapEvaluation: abstainEvaluation,
         userMapCandidateProposal: null,
         investigationCandidateProposal: null,
         fieldworkCandidateProposal: null,
@@ -576,6 +577,7 @@ describe("import completion internal candidate bridge", () => {
     expect(persistInternalModelUpdateCandidateMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",
+        abstainReasons: abstainEvaluation.reasons,
         proposal: expect.objectContaining({
           updateType: modelUpdateProposal.updateType,
           userFacingSummary: modelUpdateProposal.userFacingSummary,
