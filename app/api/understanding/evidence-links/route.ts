@@ -18,6 +18,10 @@ import {
   zodIssuesToDetails,
 } from "../../../../lib/understanding-engine-api";
 import {
+  filterEvidenceLinksByPublicTargetEligibility,
+  isEvidenceLinkTargetPublicEligible,
+} from "../../../../lib/understanding-evidence-link-public-eligibility";
+import {
   UnderstandingEvidenceLinkDuplicateError,
   UnderstandingEvidenceLinkValidationError,
   createUnderstandingEvidenceLinkForUser,
@@ -169,6 +173,17 @@ export async function GET(req: Request) {
   }
 
   try {
+    if (hasTargetAnchor && targetType?.success && targetId) {
+      const targetIsPublicEligible = await isEvidenceLinkTargetPublicEligible({
+        userId,
+        targetType: targetType.data,
+        targetId,
+      });
+      if (!targetIsPublicEligible) {
+        return listSuccess([], limit, false, null);
+      }
+    }
+
     const createdAtFilter = buildCreatedAtFilter({
       cursor,
       createdBefore,
@@ -190,8 +205,15 @@ export async function GET(req: Request) {
       take: limit + 1,
     });
 
-    const hasMore = items.length > limit;
-    const trimmed = hasMore ? items.slice(0, limit) : items;
+    const publicEligibleItems = hasSourceAnchor
+      ? await filterEvidenceLinksByPublicTargetEligibility({
+          userId,
+          links: items,
+        })
+      : items;
+
+    const hasMore = publicEligibleItems.length > limit;
+    const trimmed = hasMore ? publicEligibleItems.slice(0, limit) : publicEligibleItems;
     const nextCursor =
       hasMore && trimmed.length > 0
         ? trimmed[trimmed.length - 1].createdAt.toISOString()
@@ -225,6 +247,20 @@ export async function POST(req: Request) {
   }
 
   try {
+    const targetIsPublicEligible = await isEvidenceLinkTargetPublicEligible({
+      userId,
+      targetType: parsed.data.targetType,
+      targetId: parsed.data.targetId,
+    });
+    if (!targetIsPublicEligible) {
+      return errorResponse(400, "Validation failed", "VALIDATION_ERROR", [
+        {
+          field: "targetId",
+          message: "Target not found for authenticated user",
+        },
+      ]);
+    }
+
     const created = await createUnderstandingEvidenceLinkForUser({
       userId,
       input: parsed.data,

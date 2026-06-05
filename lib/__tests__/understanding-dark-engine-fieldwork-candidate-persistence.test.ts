@@ -56,6 +56,8 @@ type InMemoryLink = {
   sourceType: string;
   sourceId: string;
   role: string;
+  snippet?: string | null;
+  quote?: string | null;
 };
 
 function buildPacket(items: PacketItemInput[]) {
@@ -310,6 +312,8 @@ function createFieldworkDbMock(args?: {
           sourceType: data.sourceType as string,
           sourceId: data.sourceId as string,
           role: data.role as string,
+          snippet: (data.snippet as string | null | undefined) ?? null,
+          quote: (data.quote as string | null | undefined) ?? null,
         };
 
         links.push(created);
@@ -507,6 +511,9 @@ describe("fieldwork candidate persistence (manual/internal)", () => {
 
     expect(mock.links).toHaveLength(2);
     expect(mock.links.every((link) => link.targetType === "fieldwork_assignment")).toBe(
+      true
+    );
+    expect(mock.links.every((link) => link.snippet == null && link.quote == null)).toBe(
       true
     );
     expect(mock.runs).toHaveLength(1);

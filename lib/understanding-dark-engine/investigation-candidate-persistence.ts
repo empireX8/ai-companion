@@ -427,8 +427,6 @@ export async function persistInternalInvestigationCandidate(
               sourceId: link.sourceId,
               role: link.role,
               summary: link.summary,
-              snippet: link.snippet,
-              quote: link.quote,
               weight: link.weight,
               confidenceContribution: link.confidenceContribution,
               meta: link.meta,

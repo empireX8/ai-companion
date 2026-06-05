@@ -58,6 +58,8 @@ type InMemoryLink = {
   sourceType: string;
   sourceId: string;
   role: string;
+  snippet?: string | null;
+  quote?: string | null;
 };
 
 function buildPacket(items: PacketItemInput[]) {
@@ -307,6 +309,8 @@ function createInvestigationDbMock(args?: {
           sourceType: data.sourceType as string,
           sourceId: data.sourceId as string,
           role: data.role as string,
+          snippet: (data.snippet as string | null | undefined) ?? null,
+          quote: (data.quote as string | null | undefined) ?? null,
         };
 
         links.push(created);
@@ -505,6 +509,9 @@ describe("investigation candidate persistence (manual/internal)", () => {
 
     expect(mock.links).toHaveLength(2);
     expect(mock.links.every((link) => link.targetType === "investigation")).toBe(true);
+    expect(mock.links.every((link) => link.snippet == null && link.quote == null)).toBe(
+      true
+    );
     expect(mock.runs).toHaveLength(1);
     expect(mock.runs[0]?.status).toBe("completed");
     expect(mock.artifacts).toHaveLength(1);
