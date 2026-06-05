@@ -94,11 +94,28 @@ export async function updateFieldworkCandidateLifecycleStatus(
   const previousFieldworkStatus = assignment.status as FieldworkStatus;
   const previousVisibility = assignment.visibility as FieldworkAssignmentVisibility;
 
-  const updated = await db.fieldworkAssignment.update({
-    where: { id: fieldworkAssignmentId },
+  const updateResult = await db.fieldworkAssignment.updateMany({
+    where: {
+      id: fieldworkAssignmentId,
+      userId,
+    },
     data: {
       candidateLifecycleStatus: nextStatus,
       updatedAt: now,
+    },
+  });
+
+  if (updateResult.count === 0) {
+    throw new FieldworkLifecyclePersistenceError(
+      `FieldworkAssignment not found for id=${fieldworkAssignmentId} and userId=${userId}`,
+      "FIELDWORK_NOT_FOUND"
+    );
+  }
+
+  const updated = await db.fieldworkAssignment.findFirst({
+    where: {
+      id: fieldworkAssignmentId,
+      userId,
     },
     select: {
       id: true,
@@ -109,6 +126,13 @@ export async function updateFieldworkCandidateLifecycleStatus(
       updatedAt: true,
     },
   });
+
+  if (!updated) {
+    throw new FieldworkLifecyclePersistenceError(
+      `FieldworkAssignment not found for id=${fieldworkAssignmentId} and userId=${userId}`,
+      "FIELDWORK_NOT_FOUND"
+    );
+  }
 
   if (updated.status !== previousFieldworkStatus) {
     throw new FieldworkLifecyclePersistenceError(

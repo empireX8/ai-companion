@@ -35,32 +35,26 @@ function createMockDb(args?: { seedAssignments?: InMemoryFieldworkAssignment[] }
           );
         }
       ),
-      update: vi.fn(
+      updateMany: vi.fn(
         async ({
           where,
           data,
         }: {
-          where: { id: string };
+          where: { id: string; userId: string };
           data: { candidateLifecycleStatus: CandidateLifecycleStatus; updatedAt: Date };
         }) => {
-          const idx = assignments.findIndex((row) => row.id === where.id);
+          const idx = assignments.findIndex(
+            (row) => row.id === where.id && row.userId === where.userId
+          );
           if (idx < 0) {
-            throw new Error("fieldwork assignment not found in mock");
+            return { count: 0 };
           }
           assignments[idx] = {
             ...assignments[idx],
             candidateLifecycleStatus: data.candidateLifecycleStatus,
             updatedAt: data.updatedAt,
           };
-          const row = assignments[idx];
-          return {
-            id: row.id,
-            userId: row.userId,
-            candidateLifecycleStatus: row.candidateLifecycleStatus,
-            status: row.status,
-            visibility: row.visibility,
-            updatedAt: row.updatedAt ?? FIXED_NOW,
-          };
+          return { count: 1 };
         }
       ),
     },
@@ -201,7 +195,7 @@ describe("updateFieldworkCandidateLifecycleStatus", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN_TRANSITION" });
   });
 
-  it("throws FORBIDDEN_TRANSITION for wrong user ownership via missing row", async () => {
+  it("throws FIELDWORK_NOT_FOUND for wrong user ownership", async () => {
     const { db } = createMockDb({
       seedAssignments: [
         {

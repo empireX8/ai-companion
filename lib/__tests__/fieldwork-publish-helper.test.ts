@@ -12,14 +12,31 @@ import {
   PublishFieldworkCandidateError,
   publishFieldworkCandidate,
 } from "../fieldwork-publish-helper";
+import { WATCH_FOR_VISIBLE_STATUSES } from "../public-intelligence-safe-slice";
 
 const FIXED_TIME = new Date("2026-06-05T12:00:00.000Z");
+
+function fieldworkStatusForId(id: string): FieldworkStatus {
+  if (id === "active-id") {
+    return FieldworkStatus.active;
+  }
+  if (id === "completed-status-id") {
+    return FieldworkStatus.completed;
+  }
+  if (id === "dismissed-status-id") {
+    return FieldworkStatus.dismissed;
+  }
+  if (id === "expired-fieldwork-status-id") {
+    return FieldworkStatus.expired;
+  }
+  return FieldworkStatus.assigned;
+}
 
 function makePublishDbMock() {
   let visibility: FieldworkAssignmentVisibility =
     FieldworkAssignmentVisibility.internal_only;
-  const lifecycleStatus: CandidateLifecycleStatus | null = CandidateLifecycleStatus.promoted;
-  const status = FieldworkStatus.assigned;
+  const lifecycleStatus = CandidateLifecycleStatus.promoted;
+  let assignmentStatus: FieldworkStatus = FieldworkStatus.assigned;
   let updatedAt = FIXED_TIME;
   let concurrentPublishClaimed = false;
   const modelUpdates: Array<Record<string, unknown>> = [];
@@ -36,7 +53,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: null,
-            status,
+            status: FieldworkStatus.assigned,
             prompt: "Legacy prompt",
             updatedAt,
           };
@@ -47,7 +64,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: CandidateLifecycleStatus.proposed,
-            status,
+            status: FieldworkStatus.assigned,
             prompt: "Proposed prompt",
             updatedAt,
           };
@@ -58,7 +75,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: CandidateLifecycleStatus.rejected,
-            status,
+            status: FieldworkStatus.assigned,
             prompt: "Rejected prompt",
             updatedAt,
           };
@@ -69,7 +86,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: CandidateLifecycleStatus.held_for_more_evidence,
-            status,
+            status: FieldworkStatus.assigned,
             prompt: "Held prompt",
             updatedAt,
           };
@@ -80,8 +97,24 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: CandidateLifecycleStatus.expired,
-            status,
+            status: FieldworkStatus.assigned,
             prompt: "Expired prompt",
+            updatedAt,
+          };
+        }
+        if (
+          where.id === "active-id" ||
+          where.id === "completed-status-id" ||
+          where.id === "dismissed-status-id" ||
+          where.id === "expired-fieldwork-status-id"
+        ) {
+          return {
+            id: where.id,
+            userId: where.userId,
+            visibility,
+            candidateLifecycleStatus: CandidateLifecycleStatus.promoted,
+            status: fieldworkStatusForId(where.id),
+            prompt: "Status-gated prompt",
             updatedAt,
           };
         }
@@ -91,7 +124,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: CandidateLifecycleStatus.superseded,
-            status,
+            status: FieldworkStatus.assigned,
             prompt: "Superseded prompt",
             updatedAt,
           };
@@ -102,7 +135,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility: FieldworkAssignmentVisibility.user_visible,
             candidateLifecycleStatus: CandidateLifecycleStatus.promoted,
-            status,
+            status: FieldworkStatus.assigned,
             prompt: "Visible prompt",
             updatedAt,
           };
@@ -113,7 +146,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility: FieldworkAssignmentVisibility.internal_only,
             candidateLifecycleStatus: CandidateLifecycleStatus.promoted,
-            status,
+            status: FieldworkStatus.assigned,
             prompt: "Race prompt",
             updatedAt,
           };
@@ -123,7 +156,7 @@ function makePublishDbMock() {
           userId: where.userId,
           visibility,
           candidateLifecycleStatus: lifecycleStatus,
-          status,
+          status: fieldworkStatusForId(where.id),
           prompt: "Notice when I shut down in conflict",
           updatedAt,
         };
@@ -139,6 +172,7 @@ function makePublishDbMock() {
           userId: string;
           visibility: FieldworkAssignmentVisibility;
           candidateLifecycleStatus: string;
+          status: { in: FieldworkStatus[] };
         };
         data: {
           visibility: FieldworkAssignmentVisibility;
@@ -155,11 +189,14 @@ function makePublishDbMock() {
           return { count: 1 };
         }
 
+        assignmentStatus = fieldworkStatusForId(where.id);
         const matches =
           where.visibility === FieldworkAssignmentVisibility.internal_only &&
           where.candidateLifecycleStatus === "promoted" &&
           visibility === FieldworkAssignmentVisibility.internal_only &&
-          lifecycleStatus === CandidateLifecycleStatus.promoted;
+          lifecycleStatus === CandidateLifecycleStatus.promoted &&
+          where.status.in.every((value) => WATCH_FOR_VISIBLE_STATUSES.includes(value)) &&
+          WATCH_FOR_VISIBLE_STATUSES.includes(assignmentStatus);
 
         if (!matches) {
           return { count: 0 };
@@ -195,7 +232,7 @@ function makePublishDbMock() {
     modelUpdates,
     getVisibility: () => visibility,
     getLifecycleStatus: () => lifecycleStatus,
-    getStatus: () => status,
+    getStatus: () => assignmentStatus,
     $transaction: vi.fn(
       async (callback: (transactionClient: typeof tx) => Promise<unknown>) => {
         const snapshotVisibility = visibility;
@@ -219,7 +256,7 @@ describe("publishFieldworkCandidate", () => {
     vi.clearAllMocks();
   });
 
-  it("publishes promoted + internal_only Fieldwork and creates fieldwork_assigned ModelUpdate", async () => {
+  it("publishes promoted + internal_only + assigned Fieldwork and creates fieldwork_assigned ModelUpdate", async () => {
     const db = makePublishDbMock();
 
     const result = await publishFieldworkCandidate("user-1", "fw-1", {
@@ -251,6 +288,37 @@ describe("publishFieldworkCandidate", () => {
     expect(db.getVisibility()).toBe(FieldworkAssignmentVisibility.user_visible);
     expect(db.getLifecycleStatus()).toBe(CandidateLifecycleStatus.promoted);
     expect(db.getStatus()).toBe(FieldworkStatus.assigned);
+  });
+
+  it("publishes promoted + internal_only + active Fieldwork", async () => {
+    const db = makePublishDbMock();
+
+    const result = await publishFieldworkCandidate("user-1", "active-id", {
+      db: db as never,
+      now: FIXED_TIME,
+    });
+
+    expect(result.newVisibility).toBe(FieldworkAssignmentVisibility.user_visible);
+    expect(db.getStatus()).toBe(FieldworkStatus.active);
+    expect(db.modelUpdates).toHaveLength(1);
+  });
+
+  it("rejects promoted + internal_only rows with non-Watch-For FieldworkStatus", async () => {
+    const db = makePublishDbMock();
+
+    for (const id of [
+      "completed-status-id",
+      "dismissed-status-id",
+      "expired-fieldwork-status-id",
+    ]) {
+      await expect(
+        publishFieldworkCandidate("user-1", id, { db: db as never })
+      ).rejects.toMatchObject({ code: "FIELDWORK_STATUS_NOT_PUBLISHABLE" });
+    }
+
+    expect(db.$transaction).not.toHaveBeenCalled();
+    expect(db.modelUpdates).toHaveLength(0);
+    expect(db.getVisibility()).toBe(FieldworkAssignmentVisibility.internal_only);
   });
 
   it("runs publish visibility update and ModelUpdate creation in one transaction", async () => {

@@ -9,6 +9,7 @@
  */
 
 import {
+  type FieldworkStatus,
   type PrismaClient,
   FieldworkAssignmentVisibility,
   ModelUpdateType,
@@ -16,7 +17,12 @@ import {
   UnderstandingLinkTargetType,
 } from "@prisma/client";
 
+import { WATCH_FOR_VISIBLE_STATUSES } from "./public-intelligence-safe-slice";
 import prismadb from "./prismadb";
+
+export function isFieldworkStatusPublishable(status: FieldworkStatus): boolean {
+  return WATCH_FOR_VISIBLE_STATUSES.includes(status);
+}
 
 export type PublishFieldworkCandidateResult = {
   id: string;
@@ -101,6 +107,13 @@ export async function publishFieldworkCandidate(
     );
   }
 
+  if (!isFieldworkStatusPublishable(assignment.status)) {
+    throw new PublishFieldworkCandidateError(
+      `Cannot publish FieldworkAssignment id=${fieldworkAssignmentId}: status is '${assignment.status}', expected one of [${WATCH_FOR_VISIBLE_STATUSES.join(", ")}].`,
+      "FIELDWORK_STATUS_NOT_PUBLISHABLE"
+    );
+  }
+
   const userFacingSummary =
     options?.userFacingSummary ?? defaultPublishSummary(assignment.prompt);
   const sourceRunId = options?.sourceRunId ?? null;
@@ -113,6 +126,7 @@ export async function publishFieldworkCandidate(
         userId,
         visibility: FieldworkAssignmentVisibility.internal_only,
         candidateLifecycleStatus: "promoted",
+        status: { in: WATCH_FOR_VISIBLE_STATUSES },
       },
       data: {
         visibility: FieldworkAssignmentVisibility.user_visible,

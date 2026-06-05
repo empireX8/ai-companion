@@ -191,7 +191,6 @@ describe("public linked-object continuity helper", () => {
     );
 
     const unsupported = [
-      "fieldwork_assignment",
       "model_update",
       "surfaced_action",
       "evidence_span",

@@ -128,6 +128,32 @@ describe("internal Fieldwork candidate publish route", () => {
     expect((await response.json()).code).toBe("NOT_PROMOTED");
   });
 
+  it("returns 422 for non-Watch-For-visible FieldworkStatus", async () => {
+    const { PublishFieldworkCandidateError } = await import("../../lib/fieldwork-publish-helper");
+    publishFieldworkCandidateMock.mockRejectedValueOnce(
+      new PublishFieldworkCandidateError(
+        "status not publishable",
+        "FIELDWORK_STATUS_NOT_PUBLISHABLE"
+      )
+    );
+
+    const route = await import(
+      "../../app/api/internal/fieldwork/candidates/[id]/publish/route"
+    );
+    const response = await route.POST(
+      new Request(
+        "http://localhost/api/internal/fieldwork/candidates/completed-status-id/publish",
+        {
+          method: "POST",
+        }
+      ),
+      { params: Promise.resolve({ id: "completed-status-id" }) }
+    );
+
+    expect(response.status).toBe(422);
+    expect((await response.json()).code).toBe("FIELDWORK_STATUS_NOT_PUBLISHABLE");
+  });
+
   it("returns 422 for already user_visible row", async () => {
     const { PublishFieldworkCandidateError } = await import("../../lib/fieldwork-publish-helper");
     publishFieldworkCandidateMock.mockRejectedValueOnce(
