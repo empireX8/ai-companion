@@ -11,6 +11,9 @@ const prismaMock = {
   userMapConclusion: {
     findMany: vi.fn(),
   },
+  investigation: {
+    findMany: vi.fn(),
+  },
   understandingEvidenceLink: {
     findMany: vi.fn(),
   },
@@ -41,19 +44,35 @@ vi.mock(
   "../../app/(root)/(routes)/internal/user-map/review/_components/InternalUserMapReviewWorkbench",
   () => ({
     InternalUserMapReviewWorkbench: ({
-      candidates,
+      userMapCandidates,
+      investigationCandidates,
     }: {
-      candidates: Array<{ title: string; candidateLifecycleStatus: string | null }>;
+      userMapCandidates: Array<{
+        title: string;
+        candidateLifecycleStatus: string | null;
+      }>;
+      investigationCandidates: Array<{
+        title: string;
+        candidateLifecycleStatus: string;
+      }>;
     }) =>
       React.createElement(
         "div",
         { "data-testid": "internal-user-map-review-workbench" },
-        candidates.map((candidate) =>
+        userMapCandidates.map((candidate) =>
           React.createElement(
             "div",
-            { key: candidate.title },
+            { key: `usermap-${candidate.title}` },
             candidate.title,
             candidate.candidateLifecycleStatus ?? "legacy"
+          )
+        ),
+        investigationCandidates.map((candidate) =>
+          React.createElement(
+            "div",
+            { key: `investigation-${candidate.title}` },
+            candidate.title,
+            candidate.candidateLifecycleStatus
           )
         )
       ),
@@ -69,6 +88,7 @@ describe("Phase 3 internal user-map review page", () => {
     };
     authMock.mockResolvedValue({ userId: "reviewer-1" });
     prismaMock.userMapConclusion.findMany.mockResolvedValue([]);
+    prismaMock.investigation.findMany.mockResolvedValue([]);
     prismaMock.understandingEvidenceLink.findMany.mockResolvedValue([]);
     prismaMock.derivationArtifact.findMany.mockResolvedValue([]);
   });
@@ -86,6 +106,7 @@ describe("Phase 3 internal user-map review page", () => {
 
     await expect(page.default()).rejects.toThrow("NEXT_NOT_FOUND");
     expect(prismaMock.userMapConclusion.findMany).not.toHaveBeenCalled();
+    expect(prismaMock.investigation.findMany).not.toHaveBeenCalled();
     expect(prismaMock.understandingEvidenceLink.findMany).not.toHaveBeenCalled();
   });
 
@@ -101,6 +122,7 @@ describe("Phase 3 internal user-map review page", () => {
 
     await expect(page.default()).rejects.toThrow("NEXT_NOT_FOUND");
     expect(prismaMock.userMapConclusion.findMany).not.toHaveBeenCalled();
+    expect(prismaMock.investigation.findMany).not.toHaveBeenCalled();
     expect(prismaMock.understandingEvidenceLink.findMany).not.toHaveBeenCalled();
   });
 
@@ -143,7 +165,7 @@ describe("Phase 3 internal user-map review page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("Internal User Map Review");
+    expect(html).toContain("Internal Candidate Review");
     expect(html).toContain("operator workbench");
     expect(html).toContain("Candidate title");
     expect(html).toContain("proposed");
@@ -153,6 +175,16 @@ describe("Phase 3 internal user-map review page", () => {
         where: expect.objectContaining({
           userId: "reviewer-1",
           visibility: "internal_only",
+        }),
+        take: 50,
+      })
+    );
+    expect(prismaMock.investigation.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: "reviewer-1",
+          visibility: "internal_only",
+          candidateLifecycleStatus: { not: null },
         }),
         take: 50,
       })
@@ -197,5 +229,61 @@ describe("Phase 3 internal user-map review page", () => {
 
     expect(html).toContain("Internal candidate");
     expect(html).not.toContain("Should never render");
+  });
+
+  it("renders User Map workbench when Investigation list fails", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([
+      {
+        id: "umc-internal-1",
+        title: "Candidate title",
+        summary: "Candidate summary",
+        area: "operating_logic",
+        status: "emerging",
+        confidenceLevel: "low",
+        visibility: "internal_only",
+        candidateLifecycleStatus: "proposed",
+        notes: null,
+        createdAt: new Date("2026-05-15T10:00:00.000Z"),
+        updatedAt: new Date("2026-05-15T11:00:00.000Z"),
+      },
+    ]);
+    prismaMock.investigation.findMany.mockRejectedValueOnce(
+      new Error("investigation list failed")
+    );
+    prismaMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([]);
+
+    const page = await import(
+      "../../app/(root)/(routes)/internal/user-map/review/page"
+    );
+
+    const element = await page.default();
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Candidate title");
+    expect(html).not.toContain("Could not load internal review candidates right now.");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[INTERNAL_INVESTIGATION_REVIEW_LIST_ERROR]",
+      expect.any(Error)
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("fails when User Map list fails even if Investigation list would succeed", async () => {
+    prismaMock.userMapConclusion.findMany.mockRejectedValueOnce(
+      new Error("user map list failed")
+    );
+    prismaMock.investigation.findMany.mockResolvedValueOnce([]);
+
+    const page = await import(
+      "../../app/(root)/(routes)/internal/user-map/review/page"
+    );
+
+    const element = await page.default();
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Could not load internal review candidates right now.");
   });
 });

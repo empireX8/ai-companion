@@ -2,6 +2,10 @@ import React from "react";
 import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 
+import {
+  INTERNAL_INVESTIGATION_REVIEW_DEFAULT_LIMIT,
+  listInternalInvestigationReviewCandidates,
+} from "../../../../../../lib/internal-investigation-review-candidates";
 import { isInternalUserMapReviewer } from "../../../../../../lib/internal-review-auth";
 import {
   INTERNAL_USER_MAP_REVIEW_DEFAULT_LIMIT,
@@ -19,13 +23,39 @@ export default async function InternalUserMapReviewPage() {
   }
 
   try {
-    const candidates = await listInternalUserMapReviewCandidates({
-      userId,
-      limit: INTERNAL_USER_MAP_REVIEW_DEFAULT_LIMIT,
-    });
+    const [userMapSettled, investigationSettled] = await Promise.allSettled([
+      listInternalUserMapReviewCandidates({
+        userId,
+        limit: INTERNAL_USER_MAP_REVIEW_DEFAULT_LIMIT,
+      }),
+      listInternalInvestigationReviewCandidates({
+        userId,
+        limit: INTERNAL_INVESTIGATION_REVIEW_DEFAULT_LIMIT,
+      }),
+    ]);
+
+    if (userMapSettled.status === "rejected") {
+      throw userMapSettled.reason;
+    }
+
+    let investigationCandidates: Awaited<
+      ReturnType<typeof listInternalInvestigationReviewCandidates>
+    > = [];
+
+    if (investigationSettled.status === "fulfilled") {
+      investigationCandidates = investigationSettled.value;
+    } else {
+      console.error(
+        "[INTERNAL_INVESTIGATION_REVIEW_LIST_ERROR]",
+        investigationSettled.reason
+      );
+    }
 
     // Defense-in-depth: only render internal-only rows even if upstream data regresses.
-    const internalCandidates = candidates.filter(
+    const internalUserMapCandidates = userMapSettled.value.filter(
+      (candidate) => candidate.visibility === "internal_only"
+    );
+    const internalInvestigationCandidates = investigationCandidates.filter(
       (candidate) => candidate.visibility === "internal_only"
     );
 
@@ -34,15 +64,18 @@ export default async function InternalUserMapReviewPage() {
         <div className="mx-auto w-full max-w-6xl px-6 py-8">
           <div className="mb-6">
             <h1 className="text-xl font-semibold text-foreground">
-              Internal User Map Review
+              Internal Candidate Review
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Internal operator workbench for reviewing and publishing hidden candidate
-              conclusions.
+              Internal operator workbench for reviewing and publishing hidden User Map
+              and Investigation candidates.
             </p>
           </div>
 
-          <InternalUserMapReviewWorkbench candidates={internalCandidates} />
+          <InternalUserMapReviewWorkbench
+            userMapCandidates={internalUserMapCandidates}
+            investigationCandidates={internalInvestigationCandidates}
+          />
         </div>
       </div>
     );
