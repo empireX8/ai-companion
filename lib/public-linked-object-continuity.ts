@@ -8,6 +8,7 @@ import {
 } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
+import { buildPublicWatchForWhere } from "./fieldwork-public-visibility";
 import { buildPublicActiveInvestigationWhere } from "./investigation-public-visibility";
 import {
   buildPublicObjectHref,
@@ -78,6 +79,7 @@ export async function resolvePublicLinkedObjectHrefs(args: {
   const grouped: Record<PublicObjectLinkType, Set<string>> = {
     usermap_conclusion: new Set<string>(),
     investigation: new Set<string>(),
+    fieldwork_assignment: new Set<string>(),
     pattern_claim: new Set<string>(),
     contradiction_node: new Set<string>(),
   };
@@ -93,7 +95,7 @@ export async function resolvePublicLinkedObjectHrefs(args: {
     grouped[safeType].add(safeId);
   }
 
-  const [safeConclusions, safeInvestigations, safePatterns, safeContradictions] =
+  const [safeConclusions, safeInvestigations, safeFieldwork, safePatterns, safeContradictions] =
     await Promise.all([
     grouped.usermap_conclusion.size > 0
       ? prismadb.userMapConclusion.findMany({
@@ -110,6 +112,15 @@ export async function resolvePublicLinkedObjectHrefs(args: {
           where: {
             ...buildPublicActiveInvestigationWhere({ userId: args.userId }),
             id: { in: [...grouped.investigation] },
+          },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+    grouped.fieldwork_assignment.size > 0
+      ? prismadb.fieldworkAssignment.findMany({
+          where: {
+            ...buildPublicWatchForWhere({ userId: args.userId }),
+            id: { in: [...grouped.fieldwork_assignment] },
           },
           select: { id: true },
         })
@@ -147,6 +158,13 @@ export async function resolvePublicLinkedObjectHrefs(args: {
     resolved.set(
       toKey(UnderstandingLinkTargetType.investigation, row.id),
       toHref("investigation", row.id)
+    );
+  }
+
+  for (const row of safeFieldwork) {
+    resolved.set(
+      toKey(UnderstandingLinkTargetType.fieldwork_assignment, row.id),
+      toHref("fieldwork_assignment", row.id)
     );
   }
 

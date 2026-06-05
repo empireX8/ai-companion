@@ -23,15 +23,16 @@ describe("public continuity registry", () => {
     expect([...PUBLIC_OBJECT_LINK_TYPES]).toEqual([
       "usermap_conclusion",
       "investigation",
+      "fieldwork_assignment",
       "pattern_claim",
       "contradiction_node",
     ]);
 
     expect(isPublicObjectLinkType("usermap_conclusion")).toBe(true);
     expect(isPublicObjectLinkType("investigation")).toBe(true);
+    expect(isPublicObjectLinkType("fieldwork_assignment")).toBe(true);
     expect(isPublicObjectLinkType("pattern_claim")).toBe(true);
     expect(isPublicObjectLinkType("contradiction_node")).toBe(true);
-    expect(isPublicObjectLinkType("fieldwork_assignment")).toBe(false);
     expect(isPublicObjectLinkType("model_update")).toBe(false);
   });
 
@@ -42,6 +43,9 @@ describe("public continuity registry", () => {
     expect(buildPublicObjectHref({ type: "investigation", id: "inv-1" })).toBe(
       "/active-questions/inv-1"
     );
+    expect(
+      buildPublicObjectHref({ type: "fieldwork_assignment", id: "fw-1" })
+    ).toBe("/watch-for/fw-1");
     expect(buildPublicObjectHref({ type: "pattern_claim", id: "pc-1" })).toBe(
       "/patterns/pc-1"
     );
