@@ -712,7 +712,8 @@
 
 ---
 
-*Future entries will be appended below this line.*
+### Future entries will be appended below this line.
+
 ---
 
 ## Build Slice 4 — APP Message Internal Candidate Creation Bridge
