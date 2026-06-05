@@ -165,6 +165,122 @@ describe("generic evidence-links candidate visibility guard", () => {
     expect(payload.items[0]?.targetId).toBe("inv-public");
   });
 
+  it("GET by sourceType+sourceId paginates past ineligible rows in the first batch", async () => {
+    prismaMock.understandingEvidenceLink.findMany
+      .mockResolvedValueOnce([
+        {
+          id: "link-internal-1",
+          userId: "user-1",
+          targetType: "investigation",
+          targetId: "inv-internal",
+          sourceType: "pattern_claim",
+          sourceId: "claim-1",
+          role: "supports",
+          createdAt: new Date("2026-05-01T00:00:00.000Z"),
+        },
+        {
+          id: "link-internal-2",
+          userId: "user-1",
+          targetType: "investigation",
+          targetId: "inv-internal-2",
+          sourceType: "pattern_claim",
+          sourceId: "claim-1",
+          role: "supports",
+          createdAt: new Date("2026-05-02T00:00:00.000Z"),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "link-public",
+          userId: "user-1",
+          targetType: "investigation",
+          targetId: "inv-public",
+          sourceType: "pattern_claim",
+          sourceId: "claim-1",
+          role: "supports",
+          createdAt: new Date("2026-05-03T00:00:00.000Z"),
+        },
+      ]);
+    prismaMock.investigation.findMany.mockResolvedValue([{ id: "inv-public" }]);
+
+    const route = await import("../../app/api/understanding/evidence-links/route");
+    const response = await route.GET(
+      new Request(
+        "http://localhost/api/understanding/evidence-links?sourceType=pattern_claim&sourceId=claim-1&limit=1"
+      )
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.items).toHaveLength(1);
+    expect(payload.items[0]?.targetId).toBe("inv-public");
+    expect(payload.pageInfo.hasMore).toBe(false);
+    expect(prismaMock.understandingEvidenceLink.findMany).toHaveBeenCalledTimes(2);
+  });
+
+  it("GET by sourceType+sourceId sets hasMore when enough eligible rows exist after filtering", async () => {
+    prismaMock.understandingEvidenceLink.findMany
+      .mockResolvedValueOnce([
+        {
+          id: "link-internal-1",
+          targetType: "investigation",
+          targetId: "inv-internal",
+          sourceType: "pattern_claim",
+          sourceId: "claim-1",
+          createdAt: new Date("2026-05-01T00:00:00.000Z"),
+        },
+        {
+          id: "link-internal-2",
+          targetType: "investigation",
+          targetId: "inv-internal-2",
+          sourceType: "pattern_claim",
+          sourceId: "claim-1",
+          createdAt: new Date("2026-05-02T00:00:00.000Z"),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "link-public-1",
+          targetType: "investigation",
+          targetId: "inv-public-1",
+          sourceType: "pattern_claim",
+          sourceId: "claim-1",
+          createdAt: new Date("2026-05-03T00:00:00.000Z"),
+        },
+        {
+          id: "link-public-2",
+          targetType: "investigation",
+          targetId: "inv-public-2",
+          sourceType: "pattern_claim",
+          sourceId: "claim-1",
+          createdAt: new Date("2026-05-04T00:00:00.000Z"),
+        },
+      ]);
+    prismaMock.investigation.findMany.mockImplementation(
+      async ({ where }: { where: { id?: { in?: string[] } } }) => {
+        const ids = where.id?.in ?? [];
+        return ids
+          .filter((id) => id === "inv-public-1" || id === "inv-public-2")
+          .map((id) => ({ id }));
+      }
+    );
+
+    const route = await import("../../app/api/understanding/evidence-links/route");
+    const response = await route.GET(
+      new Request(
+        "http://localhost/api/understanding/evidence-links?sourceType=pattern_claim&sourceId=claim-1&limit=1"
+      )
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.items).toHaveLength(1);
+    expect(payload.items[0]?.targetId).toBe("inv-public-1");
+    expect(payload.pageInfo.hasMore).toBe(true);
+    expect(payload.pageInfo.nextCursor).toBe("2026-05-03T00:00:00.000Z");
+    expect(prismaMock.understandingEvidenceLink.findMany).toHaveBeenCalledTimes(2);
+  });
+
   it("GET by sourceType+sourceId filters internal Fieldwork and ModelUpdate targets", async () => {
     prismaMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([
       {

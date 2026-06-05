@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import {
+  Prisma,
   UnderstandingLinkRole,
   UnderstandingLinkSourceType,
   UnderstandingLinkTargetType,
@@ -59,6 +60,62 @@ function buildCreatedAtFilter(args: {
   }
 
   return Object.keys(filter).length ? filter : undefined;
+}
+
+type EvidenceLinkListRow = Awaited<
+  ReturnType<typeof prismadb.understandingEvidenceLink.findMany>
+>[number];
+
+async function fetchSourceAnchoredPublicEligibleLinks(args: {
+  userId: string;
+  limit: number;
+  sortOrder: SortOrder;
+  where: Prisma.UnderstandingEvidenceLinkWhereInput;
+  cursor: Date | null;
+  createdBefore: Date | null;
+  createdAfter: Date | null;
+}): Promise<{ items: EvidenceLinkListRow[]; hasMore: boolean }> {
+  const collected: EvidenceLinkListRow[] = [];
+  let batchCursor = args.cursor;
+
+  while (collected.length < args.limit + 1) {
+    const createdAtFilter = buildCreatedAtFilter({
+      cursor: batchCursor,
+      createdBefore: args.createdBefore,
+      createdAfter: args.createdAfter,
+      sortOrder: args.sortOrder,
+    });
+
+    const batch = await prismadb.understandingEvidenceLink.findMany({
+      where: {
+        ...args.where,
+        ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+      },
+      orderBy: [{ createdAt: args.sortOrder }, { id: args.sortOrder }],
+      take: args.limit + 1,
+    });
+
+    if (batch.length === 0) {
+      break;
+    }
+
+    const eligible = await filterEvidenceLinksByPublicTargetEligibility({
+      userId: args.userId,
+      links: batch,
+    });
+    collected.push(...eligible);
+
+    if (batch.length < args.limit + 1) {
+      break;
+    }
+
+    batchCursor = batch[batch.length - 1]!.createdAt;
+  }
+
+  const hasMore = collected.length > args.limit;
+  const items = hasMore ? collected.slice(0, args.limit) : collected;
+
+  return { items, hasMore };
 }
 
 export async function GET(req: Request) {
@@ -184,6 +241,33 @@ export async function GET(req: Request) {
       }
     }
 
+    const baseWhere = {
+      userId,
+      ...(targetType?.success ? { targetType: targetType.data } : {}),
+      ...(targetId ? { targetId } : {}),
+      ...(sourceType?.success ? { sourceType: sourceType.data } : {}),
+      ...(sourceId ? { sourceId } : {}),
+      ...(role?.success ? { role: role.data } : {}),
+    };
+
+    if (hasSourceAnchor) {
+      const { items: trimmed, hasMore } = await fetchSourceAnchoredPublicEligibleLinks({
+        userId,
+        limit,
+        sortOrder,
+        where: baseWhere,
+        cursor,
+        createdBefore,
+        createdAfter,
+      });
+      const nextCursor =
+        hasMore && trimmed.length > 0
+          ? trimmed[trimmed.length - 1]!.createdAt.toISOString()
+          : null;
+
+      return listSuccess(trimmed, limit, hasMore, nextCursor);
+    }
+
     const createdAtFilter = buildCreatedAtFilter({
       cursor,
       createdBefore,
@@ -193,30 +277,18 @@ export async function GET(req: Request) {
 
     const items = await prismadb.understandingEvidenceLink.findMany({
       where: {
-        userId,
-        ...(targetType?.success ? { targetType: targetType.data } : {}),
-        ...(targetId ? { targetId } : {}),
-        ...(sourceType?.success ? { sourceType: sourceType.data } : {}),
-        ...(sourceId ? { sourceId } : {}),
-        ...(role?.success ? { role: role.data } : {}),
+        ...baseWhere,
         ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
       },
       orderBy: [{ createdAt: sortOrder }, { id: sortOrder }],
       take: limit + 1,
     });
 
-    const publicEligibleItems = hasSourceAnchor
-      ? await filterEvidenceLinksByPublicTargetEligibility({
-          userId,
-          links: items,
-        })
-      : items;
-
-    const hasMore = publicEligibleItems.length > limit;
-    const trimmed = hasMore ? publicEligibleItems.slice(0, limit) : publicEligibleItems;
+    const hasMore = items.length > limit;
+    const trimmed = hasMore ? items.slice(0, limit) : items;
     const nextCursor =
       hasMore && trimmed.length > 0
-        ? trimmed[trimmed.length - 1].createdAt.toISOString()
+        ? trimmed[trimmed.length - 1]!.createdAt.toISOString()
         : null;
 
     return listSuccess(trimmed, limit, hasMore, nextCursor);
