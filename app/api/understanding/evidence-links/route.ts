@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import {
+  Prisma,
   UnderstandingLinkRole,
   UnderstandingLinkSourceType,
   UnderstandingLinkTargetType,
@@ -17,6 +18,10 @@ import {
   parseSortOrder,
   zodIssuesToDetails,
 } from "../../../../lib/understanding-engine-api";
+import {
+  filterEvidenceLinksByPublicTargetEligibility,
+  isEvidenceLinkTargetPublicEligible,
+} from "../../../../lib/understanding-evidence-link-public-eligibility";
 import {
   UnderstandingEvidenceLinkDuplicateError,
   UnderstandingEvidenceLinkValidationError,
@@ -55,6 +60,62 @@ function buildCreatedAtFilter(args: {
   }
 
   return Object.keys(filter).length ? filter : undefined;
+}
+
+type EvidenceLinkListRow = Awaited<
+  ReturnType<typeof prismadb.understandingEvidenceLink.findMany>
+>[number];
+
+async function fetchSourceAnchoredPublicEligibleLinks(args: {
+  userId: string;
+  limit: number;
+  sortOrder: SortOrder;
+  where: Prisma.UnderstandingEvidenceLinkWhereInput;
+  cursor: Date | null;
+  createdBefore: Date | null;
+  createdAfter: Date | null;
+}): Promise<{ items: EvidenceLinkListRow[]; hasMore: boolean }> {
+  const collected: EvidenceLinkListRow[] = [];
+  let batchCursor = args.cursor;
+
+  while (collected.length < args.limit + 1) {
+    const createdAtFilter = buildCreatedAtFilter({
+      cursor: batchCursor,
+      createdBefore: args.createdBefore,
+      createdAfter: args.createdAfter,
+      sortOrder: args.sortOrder,
+    });
+
+    const batch = await prismadb.understandingEvidenceLink.findMany({
+      where: {
+        ...args.where,
+        ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+      },
+      orderBy: [{ createdAt: args.sortOrder }, { id: args.sortOrder }],
+      take: args.limit + 1,
+    });
+
+    if (batch.length === 0) {
+      break;
+    }
+
+    const eligible = await filterEvidenceLinksByPublicTargetEligibility({
+      userId: args.userId,
+      links: batch,
+    });
+    collected.push(...eligible);
+
+    if (batch.length < args.limit + 1) {
+      break;
+    }
+
+    batchCursor = batch[batch.length - 1]!.createdAt;
+  }
+
+  const hasMore = collected.length > args.limit;
+  const items = hasMore ? collected.slice(0, args.limit) : collected;
+
+  return { items, hasMore };
 }
 
 export async function GET(req: Request) {
@@ -169,6 +230,44 @@ export async function GET(req: Request) {
   }
 
   try {
+    if (hasTargetAnchor && targetType?.success && targetId) {
+      const targetIsPublicEligible = await isEvidenceLinkTargetPublicEligible({
+        userId,
+        targetType: targetType.data,
+        targetId,
+      });
+      if (!targetIsPublicEligible) {
+        return listSuccess([], limit, false, null);
+      }
+    }
+
+    const baseWhere = {
+      userId,
+      ...(targetType?.success ? { targetType: targetType.data } : {}),
+      ...(targetId ? { targetId } : {}),
+      ...(sourceType?.success ? { sourceType: sourceType.data } : {}),
+      ...(sourceId ? { sourceId } : {}),
+      ...(role?.success ? { role: role.data } : {}),
+    };
+
+    if (hasSourceAnchor) {
+      const { items: trimmed, hasMore } = await fetchSourceAnchoredPublicEligibleLinks({
+        userId,
+        limit,
+        sortOrder,
+        where: baseWhere,
+        cursor,
+        createdBefore,
+        createdAfter,
+      });
+      const nextCursor =
+        hasMore && trimmed.length > 0
+          ? trimmed[trimmed.length - 1]!.createdAt.toISOString()
+          : null;
+
+      return listSuccess(trimmed, limit, hasMore, nextCursor);
+    }
+
     const createdAtFilter = buildCreatedAtFilter({
       cursor,
       createdBefore,
@@ -178,12 +277,7 @@ export async function GET(req: Request) {
 
     const items = await prismadb.understandingEvidenceLink.findMany({
       where: {
-        userId,
-        ...(targetType?.success ? { targetType: targetType.data } : {}),
-        ...(targetId ? { targetId } : {}),
-        ...(sourceType?.success ? { sourceType: sourceType.data } : {}),
-        ...(sourceId ? { sourceId } : {}),
-        ...(role?.success ? { role: role.data } : {}),
+        ...baseWhere,
         ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
       },
       orderBy: [{ createdAt: sortOrder }, { id: sortOrder }],
@@ -194,7 +288,7 @@ export async function GET(req: Request) {
     const trimmed = hasMore ? items.slice(0, limit) : items;
     const nextCursor =
       hasMore && trimmed.length > 0
-        ? trimmed[trimmed.length - 1].createdAt.toISOString()
+        ? trimmed[trimmed.length - 1]!.createdAt.toISOString()
         : null;
 
     return listSuccess(trimmed, limit, hasMore, nextCursor);
@@ -225,6 +319,20 @@ export async function POST(req: Request) {
   }
 
   try {
+    const targetIsPublicEligible = await isEvidenceLinkTargetPublicEligible({
+      userId,
+      targetType: parsed.data.targetType,
+      targetId: parsed.data.targetId,
+    });
+    if (!targetIsPublicEligible) {
+      return errorResponse(400, "Validation failed", "VALIDATION_ERROR", [
+        {
+          field: "targetId",
+          message: "Target not found for authenticated user",
+        },
+      ]);
+    }
+
     const created = await createUnderstandingEvidenceLinkForUser({
       userId,
       input: parsed.data,

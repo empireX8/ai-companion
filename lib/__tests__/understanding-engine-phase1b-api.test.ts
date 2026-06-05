@@ -95,6 +95,11 @@ describe("Understanding Engine Phase 1B API routes", () => {
     vi.clearAllMocks();
     authMock.mockResolvedValue({ userId: "user-1" });
 
+    prismaMock.userMapConclusion.findMany.mockResolvedValue([]);
+    prismaMock.investigation.findMany.mockResolvedValue([]);
+    prismaMock.fieldworkAssignment.findMany.mockResolvedValue([]);
+    prismaMock.modelUpdate.findMany.mockResolvedValue([]);
+
     prismaMock.patternClaim.findFirst.mockResolvedValue({ id: "claim-1" });
     prismaMock.patternClaimEvidence.findFirst.mockResolvedValue({ id: "pce-1" });
     prismaMock.contradictionNode.findFirst.mockResolvedValue({ id: "cn-1" });
@@ -267,6 +272,7 @@ describe("Understanding Engine Phase 1B API routes", () => {
   });
 
   it("scopes evidence-link list queries by authenticated user", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
     prismaMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([]);
 
     const route = await import("../../app/api/understanding/evidence-links/route");
@@ -961,6 +967,7 @@ describe("Understanding Engine Phase 1B API routes", () => {
   });
 
   it("accepts evidence-links query anchored by targetType+targetId", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
     prismaMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([]);
 
     const route = await import("../../app/api/understanding/evidence-links/route");
@@ -987,6 +994,7 @@ describe("Understanding Engine Phase 1B API routes", () => {
   });
 
   it("accepts evidence-links query with anchor pair plus role", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
     prismaMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([]);
 
     const route = await import("../../app/api/understanding/evidence-links/route");
@@ -1000,6 +1008,7 @@ describe("Understanding Engine Phase 1B API routes", () => {
   });
 
   it("handles evidence-link dedupe uniqueness as 409", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
     prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({ id: "umc-1" });
     prismaMock.patternClaim.findFirst.mockResolvedValueOnce({ id: "claim-1" });
     prismaMock.understandingEvidenceLink.create.mockRejectedValueOnce(
@@ -1050,6 +1059,7 @@ describe("Understanding Engine Phase 1B API routes", () => {
   });
 
   it("rejects evidence-link create when source is not user-owned", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
     prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({ id: "umc-1" });
     prismaMock.patternClaim.findFirst.mockResolvedValueOnce(null);
 
@@ -1073,6 +1083,7 @@ describe("Understanding Engine Phase 1B API routes", () => {
   });
 
   it("rejects non-verifiable timeline_aggregation source type in Phase 1B", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
     prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({ id: "umc-1" });
 
     const route = await import("../../app/api/understanding/evidence-links/route");
@@ -1095,6 +1106,7 @@ describe("Understanding Engine Phase 1B API routes", () => {
   });
 
   it("rejects unverified import_record source in Phase 1B", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
     prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({ id: "umc-1" });
     prismaMock.importUploadSession.findFirst.mockResolvedValueOnce(null);
     prismaMock.importUploadChunk.findFirst.mockResolvedValueOnce(null);

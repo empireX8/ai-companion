@@ -5,6 +5,8 @@ import {
 
 import prismadb from "@/lib/prismadb";
 
+import { filterEvidenceLinksByPublicTargetEligibility } from "./understanding-evidence-link-public-eligibility";
+
 export type RelatedUnderstanding = {
   userMapConclusionIds: string[];
   investigationIds: string[];
@@ -54,6 +56,11 @@ export async function buildRelatedUnderstandingBySourceId(
     },
   });
 
+  const publicEligibleRows = await filterEvidenceLinksByPublicTargetEligibility({
+    userId: args.userId,
+    links: rows,
+  });
+
   const grouped = new Map<
     string,
     {
@@ -64,7 +71,7 @@ export async function buildRelatedUnderstandingBySourceId(
     }
   >();
 
-  for (const row of rows) {
+  for (const row of publicEligibleRows) {
     const current = grouped.get(row.sourceId) ?? {
       userMapConclusionIds: new Set<string>(),
       investigationIds: new Set<string>(),

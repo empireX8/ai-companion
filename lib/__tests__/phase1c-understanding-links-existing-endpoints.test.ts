@@ -35,6 +35,18 @@ const prismadbMock = {
   understandingEvidenceLink: {
     findMany: vi.fn(),
   },
+  userMapConclusion: {
+    findMany: vi.fn(),
+  },
+  investigation: {
+    findMany: vi.fn(),
+  },
+  fieldworkAssignment: {
+    findMany: vi.fn(),
+  },
+  modelUpdate: {
+    findMany: vi.fn(),
+  },
 };
 
 vi.mock("@clerk/nextjs/server", () => ({
@@ -42,6 +54,10 @@ vi.mock("@clerk/nextjs/server", () => ({
 }));
 
 vi.mock("@/lib/prismadb", () => ({
+  default: prismadbMock,
+}));
+
+vi.mock("../prismadb", () => ({
   default: prismadbMock,
 }));
 
@@ -275,6 +291,10 @@ beforeEach(() => {
   prismadbMock.evidenceSpan.findFirst.mockResolvedValue(makeEvidenceSpan("es-1"));
   prismadbMock.referenceItem.findMany.mockResolvedValue([]);
   prismadbMock.understandingEvidenceLink.findMany.mockResolvedValue([]);
+  prismadbMock.userMapConclusion.findMany.mockResolvedValue([]);
+  prismadbMock.investigation.findMany.mockResolvedValue([]);
+  prismadbMock.fieldworkAssignment.findMany.mockResolvedValue([]);
+  prismadbMock.modelUpdate.findMany.mockResolvedValue([]);
 
   getTopContradictionsMock.mockResolvedValue([]);
   projectVisiblePatternClaimMock.mockReturnValue(makeProjectedPatternClaim());
@@ -330,6 +350,10 @@ describe("Phase 1C includeUnderstandingLinks gating", () => {
 
   it("patterns: include=true groups IDs by target type, ignores unsupported targets, and keeps cross-user rows out", async () => {
     const route = await import("../../app/api/patterns/route");
+    prismadbMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
+    prismadbMock.investigation.findMany.mockResolvedValueOnce([{ id: "inv-1" }]);
+    prismadbMock.modelUpdate.findMany.mockResolvedValueOnce([{ id: "mu-1" }]);
+    prismadbMock.fieldworkAssignment.findMany.mockResolvedValueOnce([{ id: "fw-1" }]);
     prismadbMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([
       { sourceId: "pc1", targetType: "usermap_conclusion", targetId: "umc-1" },
       { sourceId: "pc1", targetType: "investigation", targetId: "inv-1" },
@@ -393,6 +417,7 @@ describe("Phase 1C includeUnderstandingLinks gating", () => {
   it("contradiction list: include=true adds grouped links, scopes query, returns empty arrays, and keeps top=3 deferred", async () => {
     const route = await import("../../app/api/contradiction/route");
 
+    prismadbMock.modelUpdate.findMany.mockResolvedValueOnce([{ id: "mu-1" }]);
     prismadbMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([
       { sourceId: "c1", targetType: "model_update", targetId: "mu-1" },
       { sourceId: "c-other", targetType: "investigation", targetId: "cross-user" },
@@ -452,6 +477,7 @@ describe("Phase 1C includeUnderstandingLinks gating", () => {
     expect(defaultPayload).not.toHaveProperty("relatedUnderstanding");
     expect(prismadbMock.understandingEvidenceLink.findMany).not.toHaveBeenCalled();
 
+    prismadbMock.investigation.findMany.mockResolvedValueOnce([{ id: "inv-2" }]);
     prismadbMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([
       { sourceId: "c1", targetType: "investigation", targetId: "inv-2" },
       { sourceId: "other", targetType: "model_update", targetId: "cross-user" },
@@ -506,6 +532,8 @@ describe("Phase 1C includeUnderstandingLinks gating", () => {
 
   it("actions: include=true adds grouped links for both buckets and returns empty arrays for unlinked items", async () => {
     const route = await import("../../app/api/actions/route");
+    prismadbMock.fieldworkAssignment.findMany.mockResolvedValueOnce([{ id: "fw-1" }]);
+    prismadbMock.investigation.findMany.mockResolvedValueOnce([{ id: "inv-10" }]);
     prismadbMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([
       { sourceId: "a1", targetType: "fieldwork_assignment", targetId: "fw-1" },
       { sourceId: "a1", targetType: "investigation", targetId: "inv-10" },
@@ -553,6 +581,8 @@ describe("Phase 1C includeUnderstandingLinks gating", () => {
     const route = await import("../../app/api/evidence/route");
     prismadbMock.evidenceSpan.findMany.mockResolvedValue([makeEvidenceSpan("es-1")]);
 
+    prismadbMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-9" }]);
+    prismadbMock.modelUpdate.findMany.mockResolvedValueOnce([{ id: "mu-7" }]);
     prismadbMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([
       { sourceId: "es-1", targetType: "usermap_conclusion", targetId: "umc-9" },
       { sourceId: "es-1", targetType: "model_update", targetId: "mu-7" },
@@ -602,6 +632,7 @@ describe("Phase 1C includeUnderstandingLinks gating", () => {
     expect(defaultPayload).not.toHaveProperty("relatedUnderstanding");
     expect(prismadbMock.understandingEvidenceLink.findMany).not.toHaveBeenCalled();
 
+    prismadbMock.investigation.findMany.mockResolvedValueOnce([{ id: "inv-77" }]);
     prismadbMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([
       { sourceId: "es-1", targetType: "investigation", targetId: "inv-77" },
       { sourceId: "es-foreign", targetType: "usermap_conclusion", targetId: "cross-user" },
