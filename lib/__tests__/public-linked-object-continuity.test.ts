@@ -9,6 +9,9 @@ const prismaMock = {
   investigation: {
     findMany: vi.fn(),
   },
+  fieldworkAssignment: {
+    findMany: vi.fn(),
+  },
   patternClaim: {
     findMany: vi.fn(),
   },
@@ -30,6 +33,7 @@ describe("public linked-object continuity helper", () => {
     vi.clearAllMocks();
     prismaMock.userMapConclusion.findMany.mockResolvedValue([]);
     prismaMock.investigation.findMany.mockResolvedValue([]);
+    prismaMock.fieldworkAssignment.findMany.mockResolvedValue([]);
     prismaMock.patternClaim.findMany.mockResolvedValue([]);
     prismaMock.contradictionNode.findMany.mockResolvedValue([]);
   });
@@ -91,6 +95,43 @@ describe("public linked-object continuity helper", () => {
       userId: "user-1",
       linkedObjectType: "investigation",
       linkedObjectId: "inv-internal-proposed",
+    });
+
+    expect(href).toBeNull();
+  });
+
+  it("resolves fieldwork_assignment href only when user-owned and public-eligible", async () => {
+    const { buildPublicWatchForWhere } = await import("../fieldwork-public-visibility");
+    prismaMock.fieldworkAssignment.findMany.mockResolvedValueOnce([{ id: "fw-public" }]);
+
+    const { resolvePublicLinkedObjectHref } = await import(
+      "../public-linked-object-continuity"
+    );
+    const href = await resolvePublicLinkedObjectHref({
+      userId: "user-1",
+      linkedObjectType: "fieldwork_assignment",
+      linkedObjectId: "fw-public",
+    });
+
+    expect(href).toBe("/watch-for/fw-public");
+    expect(prismaMock.fieldworkAssignment.findMany).toHaveBeenCalledWith({
+      where: {
+        ...buildPublicWatchForWhere({ userId: "user-1" }),
+        id: { in: ["fw-public"] },
+      },
+      select: { id: true },
+    });
+  });
+
+  it("returns null for internal_only or proposed fieldwork_assignment rows", async () => {
+    const { resolvePublicLinkedObjectHref } = await import(
+      "../public-linked-object-continuity"
+    );
+
+    const href = await resolvePublicLinkedObjectHref({
+      userId: "user-1",
+      linkedObjectType: "fieldwork_assignment",
+      linkedObjectId: "fw-internal-proposed",
     });
 
     expect(href).toBeNull();
@@ -237,6 +278,7 @@ describe("public linked-object continuity helper", () => {
   it("applies verified affected-object hrefs and clears unverified links", async () => {
     prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([{ id: "umc-1" }]);
     prismaMock.investigation.findMany.mockResolvedValueOnce([{ id: "inv-public" }]);
+    prismaMock.fieldworkAssignment.findMany.mockResolvedValueOnce([{ id: "fw-public" }]);
     prismaMock.patternClaim.findMany.mockResolvedValueOnce([{ id: "pc-safe" }]);
     prismaMock.contradictionNode.findMany.mockResolvedValueOnce([]);
 
@@ -278,6 +320,20 @@ describe("public linked-object continuity helper", () => {
           affectedObjectId: "inv-internal",
           affectedObjectHref: null,
         },
+        {
+          id: "mu-6",
+          updateType: "fieldwork_assigned",
+          affectedObjectType: "fieldwork_assignment",
+          affectedObjectId: "fw-public",
+          affectedObjectHref: null,
+        },
+        {
+          id: "mu-7",
+          updateType: "fieldwork_assigned",
+          affectedObjectType: "fieldwork_assignment",
+          affectedObjectId: "fw-internal",
+          affectedObjectHref: null,
+        },
       ],
     });
 
@@ -311,6 +367,20 @@ describe("public linked-object continuity helper", () => {
         updateType: "investigation_opened",
         affectedObjectType: "investigation",
         affectedObjectId: "inv-internal",
+        affectedObjectHref: null,
+      },
+      {
+        id: "mu-6",
+        updateType: "fieldwork_assigned",
+        affectedObjectType: "fieldwork_assignment",
+        affectedObjectId: "fw-public",
+        affectedObjectHref: "/watch-for/fw-public",
+      },
+      {
+        id: "mu-7",
+        updateType: "fieldwork_assigned",
+        affectedObjectType: "fieldwork_assignment",
+        affectedObjectId: "fw-internal",
         affectedObjectHref: null,
       },
     ]);

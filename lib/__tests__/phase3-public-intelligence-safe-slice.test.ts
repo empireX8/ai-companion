@@ -56,6 +56,12 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
         affectedObjectId: "inv-9",
       })
     ).toBe(buildPublicObjectHref({ type: "investigation", id: "inv-9" }));
+    expect(
+      buildWhatChangedAffectedObjectHref({
+        affectedObjectType: "fieldwork_assignment",
+        affectedObjectId: "fw-9",
+      })
+    ).toBe(buildPublicObjectHref({ type: "fieldwork_assignment", id: "fw-9" }));
 
     expect(
       buildWhatChangedAffectedObjectHref({
@@ -101,7 +107,7 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
         linkedObjectType: "fieldwork_assignment",
         linkedObjectId: "fw-1",
       })
-    ).toBeNull();
+    ).toBe(buildPublicObjectHref({ type: "fieldwork_assignment", id: "fw-1" }));
     expect(
       buildLinkedObjectHref({
         linkedObjectType: "model_update",
