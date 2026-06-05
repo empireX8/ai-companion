@@ -1,5 +1,6 @@
 import {
   InvestigationSeedType,
+  ModelUpdateType,
   UnderstandingLinkSourceType,
   UnderstandingLinkTargetType,
   UserMapConclusionStatus,
@@ -580,6 +581,120 @@ describe("Phase 2C no-write dark-run evaluation harness", () => {
         (failure) =>
           failure.invariant === "fieldwork_candidate_proposal_safety" &&
           failure.message.includes("prompt, reason")
+      )
+    ).toBe(true);
+    expectNoWritePathCalls(db);
+  });
+
+  it("passes model update proposal safety checks on valid model update proposal output", async () => {
+    const db = createNoWriteDbMock();
+    const output = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    const modelUpdateOutput = {
+      ...output,
+      userMapCandidateProposal: null,
+      investigationCandidateProposal: null,
+      fieldworkCandidateProposal: null,
+      modelUpdateCandidateProposal: {
+        updateType: ModelUpdateType.link_detected,
+        userFacingSummary:
+          "There is early evidence that action follow-through improved after pausing.",
+        affectedObjectType: UnderstandingLinkTargetType.surfaced_action,
+        affectedObjectId: "sa-1",
+        evidenceSelections: [
+          {
+            sourceType: UnderstandingLinkSourceType.surfaced_action,
+            sourceId: "sa-1",
+          },
+          {
+            sourceType: UnderstandingLinkSourceType.message,
+            sourceId: "m-1",
+          },
+        ],
+      },
+    };
+
+    const result = evaluateNoWriteDarkRunOutput(modelUpdateOutput);
+    expect(result.passed).toBe(true);
+    expect(
+      result.checkedInvariants.includes("model_update_candidate_proposal_safety")
+    ).toBe(true);
+    expectNoWritePathCalls(db);
+  });
+
+  it("fails model update proposal safety when proposal uses model-change overclaims", async () => {
+    const db = createNoWriteDbMock();
+    const output = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    const unsafeOutput = {
+      ...output,
+      modelUpdateCandidateProposal: {
+        updateType: ModelUpdateType.link_detected,
+        userFacingSummary: "The model learned that you always shut down.",
+        affectedObjectType: UnderstandingLinkTargetType.surfaced_action,
+        affectedObjectId: "sa-1",
+        evidenceSelections: [
+          {
+            sourceType: UnderstandingLinkSourceType.surfaced_action,
+            sourceId: "sa-1",
+          },
+          {
+            sourceType: UnderstandingLinkSourceType.message,
+            sourceId: "m-1",
+          },
+        ],
+      },
+    };
+
+    const result = evaluateNoWriteDarkRunOutput(unsafeOutput);
+    expect(result.passed).toBe(false);
+    expect(
+      result.failures.some(
+        (failure) => failure.invariant === "model_update_candidate_proposal_safety"
+      )
+    ).toBe(true);
+    expectNoWritePathCalls(db);
+  });
+
+  it("fails model update proposal safety when proposal is structurally invalid", async () => {
+    const db = createNoWriteDbMock();
+    const output = await runNoWriteUnderstandingDarkRun({
+      userId: "user-1",
+      db: db as unknown as NoWriteDbInput,
+      now: new Date("2026-05-15T12:00:00.000Z"),
+    });
+
+    const invalidOutput = {
+      ...output,
+      modelUpdateCandidateProposal: {
+        updateType: ModelUpdateType.link_detected,
+        userFacingSummary: "   ",
+        affectedObjectType: UnderstandingLinkTargetType.surfaced_action,
+        affectedObjectId: "sa-1",
+        evidenceSelections: [
+          {
+            sourceType: UnderstandingLinkSourceType.surfaced_action,
+            sourceId: "sa-1",
+          },
+        ],
+      },
+    };
+
+    const result = evaluateNoWriteDarkRunOutput(invalidOutput);
+    expect(result.passed).toBe(false);
+    expect(
+      result.failures.some(
+        (failure) =>
+          failure.invariant === "model_update_candidate_proposal_safety" &&
+          failure.message.includes("userFacingSummary")
       )
     ).toBe(true);
     expectNoWritePathCalls(db);
