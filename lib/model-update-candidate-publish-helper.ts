@@ -9,6 +9,7 @@
 import {
   type PrismaClient,
   ModelUpdateVisibility,
+  UnderstandingLinkTargetType,
 } from "@prisma/client";
 
 import prismadb from "./prismadb";
@@ -72,6 +73,22 @@ export async function publishModelUpdateCandidate(
     throw new PublishModelUpdateCandidateError(
       `Cannot publish ModelUpdate id=${modelUpdateId}: isMeaningful is true, expected false.`,
       "ALREADY_MEANINGFUL"
+    );
+  }
+
+  const evidenceLink = await db.understandingEvidenceLink.findFirst({
+    where: {
+      userId,
+      targetType: UnderstandingLinkTargetType.model_update,
+      targetId: modelUpdateId,
+    },
+    select: { id: true },
+  });
+
+  if (!evidenceLink) {
+    throw new PublishModelUpdateCandidateError(
+      `Cannot publish ModelUpdate id=${modelUpdateId}: at least one user-owned UnderstandingEvidenceLink with targetType=model_update is required.`,
+      "MODEL_UPDATE_MISSING_EVIDENCE"
     );
   }
 

@@ -135,6 +135,32 @@ describe("internal ModelUpdate candidate publish route", () => {
     expect((await response.json()).code).toBe("ALREADY_VISIBLE");
   });
 
+  it("returns 422 for missing evidence links", async () => {
+    const { PublishModelUpdateCandidateError } = await import(
+      "../../lib/model-update-candidate-publish-helper"
+    );
+    publishModelUpdateCandidateMock.mockRejectedValueOnce(
+      new PublishModelUpdateCandidateError(
+        "missing evidence",
+        "MODEL_UPDATE_MISSING_EVIDENCE"
+      )
+    );
+
+    const route = await import(
+      "../../app/api/internal/model-updates/candidates/[id]/publish/route"
+    );
+    const response = await route.POST(
+      new Request(
+        "http://localhost/api/internal/model-updates/candidates/no-evidence-id/publish",
+        { method: "POST" }
+      ),
+      { params: Promise.resolve({ id: "no-evidence-id" }) }
+    );
+
+    expect(response.status).toBe(422);
+    expect((await response.json()).code).toBe("MODEL_UPDATE_MISSING_EVIDENCE");
+  });
+
   it("returns 422 for isMeaningful true row", async () => {
     const { PublishModelUpdateCandidateError } = await import(
       "../../lib/model-update-candidate-publish-helper"

@@ -101,6 +101,34 @@ type InMemoryModelUpdate = {
 
 function makePublishDbMock(seed: InMemoryModelUpdate[]) {
   const rows = seed.map((row) => ({ ...row }));
+  const evidenceLinks = rows.map((row) => ({
+    id: `link-${row.id}`,
+    userId: row.userId,
+    targetType: UnderstandingLinkTargetType.model_update,
+    targetId: row.id,
+  }));
+
+  const understandingEvidenceLink = {
+    findFirst: vi.fn(
+      async ({
+        where,
+      }: {
+        where: {
+          userId: string;
+          targetType: UnderstandingLinkTargetType;
+          targetId: string;
+        };
+      }) => {
+        const link = evidenceLinks.find(
+          (candidate) =>
+            candidate.userId === where.userId &&
+            candidate.targetType === where.targetType &&
+            candidate.targetId === where.targetId
+        );
+        return link ? { id: link.id } : null;
+      }
+    ),
+  };
 
   const modelUpdate = {
     findFirst: vi.fn(
@@ -153,6 +181,7 @@ function makePublishDbMock(seed: InMemoryModelUpdate[]) {
 
   return {
     modelUpdate,
+    understandingEvidenceLink,
     rows,
     $transaction: vi.fn(
       async (callback: (transactionClient: typeof tx) => Promise<unknown>) =>

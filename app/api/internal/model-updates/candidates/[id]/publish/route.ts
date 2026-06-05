@@ -43,7 +43,11 @@ export async function POST(
       if (error.code === "MODEL_UPDATE_NOT_FOUND") {
         return errorResponse(404, error.message, error.code);
       }
-      if (error.code === "ALREADY_VISIBLE" || error.code === "ALREADY_MEANINGFUL") {
+      if (
+        error.code === "ALREADY_VISIBLE" ||
+        error.code === "ALREADY_MEANINGFUL" ||
+        error.code === "MODEL_UPDATE_MISSING_EVIDENCE"
+      ) {
         return errorResponse(422, error.message, error.code);
       }
     }

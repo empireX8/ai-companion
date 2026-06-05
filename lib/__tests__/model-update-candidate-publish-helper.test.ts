@@ -27,6 +27,25 @@ type InMemoryModelUpdate = {
   internalNotes: string | null;
 };
 
+type InMemoryEvidenceLink = {
+  id: string;
+  userId: string;
+  targetType: UnderstandingLinkTargetType;
+  targetId: string;
+};
+
+function buildEvidenceLink(
+  overrides?: Partial<InMemoryEvidenceLink>
+): InMemoryEvidenceLink {
+  return {
+    id: "link-1",
+    userId: "user-1",
+    targetType: UnderstandingLinkTargetType.model_update,
+    targetId: "mu-candidate-1",
+    ...overrides,
+  };
+}
+
 function buildCandidateRow(
   overrides?: Partial<InMemoryModelUpdate>
 ): InMemoryModelUpdate {
@@ -49,10 +68,44 @@ function buildCandidateRow(
   };
 }
 
-function makePublishDbMock(seed?: InMemoryModelUpdate[]) {
+function makePublishDbMock(
+  seed?: InMemoryModelUpdate[],
+  evidenceLinks?: InMemoryEvidenceLink[]
+) {
   const rows: InMemoryModelUpdate[] = [...(seed ?? [buildCandidateRow()])];
+  const links: InMemoryEvidenceLink[] =
+    evidenceLinks === undefined
+      ? rows.map((row) =>
+          buildEvidenceLink({
+            targetId: row.id,
+            userId: row.userId,
+          })
+        )
+      : [...evidenceLinks];
   let concurrentPublishClaimed = false;
   let failUpdateAfterApply = false;
+
+  const understandingEvidenceLink = {
+    findFirst: vi.fn(
+      async ({
+        where,
+      }: {
+        where: {
+          userId: string;
+          targetType: UnderstandingLinkTargetType;
+          targetId: string;
+        };
+      }) => {
+        const link = links.find(
+          (candidate) =>
+            candidate.userId === where.userId &&
+            candidate.targetType === where.targetType &&
+            candidate.targetId === where.targetId
+        );
+        return link ? { id: link.id } : null;
+      }
+    ),
+  };
 
   const modelUpdate = {
     findFirst: vi.fn(
@@ -116,7 +169,9 @@ function makePublishDbMock(seed?: InMemoryModelUpdate[]) {
   const tx = { modelUpdate };
   const db = {
     modelUpdate,
+    understandingEvidenceLink,
     rows,
+    links,
     setFailUpdateAfterApply: (value: boolean) => {
       failUpdateAfterApply = value;
     },
@@ -162,6 +217,57 @@ describe("ModelUpdate candidate publish helper", () => {
     ).rejects.toMatchObject({ code: "MODEL_UPDATE_NOT_FOUND" });
 
     expect(db.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects internal_only/isMeaningful false row with zero evidence links", async () => {
+    const db = makePublishDbMock([buildCandidateRow()], []);
+
+    await expect(
+      publishModelUpdateCandidate("user-1", "mu-candidate-1", {
+        db: db as never,
+      })
+    ).rejects.toMatchObject({ code: "MODEL_UPDATE_MISSING_EVIDENCE" });
+
+    expect(db.$transaction).not.toHaveBeenCalled();
+    expect(db.rows[0]).toMatchObject({
+      visibility: ModelUpdateVisibility.internal_only,
+      isMeaningful: false,
+    });
+  });
+
+  it("publishes internal_only/isMeaningful false row with at least one evidence link", async () => {
+    const db = makePublishDbMock([buildCandidateRow()], [buildEvidenceLink()]);
+
+    const result = await publishModelUpdateCandidate("user-1", "mu-candidate-1", {
+      db: db as never,
+    });
+
+    expect(result.newVisibility).toBe(ModelUpdateVisibility.user_visible);
+    expect(result.newIsMeaningful).toBe(true);
+    expect(db.understandingEvidenceLink.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        targetType: UnderstandingLinkTargetType.model_update,
+        targetId: "mu-candidate-1",
+      },
+      select: { id: true },
+    });
+  });
+
+  it("does not flip visibility or isMeaningful when evidence is missing", async () => {
+    const db = makePublishDbMock([buildCandidateRow()], []);
+
+    await expect(
+      publishModelUpdateCandidate("user-1", "mu-candidate-1", {
+        db: db as never,
+      })
+    ).rejects.toMatchObject({ code: "MODEL_UPDATE_MISSING_EVIDENCE" });
+
+    expect(db.modelUpdate.updateMany).not.toHaveBeenCalled();
+    expect(db.rows[0]).toMatchObject({
+      visibility: ModelUpdateVisibility.internal_only,
+      isMeaningful: false,
+    });
   });
 
   it("publishes internal_only + isMeaningful false rows", async () => {
@@ -303,9 +409,15 @@ describe("ModelUpdate candidate publish helper", () => {
   });
 
   it("rejects concurrent publish races", async () => {
-    const db = makePublishDbMock([
-      buildCandidateRow({ id: "concurrent-race-id" }),
-    ]);
+    const db = makePublishDbMock(
+      [buildCandidateRow({ id: "concurrent-race-id" })],
+      [
+        buildEvidenceLink({
+          id: "link-race",
+          targetId: "concurrent-race-id",
+        }),
+      ]
+    );
 
     const results = await Promise.allSettled([
       publishModelUpdateCandidate("user-1", "concurrent-race-id", {
