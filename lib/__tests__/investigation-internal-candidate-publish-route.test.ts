@@ -156,6 +156,34 @@ describe("internal Investigation candidate publish route", () => {
     expect((await response.json()).code).toBe("ALREADY_VISIBLE");
   });
 
+  it("returns 422 for non-publishable Investigation status", async () => {
+    const { PublishInvestigationCandidateError } = await import(
+      "../../lib/investigation-publish-helper"
+    );
+    publishInvestigationCandidateMock.mockRejectedValueOnce(
+      new PublishInvestigationCandidateError(
+        "status not publishable",
+        "INVESTIGATION_STATUS_NOT_PUBLISHABLE"
+      )
+    );
+
+    const route = await import(
+      "../../app/api/internal/investigations/candidates/[id]/publish/route"
+    );
+    const response = await route.POST(
+      new Request(
+        "http://localhost/api/internal/investigations/candidates/resolved-id/publish",
+        {
+          method: "POST",
+        }
+      ),
+      { params: Promise.resolve({ id: "resolved-id" }) }
+    );
+
+    expect(response.status).toBe(422);
+    expect((await response.json()).code).toBe("INVESTIGATION_STATUS_NOT_PUBLISHABLE");
+  });
+
   it("returns 200 for promoted + internal_only candidate", async () => {
     publishInvestigationCandidateMock.mockResolvedValueOnce({
       id: "inv-1",

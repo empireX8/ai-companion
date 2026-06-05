@@ -9,6 +9,7 @@
  */
 
 import {
+  type InvestigationStatus,
   type PrismaClient,
   InvestigationVisibility,
   ModelUpdateType,
@@ -16,7 +17,12 @@ import {
   UnderstandingLinkTargetType,
 } from "@prisma/client";
 
+import { ACTIVE_QUESTION_VISIBLE_STATUSES } from "./public-intelligence-safe-slice";
 import prismadb from "./prismadb";
+
+export function isPublishableInvestigationStatus(status: InvestigationStatus): boolean {
+  return ACTIVE_QUESTION_VISIBLE_STATUSES.includes(status);
+}
 
 export type PublishInvestigationCandidateResult = {
   id: string;
@@ -101,6 +107,13 @@ export async function publishInvestigationCandidate(
     );
   }
 
+  if (!isPublishableInvestigationStatus(investigation.status)) {
+    throw new PublishInvestigationCandidateError(
+      `Cannot publish Investigation id=${investigationId}: status is '${investigation.status}', expected an Active Questions visible status.`,
+      "INVESTIGATION_STATUS_NOT_PUBLISHABLE"
+    );
+  }
+
   const userFacingSummary =
     options?.userFacingSummary ?? defaultPublishSummary(investigation.title);
   const sourceRunId = options?.sourceRunId ?? null;
@@ -113,6 +126,7 @@ export async function publishInvestigationCandidate(
         userId,
         visibility: InvestigationVisibility.internal_only,
         candidateLifecycleStatus: "promoted",
+        status: { in: ACTIVE_QUESTION_VISIBLE_STATUSES },
       },
       data: {
         visibility: InvestigationVisibility.user_visible,
