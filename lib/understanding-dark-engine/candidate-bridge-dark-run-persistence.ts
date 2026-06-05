@@ -8,6 +8,11 @@ import {
   type PersistInternalFieldworkCandidateResult,
 } from "./fieldwork-candidate-persistence";
 import { extractStructuredInvestigationCandidateProposal } from "./investigation-candidate-proposal";
+import { extractStructuredModelUpdateCandidateProposal } from "./model-update-candidate-proposal";
+import {
+  persistInternalModelUpdateCandidate,
+  type PersistInternalModelUpdateCandidateResult,
+} from "./model-update-candidate-persistence";
 import { extractStructuredUserMapCandidateProposal } from "./user-map-candidate-proposal";
 import {
   persistInternalInvestigationCandidate,
@@ -35,15 +40,27 @@ function fieldworkCandidateWasCreated(
   );
 }
 
+function modelUpdateCandidateWasCreated(
+  persistence: PersistInternalModelUpdateCandidateResult
+): boolean {
+  return (
+    !!persistence.persistedModelUpdateId &&
+    persistence.payload.candidatesWritten > 0 &&
+    persistence.payload.blockedWriteReasons.length === 0
+  );
+}
+
 export type CandidateBridgeDarkRunPersistenceDecision =
   | "skipped_gate_abstain"
   | "skipped_insufficient_proposal"
   | "skipped_persistence_blocked"
   | "skipped_investigation_persistence_blocked"
   | "skipped_fieldwork_persistence_blocked"
+  | "skipped_model_update_persistence_blocked"
   | "created"
   | "created_investigation_candidate"
-  | "created_fieldwork_candidate";
+  | "created_fieldwork_candidate"
+  | "created_model_update_candidate";
 
 export type CandidateBridgeDarkRunPersistenceResult = {
   decision: CandidateBridgeDarkRunPersistenceDecision;
@@ -51,6 +68,7 @@ export type CandidateBridgeDarkRunPersistenceResult = {
   persistedConclusionId?: string | null;
   persistedInvestigationId?: string | null;
   persistedFieldworkAssignmentId?: string | null;
+  persistedModelUpdateId?: string | null;
   blockedWriteReasons?: string[];
 };
 
@@ -182,6 +200,44 @@ export async function persistInternalCandidateFromNoWriteDarkRunOutput(args: {
     };
   }
 
+  const modelUpdateProposal = extractStructuredModelUpdateCandidateProposal(
+    args.darkRunOutput
+  );
+  if (modelUpdateProposal) {
+    const persistence = await persistInternalModelUpdateCandidate({
+      userId: args.userId,
+      proposal: modelUpdateProposal,
+      now,
+      db: db as unknown as Parameters<typeof persistInternalModelUpdateCandidate>[0]["db"],
+    });
+
+    if (!modelUpdateCandidateWasCreated(persistence)) {
+      console.info(
+        args.logTag,
+        "ModelUpdate persistence blocked; no candidate written.",
+        {
+          userId: args.userId,
+          ...args.context,
+          blockedWriteReasons: persistence.payload.blockedWriteReasons,
+          persistedModelUpdateId: persistence.persistedModelUpdateId,
+          candidatesWritten: persistence.payload.candidatesWritten,
+        }
+      );
+      return {
+        decision: "skipped_model_update_persistence_blocked",
+        reason: "Persistence gates blocked ModelUpdate candidate write.",
+        blockedWriteReasons: persistence.payload.blockedWriteReasons,
+        persistedModelUpdateId: persistence.persistedModelUpdateId,
+      };
+    }
+
+    return {
+      decision: "created_model_update_candidate",
+      reason: "Internal ModelUpdate candidate persisted.",
+      persistedModelUpdateId: persistence.persistedModelUpdateId,
+    };
+  }
+
   if (args.darkRunOutput.userMapEvaluation.decision === "abstain") {
     return {
       decision: "skipped_gate_abstain",
@@ -191,7 +247,7 @@ export async function persistInternalCandidateFromNoWriteDarkRunOutput(args: {
 
   console.info(
     args.logTag,
-    "No structured UserMap, Investigation, or Fieldwork candidate proposal in dark-run output; abstaining.",
+    "No structured UserMap, Investigation, Fieldwork, or ModelUpdate candidate proposal in dark-run output; abstaining.",
     {
       userId: args.userId,
       ...args.context,
@@ -201,6 +257,6 @@ export async function persistInternalCandidateFromNoWriteDarkRunOutput(args: {
   return {
     decision: "skipped_insufficient_proposal",
     reason:
-      "Dark-run output lacks structured userMapCandidateProposal, investigationCandidateProposal, and fieldworkCandidateProposal.",
+      "Dark-run output lacks structured userMapCandidateProposal, investigationCandidateProposal, fieldworkCandidateProposal, and modelUpdateCandidateProposal.",
   };
 }
