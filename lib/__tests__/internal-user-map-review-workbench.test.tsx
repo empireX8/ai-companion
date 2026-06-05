@@ -9,6 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { InternalUserMapReviewWorkbench } from "../../app/(root)/(routes)/internal/user-map/review/_components/InternalUserMapReviewWorkbench";
+import type { InternalInvestigationReviewCandidate } from "../internal-investigation-review-candidates";
 import type { InternalUserMapReviewCandidate } from "../internal-user-map-review-candidates";
 
 const baseCandidate: InternalUserMapReviewCandidate = {
@@ -44,12 +45,50 @@ const baseCandidate: InternalUserMapReviewCandidate = {
   },
 };
 
+const baseInvestigationCandidate: InternalInvestigationReviewCandidate = {
+  id: "inv-1",
+  title: "Investigation title",
+  organizingQuestion: "What pattern is active?",
+  summary: "Need more weekend signal",
+  status: "open",
+  seedType: "pattern",
+  visibility: "internal_only",
+  candidateLifecycleStatus: "proposed",
+  createdAt: "2026-05-15T10:00:00.000Z",
+  updatedAt: "2026-05-15T11:00:00.000Z",
+  evidence: {
+    linkCount: 1,
+    sourceTypes: { pattern_claim: 1 },
+    safetyLevels: { safe_summary: 1 },
+    linkedSources: [
+      {
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+        safetyLevel: "safe_summary",
+      },
+    ],
+  },
+  diagnostics: {
+    latestRunId: null,
+    latestArtifactId: null,
+    latestArtifactType: null,
+    processorVersion: null,
+    blockedWriteReasons: [],
+    warnings: [],
+  },
+};
+
 describe("InternalUserMapReviewWorkbench", () => {
-  it("renders lifecycle status and operator buttons for proposed candidates", () => {
+  it("renders lifecycle status and operator buttons for proposed User Map candidates", () => {
     const html = renderToStaticMarkup(
-      <InternalUserMapReviewWorkbench candidates={[baseCandidate]} />
+      <InternalUserMapReviewWorkbench
+        userMapCandidates={[baseCandidate]}
+        investigationCandidates={[]}
+      />
     );
 
+    expect(html).toContain("User Map");
+    expect(html).toContain("Investigation");
     expect(html).toContain("Lifecycle status");
     expect(html).toContain("proposed");
     expect(html).toContain("Evidence / Provenance");
@@ -61,12 +100,14 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).not.toContain("Publish");
     expect(html).not.toContain("quote");
     expect(html).not.toContain("snippet");
+    expect(html).not.toContain("Fieldwork");
+    expect(html).not.toContain("ModelUpdate");
   });
 
   it("renders empty provenance state without crashing", () => {
     const html = renderToStaticMarkup(
       <InternalUserMapReviewWorkbench
-        candidates={[
+        userMapCandidates={[
           {
             ...baseCandidate,
             id: "umc-empty",
@@ -86,6 +127,7 @@ describe("InternalUserMapReviewWorkbench", () => {
             },
           },
         ]}
+        investigationCandidates={[]}
       />
     );
 
@@ -96,12 +138,13 @@ describe("InternalUserMapReviewWorkbench", () => {
   it("renders promote for held candidates and publish for promoted candidates", () => {
     const heldHtml = renderToStaticMarkup(
       <InternalUserMapReviewWorkbench
-        candidates={[
+        userMapCandidates={[
           {
             ...baseCandidate,
             candidateLifecycleStatus: "held_for_more_evidence",
           },
         ]}
+        investigationCandidates={[]}
       />
     );
 
@@ -111,13 +154,14 @@ describe("InternalUserMapReviewWorkbench", () => {
 
     const promotedHtml = renderToStaticMarkup(
       <InternalUserMapReviewWorkbench
-        candidates={[
+        userMapCandidates={[
           {
             ...baseCandidate,
             id: "umc-promoted",
             candidateLifecycleStatus: "promoted",
           },
         ]}
+        investigationCandidates={[]}
       />
     );
 
@@ -129,12 +173,13 @@ describe("InternalUserMapReviewWorkbench", () => {
   it("does not render lifecycle actions for legacy null lifecycle rows", () => {
     const html = renderToStaticMarkup(
       <InternalUserMapReviewWorkbench
-        candidates={[
+        userMapCandidates={[
           {
             ...baseCandidate,
             candidateLifecycleStatus: null,
           },
         ]}
+        investigationCandidates={[]}
       />
     );
 
@@ -142,5 +187,44 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).toContain("Lifecycle actions are unavailable");
     expect(html).not.toContain("Hold for more evidence");
     expect(html).not.toContain("Reject");
+  });
+
+  it("renders Investigation candidates and actions on the Investigation tab", () => {
+    const html = renderToStaticMarkup(
+      <InternalUserMapReviewWorkbench
+        userMapCandidates={[]}
+        investigationCandidates={[baseInvestigationCandidate]}
+        initialTab="investigation"
+      />
+    );
+
+    expect(html).toContain("Investigation title");
+    expect(html).toContain("What pattern is active?");
+    expect(html).toContain("Need more weekend signal");
+    expect(html).toContain("Seed type");
+    expect(html).toContain("pattern");
+    expect(html).toContain("Hold for more evidence");
+    expect(html).toContain("Reject");
+    expect(html).not.toContain("Candidate title");
+    expect(html).not.toContain("Fieldwork");
+    expect(html).not.toContain("ModelUpdate");
+  });
+
+  it("renders Investigation publish for promoted internal_only candidates", () => {
+    const html = renderToStaticMarkup(
+      <InternalUserMapReviewWorkbench
+        userMapCandidates={[]}
+        investigationCandidates={[
+          {
+            ...baseInvestigationCandidate,
+            candidateLifecycleStatus: "promoted",
+          },
+        ]}
+        initialTab="investigation"
+      />
+    );
+
+    expect(html).toContain("Publish");
+    expect(html).not.toContain("Hold for more evidence");
   });
 });

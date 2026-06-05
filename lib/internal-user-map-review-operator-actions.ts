@@ -1,5 +1,6 @@
 import {
   CandidateLifecycleStatus,
+  InvestigationVisibility,
   UserMapConclusionVisibility,
 } from "@prisma/client";
 
@@ -64,4 +65,26 @@ export function internalCandidateLifecycleApiPath(conclusionId: string): string 
 
 export function internalCandidatePublishApiPath(conclusionId: string): string {
   return `/api/internal/user-map/candidates/${encodeURIComponent(conclusionId)}/publish`;
+}
+
+export function canPublishInternalInvestigationCandidate(input: {
+  candidateLifecycleStatus: CandidateLifecycleStatus | null;
+  visibility: InvestigationVisibility;
+}): boolean {
+  return (
+    input.candidateLifecycleStatus === CandidateLifecycleStatus.promoted &&
+    input.visibility === InvestigationVisibility.internal_only
+  );
+}
+
+export function internalInvestigationCandidateLifecycleApiPath(
+  investigationId: string
+): string {
+  return `/api/internal/investigations/candidates/${encodeURIComponent(investigationId)}/lifecycle`;
+}
+
+export function internalInvestigationCandidatePublishApiPath(
+  investigationId: string
+): string {
+  return `/api/internal/investigations/candidates/${encodeURIComponent(investigationId)}/publish`;
 }

@@ -3,6 +3,8 @@ import type { CandidateLifecycleStatus } from "@prisma/client";
 import {
   internalCandidateLifecycleApiPath,
   internalCandidatePublishApiPath,
+  internalInvestigationCandidateLifecycleApiPath,
+  internalInvestigationCandidatePublishApiPath,
 } from "./internal-user-map-review-operator-actions";
 
 export type InternalOperatorApiSuccess =
@@ -101,6 +103,79 @@ export async function postInternalCandidatePublish(
   const response = await fetchImpl(internalCandidatePublishApiPath(conclusionId), {
     method: "POST",
   });
+
+  if (!response.ok) {
+    const { message, code } = await parseErrorMessage(response);
+    return { ok: false, status: response.status, message, code };
+  }
+
+  const data = (await response.json()) as {
+    id: string;
+    previousVisibility: string;
+    newVisibility: string;
+    updatedAt: string;
+  };
+
+  return {
+    ok: true,
+    data: {
+      kind: "publish",
+      id: data.id,
+      previousVisibility: data.previousVisibility,
+      newVisibility: data.newVisibility,
+      updatedAt: data.updatedAt,
+    },
+  };
+}
+
+export async function postInternalInvestigationCandidateLifecycle(
+  investigationId: string,
+  newStatus: CandidateLifecycleStatus,
+  fetchImpl: typeof fetch = fetch
+): Promise<InternalOperatorApiResult> {
+  const response = await fetchImpl(
+    internalInvestigationCandidateLifecycleApiPath(investigationId),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newStatus }),
+    }
+  );
+
+  if (!response.ok) {
+    const { message, code } = await parseErrorMessage(response);
+    return { ok: false, status: response.status, message, code };
+  }
+
+  const data = (await response.json()) as {
+    id: string;
+    previousStatus: CandidateLifecycleStatus;
+    newStatus: CandidateLifecycleStatus;
+    updatedAt: string;
+  };
+
+  return {
+    ok: true,
+    data: {
+      kind: "lifecycle",
+      id: data.id,
+      previousStatus: data.previousStatus,
+      newStatus: data.newStatus,
+      updatedAt: data.updatedAt,
+    },
+  };
+}
+
+export async function postInternalInvestigationCandidatePublish(
+  investigationId: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<InternalOperatorApiResult> {
+  const response = await fetchImpl(
+    internalInvestigationCandidatePublishApiPath(investigationId),
+    {
+      method: "POST",
+    }
+  );
 
   if (!response.ok) {
     const { message, code } = await parseErrorMessage(response);
