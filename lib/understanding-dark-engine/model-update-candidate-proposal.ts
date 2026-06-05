@@ -1,7 +1,7 @@
 import {
   ModelUpdateType,
+  UnderstandingLinkSourceType,
   UnderstandingLinkTargetType,
-  type UnderstandingLinkSourceType,
 } from "@prisma/client";
 
 import type { DarkRunUserMapEvaluation } from "./dark-run-evaluator";
@@ -13,8 +13,12 @@ const USER_FACING_SUMMARY_MAX_LENGTH = 600;
 
 const MODEL_UPDATE_SUMMARY_PREFIX = "There is early evidence that ";
 
-const SURFACED_ACTION_PUBLIC_SAFE_ANCHOR_SUMMARY =
-  "Structured action feedback is available across sources.";
+const MODEL_UPDATE_MIN_LINKABLE_EVIDENCE_COUNT = 3;
+const MODEL_UPDATE_MIN_SOURCE_TYPE_COUNT = 2;
+
+const ALLOWED_EVIDENCE_SOURCE_TYPES = new Set<string>(
+  Object.values(UnderstandingLinkSourceType)
+);
 
 const DISALLOWED_PROPOSAL_SOURCE_TYPES = new Set<UnderstandingLinkSourceType>([
   "timeline_aggregation",
@@ -24,7 +28,6 @@ const DISALLOWED_PROPOSAL_SOURCE_TYPES = new Set<UnderstandingLinkSourceType>([
 const ANCHOR_SOURCE_TYPE_PRIORITY: UnderstandingLinkSourceType[] = [
   "pattern_claim",
   "contradiction_node",
-  "surfaced_action",
 ];
 
 const LINK_TARGET_BY_SOURCE_TYPE: Partial<
@@ -32,7 +35,6 @@ const LINK_TARGET_BY_SOURCE_TYPE: Partial<
 > = {
   pattern_claim: UnderstandingLinkTargetType.pattern_claim,
   contradiction_node: UnderstandingLinkTargetType.contradiction_node,
-  surfaced_action: UnderstandingLinkTargetType.surfaced_action,
 };
 
 const MODEL_UPDATE_CANDIDATE_UPDATE_TYPE =
@@ -122,16 +124,43 @@ function selectModelUpdateEvidenceSelections(
     });
   }
 
-  if (selections.length < 2) {
+  if (selections.length < MODEL_UPDATE_MIN_LINKABLE_EVIDENCE_COUNT) {
     return null;
   }
 
   const sourceTypeCount = new Set(selections.map((selection) => selection.sourceType)).size;
-  if (sourceTypeCount < 2) {
+  if (sourceTypeCount < MODEL_UPDATE_MIN_SOURCE_TYPE_COUNT) {
+    return null;
+  }
+
+  if (selectionIncludesSurfacedAction(selections)) {
     return null;
   }
 
   return [...selections].sort(compareProposalEvidenceSelections);
+}
+
+function selectionIncludesSurfacedAction(
+  selections: UserMapCandidateEvidenceSelection[]
+): boolean {
+  return selections.some((selection) => selection.sourceType === "surfaced_action");
+}
+
+function meetsModelUpdateCorroborationGate(linkableItems: EvidencePacketItem[]): boolean {
+  if (linkableItems.length < MODEL_UPDATE_MIN_LINKABLE_EVIDENCE_COUNT) {
+    return false;
+  }
+
+  const sourceTypes = new Set(linkableItems.map((item) => item.sourceType));
+  if (sourceTypes.size < MODEL_UPDATE_MIN_SOURCE_TYPE_COUNT) {
+    return false;
+  }
+
+  if (linkableItems.some((item) => item.sourceType === "surfaced_action")) {
+    return false;
+  }
+
+  return true;
 }
 
 function pickSafeSummaryAnchorItem(args: {
@@ -177,13 +206,13 @@ function pickSafeSummaryAnchorItem(args: {
 }
 
 function readModelUpdateAnchorSummary(item: EvidencePacketItem): string | null {
+  if (item.sourceType === "surfaced_action") {
+    return null;
+  }
+
   if (item.publicSafetyLevel === "safe_summary") {
     const summary = item.publicSafeSummary?.trim();
     return summary ? normalizeWhitespace(summary) : null;
-  }
-
-  if (item.sourceType === "surfaced_action") {
-    return SURFACED_ACTION_PUBLIC_SAFE_ANCHOR_SUMMARY;
   }
 
   return null;
@@ -210,25 +239,17 @@ export function deriveModelUpdateDeltaInput(args: {
   const linkableItems = args.packet.items.filter(
     (item) => item.linkable && item.ownershipResolvable
   );
-  const sourceTypes = new Set(linkableItems.map((item) => item.sourceType));
-
-  const hasSurfacedAction = linkableItems.some(
-    (item) => item.sourceType === "surfaced_action"
-  );
 
   const isSyntheticInsight =
     args.evaluation.result.reasons.includes("SYNTHETIC_INSIGHT_BLOCKED") ||
     args.evaluation.result.warnings.includes("SYNTHETIC_INSIGHT_BLOCKED");
 
-  const newLinkCount =
-    args.packet.metrics.linkableEvidenceCount >= 2 && sourceTypes.size >= 2
-      ? linkableItems.length
-      : 0;
+  const corroborationMet = meetsModelUpdateCorroborationGate(linkableItems);
 
   return {
     hasEvidenceLink: args.packet.metrics.linkableEvidenceCount > 0,
-    newLinkCount,
-    actionOutcomeModelImpact: hasSurfacedAction,
+    newLinkCount: corroborationMet ? linkableItems.length : 0,
+    actionOutcomeModelImpact: false,
     isStatusTransition: false,
     investigationStateMoved: false,
     confidenceDelta: null,
@@ -310,7 +331,7 @@ function parseEvidenceSelections(
       typeof record.sourceType === "string" ? record.sourceType.trim() : "";
     const sourceId = typeof record.sourceId === "string" ? record.sourceId.trim() : "";
 
-    if (!sourceType || !sourceId) {
+    if (!sourceType || !sourceId || !ALLOWED_EVIDENCE_SOURCE_TYPES.has(sourceType)) {
       return null;
     }
 
@@ -342,7 +363,7 @@ export function buildStructuredModelUpdateCandidateProposal(args: {
   }
 
   const evidenceSelections = selectModelUpdateEvidenceSelections(args.packet);
-  if (!evidenceSelections) {
+  if (!evidenceSelections || selectionIncludesSurfacedAction(evidenceSelections)) {
     return null;
   }
 
@@ -350,7 +371,7 @@ export function buildStructuredModelUpdateCandidateProposal(args: {
     packet: args.packet,
     evidenceSelections,
   });
-  if (!anchorItem) {
+  if (!anchorItem || anchorItem.sourceType === "surfaced_action") {
     return null;
   }
 

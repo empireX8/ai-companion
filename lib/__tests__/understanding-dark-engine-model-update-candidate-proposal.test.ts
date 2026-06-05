@@ -104,8 +104,29 @@ function evaluatePacket(packet: EvidencePacket) {
   });
 }
 
+function buildCorroboratedNonActionPacket(): EvidencePacket {
+  return buildPacket([
+    {
+      sourceType: "pattern_claim",
+      sourceId: "pc-1",
+      publicSafetyLevel: "safe_summary",
+      publicSafeSummary: "Energy drops after meetings.",
+    },
+    {
+      sourceType: "pattern_claim",
+      sourceId: "pc-2",
+      publicSafetyLevel: "safe_summary",
+      publicSafeSummary: "Conflict shutdown pattern.",
+    },
+    {
+      sourceType: "message",
+      sourceId: "m-1",
+    },
+  ]);
+}
+
 describe("structured ModelUpdate candidate proposal builder", () => {
-  it("emits a proposal only when meaningful-delta gates pass", () => {
+  it("does not emit a proposal for thin surfaced_action + message evidence", () => {
     const packet = buildPacket([
       {
         sourceType: "surfaced_action",
@@ -120,7 +141,52 @@ describe("structured ModelUpdate candidate proposal builder", () => {
     ]);
     const evaluation = evaluatePacket(packet);
 
+    const delta = deriveModelUpdateDeltaInput({ packet, evaluation });
+    expect(delta.newLinkCount).toBe(0);
+    expect(delta.actionOutcomeModelImpact).toBe(false);
+
+    expect(
+      buildStructuredModelUpdateCandidateProposal({
+        packet,
+        evaluation,
+      })
+    ).toBeNull();
+  });
+
+  it("keeps surfaced_action-driven proposals null until Phase H corroboration exists", () => {
+    const packet = buildPacket([
+      {
+        sourceType: "surfaced_action",
+        sourceId: "sa-1",
+      },
+      {
+        sourceType: "surfaced_action",
+        sourceId: "sa-2",
+      },
+      {
+        sourceType: "message",
+        sourceId: "m-1",
+      },
+    ]);
+    const evaluation = evaluatePacket(packet);
+
+    expect(
+      buildStructuredModelUpdateCandidateProposal({
+        packet,
+        evaluation,
+      })
+    ).toBeNull();
+  });
+
+  it("emits a proposal when non-action evidence is corroborated enough and meaningful-delta gates pass", () => {
+    const packet = buildCorroboratedNonActionPacket();
+    const evaluation = evaluatePacket(packet);
+
     expect(evaluation.result.decision).toBe("pass");
+    const delta = deriveModelUpdateDeltaInput({ packet, evaluation });
+    expect(delta.newLinkCount).toBeGreaterThanOrEqual(3);
+    expect(delta.actionOutcomeModelImpact).toBe(false);
+
     const proposal = buildStructuredModelUpdateCandidateProposal({
       packet,
       evaluation,
@@ -129,8 +195,13 @@ describe("structured ModelUpdate candidate proposal builder", () => {
     expect(proposal).not.toBeNull();
     expect(proposal?.updateType).toBe(ModelUpdateType.link_detected);
     expect(proposal?.userFacingSummary).toMatch(/^There is early evidence that\b/i);
-    expect(proposal?.affectedObjectType).toBe(UnderstandingLinkTargetType.surfaced_action);
-    expect(proposal?.affectedObjectId).toBe("sa-1");
+    expect(proposal?.affectedObjectType).toBe(UnderstandingLinkTargetType.pattern_claim);
+    expect(proposal?.evidenceSelections).toHaveLength(3);
+    expect(
+      proposal?.evidenceSelections.some(
+        (selection) => selection.sourceType === "surfaced_action"
+      )
+    ).toBe(false);
     expect(usesModelUpdateCandidateSafeWording(proposal!)).toBe(true);
     expect(proposal?.userFacingSummary).not.toContain("private-snippet");
     expect(proposal?.userFacingSummary).not.toContain("private-quote");
@@ -159,18 +230,7 @@ describe("structured ModelUpdate candidate proposal builder", () => {
   });
 
   it("returns null when synthetic insight is flagged", () => {
-    const packet = buildPacket([
-      {
-        sourceType: "surfaced_action",
-        sourceId: "sa-1",
-        publicSafetyLevel: "safe_summary",
-        publicSafeSummary: "Action follow-through improved after pausing.",
-      },
-      {
-        sourceType: "message",
-        sourceId: "m-1",
-      },
-    ]);
+    const packet = buildCorroboratedNonActionPacket();
     const evaluation = evaluatePacket(packet);
     const syntheticEvaluation = {
       ...evaluation,
@@ -189,15 +249,16 @@ describe("structured ModelUpdate candidate proposal builder", () => {
     ).toBeNull();
   });
 
-  it("extractStructuredModelUpdateCandidateProposal rejects malformed and unsafe proposals", () => {
+  it("extractStructuredModelUpdateCandidateProposal rejects malformed, unsafe, and invalid source types", () => {
     const valid = extractStructuredModelUpdateCandidateProposal({
       modelUpdateCandidateProposal: {
         updateType: ModelUpdateType.link_detected,
         userFacingSummary: "There is early evidence that action follow-through improved.",
-        affectedObjectType: UnderstandingLinkTargetType.surfaced_action,
-        affectedObjectId: "sa-1",
+        affectedObjectType: UnderstandingLinkTargetType.pattern_claim,
+        affectedObjectId: "pc-1",
         evidenceSelections: [
-          { sourceType: "surfaced_action", sourceId: "sa-1" },
+          { sourceType: "pattern_claim", sourceId: "pc-1" },
+          { sourceType: "pattern_claim", sourceId: "pc-2" },
           { sourceType: "message", sourceId: "m-1" },
         ],
       },
@@ -210,11 +271,30 @@ describe("structured ModelUpdate candidate proposal builder", () => {
       extractStructuredModelUpdateCandidateProposal({
         modelUpdateCandidateProposal: {
           updateType: ModelUpdateType.link_detected,
-          userFacingSummary: "The model learned that you always shut down.",
-          affectedObjectType: UnderstandingLinkTargetType.surfaced_action,
-          affectedObjectId: "sa-1",
+          userFacingSummary: "There is early evidence that action follow-through improved.",
+          affectedObjectType: UnderstandingLinkTargetType.pattern_claim,
+          affectedObjectId: "pc-1",
           evidenceSelections: [
-            { sourceType: "surfaced_action", sourceId: "sa-1" },
+            {
+              sourceType: "not_a_real_source_type" as UnderstandingLinkSourceType,
+              sourceId: "pc-1",
+            },
+            { sourceType: "message", sourceId: "m-1" },
+          ],
+        },
+      })
+    ).toBeNull();
+
+    expect(
+      extractStructuredModelUpdateCandidateProposal({
+        modelUpdateCandidateProposal: {
+          updateType: ModelUpdateType.link_detected,
+          userFacingSummary: "The model learned that you always shut down.",
+          affectedObjectType: UnderstandingLinkTargetType.pattern_claim,
+          affectedObjectId: "pc-1",
+          evidenceSelections: [
+            { sourceType: "pattern_claim", sourceId: "pc-1" },
+            { sourceType: "pattern_claim", sourceId: "pc-2" },
             { sourceType: "message", sourceId: "m-1" },
           ],
         },
@@ -235,10 +315,11 @@ describe("structured ModelUpdate candidate proposal builder", () => {
         modelUpdateCandidateProposal: {
           updateType: ModelUpdateType.link_detected,
           userFacingSummary: "   ",
-          affectedObjectType: UnderstandingLinkTargetType.surfaced_action,
-          affectedObjectId: "sa-1",
+          affectedObjectType: UnderstandingLinkTargetType.pattern_claim,
+          affectedObjectId: "pc-1",
           evidenceSelections: [
-            { sourceType: "surfaced_action", sourceId: "sa-1" },
+            { sourceType: "pattern_claim", sourceId: "pc-1" },
+            { sourceType: "pattern_claim", sourceId: "pc-2" },
             { sourceType: "message", sourceId: "m-1" },
           ],
         },
@@ -247,19 +328,17 @@ describe("structured ModelUpdate candidate proposal builder", () => {
   });
 
   it("follows orchestrator precedence: ModelUpdate only when UserMap, Investigation, and Fieldwork are absent", () => {
-    const packet = buildPacket([
-      {
-        sourceType: "surfaced_action",
-        sourceId: "sa-1",
-        publicSafetyLevel: "safe_summary",
-        publicSafeSummary: "Action follow-through improved after pausing.",
+    const packet = buildCorroboratedNonActionPacket();
+    const baseEvaluation = evaluatePacket(packet);
+    const evaluation = {
+      ...baseEvaluation,
+      result: {
+        ...baseEvaluation.result,
+        decision: "abstain" as const,
+        reasons: ["LANGUAGE_OVERCLAIMING_BLOCKED" as const],
+        warnings: [],
       },
-      {
-        sourceType: "message",
-        sourceId: "m-1",
-      },
-    ]);
-    const evaluation = evaluatePacket(packet);
+    };
 
     const userMap = buildStructuredUserMapCandidateProposal({
       packet,

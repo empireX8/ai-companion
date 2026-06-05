@@ -508,7 +508,7 @@ describe("Phase 2B no-write dark-run orchestrator", () => {
     expectNoWritePathCalls(db);
   });
 
-  it("emits modelUpdateCandidateProposal when higher-priority proposals are absent", async () => {
+  it("does not emit modelUpdateCandidateProposal for thin surfaced_action evidence", async () => {
     const db = createNoWriteDbMock({
       includePatternClaim: false,
       includeSurfacedAction: true,
@@ -523,16 +523,8 @@ describe("Phase 2B no-write dark-run orchestrator", () => {
     expect(result.userMapCandidateProposal).toBeNull();
     expect(result.investigationCandidateProposal).toBeNull();
     expect(result.fieldworkCandidateProposal).toBeNull();
-    expect(result.modelUpdateCandidateProposal).not.toBeNull();
-    expect(result.modelUpdateCandidateProposal?.userFacingSummary).toMatch(
-      /^There is early evidence that\b/i
-    );
-    expect(result.modelUpdateCandidateProposal?.userFacingSummary).not.toContain(
-      "Raw private action note."
-    );
-    expect(extractStructuredModelUpdateCandidateProposal(result)).toEqual(
-      result.modelUpdateCandidateProposal
-    );
+    expect(result.modelUpdateCandidateProposal).toBeNull();
+    expect(extractStructuredModelUpdateCandidateProposal(result)).toBeNull();
     expectNoWritePathCalls(db);
   });
 
