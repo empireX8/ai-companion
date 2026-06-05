@@ -54,6 +54,8 @@ type InMemoryLink = {
   sourceType: string;
   sourceId: string;
   role: string;
+  snippet?: string | null;
+  quote?: string | null;
 };
 
 function buildPacket(items: PacketItemInput[]) {
@@ -205,24 +207,26 @@ function matchesModelUpdateWhere(
   if (where.userId && row.userId !== where.userId) {
     return false;
   }
-  if (where.visibility && row.visibility !== where.visibility) {
-    return false;
+
+  const visibilityFilter = where.visibility;
+  if (visibilityFilter) {
+    if (
+      typeof visibilityFilter === "object" &&
+      visibilityFilter !== null &&
+      "not" in visibilityFilter
+    ) {
+      if (row.visibility === (visibilityFilter as { not: string }).not) {
+        return false;
+      }
+    } else if (row.visibility !== visibilityFilter) {
+      return false;
+    }
   }
+
   if (where.isMeaningful === true && row.isMeaningful !== true) {
     return false;
   }
-  const visibilityFilter = where.visibility as
-    | { not?: string }
-    | string
-    | undefined;
-  if (
-    visibilityFilter &&
-    typeof visibilityFilter === "object" &&
-    "not" in visibilityFilter &&
-    row.visibility === visibilityFilter.not
-  ) {
-    return false;
-  }
+
   return true;
 }
 
@@ -336,6 +340,8 @@ function createModelUpdateDbMock(args?: {
           sourceType: data.sourceType as string,
           sourceId: data.sourceId as string,
           role: data.role as string,
+          snippet: (data.snippet as string | null | undefined) ?? null,
+          quote: (data.quote as string | null | undefined) ?? null,
         };
 
         links.push(created);
@@ -535,6 +541,9 @@ describe("ModelUpdate candidate persistence (manual/internal)", () => {
 
     expect(mock.links).toHaveLength(3);
     expect(mock.links.every((link) => link.targetType === "model_update")).toBe(true);
+    expect(mock.links.every((link) => link.snippet == null && link.quote == null)).toBe(
+      true
+    );
     expect(mock.runs).toHaveLength(1);
     expect(mock.runs[0]?.status).toBe("completed");
     expect(mock.artifacts).toHaveLength(1);
@@ -542,6 +551,44 @@ describe("ModelUpdate candidate persistence (manual/internal)", () => {
     expect(mock.forbiddenWrites.userMapConclusionCreate).not.toHaveBeenCalled();
     expect(mock.forbiddenWrites.fieldworkAssignmentCreate).not.toHaveBeenCalled();
     expect(mock.forbiddenWrites.investigationCreate).not.toHaveBeenCalled();
+  });
+
+  it("excludes internal_only rows from public filters while user_visible and candidate rows match API default visibility", () => {
+    const apiDefaultWhere = buildModelUpdatesApiDefaultWhere("user-1");
+    const internalRow: InMemoryModelUpdate = {
+      id: "mu-internal",
+      userId: "user-1",
+      updateType: "link_detected",
+      visibility: ModelUpdateVisibility.internal_only,
+      affectedObjectType: "pattern_claim",
+      affectedObjectId: "claim-1",
+      userFacingSummary: "There is early evidence that energy drops after meetings.",
+      isMeaningful: false,
+      sourceRunId: "run-1",
+      internalNotes: null,
+    };
+    const userVisibleRow: InMemoryModelUpdate = {
+      ...internalRow,
+      id: "mu-visible",
+      visibility: ModelUpdateVisibility.user_visible,
+      isMeaningful: true,
+    };
+    const candidateRow: InMemoryModelUpdate = {
+      ...internalRow,
+      id: "mu-candidate",
+      visibility: ModelUpdateVisibility.candidate,
+      isMeaningful: false,
+    };
+
+    expect(matchesModelUpdateWhere(internalRow, apiDefaultWhere)).toBe(false);
+    expect(matchesModelUpdateWhere(userVisibleRow, apiDefaultWhere)).toBe(true);
+    expect(matchesModelUpdateWhere(candidateRow, apiDefaultWhere)).toBe(true);
+    expect(
+      matchesModelUpdateWhere(internalRow, buildWhatChangedPublicWhere("user-1"))
+    ).toBe(false);
+    expect(
+      matchesModelUpdateWhere(userVisibleRow, buildWhatChangedPublicWhere("user-1"))
+    ).toBe(true);
   });
 
   it("excludes persisted internal_only rows from public What Changed / Today / Timeline filters", async () => {

@@ -378,6 +378,7 @@ export async function persistInternalModelUpdateCandidate(
         await db.$transaction(async (tx) => {
           const transactionalDb = tx as unknown as ModelUpdatePersistenceDb;
 
+          // Duplicate lookup stays inside the transaction; no DB uniqueness in this slice.
           const existingInternalCandidates =
             await transactionalDb.modelUpdate.findMany({
               where: {
@@ -438,8 +439,6 @@ export async function persistInternalModelUpdateCandidate(
               sourceId: link.sourceId,
               role: link.role,
               summary: link.summary,
-              snippet: link.snippet,
-              quote: link.quote,
               weight: link.weight,
               confidenceContribution: link.confidenceContribution,
               meta: link.meta,
