@@ -1,5 +1,6 @@
 import {
   CandidateLifecycleStatus,
+  InvestigationStatus,
   InvestigationVisibility,
   UserMapConclusionVisibility,
 } from "@prisma/client";
@@ -13,8 +14,10 @@ import {
   internalCandidatePublishApiPath,
   internalInvestigationCandidateLifecycleApiPath,
   internalInvestigationCandidatePublishApiPath,
+  isActiveQuestionVisibleInvestigationStatus,
   lifecycleActionToStatus,
 } from "../internal-user-map-review-operator-actions";
+import { ACTIVE_QUESTION_VISIBLE_STATUSES } from "../public-intelligence-safe-slice";
 
 describe("internal user-map review operator actions", () => {
   it("maps operator actions to lifecycle statuses", () => {
@@ -75,18 +78,59 @@ describe("internal user-map review operator actions", () => {
     );
   });
 
-  it("allows Investigation publish only for promoted internal_only candidates", () => {
+  it("matches Active Questions visible investigation statuses", () => {
+    for (const status of ACTIVE_QUESTION_VISIBLE_STATUSES) {
+      expect(isActiveQuestionVisibleInvestigationStatus(status)).toBe(true);
+    }
+
+    expect(isActiveQuestionVisibleInvestigationStatus(InvestigationStatus.resolved)).toBe(
+      false
+    );
+    expect(isActiveQuestionVisibleInvestigationStatus(InvestigationStatus.abandoned)).toBe(
+      false
+    );
+  });
+
+  it("allows Investigation publish only for promoted internal_only active-status candidates", () => {
+    for (const status of ACTIVE_QUESTION_VISIBLE_STATUSES) {
+      expect(
+        canPublishInternalInvestigationCandidate({
+          candidateLifecycleStatus: CandidateLifecycleStatus.promoted,
+          visibility: InvestigationVisibility.internal_only,
+          status,
+        })
+      ).toBe(true);
+    }
+
     expect(
       canPublishInternalInvestigationCandidate({
         candidateLifecycleStatus: CandidateLifecycleStatus.promoted,
         visibility: InvestigationVisibility.internal_only,
+        status: InvestigationStatus.resolved,
       })
-    ).toBe(true);
+    ).toBe(false);
+
+    expect(
+      canPublishInternalInvestigationCandidate({
+        candidateLifecycleStatus: CandidateLifecycleStatus.promoted,
+        visibility: InvestigationVisibility.internal_only,
+        status: InvestigationStatus.abandoned,
+      })
+    ).toBe(false);
+
+    expect(
+      canPublishInternalInvestigationCandidate({
+        candidateLifecycleStatus: CandidateLifecycleStatus.promoted,
+        visibility: InvestigationVisibility.user_visible,
+        status: InvestigationStatus.open,
+      })
+    ).toBe(false);
 
     expect(
       canPublishInternalInvestigationCandidate({
         candidateLifecycleStatus: CandidateLifecycleStatus.proposed,
         visibility: InvestigationVisibility.internal_only,
+        status: InvestigationStatus.open,
       })
     ).toBe(false);
   });

@@ -1,10 +1,12 @@
 import {
   CandidateLifecycleStatus,
+  InvestigationStatus,
   InvestigationVisibility,
   UserMapConclusionVisibility,
 } from "@prisma/client";
 
 import { getAllowedNextStatuses } from "./candidate-lifecycle-transitions";
+import { ACTIVE_QUESTION_VISIBLE_STATUSES } from "./public-intelligence-safe-slice";
 
 export type InternalOperatorLifecycleAction =
   | "promote"
@@ -67,13 +69,21 @@ export function internalCandidatePublishApiPath(conclusionId: string): string {
   return `/api/internal/user-map/candidates/${encodeURIComponent(conclusionId)}/publish`;
 }
 
+export function isActiveQuestionVisibleInvestigationStatus(
+  status: InvestigationStatus
+): boolean {
+  return ACTIVE_QUESTION_VISIBLE_STATUSES.includes(status);
+}
+
 export function canPublishInternalInvestigationCandidate(input: {
   candidateLifecycleStatus: CandidateLifecycleStatus | null;
   visibility: InvestigationVisibility;
+  status: InvestigationStatus;
 }): boolean {
   return (
     input.candidateLifecycleStatus === CandidateLifecycleStatus.promoted &&
-    input.visibility === InvestigationVisibility.internal_only
+    input.visibility === InvestigationVisibility.internal_only &&
+    isActiveQuestionVisibleInvestigationStatus(input.status)
   );
 }
 

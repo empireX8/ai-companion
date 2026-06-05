@@ -230,4 +230,60 @@ describe("Phase 3 internal user-map review page", () => {
     expect(html).toContain("Internal candidate");
     expect(html).not.toContain("Should never render");
   });
+
+  it("renders User Map workbench when Investigation list fails", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([
+      {
+        id: "umc-internal-1",
+        title: "Candidate title",
+        summary: "Candidate summary",
+        area: "operating_logic",
+        status: "emerging",
+        confidenceLevel: "low",
+        visibility: "internal_only",
+        candidateLifecycleStatus: "proposed",
+        notes: null,
+        createdAt: new Date("2026-05-15T10:00:00.000Z"),
+        updatedAt: new Date("2026-05-15T11:00:00.000Z"),
+      },
+    ]);
+    prismaMock.investigation.findMany.mockRejectedValueOnce(
+      new Error("investigation list failed")
+    );
+    prismaMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([]);
+
+    const page = await import(
+      "../../app/(root)/(routes)/internal/user-map/review/page"
+    );
+
+    const element = await page.default();
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Candidate title");
+    expect(html).not.toContain("Could not load internal review candidates right now.");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[INTERNAL_INVESTIGATION_REVIEW_LIST_ERROR]",
+      expect.any(Error)
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("fails when User Map list fails even if Investigation list would succeed", async () => {
+    prismaMock.userMapConclusion.findMany.mockRejectedValueOnce(
+      new Error("user map list failed")
+    );
+    prismaMock.investigation.findMany.mockResolvedValueOnce([]);
+
+    const page = await import(
+      "../../app/(root)/(routes)/internal/user-map/review/page"
+    );
+
+    const element = await page.default();
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Could not load internal review candidates right now.");
+  });
 });

@@ -24,6 +24,37 @@ import { useRouter } from "next/navigation";
 
 type ReviewTab = "usermap" | "investigation";
 
+export type PendingActionKeys = Set<string>;
+
+export function candidateHasPendingAction(
+  pendingActions: ReadonlySet<string>,
+  candidateId: string
+): boolean {
+  const prefix = `${candidateId}:`;
+  for (const actionKey of pendingActions) {
+    if (actionKey.startsWith(prefix)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function startPendingAction(
+  pendingActions: ReadonlySet<string>,
+  actionKey: string
+): PendingActionKeys {
+  return new Set(pendingActions).add(actionKey);
+}
+
+export function endPendingAction(
+  pendingActions: ReadonlySet<string>,
+  actionKey: string
+): PendingActionKeys {
+  const next = new Set(pendingActions);
+  next.delete(actionKey);
+  return next;
+}
+
 type Props = {
   userMapCandidates: InternalUserMapReviewCandidate[];
   investigationCandidates: InternalInvestigationReviewCandidate[];
@@ -190,7 +221,7 @@ function OperatorActionsSection({
   candidateLifecycleStatus,
   publishAllowed,
   cardPending,
-  pendingKey,
+  pendingActions,
   errorMessage,
   successMessage,
   onLifecycle,
@@ -200,7 +231,7 @@ function OperatorActionsSection({
   candidateLifecycleStatus: CandidateLifecycleStatus | null;
   publishAllowed: boolean;
   cardPending: boolean;
-  pendingKey: string | null;
+  pendingActions: ReadonlySet<string>;
   errorMessage?: string;
   successMessage?: string;
   onLifecycle: (
@@ -224,7 +255,7 @@ function OperatorActionsSection({
         <div className="flex flex-wrap gap-2">
           {lifecycleActions.map((action) => {
             const actionKey = `${candidateId}:lifecycle:${lifecycleActionToStatus(action)}`;
-            const isPending = pendingKey === actionKey;
+            const isPending = pendingActions.has(actionKey);
 
             return (
               <button
@@ -267,7 +298,7 @@ function OperatorActionsSection({
               "hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
             )}
           >
-            {pendingKey === `${candidateId}:publish` ? "Publishing…" : "Publish"}
+            {pendingActions.has(`${candidateId}:publish`) ? "Publishing…" : "Publish"}
           </button>
         </div>
       )}
@@ -302,7 +333,7 @@ export function InternalUserMapReviewWorkbench({
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ReviewTab>(initialTab);
-  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [pendingActions, setPendingActions] = useState<PendingActionKeys>(new Set());
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [cardSuccess, setCardSuccess] = useState<Record<string, string>>({});
 
@@ -331,7 +362,7 @@ export function InternalUserMapReviewWorkbench({
       actionKey: string,
       action: () => Promise<{ ok: boolean; message?: string }>
     ) => {
-      setPendingKey(actionKey);
+      setPendingActions((prev) => startPendingAction(prev, actionKey));
       clearCardFeedback(candidateId);
 
       try {
@@ -355,7 +386,7 @@ export function InternalUserMapReviewWorkbench({
           [candidateId]: "Unexpected error. Try again.",
         }));
       } finally {
-        setPendingKey(null);
+        setPendingActions((prev) => endPendingAction(prev, actionKey));
       }
     },
     [clearCardFeedback, router]
@@ -485,6 +516,8 @@ export function InternalUserMapReviewWorkbench({
         <button
           type="button"
           role="tab"
+          id="review-tab-usermap"
+          aria-controls="review-panel-usermap"
           aria-selected={activeTab === "usermap"}
           className={tabButtonClass("usermap")}
           onClick={() => setActiveTab("usermap")}
@@ -495,6 +528,8 @@ export function InternalUserMapReviewWorkbench({
         <button
           type="button"
           role="tab"
+          id="review-tab-investigation"
+          aria-controls="review-panel-investigation"
           aria-selected={activeTab === "investigation"}
           className={tabButtonClass("investigation")}
           onClick={() => setActiveTab("investigation")}
@@ -505,7 +540,12 @@ export function InternalUserMapReviewWorkbench({
       </div>
 
       {activeTab === "usermap" && (
-        <div role="tabpanel" data-testid="review-panel-usermap">
+        <div
+          role="tabpanel"
+          id="review-panel-usermap"
+          aria-labelledby="review-tab-usermap"
+          data-testid="review-panel-usermap"
+        >
           {userMapCandidates.length === 0 ? (
             <div className="rounded-lg border border-border bg-card p-6">
               <p className="text-sm text-muted-foreground">
@@ -519,7 +559,7 @@ export function InternalUserMapReviewWorkbench({
                   candidateLifecycleStatus: item.candidateLifecycleStatus,
                   visibility: item.visibility,
                 });
-                const cardPending = pendingKey?.startsWith(`${item.id}:`) ?? false;
+                const cardPending = candidateHasPendingAction(pendingActions, item.id);
 
                 return (
                   <article
@@ -575,7 +615,7 @@ export function InternalUserMapReviewWorkbench({
                       candidateLifecycleStatus={item.candidateLifecycleStatus}
                       publishAllowed={publishAllowed}
                       cardPending={cardPending}
-                      pendingKey={pendingKey}
+                      pendingActions={pendingActions}
                       errorMessage={cardErrors[item.id]}
                       successMessage={cardSuccess[item.id]}
                       onLifecycle={handleUserMapLifecycle}
@@ -590,7 +630,12 @@ export function InternalUserMapReviewWorkbench({
       )}
 
       {activeTab === "investigation" && (
-        <div role="tabpanel" data-testid="review-panel-investigation">
+        <div
+          role="tabpanel"
+          id="review-panel-investigation"
+          aria-labelledby="review-tab-investigation"
+          data-testid="review-panel-investigation"
+        >
           {investigationCandidates.length === 0 ? (
             <div className="rounded-lg border border-border bg-card p-6">
               <p className="text-sm text-muted-foreground">
@@ -603,8 +648,9 @@ export function InternalUserMapReviewWorkbench({
                 const publishAllowed = canPublishInternalInvestigationCandidate({
                   candidateLifecycleStatus: item.candidateLifecycleStatus,
                   visibility: item.visibility,
+                  status: item.status,
                 });
-                const cardPending = pendingKey?.startsWith(`${item.id}:`) ?? false;
+                const cardPending = candidateHasPendingAction(pendingActions, item.id);
 
                 return (
                   <article
@@ -661,7 +707,7 @@ export function InternalUserMapReviewWorkbench({
                       candidateLifecycleStatus={item.candidateLifecycleStatus}
                       publishAllowed={publishAllowed}
                       cardPending={cardPending}
-                      pendingKey={pendingKey}
+                      pendingActions={pendingActions}
                       errorMessage={cardErrors[item.id]}
                       successMessage={cardSuccess[item.id]}
                       onLifecycle={handleInvestigationLifecycle}

@@ -8,7 +8,12 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-import { InternalUserMapReviewWorkbench } from "../../app/(root)/(routes)/internal/user-map/review/_components/InternalUserMapReviewWorkbench";
+import {
+  InternalUserMapReviewWorkbench,
+  candidateHasPendingAction,
+  endPendingAction,
+  startPendingAction,
+} from "../../app/(root)/(routes)/internal/user-map/review/_components/InternalUserMapReviewWorkbench";
 import type { InternalInvestigationReviewCandidate } from "../internal-investigation-review-candidates";
 import type { InternalUserMapReviewCandidate } from "../internal-user-map-review-candidates";
 
@@ -89,6 +94,10 @@ describe("InternalUserMapReviewWorkbench", () => {
 
     expect(html).toContain("User Map");
     expect(html).toContain("Investigation");
+    expect(html).toContain('id="review-tab-usermap"');
+    expect(html).toContain('aria-controls="review-panel-usermap"');
+    expect(html).toContain('id="review-panel-usermap"');
+    expect(html).toContain('aria-labelledby="review-tab-usermap"');
     expect(html).toContain("Lifecycle status");
     expect(html).toContain("proposed");
     expect(html).toContain("Evidence / Provenance");
@@ -198,6 +207,10 @@ describe("InternalUserMapReviewWorkbench", () => {
       />
     );
 
+    expect(html).toContain('id="review-tab-investigation"');
+    expect(html).toContain('aria-controls="review-panel-investigation"');
+    expect(html).toContain('id="review-panel-investigation"');
+    expect(html).toContain('aria-labelledby="review-tab-investigation"');
     expect(html).toContain("Investigation title");
     expect(html).toContain("What pattern is active?");
     expect(html).toContain("Need more weekend signal");
@@ -210,7 +223,7 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).not.toContain("ModelUpdate");
   });
 
-  it("renders Investigation publish for promoted internal_only candidates", () => {
+  it("renders Investigation publish for promoted internal_only open candidates", () => {
     const html = renderToStaticMarkup(
       <InternalUserMapReviewWorkbench
         userMapCandidates={[]}
@@ -218,6 +231,7 @@ describe("InternalUserMapReviewWorkbench", () => {
           {
             ...baseInvestigationCandidate,
             candidateLifecycleStatus: "promoted",
+            status: "open",
           },
         ]}
         initialTab="investigation"
@@ -226,5 +240,38 @@ describe("InternalUserMapReviewWorkbench", () => {
 
     expect(html).toContain("Publish");
     expect(html).not.toContain("Hold for more evidence");
+  });
+
+  it("does not render Investigation publish for promoted non-public statuses", () => {
+    const html = renderToStaticMarkup(
+      <InternalUserMapReviewWorkbench
+        userMapCandidates={[]}
+        investigationCandidates={[
+          {
+            ...baseInvestigationCandidate,
+            candidateLifecycleStatus: "promoted",
+            status: "resolved",
+          },
+        ]}
+        initialTab="investigation"
+      />
+    );
+
+    expect(html).not.toContain("Publish");
+  });
+
+  it("tracks pending actions independently per candidate", () => {
+    const pending = startPendingAction(new Set(), "umc-1:lifecycle:rejected");
+
+    expect(candidateHasPendingAction(pending, "umc-1")).toBe(true);
+    expect(candidateHasPendingAction(pending, "umc-2")).toBe(false);
+
+    const withSecond = startPendingAction(pending, "inv-2:publish");
+    expect(candidateHasPendingAction(withSecond, "umc-1")).toBe(true);
+    expect(candidateHasPendingAction(withSecond, "inv-2")).toBe(true);
+
+    const afterFirst = endPendingAction(withSecond, "umc-1:lifecycle:rejected");
+    expect(candidateHasPendingAction(afterFirst, "umc-1")).toBe(false);
+    expect(candidateHasPendingAction(afterFirst, "inv-2")).toBe(true);
   });
 });

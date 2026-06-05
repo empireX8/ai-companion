@@ -23,7 +23,7 @@ export default async function InternalUserMapReviewPage() {
   }
 
   try {
-    const [userMapCandidates, investigationCandidates] = await Promise.all([
+    const [userMapSettled, investigationSettled] = await Promise.allSettled([
       listInternalUserMapReviewCandidates({
         userId,
         limit: INTERNAL_USER_MAP_REVIEW_DEFAULT_LIMIT,
@@ -34,8 +34,25 @@ export default async function InternalUserMapReviewPage() {
       }),
     ]);
 
+    if (userMapSettled.status === "rejected") {
+      throw userMapSettled.reason;
+    }
+
+    let investigationCandidates: Awaited<
+      ReturnType<typeof listInternalInvestigationReviewCandidates>
+    > = [];
+
+    if (investigationSettled.status === "fulfilled") {
+      investigationCandidates = investigationSettled.value;
+    } else {
+      console.error(
+        "[INTERNAL_INVESTIGATION_REVIEW_LIST_ERROR]",
+        investigationSettled.reason
+      );
+    }
+
     // Defense-in-depth: only render internal-only rows even if upstream data regresses.
-    const internalUserMapCandidates = userMapCandidates.filter(
+    const internalUserMapCandidates = userMapSettled.value.filter(
       (candidate) => candidate.visibility === "internal_only"
     );
     const internalInvestigationCandidates = investigationCandidates.filter(

@@ -106,4 +106,68 @@ describe("Phase 3 internal investigation review candidates API", () => {
     expect(serialized).not.toContain("snippet");
     expect(serialized).not.toContain("quote");
   });
+
+  it("rejects invalid limit values", async () => {
+    const route = await import(
+      "../../app/api/internal/investigations/review-candidates/route"
+    );
+    const response = await route.GET(
+      new Request(
+        "http://localhost/api/internal/investigations/review-candidates?limit=101"
+      )
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(prismaMock.investigation.findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid status values", async () => {
+    const route = await import(
+      "../../app/api/internal/investigations/review-candidates/route"
+    );
+    const response = await route.GET(
+      new Request(
+        "http://localhost/api/internal/investigations/review-candidates?status=not_a_status"
+      )
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "status" }),
+      ])
+    );
+    expect(prismaMock.investigation.findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid seedType values", async () => {
+    const route = await import(
+      "../../app/api/internal/investigations/review-candidates/route"
+    );
+    const response = await route.GET(
+      new Request(
+        "http://localhost/api/internal/investigations/review-candidates?seedType=not_a_seed"
+      )
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "seedType" }),
+      ])
+    );
+    expect(prismaMock.investigation.findMany).not.toHaveBeenCalled();
+  });
 });
