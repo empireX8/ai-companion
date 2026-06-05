@@ -29,9 +29,11 @@ export type AppMessageCandidateBridgeDecision =
   | "skipped_persistence_blocked"
   | "skipped_investigation_persistence_blocked"
   | "skipped_fieldwork_persistence_blocked"
+  | "skipped_model_update_persistence_blocked"
   | "created"
   | "created_investigation_candidate"
-  | "created_fieldwork_candidate";
+  | "created_fieldwork_candidate"
+  | "created_model_update_candidate";
 
 export type AppMessageCandidateBridgeResult = {
   decision: AppMessageCandidateBridgeDecision;
@@ -40,6 +42,7 @@ export type AppMessageCandidateBridgeResult = {
   persistedConclusionId?: string | null;
   persistedInvestigationId?: string | null;
   persistedFieldworkAssignmentId?: string | null;
+  persistedModelUpdateId?: string | null;
   blockedWriteReasons?: string[];
 };
 
@@ -133,6 +136,7 @@ export async function tryCreateInternalUserMapCandidateFromAppMessage(args: {
     persistedConclusionId: persistenceOutcome.persistedConclusionId,
     persistedInvestigationId: persistenceOutcome.persistedInvestigationId,
     persistedFieldworkAssignmentId: persistenceOutcome.persistedFieldworkAssignmentId,
+    persistedModelUpdateId: persistenceOutcome.persistedModelUpdateId,
     blockedWriteReasons: persistenceOutcome.blockedWriteReasons,
   };
 }

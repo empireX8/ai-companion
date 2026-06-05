@@ -8,6 +8,7 @@ const {
   persistInternalUserMapConclusionCandidateMock,
   persistInternalInvestigationCandidateMock,
   persistInternalFieldworkCandidateMock,
+  persistInternalModelUpdateCandidateMock,
 } = vi.hoisted(() => ({
   resolveCandidateBridgeNoWriteTriggerEligibilityMock: vi.fn(),
   runNoWriteUnderstandingDarkRunMock: vi.fn(),
@@ -15,6 +16,7 @@ const {
   persistInternalUserMapConclusionCandidateMock: vi.fn(),
   persistInternalInvestigationCandidateMock: vi.fn(),
   persistInternalFieldworkCandidateMock: vi.fn(),
+  persistInternalModelUpdateCandidateMock: vi.fn(),
 }));
 
 vi.mock("../understanding-dark-engine/no-write-trigger-runtime-state", () => ({
@@ -42,7 +44,16 @@ vi.mock("../understanding-dark-engine/fieldwork-candidate-persistence", () => ({
   persistInternalFieldworkCandidate: persistInternalFieldworkCandidateMock,
 }));
 
-import { InvestigationSeedType, UnderstandingLinkTargetType } from "@prisma/client";
+vi.mock("../understanding-dark-engine/model-update-candidate-persistence", () => ({
+  persistInternalModelUpdateCandidate: persistInternalModelUpdateCandidateMock,
+}));
+
+import {
+  InvestigationSeedType,
+  ModelUpdateType,
+  ModelUpdateVisibility,
+  UnderstandingLinkTargetType,
+} from "@prisma/client";
 
 import { buildPublicWatchForWhere } from "../fieldwork-public-visibility";
 import { buildPublicActiveInvestigationWhere } from "../investigation-public-visibility";
@@ -176,6 +187,20 @@ function makeFieldworkProposal() {
   };
 }
 
+function makeModelUpdateProposal() {
+  return {
+    updateType: ModelUpdateType.link_detected,
+    userFacingSummary: "There is early evidence that energy drops after meetings.",
+    affectedObjectType: UnderstandingLinkTargetType.pattern_claim,
+    affectedObjectId: "pc-1",
+    evidenceSelections: [
+      { sourceType: "pattern_claim" as const, sourceId: "pc-1" },
+      { sourceType: "pattern_claim" as const, sourceId: "pc-2" },
+      { sourceType: "message" as const, sourceId: "msg-1" },
+    ],
+  };
+}
+
 function makeAbstainEvaluation() {
   return {
     decision: "abstain" as const,
@@ -256,6 +281,13 @@ describe("APP message internal candidate bridge", () => {
     });
     persistInternalFieldworkCandidateMock.mockResolvedValue({
       persistedFieldworkAssignmentId: "fw-1",
+      payload: {
+        blockedWriteReasons: [],
+        candidatesWritten: 1,
+      },
+    });
+    persistInternalModelUpdateCandidateMock.mockResolvedValue({
+      persistedModelUpdateId: "mu-1",
       payload: {
         blockedWriteReasons: [],
         candidatesWritten: 1,
@@ -382,17 +414,20 @@ describe("APP message internal candidate bridge", () => {
     expect(result.decision).toBe("skipped_gate_abstain");
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
     expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalModelUpdateCandidateMock).not.toHaveBeenCalled();
   });
 
   it("prefers UserMap persistence when userMapCandidateProposal is present", async () => {
     const userMapProposal = makeStructuredProposal();
     const investigationProposal = makeInvestigationProposal();
     const fieldworkProposal = makeFieldworkProposal();
+    const modelUpdateProposal = makeModelUpdateProposal();
     runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
       makeDarkRunOutput({
         userMapCandidateProposal: userMapProposal,
         investigationCandidateProposal: investigationProposal,
         fieldworkCandidateProposal: fieldworkProposal,
+        modelUpdateCandidateProposal: modelUpdateProposal,
       })
     );
 
@@ -407,6 +442,7 @@ describe("APP message internal candidate bridge", () => {
     expect(persistInternalUserMapConclusionCandidateMock).toHaveBeenCalledTimes(1);
     expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
     expect(persistInternalFieldworkCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalModelUpdateCandidateMock).not.toHaveBeenCalled();
   });
 
   it("prefers Investigation persistence over Fieldwork when Investigation proposal is present", async () => {
@@ -431,7 +467,33 @@ describe("APP message internal candidate bridge", () => {
     expect(result.decision).toBe("created_investigation_candidate");
     expect(persistInternalInvestigationCandidateMock).toHaveBeenCalledTimes(1);
     expect(persistInternalFieldworkCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalModelUpdateCandidateMock).not.toHaveBeenCalled();
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("prefers Fieldwork persistence over ModelUpdate when Fieldwork proposal is present", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: makeAbstainEvaluation(),
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: null,
+        fieldworkCandidateProposal: makeFieldworkProposal(),
+        modelUpdateCandidateProposal: makeModelUpdateProposal(),
+      })
+    );
+
+    const result = await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(result.decision).toBe("created_fieldwork_candidate");
+    expect(persistInternalFieldworkCandidateMock).toHaveBeenCalledTimes(1);
+    expect(persistInternalModelUpdateCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
   });
 
   it("persists Investigation candidate on abstain when only investigationCandidateProposal is present", async () => {
@@ -474,6 +536,32 @@ describe("APP message internal candidate bridge", () => {
     );
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
     expect(persistInternalFieldworkCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalModelUpdateCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("prefers Investigation persistence over ModelUpdate when Investigation proposal is present", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: makeAbstainEvaluation(),
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: makeInvestigationProposal(),
+        fieldworkCandidateProposal: null,
+        modelUpdateCandidateProposal: makeModelUpdateProposal(),
+      })
+    );
+
+    const result = await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(result.decision).toBe("created_investigation_candidate");
+    expect(persistInternalInvestigationCandidateMock).toHaveBeenCalledTimes(1);
+    expect(persistInternalModelUpdateCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalFieldworkCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
   });
 
   it("persists Fieldwork candidate on abstain when only fieldworkCandidateProposal is present", async () => {
@@ -510,6 +598,142 @@ describe("APP message internal candidate bridge", () => {
     );
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
     expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalModelUpdateCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("persists ModelUpdate candidate when all higher proposals are absent", async () => {
+    const modelUpdateProposal = makeModelUpdateProposal();
+    const abstainEvaluation = makeAbstainEvaluation();
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: abstainEvaluation,
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: null,
+        fieldworkCandidateProposal: null,
+        modelUpdateCandidateProposal: modelUpdateProposal,
+      })
+    );
+
+    const result = await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(result.decision).toBe("created_model_update_candidate");
+    expect(result.persistedModelUpdateId).toBe("mu-1");
+    expect(persistInternalModelUpdateCandidateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        abstainReasons: abstainEvaluation.reasons,
+        proposal: expect.objectContaining({
+          updateType: modelUpdateProposal.updateType,
+          userFacingSummary: modelUpdateProposal.userFacingSummary,
+          affectedObjectType: modelUpdateProposal.affectedObjectType,
+          affectedObjectId: modelUpdateProposal.affectedObjectId,
+        }),
+      })
+    );
+    expect(
+      persistInternalModelUpdateCandidateMock.mock.calls[0]?.[0]?.proposal
+        ?.evidenceSelections
+    ).toEqual(
+      expect.arrayContaining(modelUpdateProposal.evidenceSelections)
+    );
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalFieldworkCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns skipped_model_update_persistence_blocked when ModelUpdate persistence blocks", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: makeAbstainEvaluation(),
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: null,
+        fieldworkCandidateProposal: null,
+        modelUpdateCandidateProposal: makeModelUpdateProposal(),
+      })
+    );
+    persistInternalModelUpdateCandidateMock.mockResolvedValueOnce({
+      persistedModelUpdateId: null,
+      payload: {
+        blockedWriteReasons: ["UNRESOLVED_AFFECTED_OBJECT_OWNERSHIP"],
+        candidatesWritten: 0,
+      },
+    });
+
+    const result = await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(result.decision).toBe("skipped_model_update_persistence_blocked");
+    expect(result.blockedWriteReasons).toEqual(["UNRESOLVED_AFFECTED_OBJECT_OWNERSHIP"]);
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalFieldworkCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns skipped_model_update_persistence_blocked for duplicate ModelUpdate candidate", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: makeAbstainEvaluation(),
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: null,
+        fieldworkCandidateProposal: null,
+        modelUpdateCandidateProposal: makeModelUpdateProposal(),
+      })
+    );
+    persistInternalModelUpdateCandidateMock.mockResolvedValueOnce({
+      persistedModelUpdateId: "mu-existing",
+      payload: {
+        blockedWriteReasons: ["DUPLICATE_CANDIDATE"],
+        candidatesWritten: 0,
+      },
+    });
+
+    const result = await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(result.decision).toBe("skipped_model_update_persistence_blocked");
+    expect(result.decision).not.toBe("created_model_update_candidate");
+    expect(result.persistedModelUpdateId).toBe("mu-existing");
+    expect(result.blockedWriteReasons).toEqual(["DUPLICATE_CANDIDATE"]);
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalFieldworkCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("does not create dual candidates in one ModelUpdate bridge run", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: makeAbstainEvaluation(),
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: null,
+        fieldworkCandidateProposal: null,
+        modelUpdateCandidateProposal: makeModelUpdateProposal(),
+      })
+    );
+
+    await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(persistInternalModelUpdateCandidateMock).toHaveBeenCalledTimes(1);
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalFieldworkCandidateMock).not.toHaveBeenCalled();
   });
 
   it("returns skipped_fieldwork_persistence_blocked when Fieldwork persistence blocks", async () => {
@@ -683,6 +907,7 @@ describe("APP message internal candidate bridge", () => {
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
     expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
     expect(persistInternalFieldworkCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalModelUpdateCandidateMock).not.toHaveBeenCalled();
   });
 
   it("calls persistence when eligibility, harness, gates, and structured proposal are valid", async () => {
@@ -800,6 +1025,48 @@ describe("APP message internal candidate bridge", () => {
     expect(persistInternalFieldworkCandidateMock).toHaveBeenCalled();
     expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
     expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+  });
+
+  it("does not surface ModelUpdate candidates on public What Changed / API default filters", async () => {
+    runNoWriteUnderstandingDarkRunMock.mockResolvedValueOnce(
+      makeDarkRunOutput({
+        userMapEvaluation: makeAbstainEvaluation(),
+        userMapCandidateProposal: null,
+        investigationCandidateProposal: null,
+        fieldworkCandidateProposal: null,
+        modelUpdateCandidateProposal: makeModelUpdateProposal(),
+      })
+    );
+
+    await tryCreateInternalUserMapCandidateFromAppMessage({
+      userId: "user-1",
+      messageId: "msg-1",
+      sessionOrigin: "APP",
+      sessionSurfaceType: "journal_chat",
+    });
+
+    expect(persistInternalModelUpdateCandidateMock).toHaveBeenCalled();
+    expect(persistInternalFieldworkCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalInvestigationCandidateMock).not.toHaveBeenCalled();
+    expect(persistInternalUserMapConclusionCandidateMock).not.toHaveBeenCalled();
+
+    const apiDefaultWhere = {
+      userId: "user-1",
+      visibility: { not: ModelUpdateVisibility.internal_only },
+    };
+    const whatChangedWhere = {
+      userId: "user-1",
+      visibility: ModelUpdateVisibility.user_visible,
+      isMeaningful: true,
+    };
+    const internalRow = {
+      visibility: ModelUpdateVisibility.internal_only,
+      isMeaningful: false,
+    };
+    expect(apiDefaultWhere.visibility).toEqual({ not: ModelUpdateVisibility.internal_only });
+    expect(whatChangedWhere.visibility).toBe(ModelUpdateVisibility.user_visible);
+    expect(internalRow.visibility).not.toBe(whatChangedWhere.visibility);
+    expect(internalRow.visibility).toBe(ModelUpdateVisibility.internal_only);
   });
 
   it("does not create user_visible conclusions or ModelUpdates through the bridge path", async () => {

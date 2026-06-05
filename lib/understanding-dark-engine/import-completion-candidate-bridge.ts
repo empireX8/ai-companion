@@ -15,9 +15,11 @@ export type ImportCompletionCandidateBridgeDecision =
   | "skipped_persistence_blocked"
   | "skipped_investigation_persistence_blocked"
   | "skipped_fieldwork_persistence_blocked"
+  | "skipped_model_update_persistence_blocked"
   | "created"
   | "created_investigation_candidate"
-  | "created_fieldwork_candidate";
+  | "created_fieldwork_candidate"
+  | "created_model_update_candidate";
 
 export type ImportCompletionCandidateBridgeResult = {
   decision: ImportCompletionCandidateBridgeDecision;
@@ -26,6 +28,7 @@ export type ImportCompletionCandidateBridgeResult = {
   persistedConclusionId?: string | null;
   persistedInvestigationId?: string | null;
   persistedFieldworkAssignmentId?: string | null;
+  persistedModelUpdateId?: string | null;
   blockedWriteReasons?: string[];
 };
 
@@ -91,6 +94,7 @@ export async function tryCreateInternalUserMapCandidateFromImportCompletion(args
     persistedConclusionId: persistenceOutcome.persistedConclusionId,
     persistedInvestigationId: persistenceOutcome.persistedInvestigationId,
     persistedFieldworkAssignmentId: persistenceOutcome.persistedFieldworkAssignmentId,
+    persistedModelUpdateId: persistenceOutcome.persistedModelUpdateId,
     blockedWriteReasons: persistenceOutcome.blockedWriteReasons,
   };
 }
