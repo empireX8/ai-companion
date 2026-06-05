@@ -647,8 +647,72 @@
 
 ---
 
-*Future entries will be appended below this line.*
+## Candidate Ladder Foundation — Four-Family Bridge + Evidence-Link Safety Closeout
 
+- **Status:** complete
+- **Scope:** Docs-only closeout of the four-family candidate ladder (UserMapConclusion, Investigation, FieldworkAssignment, ModelUpdate) and the evidence-link internal candidate leak guard (PR #32). No production code changes.
+- **Runtime behavior:** unchanged (docs-only)
+- **Status summary:** Candidate creation ladder: `CLOSED / RUNTIME VALIDATED`; candidate lifecycle + operator publishing: `PARTIAL`; Phase 2 umbrella: `PARTIAL`
+- **Files changed:**
+  - `docs/engineering-ledger.md` — this entry
+  - `docs/mindlab-roadmap-status-ledger.md` — updated Phase 2 status
+- **Candidate ladder (PR #31 — `e386f58`):**
+  - **UserMapConclusion** — proposal → internal persistence → APP/import bridge wiring (mature, with lifecycle + publish routes)
+  - **Investigation** — proposal → internal persistence → bridge wiring (no lifecycle/publish routes yet)
+  - **FieldworkAssignment** — proposal → internal persistence → bridge wiring (no lifecycle/publish routes yet)
+  - **ModelUpdate** — proposal → internal persistence → bridge wiring (no lifecycle/publish routes; uses `visibility` + `isMeaningful` instead of `candidateLifecycleStatus`)
+- **Candidate precedence (enforced at two levels):**
+  1. Orchestrator (`dark-run-orchestrator.ts`): builds only one proposal per run — highest-priority eligible family
+  2. Bridge persistence (`candidate-bridge-dark-run-persistence.ts`): processes proposals in cascade — returns immediately after first successful persistence
+  - Precedence order: UserMap → Investigation → Fieldwork → ModelUpdate
+- **Duplicate detection:**
+  - All four families check for duplicates before creating (application-level, inside transaction)
+  - Duplicates return `DUPLICATE_CANDIDATE` in `blockedWriteReasons` with `candidatesWritten: 0`
+  - No DB-level unique constraints (race window exists for concurrent bridge runs)
+- **Evidence link cap:**
+  - All four families use shared `curatePersistableEvidenceLinksForCandidate()` with default cap of 50
+  - Diagnostics track `evidenceLinksSelectedBeforeCap`, `evidenceLinksSelectedAfterCap`, `evidenceLinkCapApplied`, `evidenceLinkCapLimit`
+- **Runtime validation status:**
+  - UserMap: runtime validated after evidence-link cap fix (bridge persistence validated on dev)
+  - Investigation: bridge runtime validated (unit tests + integration)
+  - Fieldwork: bridge runtime validated (unit tests + integration)
+  - ModelUpdate: bridge runtime validated (unit tests + integration)
+- **Evidence-link safety repair (PR #32 — `56bf048`):**
+  - **Generic evidence-links GET** (`app/api/understanding/evidence-links/route.ts`): filters non-public/internal candidate targets
+  - **Source-anchored evidence-links pagination**: preserves public eligible rows after filtering
+  - **Generic evidence-links POST**: rejects non-public/internal targets
+  - **relatedUnderstanding projections**: filter internal candidate target IDs
+  - **Candidate persistence snippet/quote safety:**
+    - UserMap: no longer writes `snippet`/`quote` to evidence links
+    - Investigation: no longer writes `snippet`/`quote` to evidence links
+    - Fieldwork: no longer writes `snippet`/`quote` to evidence links
+    - ModelUpdate: already snippet/quote-free (unchanged)
+- **Operational migration warning:**
+  Environments must apply Investigation/Fieldwork visibility/lifecycle migrations before relying on runtime candidate persistence:
+  - `20260602171545_add_investigation_visibility_and_candidate_lifecycle`
+  - `20260604133000_add_fieldwork_assignment_visibility_and_candidate_lifecycle`
+- **What remains partial:**
+  - Candidate lifecycle + operator publishing remains partial for Investigation, Fieldwork, and ModelUpdate
+  - Non-UserMap operator review UI (Investigation, Fieldwork, ModelUpdate candidates have no review surface)
+  - Non-UserMap lifecycle routes (no lifecycle mutation endpoints for Investigation, Fieldwork, ModelUpdate)
+  - Non-UserMap publish/promote routes (no publish endpoints for Investigation, Fieldwork, ModelUpdate)
+  - ModelUpdate lacks `candidateLifecycleStatus` by design (uses `visibility` + `isMeaningful` instead)
+  - Expiry scheduler absent (no automated cleanup of stale candidates)
+  - DB-level duplicate uniqueness absent (application-level only; race window exists)
+  - Mobile projection/operator surfaces not addressed
+  - Docs/UX for operator provenance still incomplete
+- **Verification results:**
+  - `git diff --check`: pass
+  - `npx tsc --noEmit`: skipped (no code changes)
+  - `npx vitest run`: skipped (no code changes)
+  - `npm run build`: skipped (no code changes)
+  - `bash scripts/check-trust-language.sh`: skipped (no code changes)
+  - `bash scripts/check-legacy-surfaces.sh`: skipped (no code changes)
+- **Next step:** Investigation lifecycle + publish route OR internal multi-family candidate review design. Should proceed only after this docs closeout is merged.
+
+---
+
+*Future entries will be appended below this line.*
 ---
 
 ## Build Slice 4 — APP Message Internal Candidate Creation Bridge
