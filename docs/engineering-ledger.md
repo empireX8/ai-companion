@@ -716,6 +716,61 @@
 
 ---
 
+## Internal Four-Family Candidate Review Workbench — Closeout (2026-06-05)
+
+- **Status:** `CLOSED / VALIDATED` (operator review workflow; docs-only closeout)
+- **Scope:** Hidden internal operator workbench at `/internal/user-map/review` for all four candidate families: `UserMapConclusion`, `Investigation`, `FieldworkAssignment`, and `ModelUpdate`.
+- **Runtime behavior:** Allowlisted internal reviewers can list `internal_only` candidates per family, inspect safe provenance summaries (counts, source-type breakdown, linked source IDs, derivation run/artifact refs), run lifecycle actions where applicable, and publish to user-visible surfaces. Successful publish/lifecycle actions refresh the server-rendered list.
+- **Family models:**
+
+| Family | Candidate state | Lifecycle actions | Publish behavior | Review list filter |
+|---|---|---|---|---|
+| **UserMap** | `visibility: internal_only` + `candidateLifecycleStatus` | Promote / Hold / Reject → `POST /api/internal/user-map/candidates/[id]/lifecycle` | `POST /api/internal/user-map/candidates/[id]/publish` when `promoted` + `internal_only`; creates `conclusion_added` ModelUpdate | `internal_only` |
+| **Investigation** | `visibility: internal_only` + non-null `candidateLifecycleStatus` | Promote / Hold / Reject → `POST /api/internal/investigations/candidates/[id]/lifecycle` | `POST /api/internal/investigations/candidates/[id]/publish` when `promoted` + `internal_only` + public Active Question status; creates `investigation_opened` ModelUpdate | `internal_only` |
+| **Fieldwork** | `visibility: internal_only` + non-null `candidateLifecycleStatus` | Promote / Hold / Reject → `POST /api/internal/fieldwork/candidates/[id]/lifecycle` | `POST /api/internal/fieldwork/candidates/[id]/publish` when `promoted` + `internal_only` + Watch-For-visible status; creates `fieldwork_assigned` ModelUpdate | `internal_only` |
+| **ModelUpdate** | `visibility: internal_only` + `isMeaningful: false` (no `candidateLifecycleStatus`) | **None** — no lifecycle buttons | `POST /api/internal/model-updates/candidates/[id]/publish` when `internal_only` + `!isMeaningful` + ≥1 user-owned `UnderstandingEvidenceLink` (`targetType: model_update`); **flips existing row only** (`user_visible`, `isMeaningful: true`); does **not** create another ModelUpdate | `internal_only` + `isMeaningful: false` |
+
+- **Evidence safety (review + publish):**
+  - Review list APIs and workbench cards expose provenance summaries only: link counts, source-type counts, safety levels from link meta, linked `sourceType`/`sourceId` pairs, derivation run/artifact refs, safe diagnostics fields.
+  - No raw `snippet`, `quote`, link `summary`, or raw `internalNotes` rendered in review payloads or cards.
+  - Candidate persistence strips `snippet`/`quote` on UserMap, Investigation, and Fieldwork evidence-link writes; ModelUpdate persistence was already snippet/quote-free (PR #32).
+  - Public evidence guards from PR #32 remain intact on generic evidence-links routes and public continuity projections.
+  - ModelUpdate publish rejects rows without provenance (`MODEL_UPDATE_MISSING_EVIDENCE` → 422) before visibility flip.
+  - Fieldwork publishability uses client-safe `lib/fieldwork-status-publishability.ts` (no server-only Prisma import in client bundle); workbench eligibility calls `isFieldworkStatusPublishable()` via operator-action helpers.
+- **Workbench surfaces shipped:**
+  - User Map tab — lifecycle + publish (`Build Slice 4`)
+  - Investigation tab — lifecycle + publish (PR #37; publish status hardening PR #38)
+  - Fieldwork tab — lifecycle + publish (PR #39; client-safe publishability repair `255eaa4`)
+  - ModelUpdate tab — publish-only (`ModelUpdatePublishActionsSection`; no Promote/Hold/Reject)
+- **Key backend routes/helpers:**
+  - List: `GET /api/internal/user-map/review-candidates`, `GET /api/internal/investigations/review-candidates`, `GET /api/internal/fieldwork/review-candidates`, `GET /api/internal/model-updates/review-candidates`
+  - Publish: family-specific `POST …/candidates/[id]/publish` routes above
+  - Loaders: `lib/internal-user-map-review-candidates.ts`, `lib/internal-investigation-review-candidates.ts`, `lib/internal-fieldwork-review-candidates.ts`, `lib/internal-model-update-review-candidates.ts`
+  - Operator helpers: `lib/internal-user-map-review-operator-actions.ts`, `lib/internal-user-map-review-operator-client.ts`
+  - UI: `app/(root)/(routes)/internal/user-map/review/page.tsx`, `InternalUserMapReviewWorkbench.tsx`
+- **Published ModelUpdate visibility:** After ModelUpdate publish, rows appear on public What Changed / Today intelligence / Timeline model layers (`user_visible` + `isMeaningful: true` filters). UserMap/Investigation/Fieldwork publish additionally opens their target surfaces and creates a separate meaningful ModelUpdate receipt row.
+- **Supporting commits (main through `8bc2ad6` unless noted):**
+  - UserMap operator workbench: Build Slice 4
+  - Investigation lifecycle + publish: PR #34 (`34473eb`)
+  - Fieldwork lifecycle + publish: PR #35 (`964ec73`, `d4abd00`)
+  - ModelUpdate publish + evidence gate: PR #36 (`92648fb`, `8065544`)
+  - Investigation review tab: PR #37 (`fadb451`, `40e55af`)
+  - Investigation publish status hardening: PR #38 (`79c1201`)
+  - Fieldwork review tab: PR #39 (`1cbc7bc`, `255eaa4`, `8bc2ad6`)
+  - ModelUpdate review tab + list API: `internal-model-update-review-candidates` loader, review-candidates GET, workbench tab wiring, publish-only UI tests
+- **What remains partial (explicitly not closed by this workbench):**
+  - No unified cross-family candidate queue
+  - No expiry scheduler / automated stale-candidate cleanup
+  - No DB-level duplicate uniqueness (application-level dedupe only; race window remains)
+  - No mobile operator surface
+  - ModelUpdate has **no reject/archive route** unless separately designed (unpublishable rows remain `internal_only`)
+  - Legacy UserMap rows with `candidateLifecycleStatus: null` still lack lifecycle buttons
+  - Phase 2 umbrella remains **PARTIAL** — broader gated persistence/model movement, scheduler/cron, and other Phase 2 scope items are not closed by this operator slice
+- **Verification (prior implementation passes):** targeted vitest for review list APIs, operator actions/client, workbench tabs, publish helpers/routes; `bash scripts/verify-mindlab.sh` on implementation branches; trust-language and legacy-surface scripts pass.
+- **Verification (this docs closeout):** `git diff --check`: pass (docs-only).
+
+---
+
 ## Build Slice 4 — APP Message Internal Candidate Creation Bridge
 
 - **Status:** complete
