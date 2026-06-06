@@ -8,7 +8,7 @@ import {
 } from "@prisma/client";
 
 import { getAllowedNextStatuses } from "./candidate-lifecycle-transitions";
-import { isFieldworkStatusPublishable } from "./fieldwork-publish-helper";
+import { isFieldworkStatusPublishable } from "./fieldwork-status-publishability";
 import { ACTIVE_QUESTION_VISIBLE_STATUSES } from "./public-intelligence-safe-slice";
 
 export type InternalOperatorLifecycleAction =

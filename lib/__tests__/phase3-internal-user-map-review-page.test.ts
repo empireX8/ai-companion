@@ -43,6 +43,10 @@ vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
 }));
 
+vi.mock("@/lib/internal-fieldwork-review-candidates", async () => {
+  return vi.importActual("../internal-fieldwork-review-candidates");
+});
+
 vi.mock(
   "../../app/(root)/(routes)/internal/user-map/review/_components/InternalUserMapReviewWorkbench",
   () => ({

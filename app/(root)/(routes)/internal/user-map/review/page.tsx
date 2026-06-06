@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import {
   INTERNAL_FIELDWORK_REVIEW_DEFAULT_LIMIT,
   listInternalFieldworkReviewCandidates,
-} from "../../../../../../lib/internal-fieldwork-review-candidates";
+} from "@/lib/internal-fieldwork-review-candidates";
 import {
   INTERNAL_INVESTIGATION_REVIEW_DEFAULT_LIMIT,
   listInternalInvestigationReviewCandidates,

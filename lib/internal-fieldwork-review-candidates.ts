@@ -160,6 +160,7 @@ export async function listInternalFieldworkReviewCandidates(
   }
 
   return candidates.flatMap((candidate) => {
+    // Defense-in-depth: query filters null lifecycle, but skip if a row slips through.
     if (candidate.candidateLifecycleStatus === null) {
       return [];
     }

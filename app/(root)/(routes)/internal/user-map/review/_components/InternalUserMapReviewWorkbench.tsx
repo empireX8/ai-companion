@@ -3,7 +3,7 @@
 import type { CandidateLifecycleStatus } from "@prisma/client";
 import React, { useCallback, useState } from "react";
 
-import type { InternalFieldworkReviewCandidate } from "../../../../../../../lib/internal-fieldwork-review-candidates";
+import type { InternalFieldworkReviewCandidate } from "@/lib/internal-fieldwork-review-candidates";
 import type { InternalInvestigationReviewCandidate } from "../../../../../../../lib/internal-investigation-review-candidates";
 import {
   INTERNAL_OPERATOR_LIFECYCLE_ACTION_LABELS,

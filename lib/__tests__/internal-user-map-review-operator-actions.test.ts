@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import {
   CandidateLifecycleStatus,
   FieldworkAssignmentVisibility,
@@ -22,12 +25,20 @@ import {
   isActiveQuestionVisibleInvestigationStatus,
   lifecycleActionToStatus,
 } from "../internal-user-map-review-operator-actions";
-import {
-  ACTIVE_QUESTION_VISIBLE_STATUSES,
-  WATCH_FOR_VISIBLE_STATUSES,
-} from "../public-intelligence-safe-slice";
+import { WATCH_FOR_VISIBLE_FIELDWORK_STATUSES } from "../fieldwork-status-publishability";
+import { ACTIVE_QUESTION_VISIBLE_STATUSES } from "../public-intelligence-safe-slice";
 
 describe("internal user-map review operator actions", () => {
+  it("does not import server-only fieldwork publish helper", () => {
+    const modulePath = fileURLToPath(
+      new URL("../internal-user-map-review-operator-actions.ts", import.meta.url)
+    );
+    const source = readFileSync(modulePath, "utf8");
+
+    expect(source).not.toContain("fieldwork-publish-helper");
+    expect(source).not.toContain("prismadb");
+  });
+
   it("maps operator actions to lifecycle statuses", () => {
     expect(lifecycleActionToStatus("promote")).toBe(
       CandidateLifecycleStatus.promoted
@@ -153,7 +164,7 @@ describe("internal user-map review operator actions", () => {
   });
 
   it("allows Fieldwork publish only for promoted internal_only Watch For-visible statuses", () => {
-    for (const status of WATCH_FOR_VISIBLE_STATUSES) {
+    for (const status of WATCH_FOR_VISIBLE_FIELDWORK_STATUSES) {
       expect(
         canPublishInternalFieldworkCandidate({
           candidateLifecycleStatus: CandidateLifecycleStatus.promoted,

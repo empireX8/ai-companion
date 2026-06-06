@@ -12,7 +12,7 @@ import {
   PublishFieldworkCandidateError,
   publishFieldworkCandidate,
 } from "../fieldwork-publish-helper";
-import { WATCH_FOR_VISIBLE_STATUSES } from "../public-intelligence-safe-slice";
+import { WATCH_FOR_VISIBLE_FIELDWORK_STATUSES } from "../fieldwork-status-publishability";
 
 const FIXED_TIME = new Date("2026-06-05T12:00:00.000Z");
 
@@ -195,8 +195,10 @@ function makePublishDbMock() {
           where.candidateLifecycleStatus === "promoted" &&
           visibility === FieldworkAssignmentVisibility.internal_only &&
           lifecycleStatus === CandidateLifecycleStatus.promoted &&
-          where.status.in.every((value) => WATCH_FOR_VISIBLE_STATUSES.includes(value)) &&
-          WATCH_FOR_VISIBLE_STATUSES.includes(assignmentStatus);
+          where.status.in.every((value) =>
+            WATCH_FOR_VISIBLE_FIELDWORK_STATUSES.includes(value)
+          ) &&
+          WATCH_FOR_VISIBLE_FIELDWORK_STATUSES.includes(assignmentStatus);
 
         if (!matches) {
           return { count: 0 };
