@@ -3,10 +3,12 @@
 import type { CandidateLifecycleStatus } from "@prisma/client";
 import React, { useCallback, useState } from "react";
 
+import type { InternalFieldworkReviewCandidate } from "../../../../../../../lib/internal-fieldwork-review-candidates";
 import type { InternalInvestigationReviewCandidate } from "../../../../../../../lib/internal-investigation-review-candidates";
 import {
   INTERNAL_OPERATOR_LIFECYCLE_ACTION_LABELS,
   canPublishInternalCandidate,
+  canPublishInternalFieldworkCandidate,
   canPublishInternalInvestigationCandidate,
   getInternalOperatorLifecycleActions,
   lifecycleActionToStatus,
@@ -15,6 +17,8 @@ import {
 import {
   postInternalCandidateLifecycle,
   postInternalCandidatePublish,
+  postInternalFieldworkCandidateLifecycle,
+  postInternalFieldworkCandidatePublish,
   postInternalInvestigationCandidateLifecycle,
   postInternalInvestigationCandidatePublish,
 } from "../../../../../../../lib/internal-user-map-review-operator-client";
@@ -22,7 +26,7 @@ import type { InternalUserMapReviewCandidate } from "../../../../../../../lib/in
 import { cn } from "../../../../../../../lib/utils";
 import { useRouter } from "next/navigation";
 
-type ReviewTab = "usermap" | "investigation";
+type ReviewTab = "usermap" | "investigation" | "fieldwork";
 
 export type PendingActionKeys = Set<string>;
 
@@ -58,6 +62,7 @@ export function endPendingAction(
 type Props = {
   userMapCandidates: InternalUserMapReviewCandidate[];
   investigationCandidates: InternalInvestigationReviewCandidate[];
+  fieldworkCandidates: InternalFieldworkReviewCandidate[];
   initialTab?: ReviewTab;
 };
 
@@ -329,6 +334,7 @@ function OperatorActionsSection({
 export function InternalUserMapReviewWorkbench({
   userMapCandidates,
   investigationCandidates,
+  fieldworkCandidates,
   initialTab = "usermap",
 }: Props) {
   const router = useRouter();
@@ -498,6 +504,61 @@ export function InternalUserMapReviewWorkbench({
     [runAction]
   );
 
+  const handleFieldworkLifecycle = useCallback(
+    (candidateId: string, operatorAction: InternalOperatorLifecycleAction) => {
+      const newStatus = lifecycleActionToStatus(operatorAction);
+      const actionKey = `${candidateId}:lifecycle:${newStatus}`;
+
+      return runAction(candidateId, actionKey, async () => {
+        const result = await postInternalFieldworkCandidateLifecycle(
+          candidateId,
+          newStatus
+        );
+        if (!result.ok) {
+          const codeSuffix = result.code ? ` (${result.code})` : "";
+          return {
+            ok: false,
+            message: `${result.message}${codeSuffix}`,
+          };
+        }
+
+        if (result.data.kind !== "lifecycle") {
+          return { ok: false, message: "Unexpected publish response for lifecycle action." };
+        }
+
+        return {
+          ok: true,
+          message: `Lifecycle updated to ${result.data.newStatus.replaceAll("_", " ")}.`,
+        };
+      });
+    },
+    [runAction]
+  );
+
+  const handleFieldworkPublish = useCallback(
+    (candidateId: string) => {
+      const actionKey = `${candidateId}:publish`;
+
+      return runAction(candidateId, actionKey, async () => {
+        const result = await postInternalFieldworkCandidatePublish(candidateId);
+        if (!result.ok) {
+          const codeSuffix = result.code ? ` (${result.code})` : "";
+          return {
+            ok: false,
+            message: `${result.message}${codeSuffix}`,
+          };
+        }
+
+        return {
+          ok: true,
+          message:
+            "Published to Watch For. What Changed will reflect the fieldwork_assigned update.",
+        };
+      });
+    },
+    [runAction]
+  );
+
   const tabButtonClass = (tab: ReviewTab) =>
     cn(
       "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
@@ -536,6 +597,18 @@ export function InternalUserMapReviewWorkbench({
           data-testid="review-tab-investigation"
         >
           Investigation
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="review-tab-fieldwork"
+          aria-controls="review-panel-fieldwork"
+          aria-selected={activeTab === "fieldwork"}
+          className={tabButtonClass("fieldwork")}
+          onClick={() => setActiveTab("fieldwork")}
+          data-testid="review-tab-fieldwork"
+        >
+          Fieldwork
         </button>
       </div>
 
@@ -712,6 +785,101 @@ export function InternalUserMapReviewWorkbench({
                       successMessage={cardSuccess[item.id]}
                       onLifecycle={handleInvestigationLifecycle}
                       onPublish={handleInvestigationPublish}
+                    />
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "fieldwork" && (
+        <div
+          role="tabpanel"
+          id="review-panel-fieldwork"
+          aria-labelledby="review-tab-fieldwork"
+          data-testid="review-panel-fieldwork"
+        >
+          {fieldworkCandidates.length === 0 ? (
+            <div className="rounded-lg border border-border bg-card p-6">
+              <p className="text-sm text-muted-foreground">
+                No internal Fieldwork candidates found for this reviewer.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {fieldworkCandidates.map((item) => {
+                const publishAllowed = canPublishInternalFieldworkCandidate({
+                  candidateLifecycleStatus: item.candidateLifecycleStatus,
+                  visibility: item.visibility,
+                  status: item.status,
+                });
+                const cardPending = candidateHasPendingAction(pendingActions, item.id);
+
+                return (
+                  <article
+                    key={item.id}
+                    className="rounded-lg border border-border bg-card p-5"
+                  >
+                    <header className="mb-3">
+                      <h2 className="text-base font-semibold text-foreground">
+                        {item.prompt}
+                      </h2>
+                      <p className="mt-2 text-sm text-muted-foreground">{item.reason}</p>
+                    </header>
+
+                    <dl className="grid grid-cols-1 gap-2 text-sm text-foreground md:grid-cols-2">
+                      <div>
+                        <dt className="label-meta text-xs">Lifecycle status</dt>
+                        <dd>{formatLifecycleStatus(item.candidateLifecycleStatus)}</dd>
+                      </div>
+                      <div>
+                        <dt className="label-meta text-xs">Fieldwork status</dt>
+                        <dd>{item.status}</dd>
+                      </div>
+                      <div>
+                        <dt className="label-meta text-xs">Visibility</dt>
+                        <dd>{item.visibility}</dd>
+                      </div>
+                      <div>
+                        <dt className="label-meta text-xs">Linked object</dt>
+                        <dd>
+                          {item.linkedObjectType}/{item.linkedObjectId}
+                        </dd>
+                      </div>
+                      {item.expiresAt && (
+                        <div>
+                          <dt className="label-meta text-xs">Expires</dt>
+                          <dd>{formatTimestamp(item.expiresAt)}</dd>
+                        </div>
+                      )}
+                      <div>
+                        <dt className="label-meta text-xs">Created</dt>
+                        <dd>{formatTimestamp(item.createdAt)}</dd>
+                      </div>
+                      <div>
+                        <dt className="label-meta text-xs">Updated</dt>
+                        <dd>{formatTimestamp(item.updatedAt)}</dd>
+                      </div>
+                    </dl>
+
+                    <ProvenanceSection
+                      itemId={item.id}
+                      evidence={item.evidence}
+                      diagnostics={item.diagnostics}
+                    />
+
+                    <OperatorActionsSection
+                      candidateId={item.id}
+                      candidateLifecycleStatus={item.candidateLifecycleStatus}
+                      publishAllowed={publishAllowed}
+                      cardPending={cardPending}
+                      pendingActions={pendingActions}
+                      errorMessage={cardErrors[item.id]}
+                      successMessage={cardSuccess[item.id]}
+                      onLifecycle={handleFieldworkLifecycle}
+                      onPublish={handleFieldworkPublish}
                     />
                   </article>
                 );
