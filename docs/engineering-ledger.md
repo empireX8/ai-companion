@@ -720,7 +720,9 @@
 
 - **Status:** `CLOSED / VALIDATED` (operator review workflow; docs-only closeout)
 - **Scope:** Hidden internal operator workbench at `/internal/user-map/review` for all four candidate families: `UserMapConclusion`, `Investigation`, `FieldworkAssignment`, and `ModelUpdate`.
+- **Validation base:** `be38253` on `main`
 - **Runtime behavior:** Allowlisted internal reviewers can list `internal_only` candidates per family, inspect safe provenance summaries (counts, source-type breakdown, linked source IDs, derivation run/artifact refs), run lifecycle actions where applicable, and publish to user-visible surfaces. Successful publish/lifecycle actions refresh the server-rendered list.
+- **Public navigation:** The workbench stays hidden behind the internal route; public nav does not expose internal review.
 - **Family models:**
 
 | Family | Candidate state | Lifecycle actions | Publish behavior | Review list filter |
@@ -732,11 +734,11 @@
 
 - **Evidence safety (review + publish):**
   - Review list APIs and workbench cards expose provenance summaries only: link counts, source-type counts, safety levels from link meta, linked `sourceType`/`sourceId` pairs, derivation run/artifact refs, safe diagnostics fields.
-  - No raw `snippet`, `quote`, link `summary`, or raw `internalNotes` rendered in review payloads or cards.
+  - No raw `snippet`, `quote`, `message body`, link `summary`, or raw `internalNotes` rendered in review payloads or cards.
   - Candidate persistence strips `snippet`/`quote` on UserMap, Investigation, and Fieldwork evidence-link writes; ModelUpdate persistence was already snippet/quote-free (PR #32).
   - Public evidence guards from PR #32 remain intact on generic evidence-links routes and public continuity projections.
   - ModelUpdate publish rejects rows without provenance (`MODEL_UPDATE_MISSING_EVIDENCE` → 422) before visibility flip.
-  - Fieldwork publishability uses client-safe `lib/fieldwork-status-publishability.ts` (no server-only Prisma import in client bundle); workbench eligibility calls `isFieldworkStatusPublishable()` via operator-action helpers.
+  - Client operator modules avoid `prismadb` and server-helper imports; Fieldwork publishability moved to client-safe `lib/fieldwork-status-publishability.ts`, and workbench eligibility calls `isFieldworkStatusPublishable()` via operator-action helpers.
 - **Workbench surfaces shipped:**
   - User Map tab — lifecycle + publish (`Build Slice 4`)
   - Investigation tab — lifecycle + publish (PR #37; publish status hardening PR #38)
@@ -767,7 +769,7 @@
   - Legacy UserMap rows with `candidateLifecycleStatus: null` still lack lifecycle buttons
   - Phase 2 umbrella remains **PARTIAL** — broader gated persistence/model movement, scheduler/cron, and other Phase 2 scope items are not closed by this operator slice
 - **Verification (prior implementation passes):** targeted vitest for review list APIs, operator actions/client, workbench tabs, publish helpers/routes; `bash scripts/verify-mindlab.sh` on implementation branches; trust-language and legacy-surface scripts pass.
-- **Verification (this docs closeout):** `git diff --check`: pass (docs-only).
+- **Verification (this docs closeout):** clean working tree; `git diff --check`: pass; `npx tsc --noEmit`: pass; workbench tests: pass; page tests: pass; `npx vitest run`: pass (2757 tests); `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass.
 
 ---
 
