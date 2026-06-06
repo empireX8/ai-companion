@@ -16,6 +16,7 @@ import {
 } from "../../app/(root)/(routes)/internal/user-map/review/_components/InternalUserMapReviewWorkbench";
 import type { InternalFieldworkReviewCandidate } from "../internal-fieldwork-review-candidates";
 import type { InternalInvestigationReviewCandidate } from "../internal-investigation-review-candidates";
+import type { InternalModelUpdateReviewCandidate } from "../internal-model-update-review-candidates";
 import type { InternalUserMapReviewCandidate } from "../internal-user-map-review-candidates";
 
 const baseCandidate: InternalUserMapReviewCandidate = {
@@ -118,6 +119,41 @@ const baseFieldworkCandidate: InternalFieldworkReviewCandidate = {
   },
 };
 
+const baseModelUpdateCandidate: InternalModelUpdateReviewCandidate = {
+  id: "mu-1",
+  updateType: "conclusion_strengthened",
+  userFacingSummary: "Confidence increased on operating logic",
+  affectedObjectType: "usermap_conclusion",
+  affectedObjectId: "umc-1",
+  beforeSummary: "Emerging pattern",
+  afterSummary: "Supported pattern",
+  confidenceDelta: 0.15,
+  visibility: "internal_only",
+  isMeaningful: false,
+  sourceRunId: "run-1",
+  createdAt: "2026-05-15T10:00:00.000Z",
+  evidence: {
+    linkCount: 1,
+    sourceTypes: { message: 1 },
+    safetyLevels: { internal_only: 1 },
+    linkedSources: [
+      {
+        sourceType: "message",
+        sourceId: "msg-1",
+        safetyLevel: "internal_only",
+      },
+    ],
+  },
+  diagnostics: {
+    latestRunId: "run-1",
+    latestArtifactId: "artifact-1",
+    latestArtifactType: "understanding_dark_engine_diagnostics",
+    processorVersion: "understanding-dark-engine-v1",
+    blockedWriteReasons: [],
+    warnings: [],
+  },
+};
+
 describe("InternalUserMapReviewWorkbench", () => {
   it("renders lifecycle status and operator buttons for proposed User Map candidates", () => {
     const html = renderToStaticMarkup(
@@ -125,6 +161,7 @@ describe("InternalUserMapReviewWorkbench", () => {
         userMapCandidates={[baseCandidate]}
         investigationCandidates={[]}
         fieldworkCandidates={[]}
+        modelUpdateCandidates={[]}
       />
     );
 
@@ -147,7 +184,6 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).not.toContain("snippet");
     expect(html).toContain('id="review-tab-fieldwork"');
     expect(html).not.toContain("Watch for Sunday evening tension");
-    expect(html).not.toContain("ModelUpdate");
   });
 
   it("renders empty provenance state without crashing", () => {
@@ -175,6 +211,7 @@ describe("InternalUserMapReviewWorkbench", () => {
         ]}
         investigationCandidates={[]}
         fieldworkCandidates={[]}
+        modelUpdateCandidates={[]}
       />
     );
 
@@ -193,6 +230,7 @@ describe("InternalUserMapReviewWorkbench", () => {
         ]}
         investigationCandidates={[]}
         fieldworkCandidates={[]}
+        modelUpdateCandidates={[]}
       />
     );
 
@@ -211,6 +249,7 @@ describe("InternalUserMapReviewWorkbench", () => {
         ]}
         investigationCandidates={[]}
         fieldworkCandidates={[]}
+        modelUpdateCandidates={[]}
       />
     );
 
@@ -230,6 +269,7 @@ describe("InternalUserMapReviewWorkbench", () => {
         ]}
         investigationCandidates={[]}
         fieldworkCandidates={[]}
+        modelUpdateCandidates={[]}
       />
     );
 
@@ -245,6 +285,7 @@ describe("InternalUserMapReviewWorkbench", () => {
         userMapCandidates={[]}
         investigationCandidates={[baseInvestigationCandidate]}
         fieldworkCandidates={[]}
+        modelUpdateCandidates={[]}
         initialTab="investigation"
       />
     );
@@ -262,7 +303,6 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).toContain("Reject");
     expect(html).not.toContain("Candidate title");
     expect(html).not.toContain("Watch for Sunday evening tension");
-    expect(html).not.toContain("ModelUpdate");
   });
 
   it("renders Investigation publish for promoted internal_only open candidates", () => {
@@ -277,6 +317,7 @@ describe("InternalUserMapReviewWorkbench", () => {
           },
         ]}
         fieldworkCandidates={[]}
+        modelUpdateCandidates={[]}
         initialTab="investigation"
       />
     );
@@ -297,6 +338,7 @@ describe("InternalUserMapReviewWorkbench", () => {
           },
         ]}
         fieldworkCandidates={[]}
+        modelUpdateCandidates={[]}
         initialTab="investigation"
       />
     );
@@ -325,6 +367,7 @@ describe("InternalUserMapReviewWorkbench", () => {
         userMapCandidates={[]}
         investigationCandidates={[]}
         fieldworkCandidates={[baseFieldworkCandidate]}
+        modelUpdateCandidates={[]}
         initialTab="fieldwork"
       />
     );
@@ -343,7 +386,6 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).toContain("Hold for more evidence");
     expect(html).toContain("Reject");
     expect(html).not.toContain("Investigation title");
-    expect(html).not.toContain("ModelUpdate");
     expect(html).not.toContain("snippet");
     expect(html).not.toContain("quote");
   });
@@ -360,6 +402,7 @@ describe("InternalUserMapReviewWorkbench", () => {
             status: "assigned",
           },
         ]}
+        modelUpdateCandidates={[]}
         initialTab="fieldwork"
       />
     );
@@ -380,6 +423,7 @@ describe("InternalUserMapReviewWorkbench", () => {
             status: "active",
           },
         ]}
+        modelUpdateCandidates={[]}
         initialTab="fieldwork"
       />
     );
@@ -400,11 +444,91 @@ describe("InternalUserMapReviewWorkbench", () => {
               status,
             },
           ]}
+          modelUpdateCandidates={[]}
           initialTab="fieldwork"
         />
       );
 
       expect(html).not.toContain("Publish");
     }
+  });
+
+  it("renders ModelUpdate tab with correct aria tab and panel linkage", () => {
+    const html = renderToStaticMarkup(
+      <InternalUserMapReviewWorkbench
+        userMapCandidates={[]}
+        investigationCandidates={[]}
+        fieldworkCandidates={[]}
+        modelUpdateCandidates={[baseModelUpdateCandidate]}
+        initialTab="modelupdate"
+      />
+    );
+
+    expect(html).toContain('id="review-tab-modelupdate"');
+    expect(html).toContain('aria-controls="review-panel-modelupdate"');
+    expect(html).toContain('id="review-panel-modelupdate"');
+    expect(html).toContain('aria-labelledby="review-tab-modelupdate"');
+    expect(html).toContain("Confidence increased on operating logic");
+    expect(html).toContain("conclusion_strengthened");
+    expect(html).toContain("usermap_conclusion/umc-1");
+    expect(html).toContain("Emerging pattern");
+    expect(html).toContain("Supported pattern");
+    expect(html).toContain("0.15");
+    expect(html).toContain("internal_only");
+    expect(html).toContain("false");
+    expect(html).toContain("Evidence / Provenance");
+    expect(html).toContain("Linked evidence count");
+    expect(html).toContain("message");
+    expect(html).toContain("msg-1");
+    expect(html).toContain("Publish");
+    expect(html).not.toContain("Hold for more evidence");
+    expect(html).not.toContain("Reject");
+    expect(html).not.toContain("Promote");
+    expect(html).not.toContain("snippet");
+    expect(html).not.toContain("quote");
+    expect(html).not.toContain("internalNotes");
+    expect(html).not.toContain("RAW MESSAGE BODY");
+  });
+
+  it("shows needs-evidence message instead of publish when ModelUpdate has zero evidence links", () => {
+    const html = renderToStaticMarkup(
+      <InternalUserMapReviewWorkbench
+        userMapCandidates={[]}
+        investigationCandidates={[]}
+        fieldworkCandidates={[]}
+        modelUpdateCandidates={[
+          {
+            ...baseModelUpdateCandidate,
+            id: "mu-no-evidence",
+            evidence: {
+              linkCount: 0,
+              sourceTypes: {},
+              safetyLevels: {},
+              linkedSources: [],
+            },
+          },
+        ]}
+        initialTab="modelupdate"
+      />
+    );
+
+    expect(html).toContain("Needs linked evidence before publish.");
+    expect(html).not.toContain(">Publish<");
+  });
+
+  it("keeps UserMap tab working when ModelUpdate candidates are present", () => {
+    const html = renderToStaticMarkup(
+      <InternalUserMapReviewWorkbench
+        userMapCandidates={[baseCandidate]}
+        investigationCandidates={[]}
+        fieldworkCandidates={[]}
+        modelUpdateCandidates={[baseModelUpdateCandidate]}
+      />
+    );
+
+    expect(html).toContain("Candidate title");
+    expect(html).toContain("Hold for more evidence");
+    expect(html).toContain('id="review-panel-usermap"');
+    expect(html).not.toContain("Confidence increased on operating logic");
   });
 });

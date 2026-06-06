@@ -7,6 +7,7 @@ import {
   internalFieldworkCandidatePublishApiPath,
   internalInvestigationCandidateLifecycleApiPath,
   internalInvestigationCandidatePublishApiPath,
+  internalModelUpdateCandidatePublishApiPath,
 } from "./internal-user-map-review-operator-actions";
 
 export type InternalOperatorApiSuccess =
@@ -272,6 +273,42 @@ export async function postInternalFieldworkCandidatePublish(
       previousVisibility: data.previousVisibility,
       newVisibility: data.newVisibility,
       updatedAt: data.updatedAt,
+    },
+  };
+}
+
+export async function postInternalModelUpdateCandidatePublish(
+  modelUpdateId: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<InternalOperatorApiResult> {
+  const response = await fetchImpl(
+    internalModelUpdateCandidatePublishApiPath(modelUpdateId),
+    {
+      method: "POST",
+    }
+  );
+
+  if (!response.ok) {
+    const { message, code } = await parseErrorMessage(response);
+    return { ok: false, status: response.status, message, code };
+  }
+
+  const data = (await response.json()) as {
+    id: string;
+    previousVisibility: string;
+    newVisibility: string;
+    previousIsMeaningful: boolean;
+    newIsMeaningful: boolean;
+  };
+
+  return {
+    ok: true,
+    data: {
+      kind: "publish",
+      id: data.id,
+      previousVisibility: data.previousVisibility,
+      newVisibility: data.newVisibility,
+      updatedAt: "",
     },
   };
 }

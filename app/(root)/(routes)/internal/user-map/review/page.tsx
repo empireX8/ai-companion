@@ -7,6 +7,10 @@ import {
   listInternalFieldworkReviewCandidates,
 } from "@/lib/internal-fieldwork-review-candidates";
 import {
+  INTERNAL_MODEL_UPDATE_REVIEW_DEFAULT_LIMIT,
+  listInternalModelUpdateReviewCandidates,
+} from "@/lib/internal-model-update-review-candidates";
+import {
   INTERNAL_INVESTIGATION_REVIEW_DEFAULT_LIMIT,
   listInternalInvestigationReviewCandidates,
 } from "../../../../../../lib/internal-investigation-review-candidates";
@@ -27,7 +31,7 @@ export default async function InternalUserMapReviewPage() {
   }
 
   try {
-    const [userMapSettled, investigationSettled, fieldworkSettled] =
+    const [userMapSettled, investigationSettled, fieldworkSettled, modelUpdateSettled] =
       await Promise.allSettled([
         listInternalUserMapReviewCandidates({
           userId,
@@ -40,6 +44,10 @@ export default async function InternalUserMapReviewPage() {
         listInternalFieldworkReviewCandidates({
           userId,
           limit: INTERNAL_FIELDWORK_REVIEW_DEFAULT_LIMIT,
+        }),
+        listInternalModelUpdateReviewCandidates({
+          userId,
+          limit: INTERNAL_MODEL_UPDATE_REVIEW_DEFAULT_LIMIT,
         }),
       ]);
 
@@ -73,6 +81,19 @@ export default async function InternalUserMapReviewPage() {
       );
     }
 
+    let modelUpdateCandidates: Awaited<
+      ReturnType<typeof listInternalModelUpdateReviewCandidates>
+    > = [];
+
+    if (modelUpdateSettled.status === "fulfilled") {
+      modelUpdateCandidates = modelUpdateSettled.value;
+    } else {
+      console.error(
+        "[INTERNAL_MODEL_UPDATE_REVIEW_LIST_ERROR]",
+        modelUpdateSettled.reason
+      );
+    }
+
     // Defense-in-depth: only render internal-only rows even if upstream data regresses.
     const internalUserMapCandidates = userMapSettled.value.filter(
       (candidate) => candidate.visibility === "internal_only"
@@ -82,6 +103,10 @@ export default async function InternalUserMapReviewPage() {
     );
     const internalFieldworkCandidates = fieldworkCandidates.filter(
       (candidate) => candidate.visibility === "internal_only"
+    );
+    const internalModelUpdateCandidates = modelUpdateCandidates.filter(
+      (candidate) =>
+        candidate.visibility === "internal_only" && candidate.isMeaningful === false
     );
 
     return (
@@ -93,7 +118,7 @@ export default async function InternalUserMapReviewPage() {
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Internal operator workbench for reviewing and publishing hidden User Map,
-              Investigation, and Fieldwork candidates.
+              Investigation, Fieldwork, and ModelUpdate candidates.
             </p>
           </div>
 
@@ -101,6 +126,7 @@ export default async function InternalUserMapReviewPage() {
             userMapCandidates={internalUserMapCandidates}
             investigationCandidates={internalInvestigationCandidates}
             fieldworkCandidates={internalFieldworkCandidates}
+            modelUpdateCandidates={internalModelUpdateCandidates}
           />
         </div>
       </div>

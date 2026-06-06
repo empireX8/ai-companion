@@ -4,6 +4,7 @@ import {
   type FieldworkStatus,
   InvestigationStatus,
   InvestigationVisibility,
+  ModelUpdateVisibility,
   UserMapConclusionVisibility,
 } from "@prisma/client";
 
@@ -124,4 +125,22 @@ export function internalFieldworkCandidatePublishApiPath(
   fieldworkAssignmentId: string
 ): string {
   return `/api/internal/fieldwork/candidates/${encodeURIComponent(fieldworkAssignmentId)}/publish`;
+}
+
+export function canPublishInternalModelUpdateCandidate(input: {
+  visibility: ModelUpdateVisibility;
+  isMeaningful: boolean;
+  evidenceLinkCount: number;
+}): boolean {
+  return (
+    input.visibility === ModelUpdateVisibility.internal_only &&
+    input.isMeaningful === false &&
+    input.evidenceLinkCount > 0
+  );
+}
+
+export function internalModelUpdateCandidatePublishApiPath(
+  modelUpdateId: string
+): string {
+  return `/api/internal/model-updates/candidates/${encodeURIComponent(modelUpdateId)}/publish`;
 }
