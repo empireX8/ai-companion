@@ -41,7 +41,11 @@ export async function POST(
       ) {
         return errorResponse(404, error.message, error.code);
       }
-      if (error.code === "NOT_PROMOTED" || error.code === "ALREADY_VISIBLE") {
+      if (
+        error.code === "NOT_PROMOTED" ||
+        error.code === "ALREADY_VISIBLE" ||
+        error.code === "INVESTIGATION_STATUS_NOT_PUBLISHABLE"
+      ) {
         return errorResponse(422, error.message, error.code);
       }
     }

@@ -10,15 +10,21 @@ import {
 
 import {
   PublishInvestigationCandidateError,
+  isPublishableInvestigationStatus,
   publishInvestigationCandidate,
 } from "../investigation-publish-helper";
+import { ACTIVE_QUESTION_VISIBLE_STATUSES } from "../public-intelligence-safe-slice";
 
 const FIXED_TIME = new Date("2026-06-05T12:00:00.000Z");
 
-function makePublishDbMock() {
+function makePublishDbMock(
+  statusById: Partial<Record<string, InvestigationStatus>> = {}
+) {
   let visibility: InvestigationVisibility = InvestigationVisibility.internal_only;
   const lifecycleStatus: CandidateLifecycleStatus | null = CandidateLifecycleStatus.promoted;
-  const status = InvestigationStatus.open;
+
+  const resolveStatus = (id: string): InvestigationStatus =>
+    statusById[id] ?? InvestigationStatus.open;
   let updatedAt = FIXED_TIME;
   let concurrentPublishClaimed = false;
   const modelUpdates: Array<Record<string, unknown>> = [];
@@ -35,7 +41,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: null,
-            status,
+            status: resolveStatus(where.id),
             title: "Legacy title",
             updatedAt,
           };
@@ -46,7 +52,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: CandidateLifecycleStatus.proposed,
-            status,
+            status: resolveStatus(where.id),
             title: "Proposed title",
             updatedAt,
           };
@@ -57,7 +63,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: CandidateLifecycleStatus.rejected,
-            status,
+            status: resolveStatus(where.id),
             title: "Rejected title",
             updatedAt,
           };
@@ -68,7 +74,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: CandidateLifecycleStatus.held_for_more_evidence,
-            status,
+            status: resolveStatus(where.id),
             title: "Held title",
             updatedAt,
           };
@@ -79,7 +85,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: CandidateLifecycleStatus.expired,
-            status,
+            status: resolveStatus(where.id),
             title: "Expired title",
             updatedAt,
           };
@@ -90,7 +96,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility,
             candidateLifecycleStatus: CandidateLifecycleStatus.superseded,
-            status,
+            status: resolveStatus(where.id),
             title: "Superseded title",
             updatedAt,
           };
@@ -101,7 +107,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility: InvestigationVisibility.user_visible,
             candidateLifecycleStatus: CandidateLifecycleStatus.promoted,
-            status,
+            status: resolveStatus(where.id),
             title: "Visible title",
             updatedAt,
           };
@@ -112,7 +118,7 @@ function makePublishDbMock() {
             userId: where.userId,
             visibility: InvestigationVisibility.internal_only,
             candidateLifecycleStatus: CandidateLifecycleStatus.promoted,
-            status,
+            status: resolveStatus(where.id),
             title: "Race title",
             updatedAt,
           };
@@ -122,7 +128,7 @@ function makePublishDbMock() {
           userId: where.userId,
           visibility,
           candidateLifecycleStatus: lifecycleStatus,
-          status,
+          status: resolveStatus(where.id),
           title: "Why do I avoid conflict?",
           updatedAt,
         };
@@ -138,6 +144,7 @@ function makePublishDbMock() {
           userId: string;
           visibility: InvestigationVisibility;
           candidateLifecycleStatus: string;
+          status?: { in: InvestigationStatus[] };
         };
         data: {
           visibility: InvestigationVisibility;
@@ -154,11 +161,16 @@ function makePublishDbMock() {
           return { count: 1 };
         }
 
+        const currentStatus = resolveStatus(where.id);
+        const statusAllowed =
+          !where.status?.in || where.status.in.includes(currentStatus);
+
         const matches =
           where.visibility === InvestigationVisibility.internal_only &&
           where.candidateLifecycleStatus === "promoted" &&
           visibility === InvestigationVisibility.internal_only &&
-          lifecycleStatus === CandidateLifecycleStatus.promoted;
+          lifecycleStatus === CandidateLifecycleStatus.promoted &&
+          statusAllowed;
 
         if (!matches) {
           return { count: 0 };
@@ -194,7 +206,7 @@ function makePublishDbMock() {
     modelUpdates,
     getVisibility: () => visibility,
     getLifecycleStatus: () => lifecycleStatus,
-    getStatus: () => status,
+    getStatus: (id = "inv-1") => resolveStatus(id),
     $transaction: vi.fn(
       async (callback: (transactionClient: typeof tx) => Promise<unknown>) => {
         const snapshotVisibility = visibility;
@@ -351,5 +363,74 @@ describe("publishInvestigationCandidate", () => {
     await expect(
       publishInvestigationCandidate("user-1", "missing-id", { db: db as never })
     ).rejects.toBeInstanceOf(PublishInvestigationCandidateError);
+  });
+
+  it("publishes promoted internal_only rows for every Active Questions visible status", async () => {
+    for (const status of ACTIVE_QUESTION_VISIBLE_STATUSES) {
+      const db = makePublishDbMock({ "inv-1": status });
+
+      const result = await publishInvestigationCandidate("user-1", "inv-1", {
+        db: db as never,
+        now: FIXED_TIME,
+      });
+
+      expect(result.newVisibility).toBe(InvestigationVisibility.user_visible);
+      expect(db.modelUpdates).toHaveLength(1);
+      db.modelUpdates.length = 0;
+    }
+  });
+
+  it("rejects promoted internal_only rows with non-public Investigation statuses", async () => {
+    for (const status of [InvestigationStatus.resolved, InvestigationStatus.abandoned]) {
+      const db = makePublishDbMock({ "inv-1": status });
+
+      await expect(
+        publishInvestigationCandidate("user-1", "inv-1", { db: db as never })
+      ).rejects.toMatchObject({ code: "INVESTIGATION_STATUS_NOT_PUBLISHABLE" });
+
+      expect(db.$transaction).not.toHaveBeenCalled();
+      expect(db.modelUpdate.create).not.toHaveBeenCalled();
+      expect(db.getVisibility()).toBe(InvestigationVisibility.internal_only);
+      expect(db.getStatus("inv-1")).toBe(status);
+    }
+  });
+
+  it("does not create ModelUpdate when rejected lifecycle row has a public status", async () => {
+    const db = makePublishDbMock({
+      "rejected-id": InvestigationStatus.open,
+    });
+
+    await expect(
+      publishInvestigationCandidate("user-1", "rejected-id", { db: db as never })
+    ).rejects.toMatchObject({ code: "NOT_PROMOTED" });
+
+    expect(db.$transaction).not.toHaveBeenCalled();
+    expect(db.modelUpdate.create).not.toHaveBeenCalled();
+  });
+
+  it("includes Active Questions visible statuses in conditional publish update", async () => {
+    const db = makePublishDbMock();
+
+    await publishInvestigationCandidate("user-1", "inv-1", {
+      db: db as never,
+      now: FIXED_TIME,
+    });
+
+    expect(db.investigation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: { in: ACTIVE_QUESTION_VISIBLE_STATUSES },
+        }),
+      })
+    );
+  });
+
+  it("matches isPublishableInvestigationStatus to Active Questions visibility", () => {
+    for (const status of ACTIVE_QUESTION_VISIBLE_STATUSES) {
+      expect(isPublishableInvestigationStatus(status)).toBe(true);
+    }
+
+    expect(isPublishableInvestigationStatus(InvestigationStatus.resolved)).toBe(false);
+    expect(isPublishableInvestigationStatus(InvestigationStatus.abandoned)).toBe(false);
   });
 });
