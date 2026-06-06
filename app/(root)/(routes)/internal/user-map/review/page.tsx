@@ -3,6 +3,10 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 
 import {
+  INTERNAL_FIELDWORK_REVIEW_DEFAULT_LIMIT,
+  listInternalFieldworkReviewCandidates,
+} from "@/lib/internal-fieldwork-review-candidates";
+import {
   INTERNAL_INVESTIGATION_REVIEW_DEFAULT_LIMIT,
   listInternalInvestigationReviewCandidates,
 } from "../../../../../../lib/internal-investigation-review-candidates";
@@ -23,16 +27,21 @@ export default async function InternalUserMapReviewPage() {
   }
 
   try {
-    const [userMapSettled, investigationSettled] = await Promise.allSettled([
-      listInternalUserMapReviewCandidates({
-        userId,
-        limit: INTERNAL_USER_MAP_REVIEW_DEFAULT_LIMIT,
-      }),
-      listInternalInvestigationReviewCandidates({
-        userId,
-        limit: INTERNAL_INVESTIGATION_REVIEW_DEFAULT_LIMIT,
-      }),
-    ]);
+    const [userMapSettled, investigationSettled, fieldworkSettled] =
+      await Promise.allSettled([
+        listInternalUserMapReviewCandidates({
+          userId,
+          limit: INTERNAL_USER_MAP_REVIEW_DEFAULT_LIMIT,
+        }),
+        listInternalInvestigationReviewCandidates({
+          userId,
+          limit: INTERNAL_INVESTIGATION_REVIEW_DEFAULT_LIMIT,
+        }),
+        listInternalFieldworkReviewCandidates({
+          userId,
+          limit: INTERNAL_FIELDWORK_REVIEW_DEFAULT_LIMIT,
+        }),
+      ]);
 
     if (userMapSettled.status === "rejected") {
       throw userMapSettled.reason;
@@ -51,11 +60,27 @@ export default async function InternalUserMapReviewPage() {
       );
     }
 
+    let fieldworkCandidates: Awaited<
+      ReturnType<typeof listInternalFieldworkReviewCandidates>
+    > = [];
+
+    if (fieldworkSettled.status === "fulfilled") {
+      fieldworkCandidates = fieldworkSettled.value;
+    } else {
+      console.error(
+        "[INTERNAL_FIELDWORK_REVIEW_LIST_ERROR]",
+        fieldworkSettled.reason
+      );
+    }
+
     // Defense-in-depth: only render internal-only rows even if upstream data regresses.
     const internalUserMapCandidates = userMapSettled.value.filter(
       (candidate) => candidate.visibility === "internal_only"
     );
     const internalInvestigationCandidates = investigationCandidates.filter(
+      (candidate) => candidate.visibility === "internal_only"
+    );
+    const internalFieldworkCandidates = fieldworkCandidates.filter(
       (candidate) => candidate.visibility === "internal_only"
     );
 
@@ -67,14 +92,15 @@ export default async function InternalUserMapReviewPage() {
               Internal Candidate Review
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Internal operator workbench for reviewing and publishing hidden User Map
-              and Investigation candidates.
+              Internal operator workbench for reviewing and publishing hidden User Map,
+              Investigation, and Fieldwork candidates.
             </p>
           </div>
 
           <InternalUserMapReviewWorkbench
             userMapCandidates={internalUserMapCandidates}
             investigationCandidates={internalInvestigationCandidates}
+            fieldworkCandidates={internalFieldworkCandidates}
           />
         </div>
       </div>

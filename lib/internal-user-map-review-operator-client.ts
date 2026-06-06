@@ -3,6 +3,8 @@ import type { CandidateLifecycleStatus } from "@prisma/client";
 import {
   internalCandidateLifecycleApiPath,
   internalCandidatePublishApiPath,
+  internalFieldworkCandidateLifecycleApiPath,
+  internalFieldworkCandidatePublishApiPath,
   internalInvestigationCandidateLifecycleApiPath,
   internalInvestigationCandidatePublishApiPath,
 } from "./internal-user-map-review-operator-actions";
@@ -172,6 +174,79 @@ export async function postInternalInvestigationCandidatePublish(
 ): Promise<InternalOperatorApiResult> {
   const response = await fetchImpl(
     internalInvestigationCandidatePublishApiPath(investigationId),
+    {
+      method: "POST",
+    }
+  );
+
+  if (!response.ok) {
+    const { message, code } = await parseErrorMessage(response);
+    return { ok: false, status: response.status, message, code };
+  }
+
+  const data = (await response.json()) as {
+    id: string;
+    previousVisibility: string;
+    newVisibility: string;
+    updatedAt: string;
+  };
+
+  return {
+    ok: true,
+    data: {
+      kind: "publish",
+      id: data.id,
+      previousVisibility: data.previousVisibility,
+      newVisibility: data.newVisibility,
+      updatedAt: data.updatedAt,
+    },
+  };
+}
+
+export async function postInternalFieldworkCandidateLifecycle(
+  fieldworkAssignmentId: string,
+  newStatus: CandidateLifecycleStatus,
+  fetchImpl: typeof fetch = fetch
+): Promise<InternalOperatorApiResult> {
+  const response = await fetchImpl(
+    internalFieldworkCandidateLifecycleApiPath(fieldworkAssignmentId),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newStatus }),
+    }
+  );
+
+  if (!response.ok) {
+    const { message, code } = await parseErrorMessage(response);
+    return { ok: false, status: response.status, message, code };
+  }
+
+  const data = (await response.json()) as {
+    id: string;
+    previousStatus: CandidateLifecycleStatus;
+    newStatus: CandidateLifecycleStatus;
+    updatedAt: string;
+  };
+
+  return {
+    ok: true,
+    data: {
+      kind: "lifecycle",
+      id: data.id,
+      previousStatus: data.previousStatus,
+      newStatus: data.newStatus,
+      updatedAt: data.updatedAt,
+    },
+  };
+}
+
+export async function postInternalFieldworkCandidatePublish(
+  fieldworkAssignmentId: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<InternalOperatorApiResult> {
+  const response = await fetchImpl(
+    internalFieldworkCandidatePublishApiPath(fieldworkAssignmentId),
     {
       method: "POST",
     }

@@ -1,11 +1,14 @@
 import {
   CandidateLifecycleStatus,
+  FieldworkAssignmentVisibility,
+  type FieldworkStatus,
   InvestigationStatus,
   InvestigationVisibility,
   UserMapConclusionVisibility,
 } from "@prisma/client";
 
 import { getAllowedNextStatuses } from "./candidate-lifecycle-transitions";
+import { isFieldworkStatusPublishable } from "./fieldwork-status-publishability";
 import { ACTIVE_QUESTION_VISIBLE_STATUSES } from "./public-intelligence-safe-slice";
 
 export type InternalOperatorLifecycleAction =
@@ -97,4 +100,28 @@ export function internalInvestigationCandidatePublishApiPath(
   investigationId: string
 ): string {
   return `/api/internal/investigations/candidates/${encodeURIComponent(investigationId)}/publish`;
+}
+
+export function canPublishInternalFieldworkCandidate(input: {
+  candidateLifecycleStatus: CandidateLifecycleStatus | null;
+  visibility: FieldworkAssignmentVisibility;
+  status: FieldworkStatus;
+}): boolean {
+  return (
+    input.candidateLifecycleStatus === CandidateLifecycleStatus.promoted &&
+    input.visibility === FieldworkAssignmentVisibility.internal_only &&
+    isFieldworkStatusPublishable(input.status)
+  );
+}
+
+export function internalFieldworkCandidateLifecycleApiPath(
+  fieldworkAssignmentId: string
+): string {
+  return `/api/internal/fieldwork/candidates/${encodeURIComponent(fieldworkAssignmentId)}/lifecycle`;
+}
+
+export function internalFieldworkCandidatePublishApiPath(
+  fieldworkAssignmentId: string
+): string {
+  return `/api/internal/fieldwork/candidates/${encodeURIComponent(fieldworkAssignmentId)}/publish`;
 }

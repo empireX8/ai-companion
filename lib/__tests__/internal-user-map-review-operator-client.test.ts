@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   postInternalCandidateLifecycle,
   postInternalCandidatePublish,
+  postInternalFieldworkCandidateLifecycle,
+  postInternalFieldworkCandidatePublish,
   postInternalInvestigationCandidateLifecycle,
   postInternalInvestigationCandidatePublish,
 } from "../internal-user-map-review-operator-client";
@@ -118,6 +120,57 @@ describe("internal user-map review operator client", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/internal/investigations/candidates/inv-1/publish",
+      expect.objectContaining({ method: "POST" })
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("posts Fieldwork lifecycle transitions to the Fieldwork route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "fw-1",
+          previousStatus: "proposed",
+          newStatus: "held_for_more_evidence",
+          updatedAt: "2026-05-29T12:00:00.000Z",
+        }),
+        { status: 200 }
+      )
+    );
+
+    const result = await postInternalFieldworkCandidateLifecycle(
+      "fw-1",
+      CandidateLifecycleStatus.held_for_more_evidence,
+      fetchMock
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/internal/fieldwork/candidates/fw-1/lifecycle",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ newStatus: "held_for_more_evidence" }),
+      })
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("posts Fieldwork publish to the Fieldwork route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "fw-1",
+          previousVisibility: "internal_only",
+          newVisibility: "user_visible",
+          updatedAt: "2026-05-29T12:00:00.000Z",
+        }),
+        { status: 200 }
+      )
+    );
+
+    const result = await postInternalFieldworkCandidatePublish("fw-1", fetchMock);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/internal/fieldwork/candidates/fw-1/publish",
       expect.objectContaining({ method: "POST" })
     );
     expect(result.ok).toBe(true);
