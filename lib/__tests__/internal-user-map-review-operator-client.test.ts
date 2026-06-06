@@ -8,6 +8,7 @@ import {
   postInternalFieldworkCandidatePublish,
   postInternalInvestigationCandidateLifecycle,
   postInternalInvestigationCandidatePublish,
+  postInternalModelUpdateCandidatePublish,
 } from "../internal-user-map-review-operator-client";
 
 describe("internal user-map review operator client", () => {
@@ -174,6 +175,32 @@ describe("internal user-map review operator client", () => {
       expect.objectContaining({ method: "POST" })
     );
     expect(result.ok).toBe(true);
+  });
+
+  it("posts ModelUpdate publish to the ModelUpdate route", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "mu-1",
+          previousVisibility: "internal_only",
+          newVisibility: "user_visible",
+          previousIsMeaningful: false,
+          newIsMeaningful: true,
+        }),
+        { status: 200 }
+      )
+    );
+
+    const result = await postInternalModelUpdateCandidatePublish("mu-1", fetchMock);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/internal/model-updates/candidates/mu-1/publish",
+      expect.objectContaining({ method: "POST" })
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok && result.data.kind === "publish") {
+      expect(result.data.newVisibility).toBe("user_visible");
+    }
   });
 
   it("posts publish to the internal route", async () => {

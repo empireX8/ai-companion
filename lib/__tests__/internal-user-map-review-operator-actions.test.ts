@@ -7,6 +7,7 @@ import {
   FieldworkStatus,
   InvestigationStatus,
   InvestigationVisibility,
+  ModelUpdateVisibility,
   UserMapConclusionVisibility,
 } from "@prisma/client";
 import { describe, expect, it } from "vitest";
@@ -15,6 +16,7 @@ import {
   canPublishInternalCandidate,
   canPublishInternalFieldworkCandidate,
   canPublishInternalInvestigationCandidate,
+  canPublishInternalModelUpdateCandidate,
   getInternalOperatorLifecycleActions,
   internalCandidateLifecycleApiPath,
   internalCandidatePublishApiPath,
@@ -22,6 +24,7 @@ import {
   internalFieldworkCandidatePublishApiPath,
   internalInvestigationCandidateLifecycleApiPath,
   internalInvestigationCandidatePublishApiPath,
+  internalModelUpdateCandidatePublishApiPath,
   isActiveQuestionVisibleInvestigationStatus,
   lifecycleActionToStatus,
 } from "../internal-user-map-review-operator-actions";
@@ -221,6 +224,56 @@ describe("internal user-map review operator actions", () => {
     );
     expect(internalFieldworkCandidatePublishApiPath("fw/1")).toBe(
       "/api/internal/fieldwork/candidates/fw%2F1/publish"
+    );
+  });
+
+  it("does not import server-only model update publish helper", () => {
+    const modulePath = fileURLToPath(
+      new URL("../internal-user-map-review-operator-actions.ts", import.meta.url)
+    );
+    const source = readFileSync(modulePath, "utf8");
+
+    expect(source).not.toContain("model-update-candidate-publish-helper");
+    expect(source).not.toContain("prismadb");
+  });
+
+  it("allows ModelUpdate publish only for internal_only non-meaningful candidates with evidence", () => {
+    expect(
+      canPublishInternalModelUpdateCandidate({
+        visibility: ModelUpdateVisibility.internal_only,
+        isMeaningful: false,
+        evidenceLinkCount: 1,
+      })
+    ).toBe(true);
+
+    expect(
+      canPublishInternalModelUpdateCandidate({
+        visibility: ModelUpdateVisibility.user_visible,
+        isMeaningful: false,
+        evidenceLinkCount: 1,
+      })
+    ).toBe(false);
+
+    expect(
+      canPublishInternalModelUpdateCandidate({
+        visibility: ModelUpdateVisibility.internal_only,
+        isMeaningful: true,
+        evidenceLinkCount: 1,
+      })
+    ).toBe(false);
+
+    expect(
+      canPublishInternalModelUpdateCandidate({
+        visibility: ModelUpdateVisibility.internal_only,
+        isMeaningful: false,
+        evidenceLinkCount: 0,
+      })
+    ).toBe(false);
+  });
+
+  it("builds ModelUpdate internal publish API path", () => {
+    expect(internalModelUpdateCandidatePublishApiPath("mu/1")).toBe(
+      "/api/internal/model-updates/candidates/mu%2F1/publish"
     );
   });
 });

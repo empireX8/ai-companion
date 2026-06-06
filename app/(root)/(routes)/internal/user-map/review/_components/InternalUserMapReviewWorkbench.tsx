@@ -4,12 +4,14 @@ import type { CandidateLifecycleStatus } from "@prisma/client";
 import React, { useCallback, useState } from "react";
 
 import type { InternalFieldworkReviewCandidate } from "@/lib/internal-fieldwork-review-candidates";
+import type { InternalModelUpdateReviewCandidate } from "@/lib/internal-model-update-review-candidates";
 import type { InternalInvestigationReviewCandidate } from "../../../../../../../lib/internal-investigation-review-candidates";
 import {
   INTERNAL_OPERATOR_LIFECYCLE_ACTION_LABELS,
   canPublishInternalCandidate,
   canPublishInternalFieldworkCandidate,
   canPublishInternalInvestigationCandidate,
+  canPublishInternalModelUpdateCandidate,
   getInternalOperatorLifecycleActions,
   lifecycleActionToStatus,
   type InternalOperatorLifecycleAction,
@@ -21,12 +23,13 @@ import {
   postInternalFieldworkCandidatePublish,
   postInternalInvestigationCandidateLifecycle,
   postInternalInvestigationCandidatePublish,
+  postInternalModelUpdateCandidatePublish,
 } from "../../../../../../../lib/internal-user-map-review-operator-client";
 import type { InternalUserMapReviewCandidate } from "../../../../../../../lib/internal-user-map-review-candidates";
 import { cn } from "../../../../../../../lib/utils";
 import { useRouter } from "next/navigation";
 
-type ReviewTab = "usermap" | "investigation" | "fieldwork";
+type ReviewTab = "usermap" | "investigation" | "fieldwork" | "modelupdate";
 
 export type PendingActionKeys = Set<string>;
 
@@ -63,6 +66,7 @@ type Props = {
   userMapCandidates: InternalUserMapReviewCandidate[];
   investigationCandidates: InternalInvestigationReviewCandidate[];
   fieldworkCandidates: InternalFieldworkReviewCandidate[];
+  modelUpdateCandidates: InternalModelUpdateReviewCandidate[];
   initialTab?: ReviewTab;
 };
 
@@ -331,10 +335,75 @@ function OperatorActionsSection({
   );
 }
 
+function ModelUpdatePublishActionsSection({
+  candidateId,
+  publishAllowed,
+  evidenceLinkCount,
+  cardPending,
+  pendingActions,
+  errorMessage,
+  successMessage,
+  onPublish,
+}: {
+  candidateId: string;
+  publishAllowed: boolean;
+  evidenceLinkCount: number;
+  cardPending: boolean;
+  pendingActions: ReadonlySet<string>;
+  errorMessage?: string;
+  successMessage?: string;
+  onPublish: (candidateId: string) => void;
+}) {
+  return (
+    <div className="mt-4 border-t border-border/40 pt-4">
+      <p className="label-meta mb-2 text-xs">Operator actions</p>
+
+      {publishAllowed ? (
+        <button
+          type="button"
+          disabled={cardPending}
+          onClick={() => onPublish(candidateId)}
+          className={cn(
+            "rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors",
+            "hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+          )}
+        >
+          {pendingActions.has(`${candidateId}:publish`) ? "Publishing…" : "Publish"}
+        </button>
+      ) : evidenceLinkCount === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Needs linked evidence before publish.
+        </p>
+      ) : null}
+
+      {errorMessage && (
+        <p
+          className="mt-3 text-sm text-destructive"
+          role="alert"
+          data-testid={`operator-error-${candidateId}`}
+        >
+          {errorMessage}
+        </p>
+      )}
+
+      {successMessage && (
+        <p
+          className="mt-3 text-sm text-primary"
+          role="status"
+          data-testid={`operator-success-${candidateId}`}
+        >
+          {successMessage}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function InternalUserMapReviewWorkbench({
   userMapCandidates,
   investigationCandidates,
   fieldworkCandidates,
+  modelUpdateCandidates,
   initialTab = "usermap",
 }: Props) {
   const router = useRouter();
@@ -559,6 +628,30 @@ export function InternalUserMapReviewWorkbench({
     [runAction]
   );
 
+  const handleModelUpdatePublish = useCallback(
+    (candidateId: string) => {
+      const actionKey = `${candidateId}:publish`;
+
+      return runAction(candidateId, actionKey, async () => {
+        const result = await postInternalModelUpdateCandidatePublish(candidateId);
+        if (!result.ok) {
+          const codeSuffix = result.code ? ` (${result.code})` : "";
+          return {
+            ok: false,
+            message: `${result.message}${codeSuffix}`,
+          };
+        }
+
+        return {
+          ok: true,
+          message:
+            "Published to user-visible What Changed. The update is now meaningful.",
+        };
+      });
+    },
+    [runAction]
+  );
+
   const tabButtonClass = (tab: ReviewTab) =>
     cn(
       "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
@@ -609,6 +702,18 @@ export function InternalUserMapReviewWorkbench({
           data-testid="review-tab-fieldwork"
         >
           Fieldwork
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="review-tab-modelupdate"
+          aria-controls="review-panel-modelupdate"
+          aria-selected={activeTab === "modelupdate"}
+          className={tabButtonClass("modelupdate")}
+          onClick={() => setActiveTab("modelupdate")}
+          data-testid="review-tab-modelupdate"
+        >
+          ModelUpdate
         </button>
       </div>
 
@@ -880,6 +985,107 @@ export function InternalUserMapReviewWorkbench({
                       successMessage={cardSuccess[item.id]}
                       onLifecycle={handleFieldworkLifecycle}
                       onPublish={handleFieldworkPublish}
+                    />
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "modelupdate" && (
+        <div
+          role="tabpanel"
+          id="review-panel-modelupdate"
+          aria-labelledby="review-tab-modelupdate"
+          data-testid="review-panel-modelupdate"
+        >
+          {modelUpdateCandidates.length === 0 ? (
+            <div className="rounded-lg border border-border bg-card p-6">
+              <p className="text-sm text-muted-foreground">
+                No internal ModelUpdate candidates found for this reviewer.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {modelUpdateCandidates.map((item) => {
+                const publishAllowed = canPublishInternalModelUpdateCandidate({
+                  visibility: item.visibility,
+                  isMeaningful: item.isMeaningful,
+                  evidenceLinkCount: item.evidence.linkCount,
+                });
+                const cardPending = candidateHasPendingAction(pendingActions, item.id);
+
+                return (
+                  <article
+                    key={item.id}
+                    className="rounded-lg border border-border bg-card p-5"
+                  >
+                    <header className="mb-3">
+                      <h2 className="text-base font-semibold text-foreground">
+                        {item.userFacingSummary}
+                      </h2>
+                    </header>
+
+                    <dl className="grid grid-cols-1 gap-2 text-sm text-foreground md:grid-cols-2">
+                      <div>
+                        <dt className="label-meta text-xs">Update type</dt>
+                        <dd>{item.updateType}</dd>
+                      </div>
+                      <div>
+                        <dt className="label-meta text-xs">Affected object</dt>
+                        <dd>
+                          {item.affectedObjectType}/{item.affectedObjectId}
+                        </dd>
+                      </div>
+                      {item.beforeSummary && (
+                        <div className="md:col-span-2">
+                          <dt className="label-meta text-xs">Before summary</dt>
+                          <dd>{item.beforeSummary}</dd>
+                        </div>
+                      )}
+                      {item.afterSummary && (
+                        <div className="md:col-span-2">
+                          <dt className="label-meta text-xs">After summary</dt>
+                          <dd>{item.afterSummary}</dd>
+                        </div>
+                      )}
+                      {item.confidenceDelta !== null && (
+                        <div>
+                          <dt className="label-meta text-xs">Confidence delta</dt>
+                          <dd>{item.confidenceDelta}</dd>
+                        </div>
+                      )}
+                      <div>
+                        <dt className="label-meta text-xs">Visibility</dt>
+                        <dd>{item.visibility}</dd>
+                      </div>
+                      <div>
+                        <dt className="label-meta text-xs">Meaningful</dt>
+                        <dd>{item.isMeaningful ? "true" : "false"}</dd>
+                      </div>
+                      <div>
+                        <dt className="label-meta text-xs">Created</dt>
+                        <dd>{formatTimestamp(item.createdAt)}</dd>
+                      </div>
+                    </dl>
+
+                    <ProvenanceSection
+                      itemId={item.id}
+                      evidence={item.evidence}
+                      diagnostics={item.diagnostics}
+                    />
+
+                    <ModelUpdatePublishActionsSection
+                      candidateId={item.id}
+                      publishAllowed={publishAllowed}
+                      evidenceLinkCount={item.evidence.linkCount}
+                      cardPending={cardPending}
+                      pendingActions={pendingActions}
+                      errorMessage={cardErrors[item.id]}
+                      successMessage={cardSuccess[item.id]}
+                      onPublish={handleModelUpdatePublish}
                     />
                   </article>
                 );

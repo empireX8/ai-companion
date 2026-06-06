@@ -17,6 +17,9 @@ const prismaMock = {
   fieldworkAssignment: {
     findMany: vi.fn(),
   },
+  modelUpdate: {
+    findMany: vi.fn(),
+  },
   understandingEvidenceLink: {
     findMany: vi.fn(),
   },
@@ -47,6 +50,10 @@ vi.mock("@/lib/internal-fieldwork-review-candidates", async () => {
   return vi.importActual("../internal-fieldwork-review-candidates");
 });
 
+vi.mock("@/lib/internal-model-update-review-candidates", async () => {
+  return vi.importActual("../internal-model-update-review-candidates");
+});
+
 vi.mock(
   "../../app/(root)/(routes)/internal/user-map/review/_components/InternalUserMapReviewWorkbench",
   () => ({
@@ -54,6 +61,7 @@ vi.mock(
       userMapCandidates,
       investigationCandidates,
       fieldworkCandidates,
+      modelUpdateCandidates,
     }: {
       userMapCandidates: Array<{
         title: string;
@@ -66,6 +74,11 @@ vi.mock(
       fieldworkCandidates: Array<{
         prompt: string;
         candidateLifecycleStatus: string;
+      }>;
+      modelUpdateCandidates: Array<{
+        userFacingSummary: string;
+        updateType: string;
+        isMeaningful: boolean;
       }>;
     }) =>
       React.createElement(
@@ -94,6 +107,15 @@ vi.mock(
             candidate.prompt,
             candidate.candidateLifecycleStatus
           )
+        ),
+        modelUpdateCandidates.map((candidate) =>
+          React.createElement(
+            "div",
+            { key: `modelupdate-${candidate.userFacingSummary}` },
+            candidate.userFacingSummary,
+            candidate.updateType,
+            candidate.isMeaningful ? "meaningful" : "candidate"
+          )
         )
       ),
   })
@@ -110,6 +132,7 @@ describe("Phase 3 internal user-map review page", () => {
     prismaMock.userMapConclusion.findMany.mockResolvedValue([]);
     prismaMock.investigation.findMany.mockResolvedValue([]);
     prismaMock.fieldworkAssignment.findMany.mockResolvedValue([]);
+    prismaMock.modelUpdate.findMany.mockResolvedValue([]);
     prismaMock.understandingEvidenceLink.findMany.mockResolvedValue([]);
     prismaMock.derivationArtifact.findMany.mockResolvedValue([]);
   });
@@ -189,6 +212,7 @@ describe("Phase 3 internal user-map review page", () => {
     expect(html).toContain("Internal Candidate Review");
     expect(html).toContain("operator workbench");
     expect(html).toContain("Fieldwork");
+    expect(html).toContain("ModelUpdate");
     expect(html).toContain("Candidate title");
     expect(html).toContain("proposed");
 
@@ -217,6 +241,16 @@ describe("Phase 3 internal user-map review page", () => {
           userId: "reviewer-1",
           visibility: "internal_only",
           candidateLifecycleStatus: { not: null },
+        }),
+        take: 50,
+      })
+    );
+    expect(prismaMock.modelUpdate.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: "reviewer-1",
+          visibility: "internal_only",
+          isMeaningful: false,
         }),
         take: 50,
       })
@@ -370,6 +404,78 @@ describe("Phase 3 internal user-map review page", () => {
 
     expect(html).toContain("Watch for Sunday tension");
     expect(html).toContain("proposed");
+  });
+
+  it("renders User Map workbench when ModelUpdate list fails", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([
+      {
+        id: "umc-internal-1",
+        title: "Candidate title",
+        summary: "Candidate summary",
+        area: "operating_logic",
+        status: "emerging",
+        confidenceLevel: "low",
+        visibility: "internal_only",
+        candidateLifecycleStatus: "proposed",
+        notes: null,
+        createdAt: new Date("2026-05-15T10:00:00.000Z"),
+        updatedAt: new Date("2026-05-15T11:00:00.000Z"),
+      },
+    ]);
+    prismaMock.modelUpdate.findMany.mockRejectedValueOnce(
+      new Error("model update list failed")
+    );
+    prismaMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([]);
+
+    const page = await import(
+      "../../app/(root)/(routes)/internal/user-map/review/page"
+    );
+
+    const element = await page.default();
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Candidate title");
+    expect(html).not.toContain("Could not load internal review candidates right now.");
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[INTERNAL_MODEL_UPDATE_REVIEW_LIST_ERROR]",
+      expect.any(Error)
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("passes internal ModelUpdate candidates to the workbench", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([]);
+    prismaMock.modelUpdate.findMany.mockResolvedValueOnce([
+      {
+        id: "mu-internal-1",
+        updateType: "conclusion_strengthened",
+        userFacingSummary: "Confidence increased on operating logic",
+        affectedObjectType: "usermap_conclusion",
+        affectedObjectId: "umc-1",
+        beforeSummary: null,
+        afterSummary: null,
+        confidenceDelta: null,
+        visibility: "internal_only",
+        isMeaningful: false,
+        sourceRunId: null,
+        createdAt: new Date("2026-05-15T10:00:00.000Z"),
+      },
+    ]);
+
+    const page = await import(
+      "../../app/(root)/(routes)/internal/user-map/review/page"
+    );
+
+    const element = await page.default();
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Confidence increased on operating logic");
+    expect(html).toContain("conclusion_strengthened");
+    expect(html).toContain("candidate");
+    expect(html).not.toContain("meaningful");
   });
 
   it("fails when User Map list fails even if Investigation list would succeed", async () => {
