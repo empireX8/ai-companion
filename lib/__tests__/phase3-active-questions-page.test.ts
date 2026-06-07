@@ -149,6 +149,8 @@ describe("Phase 3 Active Questions page", () => {
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain("/your-map/umc-1");
+    expect(html).toContain("Related map item");
+    expect(html).not.toMatch(/>umc-1</);
     expect(resolvePublicLinkedObjectHrefMock).toHaveBeenCalledWith({
       userId: "user-1",
       linkedObjectType: "usermap_conclusion",
@@ -180,8 +182,9 @@ describe("Phase 3 Active Questions page", () => {
     });
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("No linked detail available yet.");
+    expect(html).toContain("Source unavailable.");
     expect(html).not.toContain("/your-map/umc-hidden");
+    expect(html).not.toMatch(/>umc-hidden</);
     expect(html).not.toContain("/api/internal/user-map/review-candidates");
     expect(html).not.toContain("<form");
     expect(html).not.toContain("Promote");

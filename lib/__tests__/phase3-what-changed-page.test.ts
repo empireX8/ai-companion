@@ -165,10 +165,15 @@ describe("Phase 3 What Changed page", () => {
     expect(html).not.toContain("/patterns/pc-candidate");
     expect(html).not.toContain("/contradictions/cn-candidate");
     expect(html).not.toContain("/model-updates/mu-target-1");
-    expect(html).toContain("Linked target: umc-hidden");
-    expect(html).toContain("Linked target: pc-candidate");
-    expect(html).toContain("Linked target: cn-candidate");
-    expect(html).toContain("No linked detail available yet.");
+    expect(html).not.toMatch(/>umc-hidden</);
+    expect(html).not.toMatch(/>pc-candidate</);
+    expect(html).not.toMatch(/>cn-candidate</);
+    expect(html).toContain(
+      "This update is visible, but its linked object is not available."
+    );
+    expect(html).not.toContain("internal review");
+    expect(html).not.toContain("lifecycle");
+    expect(html).not.toContain("Promote");
     expect(html).not.toContain("mu-from-summary should never become an ID");
     expect(html).not.toContain("<form");
     expect(html).not.toContain("Promote");

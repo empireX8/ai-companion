@@ -1,10 +1,9 @@
 import React from "react";
-import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
-import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../../../../../lib/public-continuity-registry";
+import { PublicLinkedObjectContinuity } from "../../../../../lib/public-continuity-display";
 import { resolvePublicLinkedObjectHref } from "@/lib/public-linked-object-continuity";
 import prismadb from "@/lib/prismadb";
 import { buildPublicActiveInvestigationWhere } from "@/lib/active-questions";
@@ -141,20 +140,14 @@ export default async function ActiveQuestionDetailPage({
       <section>
         <SectionLabel>Linked target</SectionLabel>
         <div className="card-standard p-4 text-[13px] text-[hsl(216_11%_70%)]">
-          {item.resolvedConclusionId && resolvedConclusionHref ? (
-            <Link href={resolvedConclusionHref} className="text-cyan hover:underline">
-              {item.resolvedConclusionId}
-            </Link>
-          ) : item.resolvedConclusionId ? (
-            <div>
-              <div>{item.resolvedConclusionId}</div>
-              <div className="label-meta text-meta mt-1">
-                {PUBLIC_LINKED_DETAIL_FALLBACK_COPY}
-              </div>
-            </div>
-          ) : (
-            <div>{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
-          )}
+          <PublicLinkedObjectContinuity
+            objectType="usermap_conclusion"
+            objectId={item.resolvedConclusionId}
+            href={resolvedConclusionHref}
+            context="linked_target"
+            linkClassName="text-cyan hover:underline"
+            containerClassName="text-[13px] text-[hsl(216_11%_70%)]"
+          />
         </div>
       </section>
     </div>

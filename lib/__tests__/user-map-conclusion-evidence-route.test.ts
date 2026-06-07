@@ -149,15 +149,15 @@ describe("/api/user-map/conclusions/[id]/evidence", () => {
     expect(payload).toEqual({
       items: [
         {
-          sourceTypeLabel: "Pattern Claim",
-          evidenceSummaryLabel: "Pattern evidence is linked.",
+          sourceTypeLabel: "Related pattern",
+          evidenceSummaryLabel: "Linked evidence",
           sourceObjectHref: "/patterns/pc-safe",
           createdAt: "2026-05-22T10:00:00.000Z",
           hasEvidence: true,
         },
         {
-          sourceTypeLabel: "Contradiction Node",
-          evidenceSummaryLabel: "Tension evidence is linked.",
+          sourceTypeLabel: "Related signal",
+          evidenceSummaryLabel: "Linked evidence",
           sourceObjectHref: "/contradictions/cn-safe",
           createdAt: "2026-05-22T08:00:00.000Z",
           hasEvidence: true,

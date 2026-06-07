@@ -13,6 +13,7 @@ import {
   TODAY_INTELLIGENCE_UPDATES_ENDPOINT,
   type TodayIntelligenceUpdateItem,
 } from "@/lib/today-intelligence-updates";
+import { PublicLinkedObjectContinuity } from "../../lib/public-continuity-display";
 import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../../lib/public-continuity-registry";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
@@ -421,23 +422,12 @@ export default function Today() {
                   {item.userFacingSummary}
                 </p>
                 <div className="mt-3 pt-3 border-t hairline">
-                  {item.affectedObjectId && item.affectedObjectHref ? (
-                    <Link
-                      href={item.affectedObjectHref}
-                      className="label-meta text-cyan hover:underline"
-                    >
-                      Linked target: {item.affectedObjectId}
-                    </Link>
-                  ) : item.affectedObjectId ? (
-                    <div className="label-meta text-meta">
-                      Linked target: {item.affectedObjectId}
-                      <div className="mt-1">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
-                    </div>
-                  ) : (
-                    <div className="label-meta text-meta">
-                      {PUBLIC_LINKED_DETAIL_FALLBACK_COPY}
-                    </div>
-                  )}
+                  <PublicLinkedObjectContinuity
+                    objectType={item.affectedObjectType}
+                    objectId={item.affectedObjectId}
+                    href={item.affectedObjectHref}
+                    context="model_update"
+                  />
                   <div className="label-meta mt-2">
                     Recorded {formatDateTime(item.createdAt)}
                   </div>

@@ -159,8 +159,8 @@ describe("Phase 3 Watch For page", () => {
     expect(html).toContain("/contradictions/cn-1");
     expect(html).toContain("/your-map/umc-1");
     expect(html).not.toContain("/active-questions/inv-12");
-    expect(html).toContain("inv-12");
-    expect(html).toContain("No linked detail available yet.");
+    expect(html).not.toMatch(/>inv-12</);
+    expect(html).toContain("Source unavailable.");
     expect(html).not.toContain("fw-from-prompt should never become an ID");
     expect(resolvePublicLinkedObjectHrefsMock).toHaveBeenCalledWith({
       userId: "user-1",
@@ -248,7 +248,7 @@ describe("Phase 3 Watch For page", () => {
 
     expect(html).toContain("Expires at");
     expect(html).not.toContain("Completed at");
-    expect(html).toContain("No linked detail available yet.");
+    expect(html).toContain("Source unavailable.");
     expect(html).not.toContain("/active-questions/inv-12");
     expect(html).not.toContain("<form");
     expect(html).not.toContain("Promote");

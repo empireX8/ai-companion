@@ -14,6 +14,7 @@ import {
 
 import {
   buildPublicObjectHref,
+  formatPublicObjectLinkTypeLabel,
   toNonEmptyPublicId,
 } from "./public-continuity-registry";
 
@@ -127,7 +128,7 @@ export function formatFieldworkStatus(status: FieldworkStatus): string {
 }
 
 export function formatLinkedObjectType(type: UnderstandingLinkTargetType): string {
-  return toTitleCase(type);
+  return formatPublicObjectLinkTypeLabel(type);
 }
 
 export function formatModelUpdateType(type: ModelUpdateType): string {

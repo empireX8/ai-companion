@@ -371,8 +371,8 @@ describe("ModelUpdate candidate publish public safety", () => {
     expect(payload).toEqual({
       items: [
         {
-          sourceTypeLabel: "Pattern Claim",
-          evidenceSummaryLabel: "Pattern evidence is linked.",
+          sourceTypeLabel: "Related pattern",
+          evidenceSummaryLabel: "Linked evidence",
           sourceObjectHref: "/patterns/pc-safe",
           createdAt: "2026-05-31T10:00:00.000Z",
           hasEvidence: true,
