@@ -12,8 +12,11 @@ import {
 import {
   buildTimelineModelLayersRequestUrl,
   buildTimelineStreamItems,
+  groupTimelineStreamByDate,
   TIMELINE_ACTIVITY_SECTION_LABEL,
   TIMELINE_MODEL_CHANGE_CHIP,
+  TIMELINE_MODEL_LAYERS_ERROR_COPY,
+  toTimelineLondonDateKey,
 } from "../timeline-model-layers";
 import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../public-continuity-registry";
 
@@ -223,6 +226,34 @@ describe("timeline-surface rhythm honesty", () => {
     expect(url.includes("/api/internal/user-map/review-candidates")).toBe(false);
   });
 
+  it("groups stream items by Europe/London date keys across timezone boundaries", () => {
+    expect(toTimelineLondonDateKey("2026-06-01T23:30:00.000Z")).toBe("2026-06-02");
+
+    const groups = groupTimelineStreamByDate(
+      [
+        {
+          kind: "model_change",
+          occurredAt: "2026-06-01T23:30:00.000Z",
+          item: {
+            id: "mu-1",
+            updateTypeLabel: "Conclusion Strengthened",
+            affectedObjectType: "usermap_conclusion",
+            affectedObjectTypeLabel: "Related map item",
+            affectedObjectId: "umc-1",
+            affectedObjectHref: "/your-map/umc-1",
+            userFacingSummary: "A stable recovery pattern strengthened.",
+            createdAt: "2026-06-01T23:30:00.000Z",
+          },
+        },
+      ],
+      new Date("2026-06-02T12:00:00.000Z")
+    );
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.date).toBe("Today");
+    expect(groups[0]?.items[0]?.kind).toBe("model_change");
+  });
+
   it("merges activity and model changes into one chronological stream", () => {
     const stream = buildTimelineStreamItems({
       activity: [
@@ -287,6 +318,14 @@ describe("timeline-surface rhythm honesty", () => {
     expect(TIMELINE_ACTIVITY_SECTION_LABEL).toBe("Activity & changes");
     expect(TIMELINE_MODEL_CHANGE_CHIP).toBe("Model change");
     expect(source.includes("buildTimelineStreamItems")).toBe(true);
+    expect(source.includes("groupTimelineStreamByDate")).toBe(true);
+    expect(source.includes("modelLayerError")).toBe(true);
+    expect(source.includes("TIMELINE_MODEL_LAYERS_ERROR_COPY")).toBe(true);
+    expect(TIMELINE_MODEL_LAYERS_ERROR_COPY).toBe("Could not load model changes.");
+    expect(source.includes("showActivityEmptyState")).toBe(true);
+    expect(source.includes('role="alert"')).toBe(true);
+    expect(source.includes("grid-cols-1 md:grid-cols-2")).toBe(true);
+    expect(source.includes("cn(entry.weight === \"low\" && \"opacity-60\")")).toBe(true);
     expect(source.includes("Model movement")).toBe(false);
     expect(source.includes("No model movement in this window.")).toBe(false);
     expect(source.includes("Connected activity")).toBe(false);

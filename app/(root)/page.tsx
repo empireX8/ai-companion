@@ -193,68 +193,89 @@ export default function Today() {
     const loadSnapshot = async () => {
       setIsLoadingSnapshot(true);
 
-      const [journalResult, contradictionResult, patternsResult, intelligenceResult] =
-        await Promise.allSettled([
-          fetch(TODAY_SURFACING_ENDPOINTS.journal, {
-            method: "GET",
-            cache: "no-store",
-          }),
-          fetch(TODAY_SURFACING_ENDPOINTS.contradiction, {
-            method: "GET",
-            cache: "no-store",
-          }),
-          fetch(TODAY_SURFACING_ENDPOINTS.patterns, {
-            method: "GET",
-            cache: "no-store",
-          }),
-          fetch(TODAY_INTELLIGENCE_UPDATES_ENDPOINT, {
-            method: "GET",
-            cache: "no-store",
-          }),
-        ]);
+      try {
+        const [journalResult, contradictionResult, patternsResult, intelligenceResult] =
+          await Promise.allSettled([
+            fetch(TODAY_SURFACING_ENDPOINTS.journal, {
+              method: "GET",
+              cache: "no-store",
+            }),
+            fetch(TODAY_SURFACING_ENDPOINTS.contradiction, {
+              method: "GET",
+              cache: "no-store",
+            }),
+            fetch(TODAY_SURFACING_ENDPOINTS.patterns, {
+              method: "GET",
+              cache: "no-store",
+            }),
+            fetch(TODAY_INTELLIGENCE_UPDATES_ENDPOINT, {
+              method: "GET",
+              cache: "no-store",
+            }),
+          ]);
 
-      if (cancelled) {
-        return;
-      }
+        if (cancelled) {
+          return;
+        }
 
-      let journalEntries: TodayJournalEntry[] = [];
-      let contradictions: TodayTopContradiction[] = [];
-      let patterns: TodayPatternsResponse | null = null;
+        let journalEntries: TodayJournalEntry[] = [];
+        let contradictions: TodayTopContradiction[] = [];
+        let patterns: TodayPatternsResponse | null = null;
 
-      if (journalResult.status === "fulfilled" && journalResult.value.ok) {
-        journalEntries = (await journalResult.value.json()) as TodayJournalEntry[];
-      }
+        if (journalResult.status === "fulfilled" && journalResult.value.ok) {
+          try {
+            journalEntries = (await journalResult.value.json()) as TodayJournalEntry[];
+          } catch {
+            journalEntries = [];
+          }
+        }
 
-      if (contradictionResult.status === "fulfilled" && contradictionResult.value.ok) {
-        contradictions = (await contradictionResult.value.json()) as TodayTopContradiction[];
-      }
+        if (contradictionResult.status === "fulfilled" && contradictionResult.value.ok) {
+          try {
+            contradictions = (await contradictionResult.value.json()) as TodayTopContradiction[];
+          } catch {
+            contradictions = [];
+          }
+        }
 
-      if (patternsResult.status === "fulfilled" && patternsResult.value.ok) {
-        patterns = (await patternsResult.value.json()) as TodayPatternsResponse;
-      }
+        if (patternsResult.status === "fulfilled" && patternsResult.value.ok) {
+          try {
+            patterns = (await patternsResult.value.json()) as TodayPatternsResponse;
+          } catch {
+            patterns = null;
+          }
+        }
 
-      let nextIntelligenceUpdates: TodayIntelligenceUpdateItem[] = [];
-      if (
-        intelligenceResult.status === "fulfilled" &&
-        intelligenceResult.value.ok
-      ) {
-        const payload = (await intelligenceResult.value.json()) as {
-          items?: TodayIntelligenceUpdateItem[];
-        };
-        if (Array.isArray(payload.items)) {
-          nextIntelligenceUpdates = payload.items;
+        let nextIntelligenceUpdates: TodayIntelligenceUpdateItem[] = [];
+        if (
+          intelligenceResult.status === "fulfilled" &&
+          intelligenceResult.value.ok
+        ) {
+          try {
+            const payload = (await intelligenceResult.value.json()) as {
+              items?: TodayIntelligenceUpdateItem[];
+            };
+            if (Array.isArray(payload.items)) {
+              nextIntelligenceUpdates = payload.items;
+            }
+          } catch {
+            nextIntelligenceUpdates = [];
+          }
+        }
+
+        setSurfacingCards(
+          buildTodaySurfacingCards({
+            journalEntries,
+            contradictions,
+            patterns,
+          })
+        );
+        setIntelligenceUpdates(nextIntelligenceUpdates);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingSnapshot(false);
         }
       }
-
-      setSurfacingCards(
-        buildTodaySurfacingCards({
-          journalEntries,
-          contradictions,
-          patterns,
-        })
-      );
-      setIntelligenceUpdates(nextIntelligenceUpdates);
-      setIsLoadingSnapshot(false);
     };
 
     void loadSnapshot();

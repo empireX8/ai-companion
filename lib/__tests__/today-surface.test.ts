@@ -219,6 +219,17 @@ describe("today-surface safety and honest copy", () => {
     expect(source.includes("No intelligence updates yet.")).toBe(false);
   });
 
+  it("clears intelligence snapshot loading in finally even when JSON parsing fails", () => {
+    const source = readTodayPageSource();
+    expect(source.includes("const loadSnapshot = async () =>")).toBe(true);
+    expect(source.includes("setIsLoadingSnapshot(true)")).toBe(true);
+    expect(source.includes("try {")).toBe(true);
+    expect(source.includes("} finally {")).toBe(true);
+    expect(source.includes("setIsLoadingSnapshot(false)")).toBe(true);
+    expect(source.match(/setIsLoadingSnapshot\(false\)/g)?.length).toBe(1);
+    expect(source.includes("catch {")).toBe(true);
+  });
+
   it("removes unwired media affordances from Today capture", () => {
     const source = readTodayPageSource();
     expect(source.includes("Saving media is not wired yet.")).toBe(false);

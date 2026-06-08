@@ -25,19 +25,22 @@ import {
 import {
   buildTimelineModelLayersRequestUrl,
   buildTimelineStreamItems,
+  groupTimelineStreamByDate,
   TIMELINE_ACTIVITY_EMPTY_COPY,
   TIMELINE_ACTIVITY_LOADING_COPY,
   TIMELINE_ACTIVITY_SECTION_INTRO,
   TIMELINE_ACTIVITY_SECTION_LABEL,
   TIMELINE_MODEL_CHANGE_CHIP,
+  TIMELINE_MODEL_LAYERS_ERROR_COPY,
   TIMELINE_MODEL_LAYERS_LOADING_COPY,
   TIMELINE_PAGE_META,
   TIMELINE_SIGNALS_SECTION_LABEL,
+  toTimelineLondonDateKey,
   type TimelineModelLayerItem,
-  type TimelineStreamItem,
 } from "@/lib/timeline-model-layers";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "@/lib/public-continuity-registry";
+import { cn } from "@/lib/utils";
 
 const STATE_DISPLAY_LABELS: Record<QuickCheckInStateTag, string> = {
   stable: "Calm",
@@ -74,45 +77,6 @@ function formatDateTime(value: string): string {
   }).format(date);
 }
 
-function toDateKey(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "invalid";
-  }
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function formatDateLabel(dateKey: string, now: Date): string {
-  const todayKey = toDateKey(now.toISOString());
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayKey = toDateKey(yesterday.toISOString());
-
-  if (dateKey === todayKey) {
-    return "Today";
-  }
-
-  if (dateKey === yesterdayKey) {
-    return "Yesterday";
-  }
-
-  const [year, month, day] = dateKey.split("-").map(Number);
-  if (!year || !month || !day) {
-    return "Unknown day";
-  }
-
-  const parsed = new Date(year, month - 1, day);
-  return new Intl.DateTimeFormat("en-GB", {
-    month: "short",
-    day: "numeric",
-    ...(parsed.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
-  }).format(parsed);
-}
-
 function formatRecentLabel(iso: string | null): string {
   if (!iso) {
     return "—";
@@ -147,30 +111,9 @@ function stateLabel(stateTag: QuickCheckInStateTag | null): string {
   return STATE_DISPLAY_LABELS[stateTag] ?? QUICK_CHECK_IN_STATE_LABELS[stateTag];
 }
 
-function groupStreamByDate(items: TimelineStreamItem[], now: Date) {
-  const grouped = new Map<string, TimelineStreamItem[]>();
-
-  for (const item of items) {
-    const key = toDateKey(item.occurredAt);
-    const current = grouped.get(key) ?? [];
-    current.push(item);
-    grouped.set(key, current);
-  }
-
-  return [...grouped.entries()]
-    .sort((left, right) => right[0].localeCompare(left[0]))
-    .map(([dateKey, streamItems]) => ({
-      date: formatDateLabel(dateKey, now),
-      items: streamItems.sort(
-        (left, right) =>
-          new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
-      ),
-    }));
-}
-
 function ActivityStreamEntry({ entry }: { entry: TimelineEntry }) {
   return (
-    <div className={entry.weight === "low" ? "opacity-60" : ""}>
+    <div className={cn(entry.weight === "low" && "opacity-60")}>
       <div className="flex items-center gap-3 mb-1">
         <span className="label-meta">{formatTime(entry.occurredAt)}</span>
         {entry.href ? (
@@ -229,6 +172,7 @@ export default function TimelineSurface() {
   const [payload, setPayload] = useState<TimelineResponse | null>(null);
   const [modelLayers, setModelLayers] = useState<TimelineModelLayerItem[]>([]);
   const [isLoadingModelLayers, setIsLoadingModelLayers] = useState(true);
+  const [modelLayerError, setModelLayerError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -279,6 +223,7 @@ export default function TimelineSurface() {
 
     const loadModelLayers = async () => {
       setIsLoadingModelLayers(true);
+      setModelLayerError(null);
 
       try {
         const response = await fetch(
@@ -290,7 +235,7 @@ export default function TimelineSurface() {
         );
 
         if (!response.ok) {
-          throw new Error("Could not load model movement.");
+          throw new Error(TIMELINE_MODEL_LAYERS_ERROR_COPY);
         }
 
         const nextPayload = (await response.json()) as {
@@ -304,6 +249,7 @@ export default function TimelineSurface() {
       } catch {
         if (!cancelled) {
           setModelLayers([]);
+          setModelLayerError(TIMELINE_MODEL_LAYERS_ERROR_COPY);
         }
       } finally {
         if (!cancelled) {
@@ -337,7 +283,7 @@ export default function TimelineSurface() {
   const repeatedSignals = payload?.stateSummary.repeatedSignals ?? null;
 
   const groupedActivity = useMemo(
-    () => groupStreamByDate(streamItems, new Date()),
+    () => groupTimelineStreamByDate(streamItems, new Date()),
     [streamItems]
   );
 
@@ -360,12 +306,17 @@ export default function TimelineSurface() {
   const checkInDayCount = useMemo(() => {
     const checkIns = payload?.checkIns ?? [];
     const dayKeys = new Set(
-      checkIns.map((item) => toDateKey(item.createdAt)).filter((item) => item !== "invalid")
+      checkIns
+        .map((item) => toTimelineLondonDateKey(item.createdAt))
+        .filter((item) => item !== "invalid")
     );
     return dayKeys.size;
   }, [payload?.checkIns]);
 
   const isLoadingActivityStream = isLoading || isLoadingModelLayers;
+  const hasStreamItems = streamItems.length > 0;
+  const showActivityEmptyState =
+    !hasStreamItems && !errorMessage && !modelLayerError;
 
   return (
     <div className="px-12 py-10 max-w-[1180px] mx-auto animate-fade-in">
@@ -437,7 +388,7 @@ export default function TimelineSurface() {
 
         <div className="mb-6">
           <div className="label-meta mb-3">Possible links</div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {possibleLinks.length > 0 ? (
               possibleLinks.map((link, index) => (
                 <div key={`${link.event}-${link.state}-${index}`} className="card-surfaced p-4">
@@ -450,7 +401,7 @@ export default function TimelineSurface() {
                 </div>
               ))
             ) : (
-              <div className="card-standard p-4 text-[13px] text-meta col-span-2">
+              <div className="card-standard p-4 text-[13px] text-meta md:col-span-2">
                 No recurring state/event links yet.
               </div>
             )}
@@ -494,40 +445,60 @@ export default function TimelineSurface() {
           <div className="card-standard p-4 text-[13px] text-meta">
             {isLoading ? TIMELINE_ACTIVITY_LOADING_COPY : TIMELINE_MODEL_LAYERS_LOADING_COPY}
           </div>
-        ) : errorMessage ? (
-          <div className="card-standard p-4 text-[13px] text-[hsl(12_80%_64%)]">{errorMessage}</div>
-        ) : groupedActivity.length === 0 ? (
-          <div className="card-standard p-4 text-[13px] text-meta">{TIMELINE_ACTIVITY_EMPTY_COPY}</div>
         ) : (
-          <div className="space-y-6">
-            {groupedActivity.map((group) => (
-              <div key={group.date}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-1.5 w-1.5 rounded-full bg-cyan glow-cyan" />
-                  <div className="label-meta">{group.date}</div>
-                </div>
-                <div className="ml-[3px] border-l hairline pl-6 space-y-4">
-                  {group.items.map((item) => (
-                    <div
-                      key={
-                        item.kind === "activity"
-                          ? `activity-${item.entry.id}`
-                          : `model-${item.item.id}`
-                      }
-                      className="relative"
-                    >
-                      <div className="absolute -left-[27px] top-1.5 h-1.5 w-1.5 rounded-full bg-white/20" />
-                      {item.kind === "activity" ? (
-                        <ActivityStreamEntry entry={item.entry} />
-                      ) : (
-                        <ModelChangeStreamEntry item={item.item} />
-                      )}
-                    </div>
-                  ))}
-                </div>
+          <>
+            {errorMessage ? (
+              <div
+                className="card-standard p-4 text-[13px] text-[hsl(12_80%_64%)] mb-4"
+                role="alert"
+              >
+                {errorMessage}
               </div>
-            ))}
-          </div>
+            ) : null}
+            {modelLayerError ? (
+              <div
+                className="card-standard p-4 text-[13px] text-[hsl(12_80%_64%)] mb-4"
+                role="alert"
+              >
+                {modelLayerError}
+              </div>
+            ) : null}
+            {hasStreamItems ? (
+              <div className="space-y-6">
+                {groupedActivity.map((group) => (
+                  <div key={group.date}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="h-1.5 w-1.5 rounded-full bg-cyan glow-cyan" />
+                      <div className="label-meta">{group.date}</div>
+                    </div>
+                    <div className="ml-[3px] border-l hairline pl-6 space-y-4">
+                      {group.items.map((item) => (
+                        <div
+                          key={
+                            item.kind === "activity"
+                              ? `activity-${item.entry.id}`
+                              : `model-${item.item.id}`
+                          }
+                          className="relative"
+                        >
+                          <div className="absolute -left-[27px] top-1.5 h-1.5 w-1.5 rounded-full bg-white/20" />
+                          {item.kind === "activity" ? (
+                            <ActivityStreamEntry entry={item.entry} />
+                          ) : (
+                            <ModelChangeStreamEntry item={item.item} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : showActivityEmptyState ? (
+              <div className="card-standard p-4 text-[13px] text-meta">
+                {TIMELINE_ACTIVITY_EMPTY_COPY}
+              </div>
+            ) : null}
+          </>
         )}
       </section>
     </div>
