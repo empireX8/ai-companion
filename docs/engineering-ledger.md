@@ -938,6 +938,10 @@ Ephemeral validation against local dev DB on auto-selected user `user_34TUYA53pI
 - Possible future mobile polish only if product review finds gaps
 - Known unused-variable build warnings remain non-blocking
 
+### Next exact step
+
+Run a candidate lifecycle cleanup design audit covering stale-candidate policy, expiry scheduler sequencing, ModelUpdate reject/archive semantics, and whether DB-level duplicate uniqueness is warranted before implementing any lifecycle cleanup.
+
 ### Supersedes prior caveat
 
 - PR #47 committed runtime smoke validates integrated candidate-loop seams in-memory (bridge → lifecycle/publish → public visibility/provenance). This supersedes earlier ledger notes that the assembled loop was unvalidated at the test harness level. Live-DB operator validation remains a separate operational concern.
