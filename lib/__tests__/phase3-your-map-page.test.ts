@@ -169,7 +169,7 @@ describe("Phase 3 Your Map page", () => {
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain("Short decompression windows reduce late-day escalation patterns.");
-    expect(html).toContain("No linked evidence available yet.");
+    expect(html).toContain("No linked public evidence yet.");
     expect(listYourMapPublicEvidenceContinuityMock).toHaveBeenCalledWith({
       userId: "user-1",
       targetId: "umc-1",
@@ -199,7 +199,7 @@ describe("Phase 3 Your Map page", () => {
       {
         id: "link-pattern-1",
         sourceType: "pattern_claim",
-        sourceTypeLabel: "Pattern Claim",
+        sourceTypeLabel: "Related pattern",
         sourceId: "pc-1",
         href: "/patterns/pc-1",
         createdAt: "2026-05-18T10:00:00.000Z",
@@ -207,7 +207,7 @@ describe("Phase 3 Your Map page", () => {
       {
         id: "link-contradiction-1",
         sourceType: "contradiction_node",
-        sourceTypeLabel: "Contradiction Node",
+        sourceTypeLabel: "Related signal",
         sourceId: "cn-1",
         href: "/contradictions/cn-1",
         createdAt: "2026-05-18T09:00:00.000Z",
@@ -221,9 +221,13 @@ describe("Phase 3 Your Map page", () => {
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain("Linked evidence");
+    expect(html).toContain("Related pattern");
+    expect(html).toContain("Related signal");
     expect(html).toContain("/patterns/pc-1");
     expect(html).toContain("/contradictions/cn-1");
-    expect(html).not.toContain("No linked evidence available yet.");
+    expect(html).not.toContain("No linked public evidence yet.");
+    expect(html).not.toMatch(/>pc-1</);
+    expect(html).not.toMatch(/>cn-1</);
     expect(html).not.toContain("/active-questions/");
     expect(html).not.toContain("/watch-for/");
     expect(html).not.toContain("receipt-user-map-");

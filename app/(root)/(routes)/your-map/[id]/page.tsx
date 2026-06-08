@@ -109,9 +109,9 @@ export default async function YourMapDetailPage({
           <div className="space-y-2">
             {linkedEvidence.map((link) => (
               <article key={link.id} className="card-standard p-4 text-[13px]">
-                <div className="label-meta text-cyan/70">{link.sourceTypeLabel}</div>
+                <div className="label-meta text-cyan/70">{link.evidenceSummaryLabel}</div>
                 <Link href={link.href} className="text-cyan hover:underline">
-                  {link.sourceId}
+                  {link.sourceTypeLabel}
                 </Link>
                 <div className="label-meta mt-1 text-meta">
                   Linked {formatDateTime(link.createdAt)}

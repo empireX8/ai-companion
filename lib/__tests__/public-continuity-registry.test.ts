@@ -4,18 +4,24 @@ import { describe, expect, it } from "vitest";
 import {
   DEFERRED_RECEIPT_NAMESPACE_PREFIXES,
   PUBLIC_EVIDENCE_FALLBACK_COPY,
+  PUBLIC_EVIDENCE_LINKED_LABEL,
   PUBLIC_EVIDENCE_SOURCE_TYPES,
   PUBLIC_EVIDENCE_TARGET_TYPES,
   PUBLIC_LINKED_DETAIL_FALLBACK_COPY,
+  PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY,
   PUBLIC_OBJECT_LINK_TYPES,
   PUBLIC_RECEIPT_NAMESPACE_PREFIXES,
   buildPublicObjectHref,
   buildPublicReceiptHref,
+  formatPublicEvidenceSourceTypeLabel,
+  formatPublicEvidenceSummaryLabel,
+  formatPublicObjectLinkTypeLabel,
   isAllowedReceiptNamespace,
   isDeferredReceiptNamespace,
   isPublicEvidenceSourceType,
   isPublicEvidenceTargetType,
   isPublicObjectLinkType,
+  resolvePublicLinkedObjectFallbackCopy,
 } from "../public-continuity-registry";
 
 describe("public continuity registry", () => {
@@ -117,12 +123,57 @@ describe("public continuity registry", () => {
   });
 
   it("centralizes exact public fallback copy", () => {
-    expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe(
-      "No linked detail available yet."
-    );
+    expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe("Source unavailable.");
     expect(PUBLIC_EVIDENCE_FALLBACK_COPY).toBe(
-      "No linked evidence available yet."
+      "No linked public evidence yet."
     );
+    expect(PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY).toBe(
+      "This update is visible, but its linked object is not available."
+    );
+    expect(PUBLIC_EVIDENCE_LINKED_LABEL).toBe("Linked evidence");
+  });
+
+  it("formats public-safe object and evidence labels", () => {
+    expect(formatPublicObjectLinkTypeLabel("investigation")).toBe(
+      "Related question"
+    );
+    expect(formatPublicObjectLinkTypeLabel("fieldwork_assignment")).toBe(
+      "Related watch-for prompt"
+    );
+    expect(formatPublicObjectLinkTypeLabel("pattern_claim")).toBe(
+      "Related pattern"
+    );
+    expect(formatPublicObjectLinkTypeLabel("contradiction_node")).toBe(
+      "Related signal"
+    );
+    expect(formatPublicEvidenceSourceTypeLabel("pattern_claim")).toBe(
+      "Related pattern"
+    );
+    expect(formatPublicEvidenceSourceTypeLabel("contradiction_node")).toBe(
+      "Related signal"
+    );
+    expect(formatPublicEvidenceSummaryLabel()).toBe("Linked evidence");
+  });
+
+  it("resolves linked-object fallback copy by context without exposing IDs", () => {
+    expect(
+      resolvePublicLinkedObjectFallbackCopy({
+        hasObjectReference: true,
+        context: "model_update",
+      })
+    ).toBe(PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY);
+    expect(
+      resolvePublicLinkedObjectFallbackCopy({
+        hasObjectReference: true,
+        context: "linked_target",
+      })
+    ).toBe(PUBLIC_LINKED_DETAIL_FALLBACK_COPY);
+    expect(
+      resolvePublicLinkedObjectFallbackCopy({
+        hasObjectReference: false,
+        context: "linked_target",
+      })
+    ).toBe(PUBLIC_LINKED_DETAIL_FALLBACK_COPY);
   });
   it("keeps raw understanding evidence-link API out of public UI continuity surfaces", () => {
     const publicSurfaceFiles = [

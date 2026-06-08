@@ -1,7 +1,60 @@
-export const PUBLIC_LINKED_DETAIL_FALLBACK_COPY =
-  "No linked detail available yet.";
-export const PUBLIC_EVIDENCE_FALLBACK_COPY =
-  "No linked evidence available yet.";
+export const PUBLIC_EVIDENCE_LINKED_LABEL = "Linked evidence";
+
+export const PUBLIC_EVIDENCE_FALLBACK_COPY = "No linked public evidence yet.";
+
+export const PUBLIC_LINKED_DETAIL_FALLBACK_COPY = "Source unavailable.";
+
+export const PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY =
+  "This update is visible, but its linked object is not available.";
+
+const PUBLIC_OBJECT_LINK_TYPE_LABELS: Record<PublicObjectLinkType, string> = {
+  usermap_conclusion: "Related map item",
+  investigation: "Related question",
+  fieldwork_assignment: "Related watch-for prompt",
+  pattern_claim: "Related pattern",
+  contradiction_node: "Related signal",
+};
+
+export function formatPublicObjectLinkTypeLabel(
+  type: string | null | undefined
+): string {
+  if (isPublicObjectLinkType(type)) {
+    return PUBLIC_OBJECT_LINK_TYPE_LABELS[type];
+  }
+
+  return PUBLIC_EVIDENCE_LINKED_LABEL;
+}
+
+export function formatPublicEvidenceSourceTypeLabel(
+  sourceType: string | null | undefined
+): string {
+  if (sourceType === "pattern_claim") {
+    return "Related pattern";
+  }
+
+  if (sourceType === "contradiction_node") {
+    return "Related signal";
+  }
+
+  return PUBLIC_EVIDENCE_LINKED_LABEL;
+}
+
+export function formatPublicEvidenceSummaryLabel(): string {
+  return PUBLIC_EVIDENCE_LINKED_LABEL;
+}
+
+export type PublicLinkedObjectDisplayContext = "model_update" | "linked_target";
+
+export function resolvePublicLinkedObjectFallbackCopy(input: {
+  hasObjectReference: boolean;
+  context: PublicLinkedObjectDisplayContext;
+}): string {
+  if (input.hasObjectReference && input.context === "model_update") {
+    return PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY;
+  }
+
+  return PUBLIC_LINKED_DETAIL_FALLBACK_COPY;
+}
 
 export const PUBLIC_OBJECT_LINK_TYPES = [
   "usermap_conclusion",

@@ -169,8 +169,8 @@ describe("public evidence continuity helper", () => {
       {
         id: "link-1",
         sourceType: "pattern_claim",
-        sourceTypeLabel: "Pattern Claim",
-        evidenceSummaryLabel: "Pattern evidence is linked.",
+        sourceTypeLabel: "Related pattern",
+        evidenceSummaryLabel: "Linked evidence",
         sourceId: "pc-1",
         href: "/patterns/pc-1",
         createdAt: "2026-05-18T10:00:00.000Z",
@@ -178,8 +178,8 @@ describe("public evidence continuity helper", () => {
       {
         id: "link-4",
         sourceType: "contradiction_node",
-        sourceTypeLabel: "Contradiction Node",
-        evidenceSummaryLabel: "Tension evidence is linked.",
+        sourceTypeLabel: "Related signal",
+        evidenceSummaryLabel: "Linked evidence",
         sourceId: "cn-1",
         href: "/contradictions/cn-1",
         createdAt: "2026-05-18T07:00:00.000Z",
@@ -223,7 +223,7 @@ describe("public evidence continuity helper", () => {
       "sourceType",
       "sourceTypeLabel",
     ]);
-    expect(items[0]?.evidenceSummaryLabel).toBe("Pattern evidence is linked.");
+    expect(items[0]?.evidenceSummaryLabel).toBe("Linked evidence");
 
     const combined = JSON.stringify(items);
     expect(combined).not.toContain("meta");

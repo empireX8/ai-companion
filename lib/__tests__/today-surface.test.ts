@@ -201,9 +201,7 @@ describe("today-surface safety and honest copy", () => {
     const source = readTodayPageSource();
     expect(source.includes("Saving media is not wired yet.")).toBe(true);
     expect(source.includes("PUBLIC_LINKED_DETAIL_FALLBACK_COPY")).toBe(true);
-    expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe(
-      "No linked detail available yet."
-    );
+    expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe("Source unavailable.");
     expect(source.includes("No surfaced items yet.")).toBe(true);
     expect(source.includes("No intelligence updates yet.")).toBe(true);
     expect(source.includes("Loading intelligence updates…")).toBe(true);

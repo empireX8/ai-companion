@@ -3,7 +3,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
-import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../../../../lib/public-continuity-registry";
+import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import {
   linkedObjectHrefMapKey,
   resolvePublicLinkedObjectHrefs,
@@ -103,24 +103,14 @@ export default async function WatchForPage() {
                     ? verifiedLinkedObjectHrefByKey.get(mapKey) ?? null
                     : null;
 
-                  if (item.linkedObjectId && verifiedHref) {
-                    return (
-                      <Link href={verifiedHref} className="label-meta text-cyan hover:underline">
-                        Linked target: {item.linkedObjectId}
-                      </Link>
-                    );
-                  }
-
-                  if (item.linkedObjectId) {
-                    return (
-                      <div className="label-meta text-meta">
-                        Linked target: {item.linkedObjectId}
-                        <div className="mt-1">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
-                      </div>
-                    );
-                  }
-
-                  return <div className="label-meta text-meta">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>;
+                  return (
+                    <PublicLinkedObjectContinuity
+                      objectType={item.linkedObjectType}
+                      objectId={item.linkedObjectId}
+                      href={verifiedHref}
+                      context="linked_target"
+                    />
+                  );
                 })()}
                 <div className="label-meta mt-2">
                   Updated {formatDateTime(item.updatedAt)}

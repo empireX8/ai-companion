@@ -246,12 +246,9 @@ describe("timeline-surface rhythm honesty", () => {
     expect(source.includes("Model movement")).toBe(true);
     expect(source.includes("No model movement in this window.")).toBe(true);
     expect(source.includes("PUBLIC_LINKED_DETAIL_FALLBACK_COPY")).toBe(true);
-    expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe(
-      "No linked detail available yet."
-    );
-    expect(source.includes("item.affectedObjectId && item.affectedObjectHref")).toBe(
-      true
-    );
+    expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe("Source unavailable.");
+    expect(source.includes("PublicLinkedObjectContinuity")).toBe(true);
+    expect(source.includes("Linked target:")).toBe(false);
     expect(source.includes("Promote")).toBe(false);
     expect(source.includes("Publish")).toBe(false);
     expect(source.includes("Edit")).toBe(false);

@@ -11,6 +11,8 @@ import {
 import prismadb from "@/lib/prismadb";
 import {
   buildPublicObjectHref,
+  formatPublicEvidenceSourceTypeLabel,
+  formatPublicEvidenceSummaryLabel,
   isPublicEvidenceSourceType,
   toNonEmptyPublicId,
   type PublicEvidenceSourceType,
@@ -50,24 +52,6 @@ export type PublicEvidenceContinuityItem = {
   createdAt: string;
 };
 
-function toPublicEvidenceSummaryLabel(
-  sourceType: PublicEvidenceSource
-): string {
-  if (sourceType === UnderstandingLinkSourceType.pattern_claim) {
-    return "Pattern evidence is linked.";
-  }
-
-  return "Tension evidence is linked.";
-}
-
-function toTitleCase(value: string): string {
-  return value
-    .split("_")
-    .filter(Boolean)
-    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
-    .join(" ");
-}
-
 function buildAllowlistedSourceHref(input: {
   sourceType: PublicEvidenceSource;
   sourceId: string;
@@ -101,8 +85,8 @@ function toSafePublicEvidenceItem(args: {
     return {
       id: args.row.id,
       sourceType: args.row.sourceType,
-      sourceTypeLabel: toTitleCase(args.row.sourceType),
-      evidenceSummaryLabel: toPublicEvidenceSummaryLabel(args.row.sourceType),
+      sourceTypeLabel: formatPublicEvidenceSourceTypeLabel(args.row.sourceType),
+      evidenceSummaryLabel: formatPublicEvidenceSummaryLabel(),
       sourceId: safeSourceId,
       href,
       createdAt: args.row.createdAt.toISOString(),
@@ -125,8 +109,8 @@ function toSafePublicEvidenceItem(args: {
     return {
       id: args.row.id,
       sourceType: args.row.sourceType,
-      sourceTypeLabel: toTitleCase(args.row.sourceType),
-      evidenceSummaryLabel: toPublicEvidenceSummaryLabel(args.row.sourceType),
+      sourceTypeLabel: formatPublicEvidenceSourceTypeLabel(args.row.sourceType),
+      evidenceSummaryLabel: formatPublicEvidenceSummaryLabel(),
       sourceId: safeSourceId,
       href,
       createdAt: args.row.createdAt.toISOString(),
