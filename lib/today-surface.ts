@@ -58,6 +58,14 @@ export const TODAY_SURFACING_ENDPOINTS = {
   patterns: "/api/patterns",
 } as const;
 
+export const TODAY_INTELLIGENCE_SECTION_TITLE = "Intelligence snapshot";
+export const TODAY_INTELLIGENCE_SECTION_INTRO =
+  "Surfaced material and recent meaningful changes, composed from your existing records.";
+export const TODAY_SURFACED_SUBSECTION_LABEL = "Surfaced from your material";
+export const TODAY_INTELLIGENCE_LOADING_COPY = "Building your intelligence snapshot…";
+export const TODAY_INTELLIGENCE_EMPTY_COPY =
+  "Nothing surfaced yet. Capture something or run a quick check-in to build signal.";
+
 function normalizeText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }

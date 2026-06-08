@@ -9,7 +9,15 @@ import {
   mapTimelineEntries,
   type TimelineResponse,
 } from "../timeline-surface";
-import { buildTimelineModelLayersRequestUrl } from "../timeline-model-layers";
+import {
+  buildTimelineModelLayersRequestUrl,
+  buildTimelineStreamItems,
+  groupTimelineStreamByDate,
+  TIMELINE_ACTIVITY_SECTION_LABEL,
+  TIMELINE_MODEL_CHANGE_CHIP,
+  TIMELINE_MODEL_LAYERS_ERROR_COPY,
+  toTimelineLondonDateKey,
+} from "../timeline-model-layers";
 import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../public-continuity-registry";
 
 function makeSummary(totalCheckIns = 0): TimelineStateSummary {
@@ -218,6 +226,65 @@ describe("timeline-surface rhythm honesty", () => {
     expect(url.includes("/api/internal/user-map/review-candidates")).toBe(false);
   });
 
+  it("groups stream items by Europe/London date keys across timezone boundaries", () => {
+    expect(toTimelineLondonDateKey("2026-06-01T23:30:00.000Z")).toBe("2026-06-02");
+
+    const groups = groupTimelineStreamByDate(
+      [
+        {
+          kind: "model_change",
+          occurredAt: "2026-06-01T23:30:00.000Z",
+          item: {
+            id: "mu-1",
+            updateTypeLabel: "Conclusion Strengthened",
+            affectedObjectType: "usermap_conclusion",
+            affectedObjectTypeLabel: "Related map item",
+            affectedObjectId: "umc-1",
+            affectedObjectHref: "/your-map/umc-1",
+            userFacingSummary: "A stable recovery pattern strengthened.",
+            createdAt: "2026-06-01T23:30:00.000Z",
+          },
+        },
+      ],
+      new Date("2026-06-02T12:00:00.000Z")
+    );
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.date).toBe("Today");
+    expect(groups[0]?.items[0]?.kind).toBe("model_change");
+  });
+
+  it("merges activity and model changes into one chronological stream", () => {
+    const stream = buildTimelineStreamItems({
+      activity: [
+        {
+          id: "journal-1",
+          occurredAt: "2026-05-11T10:00:00.000Z",
+          chip: "Journal",
+          title: "Daily note",
+          body: "Journal preview",
+          href: "/library/journal-journal-1",
+        },
+      ],
+      modelLayers: [
+        {
+          id: "mu-1",
+          updateTypeLabel: "Conclusion Strengthened",
+          affectedObjectType: "usermap_conclusion",
+          affectedObjectTypeLabel: "Related map item",
+          affectedObjectId: "umc-1",
+          affectedObjectHref: "/your-map/umc-1",
+          userFacingSummary: "A stable recovery pattern strengthened.",
+          createdAt: "2026-05-12T10:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(stream).toHaveLength(2);
+    expect(stream[0]?.kind).toBe("model_change");
+    expect(stream[1]?.kind).toBe("activity");
+  });
+
   it("removes seeded rhythm rendering and keeps honest rhythm copy in timeline UI", () => {
     const source = readFileSync(
       join(
@@ -234,7 +301,7 @@ describe("timeline-surface rhythm honesty", () => {
     );
   });
 
-  it("renders model movement as a separate read-only section with honest empty and link fallback copy", () => {
+  it("integrates model changes into activity stream with coherent section labels and no unwired affordances", () => {
     const source = readFileSync(
       join(
         process.cwd(),
@@ -243,8 +310,27 @@ describe("timeline-surface rhythm honesty", () => {
       "utf8"
     );
 
-    expect(source.includes("Model movement")).toBe(true);
-    expect(source.includes("No model movement in this window.")).toBe(true);
+    expect(source.includes("TIMELINE_PAGE_META")).toBe(true);
+    expect(source.includes("TIMELINE_SIGNALS_SECTION_LABEL")).toBe(true);
+    expect(source.includes("TIMELINE_ACTIVITY_SECTION_LABEL")).toBe(true);
+    expect(source.includes("TIMELINE_ACTIVITY_EMPTY_COPY")).toBe(true);
+    expect(source.includes("TIMELINE_MODEL_CHANGE_CHIP")).toBe(true);
+    expect(TIMELINE_ACTIVITY_SECTION_LABEL).toBe("Activity & changes");
+    expect(TIMELINE_MODEL_CHANGE_CHIP).toBe("Model change");
+    expect(source.includes("buildTimelineStreamItems")).toBe(true);
+    expect(source.includes("groupTimelineStreamByDate")).toBe(true);
+    expect(source.includes("modelLayerError")).toBe(true);
+    expect(source.includes("TIMELINE_MODEL_LAYERS_ERROR_COPY")).toBe(true);
+    expect(TIMELINE_MODEL_LAYERS_ERROR_COPY).toBe("Could not load model changes.");
+    expect(source.includes("showActivityEmptyState")).toBe(true);
+    expect(source.includes('role="alert"')).toBe(true);
+    expect(source.includes("grid-cols-1 md:grid-cols-2")).toBe(true);
+    expect(source.includes("cn(entry.weight === \"low\" && \"opacity-60\")")).toBe(true);
+    expect(source.includes("Model movement")).toBe(false);
+    expect(source.includes("No model movement in this window.")).toBe(false);
+    expect(source.includes("Connected activity")).toBe(false);
+    expect(source.includes("Possible links</SectionLabel>")).toBe(false);
+    expect(source.includes("ChevronRight")).toBe(false);
     expect(source.includes("PUBLIC_LINKED_DETAIL_FALLBACK_COPY")).toBe(true);
     expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe("Source unavailable.");
     expect(source.includes("PublicLinkedObjectContinuity")).toBe(true);
