@@ -14,6 +14,7 @@ import {
   endPendingAction,
   startPendingAction,
 } from "../../app/(root)/(routes)/internal/user-map/review/_components/InternalUserMapReviewWorkbench";
+import { lifecycleActionToStatus } from "../internal-user-map-review-operator-actions";
 import type { InternalFieldworkReviewCandidate } from "../internal-fieldwork-review-candidates";
 import type { InternalInvestigationReviewCandidate } from "../internal-investigation-review-candidates";
 import type { InternalModelUpdateReviewCandidate } from "../internal-model-update-review-candidates";
@@ -181,6 +182,7 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).toContain("message: 1");
     expect(html).toContain("Hold for more evidence");
     expect(html).toContain("Reject");
+    expect(html).toContain("Expire");
     expect(html).not.toContain("Promote");
     expect(html).not.toContain("Publish");
     expect(html).not.toContain("quote");
@@ -239,6 +241,7 @@ describe("InternalUserMapReviewWorkbench", () => {
 
     expect(heldHtml).toContain("Promote");
     expect(heldHtml).toContain("Reject");
+    expect(heldHtml).toContain("Expire");
     expect(heldHtml).not.toContain("Publish");
 
     const promotedHtml = renderToStaticMarkup(
@@ -261,6 +264,7 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(promotedHtml).toContain("Ready to publish");
     expect(promotedHtml).not.toContain("Hold for more evidence");
     expect(promotedHtml).not.toContain("Reject");
+    expect(promotedHtml).not.toContain("Expire");
   });
 
   it("does not render lifecycle actions for legacy null lifecycle rows", () => {
@@ -282,6 +286,17 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).toContain("Lifecycle actions are unavailable");
     expect(html).not.toContain("Hold for more evidence");
     expect(html).not.toContain("Reject");
+    expect(html).not.toContain("Expire");
+  });
+
+  it("maps Expire to expired lifecycle status for operator pending keys", () => {
+    expect(lifecycleActionToStatus("expire")).toBe("expired");
+
+    const pending = startPendingAction(new Set(), "umc-1:lifecycle:expired");
+    expect(candidateHasPendingAction(pending, "umc-1")).toBe(true);
+
+    const cleared = endPendingAction(pending, "umc-1:lifecycle:expired");
+    expect(candidateHasPendingAction(cleared, "umc-1")).toBe(false);
   });
 
   it("renders Investigation candidates and actions on the Investigation tab", () => {
@@ -306,6 +321,7 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).toContain("pattern");
     expect(html).toContain("Hold for more evidence");
     expect(html).toContain("Reject");
+    expect(html).toContain("Expire");
     expect(html).not.toContain("Candidate title");
     expect(html).not.toContain("Watch for Sunday evening tension");
   });
@@ -390,6 +406,7 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).toContain("message: 1");
     expect(html).toContain("Hold for more evidence");
     expect(html).toContain("Reject");
+    expect(html).toContain("Expire");
     expect(html).not.toContain("Investigation title");
     expect(html).not.toContain("snippet");
     expect(html).not.toContain("quote");
@@ -488,6 +505,7 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).toContain("Publish");
     expect(html).not.toContain("Hold for more evidence");
     expect(html).not.toContain("Reject");
+    expect(html).not.toContain("Expire");
     expect(html).not.toContain("Promote");
     expect(html).not.toContain("snippet");
     expect(html).not.toContain("quote");

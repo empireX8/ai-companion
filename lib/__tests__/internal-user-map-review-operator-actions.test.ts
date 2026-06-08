@@ -61,20 +61,37 @@ describe("internal user-map review operator actions", () => {
     expect(lifecycleActionToStatus("reject")).toBe(
       CandidateLifecycleStatus.rejected
     );
+    expect(lifecycleActionToStatus("expire")).toBe(
+      CandidateLifecycleStatus.expired
+    );
   });
 
-  it("exposes hold and reject for proposed candidates", () => {
+  it("exposes hold, reject, and expire for proposed candidates", () => {
     expect(
       getInternalOperatorLifecycleActions(CandidateLifecycleStatus.proposed)
-    ).toEqual(["hold_for_more_evidence", "reject"]);
+    ).toEqual(["hold_for_more_evidence", "reject", "expire"]);
   });
 
-  it("exposes promote and reject for held candidates", () => {
+  it("exposes promote, reject, and expire for held candidates", () => {
     expect(
       getInternalOperatorLifecycleActions(
         CandidateLifecycleStatus.held_for_more_evidence
       )
-    ).toEqual(["promote", "reject"]);
+    ).toEqual(["promote", "reject", "expire"]);
+  });
+
+  it("does not expose lifecycle actions for ModelUpdate publish-only candidates", () => {
+    expect(getInternalOperatorLifecycleActions(null)).toEqual([]);
+    expect(
+      getInternalOperatorLifecycleActions(CandidateLifecycleStatus.promoted)
+    ).not.toContain("expire");
+    expect(
+      canPublishInternalModelUpdateCandidate({
+        visibility: ModelUpdateVisibility.internal_only,
+        isMeaningful: false,
+        evidenceLinkCount: 1,
+      })
+    ).toBe(true);
   });
 
   it("allows publish only for promoted internal_only candidates", () => {
