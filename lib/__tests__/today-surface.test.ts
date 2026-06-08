@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildTodaySurfacingCards,
+  TODAY_INTELLIGENCE_SECTION_TITLE,
   TODAY_SURFACING_ENDPOINTS,
   type TodayPatternsResponse,
   type TodayTopContradiction,
 } from "../today-surface";
+import { TODAY_CHANGES_VIEW_ALL_HREF } from "../today-intelligence-updates";
 import {
   DEFERRED_RECEIPT_NAMESPACE_PREFIXES,
   PUBLIC_LINKED_DETAIL_FALLBACK_COPY,
@@ -197,14 +199,33 @@ describe("today-surface safety and honest copy", () => {
     expect(source.includes("internal_only")).toBe(false);
   });
 
-  it("keeps honest placeholder and fallback copy", () => {
+  it("keeps honest placeholder and fallback copy in a unified intelligence snapshot", () => {
     const source = readTodayPageSource();
-    expect(source.includes("Saving media is not wired yet.")).toBe(true);
     expect(source.includes("PUBLIC_LINKED_DETAIL_FALLBACK_COPY")).toBe(true);
     expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe("Source unavailable.");
-    expect(source.includes("No surfaced items yet.")).toBe(true);
-    expect(source.includes("No intelligence updates yet.")).toBe(true);
-    expect(source.includes("Loading intelligence updates…")).toBe(true);
+    expect(source.includes("TODAY_INTELLIGENCE_SECTION_TITLE")).toBe(true);
+    expect(source.includes("TODAY_INTELLIGENCE_SECTION_INTRO")).toBe(true);
+    expect(source.includes("TODAY_SURFACED_SUBSECTION_LABEL")).toBe(true);
+    expect(source.includes("TODAY_CHANGES_SUBSECTION_LABEL")).toBe(true);
+    expect(source.includes("TODAY_INTELLIGENCE_LOADING_COPY")).toBe(true);
+    expect(source.includes("TODAY_INTELLIGENCE_EMPTY_COPY")).toBe(true);
+    expect(source.includes("TODAY_CHANGES_EMPTY_COPY")).toBe(true);
+    expect(source.includes("TODAY_CHANGES_VIEW_ALL_HREF")).toBe(true);
+    expect(TODAY_INTELLIGENCE_SECTION_TITLE).toBe("Intelligence snapshot");
+    expect(TODAY_CHANGES_VIEW_ALL_HREF).toBe("/what-changed");
+    expect(source.includes("Surfacing now")).toBe(false);
+    expect(source.includes("Intelligence updates")).toBe(false);
+    expect(source.includes("No surfaced items yet.")).toBe(false);
+    expect(source.includes("No intelligence updates yet.")).toBe(false);
+  });
+
+  it("removes unwired media affordances from Today capture", () => {
+    const source = readTodayPageSource();
+    expect(source.includes("Saving media is not wired yet.")).toBe(false);
+    expect(source.includes('type="file"')).toBe(false);
+    expect(source.includes("Media")).toBe(false);
+    expect(source.includes("mediaFiles")).toBe(false);
+    expect(source.includes("mediaInputRef")).toBe(false);
   });
 
   it("does not derive receipt links via string replacement from detail href", () => {
@@ -220,9 +241,9 @@ describe("today-surface safety and honest copy", () => {
     expect(source.includes("/api/model-updates/[id]")).toBe(false);
   });
 
-  it("renders intelligence-updates section as read-only without review/write/timeline coupling", () => {
+  it("renders intelligence snapshot as read-only without review/write/timeline coupling", () => {
     const source = readTodayPageSource();
-    expect(source.includes("Intelligence updates")).toBe(true);
+    expect(source.includes("TODAY_INTELLIGENCE_SECTION_TITLE")).toBe(true);
     expect(source.includes("Promote")).toBe(false);
     expect(source.includes("Publish")).toBe(false);
     expect(source.includes("Edit")).toBe(false);

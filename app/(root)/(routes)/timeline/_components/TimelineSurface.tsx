@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { OccurrenceDots } from "@/components/Visuals";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -24,7 +24,17 @@ import {
 } from "@/lib/timeline-surface";
 import {
   buildTimelineModelLayersRequestUrl,
+  buildTimelineStreamItems,
+  TIMELINE_ACTIVITY_EMPTY_COPY,
+  TIMELINE_ACTIVITY_LOADING_COPY,
+  TIMELINE_ACTIVITY_SECTION_INTRO,
+  TIMELINE_ACTIVITY_SECTION_LABEL,
+  TIMELINE_MODEL_CHANGE_CHIP,
+  TIMELINE_MODEL_LAYERS_LOADING_COPY,
+  TIMELINE_PAGE_META,
+  TIMELINE_SIGNALS_SECTION_LABEL,
   type TimelineModelLayerItem,
+  type TimelineStreamItem,
 } from "@/lib/timeline-model-layers";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "@/lib/public-continuity-registry";
@@ -137,6 +147,81 @@ function stateLabel(stateTag: QuickCheckInStateTag | null): string {
   return STATE_DISPLAY_LABELS[stateTag] ?? QUICK_CHECK_IN_STATE_LABELS[stateTag];
 }
 
+function groupStreamByDate(items: TimelineStreamItem[], now: Date) {
+  const grouped = new Map<string, TimelineStreamItem[]>();
+
+  for (const item of items) {
+    const key = toDateKey(item.occurredAt);
+    const current = grouped.get(key) ?? [];
+    current.push(item);
+    grouped.set(key, current);
+  }
+
+  return [...grouped.entries()]
+    .sort((left, right) => right[0].localeCompare(left[0]))
+    .map(([dateKey, streamItems]) => ({
+      date: formatDateLabel(dateKey, now),
+      items: streamItems.sort(
+        (left, right) =>
+          new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
+      ),
+    }));
+}
+
+function ActivityStreamEntry({ entry }: { entry: TimelineEntry }) {
+  return (
+    <div className={entry.weight === "low" ? "opacity-60" : ""}>
+      <div className="flex items-center gap-3 mb-1">
+        <span className="label-meta">{formatTime(entry.occurredAt)}</span>
+        {entry.href ? (
+          <Link href={entry.href} className="text-[14px] font-medium hover:text-cyan transition-colors">
+            {entry.title}
+          </Link>
+        ) : (
+          <span className="text-[14px] font-medium text-[hsl(216_11%_82%)]">{entry.title}</span>
+        )}
+        <span className="label-meta text-cyan/70 px-2 h-5 rounded bg-[hsl(187_100%_50%/0.08)] inline-flex items-center">
+          {entry.chip}
+        </span>
+      </div>
+      {entry.body ? (
+        <div className="text-[13px] text-meta leading-relaxed line-clamp-2">{entry.body}</div>
+      ) : null}
+      {!entry.href ? (
+        <div className="label-meta text-meta mt-1">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function ModelChangeStreamEntry({ item }: { item: TimelineModelLayerItem }) {
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-1">
+        <span className="label-meta">{formatTime(item.createdAt)}</span>
+        <span className="text-[14px] font-medium text-[hsl(216_11%_82%)]">
+          {item.updateTypeLabel}
+        </span>
+        <span className="label-meta text-cyan/70 px-2 h-5 rounded bg-[hsl(187_100%_50%/0.08)] inline-flex items-center">
+          {TIMELINE_MODEL_CHANGE_CHIP}
+        </span>
+      </div>
+      <p className="text-[13px] text-meta leading-relaxed line-clamp-2">
+        {item.userFacingSummary}
+      </p>
+      <div className="mt-2">
+        <PublicLinkedObjectContinuity
+          objectType={item.affectedObjectType}
+          objectId={item.affectedObjectId}
+          href={item.affectedObjectHref}
+          context="model_update"
+        />
+        <div className="label-meta mt-1">Recorded {formatDateTime(item.createdAt)}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function TimelineSurface() {
   const [windowValue, setWindowValue] = useState<TimelineWindow>("30d");
   const [isLoading, setIsLoading] = useState(true);
@@ -239,27 +324,22 @@ export default function TimelineSurface() {
     [payload]
   );
 
+  const streamItems = useMemo(
+    () =>
+      buildTimelineStreamItems({
+        activity: timelineEntries,
+        modelLayers,
+      }),
+    [timelineEntries, modelLayers]
+  );
+
   const rhythms = payload?.stateSummary.rhythms ?? null;
   const repeatedSignals = payload?.stateSummary.repeatedSignals ?? null;
 
-  const groupedActivity = useMemo(() => {
-    const now = new Date();
-    const grouped = new Map<string, TimelineEntry[]>();
-
-    for (const entry of timelineEntries) {
-      const key = toDateKey(entry.occurredAt);
-      const current = grouped.get(key) ?? [];
-      current.push(entry);
-      grouped.set(key, current);
-    }
-
-    return [...grouped.entries()]
-      .sort((left, right) => right[0].localeCompare(left[0]))
-      .map(([dateKey, entries]) => ({
-        date: formatDateLabel(dateKey, now),
-        entries,
-      }));
-  }, [timelineEntries]);
+  const groupedActivity = useMemo(
+    () => groupStreamByDate(streamItems, new Date()),
+    [streamItems]
+  );
 
   const possibleLinks = (repeatedSignals?.repeatedPairs ?? []).slice(0, 4).map((pair) => ({
     event: QUICK_CHECK_IN_EVENT_LABELS[pair.eventTag],
@@ -285,11 +365,13 @@ export default function TimelineSurface() {
     return dayKeys.size;
   }, [payload?.checkIns]);
 
+  const isLoadingActivityStream = isLoading || isLoadingModelLayers;
+
   return (
     <div className="px-12 py-10 max-w-[1180px] mx-auto animate-fade-in">
       <PageHeader
         title="Timeline"
-        meta="Rhythms, signals, and connected activity"
+        meta={TIMELINE_PAGE_META}
         right={
           <div className="inline-flex card-standard p-1 rounded-md">
             {TIMELINE_WINDOWS.map((windowKey) => (
@@ -348,64 +430,74 @@ export default function TimelineSurface() {
       </section>
 
       <section className="mb-10">
-        <SectionLabel>Possible links</SectionLabel>
-        <div className="label-meta text-meta mb-3">Based on check-ins in this window.</div>
-        <div className="grid grid-cols-2 gap-3">
-          {possibleLinks.length > 0 ? (
-            possibleLinks.map((link, index) => (
-              <div key={`${link.event}-${link.state}-${index}`} className="card-surfaced p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 card-standard px-3 py-2 text-[13px]">{link.event}</div>
-                  <ArrowRight className="h-4 w-4 text-cyan" strokeWidth={1.5} />
-                  <div className="flex-1 card-standard px-3 py-2 text-[13px]">{link.state}</div>
-                </div>
-                <div className="label-meta mt-3">Appeared together {link.count} times</div>
-              </div>
-            ))
-          ) : (
-            <div className="card-standard p-4 text-[13px] text-meta col-span-2">No recurring state/event links yet.</div>
-          )}
+        <SectionLabel>{TIMELINE_SIGNALS_SECTION_LABEL}</SectionLabel>
+        <div className="label-meta text-meta mb-4">
+          Recurring state/event pairings and ranked signals from check-ins in this window.
         </div>
-      </section>
 
-      <section className="mb-10">
-        <SectionLabel>Repeated signals</SectionLabel>
-        <div className="card-standard divide-y divide-white/[0.05]">
-          {(repeatedSignals?.rankedItems ?? []).length > 0 ? (
-            (repeatedSignals?.rankedItems ?? []).map((signal, index) => {
-              const text = signal.kind === "state"
-                ? stateLabel(signal.tag)
-                : signal.kind === "event"
-                  ? QUICK_CHECK_IN_EVENT_LABELS[signal.tag]
-                  : `${stateLabel(signal.stateTag)} + ${QUICK_CHECK_IN_EVENT_LABELS[signal.eventTag]}`;
-
-              const marks = Array.from({ length: Math.min(14, signal.count) }, (_, markIndex) =>
-                Math.min(13, markIndex * 2)
-              );
-
-              return (
-                <div key={`${signal.kind}-${index}`} className="w-full p-4 flex items-center gap-4 text-left">
-                  <div className="flex-1 text-[14px]">{text}</div>
-                  <OccurrenceDots count={14} marks={marks} />
-                  <div className="label-meta w-8 text-right">×{signal.count}</div>
-                  <ChevronRight className="h-4 w-4 text-meta" strokeWidth={1.5} />
+        <div className="mb-6">
+          <div className="label-meta mb-3">Possible links</div>
+          <div className="grid grid-cols-2 gap-3">
+            {possibleLinks.length > 0 ? (
+              possibleLinks.map((link, index) => (
+                <div key={`${link.event}-${link.state}-${index}`} className="card-surfaced p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 card-standard px-3 py-2 text-[13px]">{link.event}</div>
+                    <ArrowRight className="h-4 w-4 text-cyan" strokeWidth={1.5} />
+                    <div className="flex-1 card-standard px-3 py-2 text-[13px]">{link.state}</div>
+                  </div>
+                  <div className="label-meta mt-3">Appeared together {link.count} times</div>
                 </div>
-              );
-            })
-          ) : (
-            <div className="p-4 text-[13px] text-meta">No repeated signals in this window yet.</div>
-          )}
+              ))
+            ) : (
+              <div className="card-standard p-4 text-[13px] text-meta col-span-2">
+                No recurring state/event links yet.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className="label-meta mb-3">Repeated signals</div>
+          <div className="card-standard divide-y divide-white/[0.05]">
+            {(repeatedSignals?.rankedItems ?? []).length > 0 ? (
+              (repeatedSignals?.rankedItems ?? []).map((signal, index) => {
+                const text = signal.kind === "state"
+                  ? stateLabel(signal.tag)
+                  : signal.kind === "event"
+                    ? QUICK_CHECK_IN_EVENT_LABELS[signal.tag]
+                    : `${stateLabel(signal.stateTag)} + ${QUICK_CHECK_IN_EVENT_LABELS[signal.eventTag]}`;
+
+                const marks = Array.from({ length: Math.min(14, signal.count) }, (_, markIndex) =>
+                  Math.min(13, markIndex * 2)
+                );
+
+                return (
+                  <div key={`${signal.kind}-${index}`} className="w-full p-4 flex items-center gap-4 text-left">
+                    <div className="flex-1 text-[14px]">{text}</div>
+                    <OccurrenceDots count={14} marks={marks} />
+                    <div className="label-meta w-8 text-right">×{signal.count}</div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-4 text-[13px] text-meta">No repeated signals in this window yet.</div>
+            )}
+          </div>
         </div>
       </section>
 
       <section>
-        <SectionLabel>Connected activity</SectionLabel>
-        {isLoading ? (
-          <div className="card-standard p-4 text-[13px] text-meta">Loading timeline activity...</div>
+        <SectionLabel>{TIMELINE_ACTIVITY_SECTION_LABEL}</SectionLabel>
+        <p className="text-[13px] text-meta mb-4">{TIMELINE_ACTIVITY_SECTION_INTRO}</p>
+        {isLoadingActivityStream ? (
+          <div className="card-standard p-4 text-[13px] text-meta">
+            {isLoading ? TIMELINE_ACTIVITY_LOADING_COPY : TIMELINE_MODEL_LAYERS_LOADING_COPY}
+          </div>
         ) : errorMessage ? (
           <div className="card-standard p-4 text-[13px] text-[hsl(12_80%_64%)]">{errorMessage}</div>
         ) : groupedActivity.length === 0 ? (
-          <div className="card-standard p-4 text-[13px] text-meta">No activity yet in this window.</div>
+          <div className="card-standard p-4 text-[13px] text-meta">{TIMELINE_ACTIVITY_EMPTY_COPY}</div>
         ) : (
           <div className="space-y-6">
             {groupedActivity.map((group) => (
@@ -415,67 +507,25 @@ export default function TimelineSurface() {
                   <div className="label-meta">{group.date}</div>
                 </div>
                 <div className="ml-[3px] border-l hairline pl-6 space-y-4">
-                  {group.entries.map((entry) => (
-                    <div key={entry.id} className="relative">
+                  {group.items.map((item) => (
+                    <div
+                      key={
+                        item.kind === "activity"
+                          ? `activity-${item.entry.id}`
+                          : `model-${item.item.id}`
+                      }
+                      className="relative"
+                    >
                       <div className="absolute -left-[27px] top-1.5 h-1.5 w-1.5 rounded-full bg-white/20" />
-                      <div className={entry.weight === "low" ? "opacity-60" : ""}>
-                        <div className="flex items-center gap-3 mb-1">
-                          <span className="label-meta">{formatTime(entry.occurredAt)}</span>
-                          {entry.href ? (
-                            <Link href={entry.href} className="text-[14px] font-medium hover:text-cyan transition-colors">
-                              {entry.title}
-                            </Link>
-                          ) : (
-                            <span className="text-[14px] font-medium text-[hsl(216_11%_82%)]">{entry.title}</span>
-                          )}
-                          <span className="label-meta text-cyan/70 px-2 h-5 rounded bg-[hsl(187_100%_50%/0.08)] inline-flex items-center">
-                            {entry.chip}
-                          </span>
-                        </div>
-                        {entry.body && <div className="text-[13px] text-meta leading-relaxed line-clamp-2">{entry.body}</div>}
-                        {!entry.href ? <div className="label-meta text-meta mt-1">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div> : null}
-                      </div>
+                      {item.kind === "activity" ? (
+                        <ActivityStreamEntry entry={item.entry} />
+                      ) : (
+                        <ModelChangeStreamEntry item={item.item} />
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-10">
-        <SectionLabel>Model movement</SectionLabel>
-        {isLoadingModelLayers ? (
-          <div className="card-standard p-4 text-[13px] text-meta">
-            Loading model movement...
-          </div>
-        ) : modelLayers.length === 0 ? (
-          <div className="card-standard p-4 text-[13px] text-meta">
-            No model movement in this window.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {modelLayers.map((item) => (
-              <article key={item.id} className="card-standard p-5">
-                <div className="label-meta text-cyan/70 mb-2">
-                  {item.updateTypeLabel} · {item.affectedObjectTypeLabel}
-                </div>
-                <p className="text-[14px] text-[hsl(216_11%_70%)] leading-relaxed">
-                  {item.userFacingSummary}
-                </p>
-                <div className="mt-3 pt-3 border-t hairline">
-                  <PublicLinkedObjectContinuity
-                    objectType={item.affectedObjectType}
-                    objectId={item.affectedObjectId}
-                    href={item.affectedObjectHref}
-                    context="model_update"
-                  />
-                  <div className="label-meta mt-2">
-                    Recorded {formatDateTime(item.createdAt)}
-                  </div>
-                </div>
-              </article>
             ))}
           </div>
         )}

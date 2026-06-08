@@ -3,6 +3,11 @@
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import {
   buildTodaySurfacingCards,
+  TODAY_INTELLIGENCE_EMPTY_COPY,
+  TODAY_INTELLIGENCE_LOADING_COPY,
+  TODAY_INTELLIGENCE_SECTION_INTRO,
+  TODAY_INTELLIGENCE_SECTION_TITLE,
+  TODAY_SURFACED_SUBSECTION_LABEL,
   TODAY_SURFACING_ENDPOINTS,
   type TodayJournalEntry,
   type TodayPatternsResponse,
@@ -10,6 +15,9 @@ import {
   type TodayTopContradiction,
 } from "@/lib/today-surface";
 import {
+  TODAY_CHANGES_EMPTY_COPY,
+  TODAY_CHANGES_SUBSECTION_LABEL,
+  TODAY_CHANGES_VIEW_ALL_HREF,
   TODAY_INTELLIGENCE_UPDATES_ENDPOINT,
   type TodayIntelligenceUpdateItem,
 } from "@/lib/today-intelligence-updates";
@@ -17,7 +25,7 @@ import { PublicLinkedObjectContinuity } from "../../lib/public-continuity-displa
 import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../../lib/public-continuity-registry";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
-import { ArrowUpRight, Mic, Image, Receipt } from "lucide-react";
+import { ArrowUpRight, Mic, Receipt } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -70,17 +78,85 @@ function formatDateTime(value: string): string {
   return DETAIL_DATE.format(date);
 }
 
+function TodaySurfacingCardView({ card }: { card: TodaySurfacingCard }) {
+  const content = (
+    <div className="flex items-start gap-4">
+      <div className="flex-1 min-w-0">
+        <div className="label-meta mb-2 text-cyan/70">{card.kind}</div>
+        <div className="text-[16px] font-medium mb-1.5 leading-snug line-clamp-2">
+          {clampText(normalizeText(card.title), 170)}
+        </div>
+        <div className="text-[13.5px] text-[hsl(216_11%_65%)] leading-relaxed line-clamp-3">
+          {clampText(normalizeText(card.body), 220)}
+        </div>
+        <div className="label-meta mt-3">{card.meta}</div>
+        {!card.detailHref ? (
+          <div className="label-meta text-meta mt-2">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
+        ) : null}
+      </div>
+      {card.detailHref ? (
+        <ArrowUpRight
+          className="h-4 w-4 text-meta group-hover:text-cyan transition-colors shrink-0"
+          strokeWidth={1.5}
+        />
+      ) : null}
+    </div>
+  );
+
+  return (
+    <div className="card-surfaced p-5 hover:border-[hsl(187_100%_50%/0.32)] transition-colors">
+      {card.detailHref ? (
+        <Link href={card.detailHref} className="block group">
+          {content}
+        </Link>
+      ) : (
+        content
+      )}
+      {card.receiptHref ? (
+        <div className="mt-3 pt-3 border-t hairline">
+          <Link
+            href={card.receiptHref}
+            className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
+          >
+            <Receipt className="h-3 w-3" strokeWidth={1.5} />
+            Receipts
+          </Link>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TodayIntelligenceUpdateView({ item }: { item: TodayIntelligenceUpdateItem }) {
+  return (
+    <article className="card-standard p-5">
+      <div className="label-meta text-cyan/70 mb-2">
+        {item.updateTypeLabel} · {item.affectedObjectTypeLabel}
+      </div>
+      <p className="text-[14px] text-[hsl(216_11%_70%)] leading-relaxed">
+        {item.userFacingSummary}
+      </p>
+      <div className="mt-3 pt-3 border-t hairline">
+        <PublicLinkedObjectContinuity
+          objectType={item.affectedObjectType}
+          objectId={item.affectedObjectId}
+          href={item.affectedObjectHref}
+          context="model_update"
+        />
+        <div className="label-meta mt-2">Recorded {formatDateTime(item.createdAt)}</div>
+      </div>
+    </article>
+  );
+}
+
 export default function Today() {
   const router = useRouter();
   const [captureText, setCaptureText] = useState("");
   const [captureMessage, setCaptureMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
-  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
-  const mediaInputRef = useRef<HTMLInputElement>(null);
   const captureTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const voice = useVoiceInput();
 
-  // Insert voice transcript into capture text when recording completes
   useEffect(() => {
     if (voice.transcript && voice.state === "idle") {
       setCaptureText((prev) => {
@@ -90,7 +166,6 @@ export default function Today() {
     }
   }, [voice.transcript, voice.state]);
 
-  // Auto-scroll textarea to bottom when interim transcript updates
   useEffect(() => {
     if (voice.state === "recording" && captureTextareaRef.current) {
       captureTextareaRef.current.scrollTop = captureTextareaRef.current.scrollHeight;
@@ -98,12 +173,10 @@ export default function Today() {
   }, [voice.interimTranscript, voice.state]);
 
   const [surfacingCards, setSurfacingCards] = useState<TodaySurfacingCard[]>([]);
-  const [isLoadingSurfacing, setIsLoadingSurfacing] = useState(true);
-  const [surfacingError, setSurfacingError] = useState<string | null>(null);
+  const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(true);
   const [intelligenceUpdates, setIntelligenceUpdates] = useState<
     TodayIntelligenceUpdateItem[]
   >([]);
-  const [isLoadingIntelligence, setIsLoadingIntelligence] = useState(true);
 
   const trimmedCaptureText = captureText.trim();
 
@@ -112,13 +185,13 @@ export default function Today() {
     return DISPLAY_DATE.format(today).replace(",", "");
   }, []);
 
+  const hasSnapshotContent = surfacingCards.length > 0 || intelligenceUpdates.length > 0;
+
   useEffect(() => {
     let cancelled = false;
 
-    const loadSurfacing = async () => {
-      setIsLoadingSurfacing(true);
-      setSurfacingError(null);
-      setIsLoadingIntelligence(true);
+    const loadSnapshot = async () => {
+      setIsLoadingSnapshot(true);
 
       const [journalResult, contradictionResult, patternsResult, intelligenceResult] =
         await Promise.allSettled([
@@ -173,23 +246,18 @@ export default function Today() {
         }
       }
 
-      const nextCards = buildTodaySurfacingCards({
-        journalEntries,
-        contradictions,
-        patterns,
-      });
-      setSurfacingCards(nextCards);
+      setSurfacingCards(
+        buildTodaySurfacingCards({
+          journalEntries,
+          contradictions,
+          patterns,
+        })
+      );
       setIntelligenceUpdates(nextIntelligenceUpdates);
-
-      if (nextCards.length === 0) {
-        setSurfacingError("No surfaced items yet.");
-      }
-
-      setIsLoadingSurfacing(false);
-      setIsLoadingIntelligence(false);
+      setIsLoadingSnapshot(false);
     };
 
-    void loadSurfacing();
+    void loadSnapshot();
 
     return () => {
       cancelled = true;
@@ -201,7 +269,6 @@ export default function Today() {
       return;
     }
 
-    // Hand off to Journal Chat: seed the text via sessionStorage, then navigate
     try {
       window.sessionStorage.setItem("mindlabs:today-capture-handoff", trimmedCaptureText);
     } catch {
@@ -210,36 +277,9 @@ export default function Today() {
     router.push("/journal-chat");
   }
 
-  function handleMediaSelect(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const selected = Array.from(files);
-    setMediaFiles((prev) => [...prev, ...selected]);
-
-    // Show restrained message about media state
-    setCaptureMessage({
-      tone: "success",
-      text: `Media selected (${selected.length} file${selected.length === 1 ? "" : "s"}). Saving media is not wired yet.`,
-    });
-
-    // Reset input so same file can be selected again
-    event.target.value = "";
-  }
-
   return (
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
       <PageHeader title="Today" meta={dateStr} />
-
-      {/* Hidden file input for Media */}
-      <input
-        ref={mediaInputRef}
-        type="file"
-        accept="image/*,audio/*,video/*"
-        multiple
-        className="hidden"
-        onChange={handleMediaSelect}
-      />
 
       <section className="card-focal p-6 mb-10">
         <div className="label-meta mb-3">Capture</div>
@@ -287,14 +327,6 @@ export default function Today() {
                 </>
               )}
             </button>
-            <button
-              onClick={() => mediaInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-2.5 h-8 rounded-md text-[12px] text-meta hover:text-white hover:bg-white/5 transition-colors"
-            >
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Media
-            </button>
           </div>
           <button
             onClick={handleSaveCapture}
@@ -310,11 +342,6 @@ export default function Today() {
         {captureMessage ? (
           <div className={`mt-2 text-[12px] ${captureMessage.tone === "success" ? "text-cyan/85" : "text-[hsl(12_80%_64%)]"}`}>
             {captureMessage.text}
-          </div>
-        ) : null}
-        {mediaFiles.length > 0 ? (
-          <div className="mt-2 text-[12px] text-meta">
-            {mediaFiles.length} file{mediaFiles.length === 1 ? "" : "s"} selected
           </div>
         ) : null}
       </section>
@@ -336,104 +363,58 @@ export default function Today() {
       </section>
 
       <section>
-        <SectionLabel>Surfacing now</SectionLabel>
-        {isLoadingSurfacing ? (
-          <div className="card-standard p-4 text-[13px] text-meta">Loading surfaced items…</div>
-        ) : surfacingCards.length === 0 ? (
-          <div className="card-standard p-4 text-[13px] text-meta">{surfacingError ?? "No surfaced items yet."}</div>
-        ) : (
-          <div className="space-y-3">
-            {surfacingCards.map((card) => {
-              return (
-                <div
-                  key={`${card.kind}-${card.title}`}
-                  className="card-surfaced p-5 hover:border-[hsl(187_100%_50%/0.32)] transition-colors"
-                >
-                  {card.detailHref ? (
-                    <Link href={card.detailHref} className="block group">
-                      <div className="flex items-start gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="label-meta mb-2 text-cyan/70">{card.kind}</div>
-                          <div className="text-[16px] font-medium mb-1.5 leading-snug line-clamp-2">
-                            {clampText(normalizeText(card.title), 170)}
-                          </div>
-                          <div className="text-[13.5px] text-[hsl(216_11%_65%)] leading-relaxed line-clamp-3">
-                            {clampText(normalizeText(card.body), 220)}
-                          </div>
-                          <div className="label-meta mt-3">{card.meta}</div>
-                        </div>
-                        <ArrowUpRight
-                          className="h-4 w-4 text-meta group-hover:text-cyan transition-colors shrink-0"
-                          strokeWidth={1.5}
-                        />
-                      </div>
-                    </Link>
-                  ) : (
-                    <div className="flex items-start gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="label-meta mb-2 text-cyan/70">{card.kind}</div>
-                        <div className="text-[16px] font-medium mb-1.5 leading-snug line-clamp-2">
-                          {clampText(normalizeText(card.title), 170)}
-                        </div>
-                        <div className="text-[13.5px] text-[hsl(216_11%_65%)] leading-relaxed line-clamp-3">
-                          {clampText(normalizeText(card.body), 220)}
-                        </div>
-                        <div className="label-meta mt-3">{card.meta}</div>
-                        <div className="label-meta text-meta mt-2">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
-                      </div>
-                    </div>
-                  )}
-                  {card.receiptHref ? (
-                    <div className="mt-3 pt-3 border-t hairline">
-                      <Link
-                        href={card.receiptHref}
-                        className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
-                      >
-                        <Receipt className="h-3 w-3" strokeWidth={1.5} />
-                        Receipts
-                      </Link>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+        <SectionLabel>{TODAY_INTELLIGENCE_SECTION_TITLE}</SectionLabel>
+        <p className="text-[13px] text-meta mb-4">{TODAY_INTELLIGENCE_SECTION_INTRO}</p>
 
-      <section className="mt-10">
-        <SectionLabel>Intelligence updates</SectionLabel>
-        {isLoadingIntelligence ? (
+        {isLoadingSnapshot ? (
           <div className="card-standard p-4 text-[13px] text-meta">
-            Loading intelligence updates…
+            {TODAY_INTELLIGENCE_LOADING_COPY}
           </div>
-        ) : intelligenceUpdates.length === 0 ? (
+        ) : !hasSnapshotContent ? (
           <div className="card-standard p-4 text-[13px] text-meta">
-            No intelligence updates yet.
+            {TODAY_INTELLIGENCE_EMPTY_COPY}
           </div>
         ) : (
-          <div className="space-y-3">
-            {intelligenceUpdates.map((item) => (
-              <article key={item.id} className="card-standard p-5">
-                <div className="label-meta text-cyan/70 mb-2">
-                  {item.updateTypeLabel} · {item.affectedObjectTypeLabel}
+          <div className="card-focal p-6 space-y-8">
+            <div>
+              <div className="label-meta mb-3">{TODAY_SURFACED_SUBSECTION_LABEL}</div>
+              {surfacingCards.length === 0 ? (
+                <div className="card-standard p-4 text-[13px] text-meta">
+                  {TODAY_INTELLIGENCE_EMPTY_COPY}
                 </div>
-                <p className="text-[14px] text-[hsl(216_11%_70%)] leading-relaxed">
-                  {item.userFacingSummary}
-                </p>
-                <div className="mt-3 pt-3 border-t hairline">
-                  <PublicLinkedObjectContinuity
-                    objectType={item.affectedObjectType}
-                    objectId={item.affectedObjectId}
-                    href={item.affectedObjectHref}
-                    context="model_update"
-                  />
-                  <div className="label-meta mt-2">
-                    Recorded {formatDateTime(item.createdAt)}
-                  </div>
+              ) : (
+                <div className="space-y-3">
+                  {surfacingCards.map((card) => (
+                    <TodaySurfacingCardView key={`${card.kind}-${card.title}`} card={card} />
+                  ))}
                 </div>
-              </article>
-            ))}
+              )}
+            </div>
+
+            <div className="border-t hairline pt-6">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="label-meta">{TODAY_CHANGES_SUBSECTION_LABEL}</div>
+                {intelligenceUpdates.length > 0 ? (
+                  <Link
+                    href={TODAY_CHANGES_VIEW_ALL_HREF}
+                    className="label-meta text-meta hover:text-cyan transition-colors"
+                  >
+                    View all changes
+                  </Link>
+                ) : null}
+              </div>
+              {intelligenceUpdates.length === 0 ? (
+                <div className="card-standard p-4 text-[13px] text-meta">
+                  {TODAY_CHANGES_EMPTY_COPY}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {intelligenceUpdates.map((item) => (
+                    <TodayIntelligenceUpdateView key={item.id} item={item} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </section>
