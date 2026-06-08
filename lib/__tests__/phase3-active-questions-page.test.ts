@@ -39,6 +39,11 @@ vi.mock("@/lib/public-linked-object-continuity", () => ({
   resolvePublicLinkedObjectHref: resolvePublicLinkedObjectHrefMock,
 }));
 
+vi.mock("@/lib/public-continuity-display", async () => {
+  const actual = await import("../public-continuity-display");
+  return actual;
+});
+
 vi.mock("@/lib/prismadb", () => ({
   default: prismaMock,
 }));

@@ -5,8 +5,8 @@ import { ModelUpdateVisibility } from "@prisma/client";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import prismadb from "@/lib/prismadb";
 import { toWhatChangedListItem } from "@/lib/public-intelligence-safe-slice";
-import { PublicLinkedObjectContinuity } from "../../../../lib/public-continuity-display";
-import { applyVerifiedAffectedObjectHrefs } from "../../../../lib/public-linked-object-continuity";
+import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
+import { applyVerifiedAffectedObjectHrefs } from "@/lib/public-linked-object-continuity";
 
 export const dynamic = "force-dynamic";
 

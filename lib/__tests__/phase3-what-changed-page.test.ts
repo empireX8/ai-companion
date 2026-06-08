@@ -39,6 +39,16 @@ vi.mock("@/lib/public-intelligence-safe-slice", async () => {
   return actual;
 });
 
+vi.mock("@/lib/public-continuity-display", async () => {
+  const actual = await import("../public-continuity-display");
+  return actual;
+});
+
+vi.mock("@/lib/public-linked-object-continuity", async () => {
+  const actual = await import("../public-linked-object-continuity");
+  return actual;
+});
+
 vi.mock("@/lib/prismadb", () => ({
   default: prismaMock,
 }));

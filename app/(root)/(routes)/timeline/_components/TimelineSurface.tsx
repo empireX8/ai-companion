@@ -26,8 +26,8 @@ import {
   buildTimelineModelLayersRequestUrl,
   type TimelineModelLayerItem,
 } from "@/lib/timeline-model-layers";
-import { PublicLinkedObjectContinuity } from "../../../../../lib/public-continuity-display";
-import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../../../../../lib/public-continuity-registry";
+import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
+import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "@/lib/public-continuity-registry";
 
 const STATE_DISPLAY_LABELS: Record<QuickCheckInStateTag, string> = {
   stable: "Calm",

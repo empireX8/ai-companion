@@ -53,10 +53,6 @@ export function resolvePublicLinkedObjectFallbackCopy(input: {
     return PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY;
   }
 
-  if (input.hasObjectReference) {
-    return PUBLIC_LINKED_DETAIL_FALLBACK_COPY;
-  }
-
   return PUBLIC_LINKED_DETAIL_FALLBACK_COPY;
 }
 

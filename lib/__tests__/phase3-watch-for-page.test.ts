@@ -36,6 +36,11 @@ vi.mock("@/lib/public-intelligence-safe-slice", async () => {
   return actual;
 });
 
+vi.mock("@/lib/public-continuity-display", async () => {
+  const actual = await import("../public-continuity-display");
+  return actual;
+});
+
 vi.mock("@/lib/public-linked-object-continuity", () => ({
   resolvePublicLinkedObjectHref: resolvePublicLinkedObjectHrefMock,
   resolvePublicLinkedObjectHrefs: resolvePublicLinkedObjectHrefsMock,

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
-import { PublicLinkedObjectContinuity } from "../../../../lib/public-continuity-display";
+import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import {
   linkedObjectHrefMapKey,
   resolvePublicLinkedObjectHrefs,

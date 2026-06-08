@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
-import { PublicLinkedObjectContinuity } from "../../../../../lib/public-continuity-display";
+import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { resolvePublicLinkedObjectHref } from "@/lib/public-linked-object-continuity";
 import prismadb from "@/lib/prismadb";
 import { buildPublicActiveInvestigationWhere } from "@/lib/active-questions";
