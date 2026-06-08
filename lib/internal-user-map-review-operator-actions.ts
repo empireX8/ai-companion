@@ -15,7 +15,8 @@ import { ACTIVE_QUESTION_VISIBLE_STATUSES } from "./public-intelligence-safe-sli
 export type InternalOperatorLifecycleAction =
   | "promote"
   | "hold_for_more_evidence"
-  | "reject";
+  | "reject"
+  | "expire";
 
 export const INTERNAL_OPERATOR_LIFECYCLE_ACTION_LABELS: Record<
   InternalOperatorLifecycleAction,
@@ -24,12 +25,14 @@ export const INTERNAL_OPERATOR_LIFECYCLE_ACTION_LABELS: Record<
   promote: "Promote",
   hold_for_more_evidence: "Hold for more evidence",
   reject: "Reject",
+  expire: "Expire",
 };
 
 const LIFECYCLE_ACTION_ORDER: InternalOperatorLifecycleAction[] = [
   "hold_for_more_evidence",
   "promote",
   "reject",
+  "expire",
 ];
 
 export function lifecycleActionToStatus(
@@ -42,6 +45,8 @@ export function lifecycleActionToStatus(
       return CandidateLifecycleStatus.held_for_more_evidence;
     case "reject":
       return CandidateLifecycleStatus.rejected;
+    case "expire":
+      return CandidateLifecycleStatus.expired;
   }
 }
 
