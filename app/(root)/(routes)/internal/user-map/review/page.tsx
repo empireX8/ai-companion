@@ -117,8 +117,9 @@ export default async function InternalUserMapReviewPage() {
               Internal Candidate Review
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Internal operator workbench for reviewing and publishing hidden User Map,
-              Investigation, Fieldwork, and ModelUpdate candidates.
+              Internal operator workbench for triaging and publishing hidden User Map,
+              Investigation, Fieldwork, and ModelUpdate candidates. Use tab counts and
+              triage filters to prioritize publish-ready work.
             </p>
           </div>
 
