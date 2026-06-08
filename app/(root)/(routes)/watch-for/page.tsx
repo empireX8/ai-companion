@@ -14,6 +14,13 @@ import { buildPublicWatchForWhere } from "@/lib/watch-for";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_INTRO =
+  "Observation prompts for signals worth watching in your material. Each prompt links to a verified related object when available.";
+const LIST_SECTION_LABEL = "Observation prompts";
+const EMPTY_PRIMARY = "No observation prompts right now.";
+const EMPTY_SECONDARY =
+  "When reviewed intelligence assigns fieldwork, watch-for prompts will appear here for you to track.";
+
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -64,15 +71,15 @@ export default async function WatchForPage() {
 
   return (
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
-      <PageHeader
-        title="Watch For"
-        meta="Read-only observation prompts tied to persisted fieldwork records."
-      />
+      <PageHeader title="Watch For" meta="Fieldwork observation prompts" />
 
-      <SectionLabel>Active prompts</SectionLabel>
+      <p className="text-[13px] text-meta mb-6 max-w-2xl">{PAGE_INTRO}</p>
+
+      <SectionLabel>{LIST_SECTION_LABEL}</SectionLabel>
       {items.length === 0 ? (
-        <div className="card-standard p-4 text-[13px] text-meta">
-          No watch-for prompts right now.
+        <div className="card-standard p-5 text-[13px] text-meta space-y-1">
+          <p>{EMPTY_PRIMARY}</p>
+          <p className="text-meta/80">{EMPTY_SECONDARY}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -81,14 +88,14 @@ export default async function WatchForPage() {
               key={item.id}
               className="card-standard p-5 hover:border-[hsl(187_100%_50%/0.18)] transition-colors"
             >
-              <Link href={item.detailHref} className="block">
+              <Link href={item.detailHref} className="block group">
                 <div className="label-meta text-cyan/70 mb-2">
                   {item.statusLabel} · {item.linkedObjectTypeLabel}
                 </div>
-                <h2 className="text-[16px] font-medium leading-snug mb-1.5">
+                <h2 className="text-[16px] font-medium leading-snug mb-1.5 group-hover:text-cyan transition-colors">
                   {item.prompt}
                 </h2>
-                <p className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed">
+                <p className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed line-clamp-2">
                   {item.reason}
                 </p>
               </Link>
@@ -123,6 +130,17 @@ export default async function WatchForPage() {
           ))}
         </div>
       )}
+
+      <p className="label-meta text-meta mt-8">
+        Explore related surfaces:{" "}
+        <Link href="/your-map" className="hover:text-cyan transition-colors">
+          Your Map
+        </Link>{" "}
+        ·{" "}
+        <Link href="/active-questions" className="hover:text-cyan transition-colors">
+          Active Questions
+        </Link>
+      </p>
     </div>
   );
 }

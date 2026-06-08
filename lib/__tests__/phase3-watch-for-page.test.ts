@@ -86,7 +86,7 @@ describe("Phase 3 Watch For page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("No watch-for prompts right now.");
+    expect(html).toContain("No observation prompts right now.");
     expect(prismaMock.fieldworkAssignment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: buildPublicWatchForWhere({ userId: "user-1" }),

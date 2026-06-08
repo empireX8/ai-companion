@@ -12,6 +12,11 @@ import { toYourMapDetailItem } from "@/lib/public-intelligence-safe-slice";
 
 export const dynamic = "force-dynamic";
 
+const PROVENANCE_INTRO =
+  "Safe links to related patterns or signals that support this conclusion. Raw message content is never shown here.";
+const EVIDENCE_BREADTH_INTRO =
+  "Aggregate signal counts from persisted evidence links — not a certainty score.";
+
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -74,6 +79,13 @@ export default async function YourMapDetailPage({
 
   return (
     <div className="px-12 py-10 max-w-[980px] mx-auto animate-fade-in">
+      <Link
+        href="/your-map"
+        className="label-meta text-meta hover:text-cyan transition-colors mb-6 inline-block"
+      >
+        ← Back to Your Map
+      </Link>
+
       <PageHeader
         eyebrow={`${item.areaLabel} · ${item.statusLabel}`}
         title={item.title}
@@ -81,7 +93,7 @@ export default async function YourMapDetailPage({
       />
 
       <section className="card-standard p-5 mb-8">
-        <SectionLabel>Summary</SectionLabel>
+        <SectionLabel>What this concludes</SectionLabel>
         <p className="text-[14px] text-[hsl(216_11%_70%)] leading-relaxed">
           {item.summary}
         </p>
@@ -91,16 +103,18 @@ export default async function YourMapDetailPage({
       </section>
 
       <section className="mb-8">
-        <SectionLabel>Evidence signal</SectionLabel>
+        <SectionLabel>Evidence breadth</SectionLabel>
+        <p className="text-[13px] text-meta mb-3">{EVIDENCE_BREADTH_INTRO}</p>
         <div className="card-standard p-5 text-[13.5px] text-[hsl(216_11%_70%)] space-y-2">
-          <div>Evidence links: {item.evidenceCount}</div>
+          <div>Linked evidence sources: {item.evidenceCount}</div>
           <div>Source diversity: {item.sourceDiversity}</div>
           <div>Time spread: {item.timeSpreadDays} days</div>
         </div>
       </section>
 
       <section>
-        <SectionLabel>Linked evidence</SectionLabel>
+        <SectionLabel>Provenance</SectionLabel>
+        <p className="text-[13px] text-meta mb-3">{PROVENANCE_INTRO}</p>
         {linkedEvidence.length === 0 ? (
           <div className="card-standard p-4 text-[13px] text-meta">
             {PUBLIC_EVIDENCE_FALLBACK_COPY}

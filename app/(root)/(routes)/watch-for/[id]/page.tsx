@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 
@@ -13,6 +14,11 @@ import {
 import { buildPublicWatchForWhere } from "@/lib/watch-for";
 
 export const dynamic = "force-dynamic";
+
+const LINKED_TARGET_INTRO =
+  "Verified link to the related pattern, signal, question, or map item this prompt watches.";
+const OBSERVATION_INTRO =
+  "Your recorded observations for this prompt. These are summary fields only — not raw evidence.";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
@@ -77,6 +83,13 @@ export default async function WatchForDetailPage({
 
   return (
     <div className="px-12 py-10 max-w-[980px] mx-auto animate-fade-in">
+      <Link
+        href="/watch-for"
+        className="label-meta text-meta hover:text-cyan transition-colors mb-6 inline-block"
+      >
+        ← Back to Watch For
+      </Link>
+
       <PageHeader
         eyebrow={formatFieldworkStatus(item.status)}
         title={item.prompt}
@@ -95,7 +108,8 @@ export default async function WatchForDetailPage({
       </section>
 
       <section className="mb-8">
-        <SectionLabel>Linked target</SectionLabel>
+        <SectionLabel>Connected object</SectionLabel>
+        <p className="text-[13px] text-meta mb-3">{LINKED_TARGET_INTRO}</p>
         <div className="card-standard p-4 text-[13px] text-[hsl(216_11%_70%)]">
           <PublicLinkedObjectContinuity
             objectType={item.linkedObjectType}
@@ -110,14 +124,15 @@ export default async function WatchForDetailPage({
 
       <section className="mb-8">
         <SectionLabel>Observation record</SectionLabel>
+        <p className="text-[13px] text-meta mb-3">{OBSERVATION_INTRO}</p>
         <div className="card-standard p-5 text-[13.5px] text-[hsl(216_11%_70%)] space-y-3">
           <div>
             <div className="label-meta mb-1">Observation note</div>
-            <div>{item.observationNote ?? "No observation note yet."}</div>
+            <div>{item.observationNote ?? "No observation note recorded yet."}</div>
           </div>
           <div>
             <div className="label-meta mb-1">Observation outcome</div>
-            <div>{item.observationOutcome ?? "No observation outcome yet."}</div>
+            <div>{item.observationOutcome ?? "No observation outcome recorded yet."}</div>
           </div>
         </div>
       </section>
