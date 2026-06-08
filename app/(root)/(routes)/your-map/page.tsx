@@ -9,6 +9,13 @@ import { toYourMapListItem } from "@/lib/public-intelligence-safe-slice";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_INTRO =
+  "Published conclusions from reviewed intelligence. Each item summarizes what your model currently holds as supported understanding.";
+const LIST_SECTION_LABEL = "Map conclusions";
+const EMPTY_PRIMARY = "No published map conclusions yet.";
+const EMPTY_SECONDARY =
+  "When reviewed intelligence is published to your map, confirmed conclusions will appear here with safe evidence links.";
+
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -54,15 +61,15 @@ export default async function YourMapPage() {
 
   return (
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
-      <PageHeader
-        title="Your Map"
-        meta="Read-only confirmed map items anchored to persisted backend conclusions."
-      />
+      <PageHeader title="Your Map" meta="Published understanding conclusions" />
 
-      <SectionLabel>Confirmed map items</SectionLabel>
+      <p className="text-[13px] text-meta mb-6 max-w-2xl">{PAGE_INTRO}</p>
+
+      <SectionLabel>{LIST_SECTION_LABEL}</SectionLabel>
       {items.length === 0 ? (
-        <div className="card-standard p-4 text-[13px] text-meta">
-          No confirmed map items yet.
+        <div className="card-standard p-5 text-[13px] text-meta space-y-1">
+          <p>{EMPTY_PRIMARY}</p>
+          <p className="text-meta/80">{EMPTY_SECONDARY}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -71,24 +78,37 @@ export default async function YourMapPage() {
               key={item.id}
               className="card-standard p-5 hover:border-[hsl(187_100%_50%/0.18)] transition-colors"
             >
-              <Link href={item.detailHref} className="block">
+              <Link href={item.detailHref} className="block group">
                 <div className="label-meta text-cyan/70 mb-2">
                   {item.areaLabel} · {item.statusLabel} · {item.confidenceLevelLabel}
                 </div>
-                <h2 className="text-[16px] font-medium leading-snug mb-1.5">
+                <h2 className="text-[16px] font-medium leading-snug mb-1.5 group-hover:text-cyan transition-colors">
                   {item.title}
                 </h2>
                 <p className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed line-clamp-3">
                   {item.summary}
                 </p>
                 <div className="label-meta mt-3">
-                  Evidence links {item.evidenceCount} · Updated {formatDateTime(item.updatedAt)}
+                  {item.evidenceCount} linked evidence
+                  {item.evidenceCount === 1 ? " source" : " sources"} · Updated{" "}
+                  {formatDateTime(item.updatedAt)}
                 </div>
               </Link>
             </article>
           ))}
         </div>
       )}
+
+      <p className="label-meta text-meta mt-8">
+        Explore related surfaces:{" "}
+        <Link href="/active-questions" className="hover:text-cyan transition-colors">
+          Active Questions
+        </Link>{" "}
+        ·{" "}
+        <Link href="/watch-for" className="hover:text-cyan transition-colors">
+          Watch For
+        </Link>
+      </p>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 
@@ -10,6 +11,9 @@ import { buildPublicActiveInvestigationWhere } from "@/lib/active-questions";
 import { toActiveQuestionDetailItem } from "@/lib/public-intelligence-safe-slice";
 
 export const dynamic = "force-dynamic";
+
+const LINKED_TARGET_INTRO =
+  "When this question resolves into a map conclusion, a verified link appears here.";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
@@ -95,6 +99,13 @@ export default async function ActiveQuestionDetailPage({
 
   return (
     <div className="px-12 py-10 max-w-[980px] mx-auto animate-fade-in">
+      <Link
+        href="/active-questions"
+        className="label-meta text-meta hover:text-cyan transition-colors mb-6 inline-block"
+      >
+        ← Back to Active Questions
+      </Link>
+
       <PageHeader
         eyebrow={item.statusLabel}
         title={item.title}
@@ -114,19 +125,25 @@ export default async function ActiveQuestionDetailPage({
 
       <section className="mb-8">
         <SectionLabel>Competing theories</SectionLabel>
-        {renderBulletList(item.competingTheories, "No competing theories recorded yet.")}
+        {renderBulletList(
+          item.competingTheories,
+          "No competing theories recorded yet. The model may add these as the investigation develops."
+        )}
       </section>
 
       <section className="mb-8">
         <SectionLabel>Evidence still needed</SectionLabel>
-        {renderBulletList(item.evidenceNeeded, "No evidence requests recorded yet.")}
+        {renderBulletList(
+          item.evidenceNeeded,
+          "No specific evidence requests recorded yet."
+        )}
       </section>
 
       <section className="mb-8">
         <SectionLabel>Resolution status</SectionLabel>
         <div className="card-standard p-5">
           <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed">
-            {item.resolutionSummary ?? "No resolution summary yet."}
+            {item.resolutionSummary ?? "This question has not reached a resolution summary yet."}
           </div>
           <div className="label-meta mt-3">
             Resolved at {formatDateTime(item.resolvedAt)}
@@ -138,7 +155,8 @@ export default async function ActiveQuestionDetailPage({
       </section>
 
       <section>
-        <SectionLabel>Linked target</SectionLabel>
+        <SectionLabel>Connected map item</SectionLabel>
+        <p className="text-[13px] text-meta mb-3">{LINKED_TARGET_INTRO}</p>
         <div className="card-standard p-4 text-[13px] text-[hsl(216_11%_70%)]">
           <PublicLinkedObjectContinuity
             objectType="usermap_conclusion"

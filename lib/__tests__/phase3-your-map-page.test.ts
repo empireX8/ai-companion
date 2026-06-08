@@ -58,7 +58,7 @@ describe("Phase 3 Your Map page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("No confirmed map items yet.");
+    expect(html).toContain("No published map conclusions yet.");
     expect(prismaMock.userMapConclusion.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
@@ -220,7 +220,7 @@ describe("Phase 3 Your Map page", () => {
     });
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("Linked evidence");
+    expect(html).toContain("Provenance");
     expect(html).toContain("Related pattern");
     expect(html).toContain("Related signal");
     expect(html).toContain("/patterns/pc-1");

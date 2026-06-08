@@ -70,7 +70,7 @@ describe("Phase 3 Active Questions page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("No active questions right now.");
+    expect(html).toContain("No open questions right now.");
     expect(prismaMock.investigation.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: buildPublicActiveInvestigationWhere({ userId: "user-1" }),

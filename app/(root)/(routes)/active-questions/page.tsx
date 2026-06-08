@@ -9,6 +9,13 @@ import { toActiveQuestionListItem } from "@/lib/public-intelligence-safe-slice";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_INTRO =
+  "Open questions your model is still testing. Each thread stays read-only and traces to persisted investigation records.";
+const LIST_SECTION_LABEL = "Open questions";
+const EMPTY_PRIMARY = "No open questions right now.";
+const EMPTY_SECONDARY =
+  "When reviewed intelligence opens a new investigation, active questions will appear here for you to follow.";
+
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -51,15 +58,15 @@ export default async function ActiveQuestionsPage() {
 
   return (
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
-      <PageHeader
-        title="Active Questions"
-        meta="Read-only investigation threads anchored to persisted backend records."
-      />
+      <PageHeader title="Active Questions" meta="Open investigation threads" />
 
-      <SectionLabel>Open investigations</SectionLabel>
+      <p className="text-[13px] text-meta mb-6 max-w-2xl">{PAGE_INTRO}</p>
+
+      <SectionLabel>{LIST_SECTION_LABEL}</SectionLabel>
       {items.length === 0 ? (
-        <div className="card-standard p-4 text-[13px] text-meta">
-          No active questions right now.
+        <div className="card-standard p-5 text-[13px] text-meta space-y-1">
+          <p>{EMPTY_PRIMARY}</p>
+          <p className="text-meta/80">{EMPTY_SECONDARY}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -68,13 +75,13 @@ export default async function ActiveQuestionsPage() {
               key={item.id}
               className="card-standard p-5 hover:border-[hsl(187_100%_50%/0.18)] transition-colors"
             >
-              <Link href={item.detailHref} className="block">
+              <Link href={item.detailHref} className="block group">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="label-meta text-cyan/70 mb-2">
                       {item.statusLabel} · {item.seedTypeLabel}
                     </div>
-                    <h2 className="text-[16px] font-medium leading-snug mb-1.5">
+                    <h2 className="text-[16px] font-medium leading-snug mb-1.5 group-hover:text-cyan transition-colors">
                       {item.title}
                     </h2>
                     <p className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed line-clamp-2">
@@ -93,6 +100,17 @@ export default async function ActiveQuestionsPage() {
           ))}
         </div>
       )}
+
+      <p className="label-meta text-meta mt-8">
+        Explore related surfaces:{" "}
+        <Link href="/your-map" className="hover:text-cyan transition-colors">
+          Your Map
+        </Link>{" "}
+        ·{" "}
+        <Link href="/watch-for" className="hover:text-cyan transition-colors">
+          Watch For
+        </Link>
+      </p>
     </div>
   );
 }
