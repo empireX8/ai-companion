@@ -17,7 +17,13 @@ import {
   canPublishInternalFieldworkCandidate,
   canPublishInternalInvestigationCandidate,
   canPublishInternalModelUpdateCandidate,
+  formatReviewTabLabel,
+  getFieldworkReviewTriageBucket,
   getInternalOperatorLifecycleActions,
+  getInvestigationReviewTriageBucket,
+  getModelUpdateReviewTriageBucket,
+  getUserMapReviewTriageBucket,
+  groupReviewCandidatesByTriage,
   internalCandidateLifecycleApiPath,
   internalCandidatePublishApiPath,
   internalFieldworkCandidateLifecycleApiPath,
@@ -27,6 +33,9 @@ import {
   internalModelUpdateCandidatePublishApiPath,
   isActiveQuestionVisibleInvestigationStatus,
   lifecycleActionToStatus,
+  LIFECYCLE_TRIAGE_BUCKET_ORDER,
+  matchesReviewTriageFilter,
+  MODEL_UPDATE_TRIAGE_BUCKET_ORDER,
 } from "../internal-user-map-review-operator-actions";
 import { WATCH_FOR_VISIBLE_FIELDWORK_STATUSES } from "../fieldwork-status-publishability";
 import { ACTIVE_QUESTION_VISIBLE_STATUSES } from "../public-intelligence-safe-slice";
@@ -275,5 +284,136 @@ describe("internal user-map review operator actions", () => {
     expect(internalModelUpdateCandidatePublishApiPath("mu/1")).toBe(
       "/api/internal/model-updates/candidates/mu%2F1/publish"
     );
+  });
+
+  it("formats review tab labels with counts and publish-ready suffix", () => {
+    expect(formatReviewTabLabel("User Map", 0)).toBe("User Map");
+    expect(formatReviewTabLabel("User Map", 3)).toBe("User Map (3)");
+    expect(formatReviewTabLabel("User Map", 3, 1)).toBe("User Map (3) · 1 ready");
+    expect(formatReviewTabLabel("ModelUpdate", 2, 0)).toBe("ModelUpdate (2)");
+  });
+
+  it("matches triage filters to lifecycle and model-update buckets", () => {
+    expect(matchesReviewTriageFilter("publish_ready", "all")).toBe(true);
+    expect(matchesReviewTriageFilter("needs_lifecycle", "publish_ready")).toBe(
+      false
+    );
+    expect(matchesReviewTriageFilter("publish_ready", "publish_ready")).toBe(
+      true
+    );
+    expect(matchesReviewTriageFilter("needs_lifecycle", "needs_action")).toBe(
+      true
+    );
+    expect(matchesReviewTriageFilter("needs_evidence", "needs_action")).toBe(
+      true
+    );
+    expect(matchesReviewTriageFilter("blocked", "needs_action")).toBe(false);
+  });
+
+  it("assigns lifecycle triage buckets from publish and lifecycle affordances", () => {
+    expect(
+      getUserMapReviewTriageBucket({
+        candidateLifecycleStatus: CandidateLifecycleStatus.promoted,
+        visibility: UserMapConclusionVisibility.internal_only,
+      })
+    ).toBe("publish_ready");
+
+    expect(
+      getUserMapReviewTriageBucket({
+        candidateLifecycleStatus: CandidateLifecycleStatus.proposed,
+        visibility: UserMapConclusionVisibility.internal_only,
+      })
+    ).toBe("needs_lifecycle");
+
+    expect(
+      getInvestigationReviewTriageBucket({
+        candidateLifecycleStatus: CandidateLifecycleStatus.rejected,
+        visibility: InvestigationVisibility.internal_only,
+        status: InvestigationStatus.open,
+      })
+    ).toBe("blocked");
+
+    expect(
+      getFieldworkReviewTriageBucket({
+        candidateLifecycleStatus: CandidateLifecycleStatus.promoted,
+        visibility: FieldworkAssignmentVisibility.internal_only,
+        status: FieldworkStatus.assigned,
+      })
+    ).toBe("publish_ready");
+  });
+
+  it("assigns ModelUpdate triage buckets from publish readiness and evidence", () => {
+    expect(
+      getModelUpdateReviewTriageBucket({
+        visibility: ModelUpdateVisibility.internal_only,
+        isMeaningful: false,
+        evidenceLinkCount: 2,
+      })
+    ).toBe("publish_ready");
+
+    expect(
+      getModelUpdateReviewTriageBucket({
+        visibility: ModelUpdateVisibility.internal_only,
+        isMeaningful: false,
+        evidenceLinkCount: 0,
+      })
+    ).toBe("needs_evidence");
+
+    expect(
+      getModelUpdateReviewTriageBucket({
+        visibility: ModelUpdateVisibility.user_visible,
+        isMeaningful: false,
+        evidenceLinkCount: 1,
+      })
+    ).toBe("blocked");
+  });
+
+  it("groups and sorts review candidates by triage bucket", () => {
+    const items = [
+      { id: "older", updatedAt: "2026-05-10T10:00:00.000Z", status: "proposed" },
+      { id: "newer", updatedAt: "2026-05-20T10:00:00.000Z", status: "promoted" },
+    ] as const;
+
+    const groups = groupReviewCandidatesByTriage({
+      items: [...items],
+      getBucket: (item) =>
+        item.status === "promoted" ? "publish_ready" : "needs_lifecycle",
+      filter: "all",
+      bucketOrder: LIFECYCLE_TRIAGE_BUCKET_ORDER,
+      getSortTimestamp: (item) => item.updatedAt,
+    });
+
+    expect(groups.map((group) => group.bucket)).toEqual([
+      "publish_ready",
+      "needs_lifecycle",
+    ]);
+    expect(groups[0]?.items.map((item) => item.id)).toEqual(["newer"]);
+    expect(groups[1]?.items.map((item) => item.id)).toEqual(["older"]);
+
+    const publishReadyOnly = groupReviewCandidatesByTriage({
+      items: [...items],
+      getBucket: (item) =>
+        item.status === "promoted" ? "publish_ready" : "needs_lifecycle",
+      filter: "publish_ready",
+      bucketOrder: LIFECYCLE_TRIAGE_BUCKET_ORDER,
+      getSortTimestamp: (item) => item.updatedAt,
+    });
+
+    expect(publishReadyOnly).toHaveLength(1);
+    expect(publishReadyOnly[0]?.bucket).toBe("publish_ready");
+    expect(publishReadyOnly[0]?.items).toHaveLength(1);
+
+    const modelUpdateGroups = groupReviewCandidatesByTriage({
+      items: [
+        { id: "a", createdAt: "2026-05-01T00:00:00.000Z", ready: false },
+        { id: "b", createdAt: "2026-05-02T00:00:00.000Z", ready: true },
+      ],
+      getBucket: (item) => (item.ready ? "publish_ready" : "needs_evidence"),
+      filter: "all",
+      bucketOrder: MODEL_UPDATE_TRIAGE_BUCKET_ORDER,
+      getSortTimestamp: (item) => item.createdAt,
+    });
+
+    expect(modelUpdateGroups[0]?.items.map((item) => item.id)).toEqual(["b"]);
   });
 });

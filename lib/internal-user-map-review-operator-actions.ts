@@ -144,3 +144,180 @@ export function internalModelUpdateCandidatePublishApiPath(
 ): string {
   return `/api/internal/model-updates/candidates/${encodeURIComponent(modelUpdateId)}/publish`;
 }
+
+export type ReviewTriageFilter = "all" | "publish_ready" | "needs_action";
+
+export type LifecycleReviewTriageBucket =
+  | "publish_ready"
+  | "needs_lifecycle"
+  | "blocked";
+
+export type ModelUpdateReviewTriageBucket =
+  | "publish_ready"
+  | "needs_evidence"
+  | "blocked";
+
+export const LIFECYCLE_TRIAGE_BUCKET_LABELS: Record<
+  LifecycleReviewTriageBucket,
+  string
+> = {
+  publish_ready: "Ready to publish",
+  needs_lifecycle: "Needs lifecycle review",
+  blocked: "No actions available",
+};
+
+export const MODEL_UPDATE_TRIAGE_BUCKET_LABELS: Record<
+  ModelUpdateReviewTriageBucket,
+  string
+> = {
+  publish_ready: "Ready to publish",
+  needs_evidence: "Needs linked evidence",
+  blocked: "No actions available",
+};
+
+export const LIFECYCLE_TRIAGE_BUCKET_ORDER: LifecycleReviewTriageBucket[] = [
+  "publish_ready",
+  "needs_lifecycle",
+  "blocked",
+];
+
+export const MODEL_UPDATE_TRIAGE_BUCKET_ORDER: ModelUpdateReviewTriageBucket[] = [
+  "publish_ready",
+  "needs_evidence",
+  "blocked",
+];
+
+export function formatReviewTabLabel(
+  label: string,
+  totalCount: number,
+  publishReadyCount = 0
+): string {
+  const countSuffix = totalCount > 0 ? ` (${totalCount})` : "";
+  const readySuffix =
+    publishReadyCount > 0 ? ` · ${publishReadyCount} ready` : "";
+  return `${label}${countSuffix}${readySuffix}`;
+}
+
+export function matchesReviewTriageFilter(
+  bucket: LifecycleReviewTriageBucket | ModelUpdateReviewTriageBucket,
+  filter: ReviewTriageFilter
+): boolean {
+  if (filter === "all") {
+    return true;
+  }
+
+  if (filter === "publish_ready") {
+    return bucket === "publish_ready";
+  }
+
+  return bucket === "needs_lifecycle" || bucket === "needs_evidence";
+}
+
+export function getUserMapReviewTriageBucket(input: {
+  candidateLifecycleStatus: CandidateLifecycleStatus | null;
+  visibility: UserMapConclusionVisibility;
+}): LifecycleReviewTriageBucket {
+  if (canPublishInternalCandidate(input)) {
+    return "publish_ready";
+  }
+
+  if (getInternalOperatorLifecycleActions(input.candidateLifecycleStatus).length > 0) {
+    return "needs_lifecycle";
+  }
+
+  return "blocked";
+}
+
+export function getInvestigationReviewTriageBucket(input: {
+  candidateLifecycleStatus: CandidateLifecycleStatus | null;
+  visibility: InvestigationVisibility;
+  status: InvestigationStatus;
+}): LifecycleReviewTriageBucket {
+  if (canPublishInternalInvestigationCandidate(input)) {
+    return "publish_ready";
+  }
+
+  if (getInternalOperatorLifecycleActions(input.candidateLifecycleStatus).length > 0) {
+    return "needs_lifecycle";
+  }
+
+  return "blocked";
+}
+
+export function getFieldworkReviewTriageBucket(input: {
+  candidateLifecycleStatus: CandidateLifecycleStatus | null;
+  visibility: FieldworkAssignmentVisibility;
+  status: FieldworkStatus;
+}): LifecycleReviewTriageBucket {
+  if (canPublishInternalFieldworkCandidate(input)) {
+    return "publish_ready";
+  }
+
+  if (getInternalOperatorLifecycleActions(input.candidateLifecycleStatus).length > 0) {
+    return "needs_lifecycle";
+  }
+
+  return "blocked";
+}
+
+export function getModelUpdateReviewTriageBucket(input: {
+  visibility: ModelUpdateVisibility;
+  isMeaningful: boolean;
+  evidenceLinkCount: number;
+}): ModelUpdateReviewTriageBucket {
+  if (canPublishInternalModelUpdateCandidate(input)) {
+    return "publish_ready";
+  }
+
+  if (input.evidenceLinkCount === 0) {
+    return "needs_evidence";
+  }
+
+  return "blocked";
+}
+
+export function groupReviewCandidatesByTriage<
+  T,
+  B extends LifecycleReviewTriageBucket | ModelUpdateReviewTriageBucket,
+>(args: {
+  items: T[];
+  getBucket: (item: T) => B;
+  filter: ReviewTriageFilter;
+  bucketOrder: readonly B[];
+  getSortTimestamp: (item: T) => string;
+}): Array<{ bucket: B; items: T[] }> {
+  const filtered = args.items.filter((item) =>
+    matchesReviewTriageFilter(args.getBucket(item), args.filter)
+  );
+
+  const grouped = new Map<B, T[]>();
+  for (const bucket of args.bucketOrder) {
+    grouped.set(bucket, []);
+  }
+
+  for (const item of filtered) {
+    const bucket = args.getBucket(item);
+    const bucketItems = grouped.get(bucket);
+    if (bucketItems) {
+      bucketItems.push(item);
+    }
+  }
+
+  for (const bucketItems of grouped.values()) {
+    bucketItems.sort((left, right) => {
+      const leftTime = Date.parse(args.getSortTimestamp(left));
+      const rightTime = Date.parse(args.getSortTimestamp(right));
+      if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+        return 0;
+      }
+      return rightTime - leftTime;
+    });
+  }
+
+  return args.bucketOrder
+    .map((bucket) => ({
+      bucket,
+      items: grouped.get(bucket) ?? [],
+    }))
+    .filter((group) => group.items.length > 0);
+}

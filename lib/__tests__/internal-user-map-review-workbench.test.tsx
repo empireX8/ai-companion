@@ -165,8 +165,11 @@ describe("InternalUserMapReviewWorkbench", () => {
       />
     );
 
-    expect(html).toContain("User Map");
+    expect(html).toContain("User Map (1)");
     expect(html).toContain("Investigation");
+    expect(html).toContain("Needs lifecycle review");
+    expect(html).toContain("Showing 1 of 1");
+    expect(html).toContain('data-testid="review-filter-bar-usermap"');
     expect(html).toContain('id="review-tab-usermap"');
     expect(html).toContain('aria-controls="review-panel-usermap"');
     expect(html).toContain('id="review-panel-usermap"');
@@ -254,6 +257,8 @@ describe("InternalUserMapReviewWorkbench", () => {
     );
 
     expect(promotedHtml).toContain("Publish");
+    expect(promotedHtml).toContain("Publish to user-visible surface");
+    expect(promotedHtml).toContain("Ready to publish");
     expect(promotedHtml).not.toContain("Hold for more evidence");
     expect(promotedHtml).not.toContain("Reject");
   });
@@ -513,6 +518,8 @@ describe("InternalUserMapReviewWorkbench", () => {
     );
 
     expect(html).toContain("Needs linked evidence before publish.");
+    expect(html).toContain("Needs linked evidence");
+    expect(html).toContain("Publish to What Changed (publish-only");
     expect(html).not.toContain(">Publish<");
   });
 
@@ -530,5 +537,40 @@ describe("InternalUserMapReviewWorkbench", () => {
     expect(html).toContain("Hold for more evidence");
     expect(html).toContain('id="review-panel-usermap"');
     expect(html).not.toContain("Confidence increased on operating logic");
+  });
+
+  it("shows tab counts and publish-ready suffix when candidates are ready", () => {
+    const html = renderToStaticMarkup(
+      <InternalUserMapReviewWorkbench
+        userMapCandidates={[
+          {
+            ...baseCandidate,
+            id: "umc-promoted",
+            candidateLifecycleStatus: "promoted",
+          },
+        ]}
+        investigationCandidates={[]}
+        fieldworkCandidates={[]}
+        modelUpdateCandidates={[baseModelUpdateCandidate]}
+      />
+    );
+
+    expect(html).toContain("User Map (1) · 1 ready");
+    expect(html).toContain("ModelUpdate (1) · 1 ready");
+  });
+
+  it("renders family-specific empty states when a tab has no candidates", () => {
+    const html = renderToStaticMarkup(
+      <InternalUserMapReviewWorkbench
+        userMapCandidates={[]}
+        investigationCandidates={[]}
+        fieldworkCandidates={[]}
+        modelUpdateCandidates={[]}
+        initialTab="fieldwork"
+      />
+    );
+
+    expect(html).toContain('data-testid="review-empty-fieldwork-none"');
+    expect(html).toContain("No Fieldwork candidates");
   });
 });
