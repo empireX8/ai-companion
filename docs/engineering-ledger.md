@@ -897,3 +897,54 @@ Ephemeral validation against local dev DB on auto-selected user `user_34TUYA53pI
   - `bash scripts/check-legacy-surfaces.sh`: pass
 - **What remains partial:** Post-PR #16 dev `LINK_WRITE_FAILED` root cause not fixed; **runtime validation on dev user still required** after merge to read new blocked reason + transaction failure fields from the next bridge persistence attempt.
 - **Next step:** Re-run import/APP candidate bridge persistence on dev; inspect diagnostics artifact for classified `blockedWriteReasons` and `transactionFailure*` fields.
+
+---
+
+## Product Polish + Runtime Confidence Block — Closeout (2026-06-07)
+
+- **Status:** `CLOSED / VALIDATED` (docs-only closeout)
+- **Validation base:** `f5c64d5` on `main` (post PR #47 merge)
+- **Scope:** Five merged polish/validation slices. No new schema, routes, lifecycle semantics, or production behavior from this closeout.
+
+### Slices closed
+
+1. **Public provenance polish** (PR #43) — standardized public-safe linked object/evidence labels and fallback copy; `PublicLinkedObjectContinuity`; applied across Your Map, Active Questions, Watch For, What Changed, Today, and Timeline; no raw snippet/quote/message body/internalNotes exposure.
+2. **Internal operator workflow polish** (PR #45) — four-family internal review workbench triage filters, family counts, readiness labels, grouped cards, clearer empty states, pending/error display; UserMap / Investigation / Fieldwork remain lifecycle-managed; ModelUpdate remains publish-only; no new lifecycle semantics.
+3. **Today / Timeline coherence** (PR #44) — unified Today Intelligence snapshot; unwired media affordance removed; Timeline model movement integrated into Activity & changes; partial failure states hardened; Europe/London timeline date grouping fixed.
+4. **Public understanding surfaces polish** (PR #46) — Your Map, Active Questions, and Watch For list/detail pages share clearer structure, intros, empty states, safe evidence/provenance framing, and cross-links; no route/API shape changes.
+5. **Candidate-loop runtime smoke validation** (PR #47) — committed test-only proof in `lib/__tests__/candidate-loop-runtime-smoke.test.ts`: bridge persistence → lifecycle/publish → public visibility/provenance; UserMap full loop + Investigation companion path; in-memory only; no live DB or credentials.
+
+### Verification (post PR #47)
+
+- `npx vitest run lib/__tests__/candidate-loop-runtime-smoke.test.ts`: 4 passed
+- `npx vitest run`: 181 files / 2778 tests passed
+- `npx tsc --noEmit`: pass
+- `npm run build`: pass
+- `bash scripts/check-trust-language.sh`: pass
+- `bash scripts/check-legacy-surfaces.sh`: pass
+
+### What this closeout does not claim
+
+- Phase 2 is **not** fully closed.
+- Candidate lifecycle cleanup / stale candidate policy is **not** complete.
+- Expiry scheduler, DB-level duplicate uniqueness, and ModelUpdate reject/archive semantics **do not** exist.
+
+### What remains partial
+
+- Candidate lifecycle cleanup / stale candidate policy
+- Expiry scheduler
+- DB-level duplicate uniqueness
+- ModelUpdate reject/archive semantics
+- Possible future mobile polish only if product review finds gaps
+- Known unused-variable build warnings remain non-blocking
+
+### Next exact step
+
+Run a candidate lifecycle cleanup design audit covering stale-candidate policy, expiry scheduler sequencing, ModelUpdate reject/archive semantics, and whether DB-level duplicate uniqueness is warranted before implementing any lifecycle cleanup.
+
+### Supersedes prior caveat
+
+- PR #47 committed runtime smoke validates integrated candidate-loop seams in-memory (bridge → lifecycle/publish → public visibility/provenance). This supersedes earlier ledger notes that the assembled loop was unvalidated at the test harness level. Live-DB operator validation remains a separate operational concern.
+
+- **Files changed:** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
+- **Verification (this docs closeout):** `git diff --check`: pass
