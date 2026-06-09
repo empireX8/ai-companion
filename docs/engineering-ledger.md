@@ -1022,3 +1022,76 @@ Decide the next product/backend slice separately. Candidate lifecycle cleanup (s
 
 - **Files changed:** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
 - **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Public UserMapConclusion API Projection Closeout (2026-06-09)
+
+- **Status:** `CLOSED / VALIDATED` (docs-only closeout)
+- **Validation base:** `2c54bce` on `main` (`origin/main` synced)
+- **Scope:** Record the published UserMapConclusion read-model audit and the three-commit public API response projection fix. No new schema, candidate generation, internal review/publish semantics, routes, UI, or mobile changes in this closeout.
+
+### Read-model audit findings (pre-fix)
+
+1. **Web Your Map list/detail** — already safe: explicit Prisma `select` + `toYourMapListItem` / `toYourMapDetailItem` in `app/(root)/(routes)/your-map/**`.
+2. **Evidence continuity** — safe: `listYourMapPublicEvidenceContinuity` allowlists verified `pattern_claim` / `contradiction_node` labels only; no raw snippets.
+3. **Internal review pool exclusion** — worked: published candidates (`visibility: user_visible`) no longer appear in `internal_only` review queries.
+4. **ModelUpdate surfaces** — worked: What Changed / Today / Timeline model layers consume `user_visible` + `isMeaningful: true` updates after publish.
+5. **REST public UserMapConclusion API** — **leaked full Prisma rows** on success responses before projection fix.
+
+### Response projection fixes (three commits)
+
+| Commit | Message | Routes fixed |
+|--------|---------|--------------|
+| `0b4641d` | Project public user map API responses | `GET /api/user-map/conclusions`, `GET /api/user-map/conclusions/[id]` |
+| `c2b4749` | Project public user map PATCH response | `PATCH /api/user-map/conclusions/[id]` |
+| `2c54bce` | Project public user map POST response | `POST /api/user-map/conclusions` |
+
+### Public response contract (post-fix)
+
+Public GET/PATCH/POST responses now use `toUserMapConclusionPublicApiListItem` / `toUserMapConclusionPublicApiDetailItem` from `lib/public-intelligence-safe-slice.ts` with explicit Prisma `select`.
+
+**Omitted from public responses:** `candidateLifecycleStatus`, `notes`, `confidenceScore`, `visibility`, `userId`, `version`, supersession fields, and other internal/schema fields.
+
+**Exposed safe fields:** `id`, `title`, `summary`, `area`, `status`, `confidenceLevel`, `evidenceCount`, `sourceDiversity`, `timeSpreadDays`, `createdAt`, `updatedAt`.
+
+### Phase 2P compliance
+
+Phase 2P §4.9 requires that `candidateLifecycleStatus` must not appear in user-facing API responses. That requirement is now satisfied for all public UserMapConclusion routes (`GET` list/detail, `PATCH`, `POST`).
+
+### What did not change
+
+- No candidate creation or dark-engine generation semantics changed.
+- No internal review routes, lifecycle routes, or publish helper semantics changed.
+- No schema changes.
+- No mobile code changed; mobile/API consumers now inherit safe projected backend responses automatically.
+
+### POST product/governance note
+
+- `POST /api/user-map/conclusions` remains a documented Phase 1B **manual-create** affordance (`docs/step4b-phase1b-additive-api-contract.md`).
+- It can create `user_visible` conclusions directly, bypassing the candidate lifecycle.
+- That bypass is a **product/governance** question, not a response-projection leak.
+- Production intelligence flow remains: dark-engine candidate creation → internal review → publish (`POST /api/internal/user-map/candidates/[id]/publish`).
+- **Optional future decision:** whether to keep, deprecate, or restrict the manual POST creation path.
+
+### Code files changed (prior implementation commits)
+
+- `app/api/user-map/conclusions/route.ts`
+- `app/api/user-map/conclusions/[id]/route.ts`
+- `lib/public-intelligence-safe-slice.ts`
+- `lib/__tests__/understanding-engine-phase1b-api.test.ts`
+- `lib/__tests__/phase3-internal-user-map-review-api.test.ts`
+- `lib/__tests__/phase3-public-intelligence-safe-slice.test.ts`
+
+### What remains partial
+
+- Phase 2 umbrella remains **partial** (unchanged by this closeout).
+- Optional product decision on manual `POST` path governance.
+- Candidate lifecycle cleanup, expiry scheduler, DB-level duplicate uniqueness, and ModelUpdate reject/archive remain open (unchanged).
+
+### Next exact step
+
+No code follow-up required for UserMapConclusion public API projection. Optional docs-only follow-up: note in `docs/step4b-phase1b-additive-api-contract.md` that manual POST is legacy relative to the publish path.
+
+- **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
+- **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
