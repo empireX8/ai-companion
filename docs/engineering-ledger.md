@@ -1186,3 +1186,78 @@ No mandatory code follow-up from this audit. Optional ops/docs: reviewer allowli
 
 - **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`, `docs/step7-hidden-internal-user-map-review-page-closeout.md` (supersession note only)
 - **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Mobile Published Intelligence Parser Parity Closeout (2026-06-09)
+
+- **Status:** `CLOSED / VALIDATED` (docs-only closeout; mobile implementation already merged)
+- **Validation base:** backend `6c9a4e3` on `main`; mobile `845fe7c — Align mobile intelligence update parsers` on `/Users/user/Mindlabs-app` `main`
+- **Scope:** Record closure of the mobile/web published-intelligence parity gap for Today and Timeline ModelUpdate rows discovered in Agent 5 audit. No backend code, schema, routes, candidate generation, or mobile code changes in this closeout.
+
+### Audit findings (Agent 5 — mobile/web parity)
+
+| Surface | Web | Mobile |
+|---------|-----|--------|
+| Your Map list/detail | Wired and safe | Wired and safe; minor list-area label degradation only |
+| What Changed | Wired and safe | Wired and safe |
+| Today ModelUpdate | Wired and safe | Wired but **parser-incompatible** with current backend payload shape |
+| Timeline ModelUpdate | Wired and safe | Wired but **parser-incompatible** with current backend payload shape |
+
+**Root cause:** Backend Today/Timeline routes return label-shaped fields (`updateTypeLabel`, `affectedObjectTypeLabel`, `affectedObjectHref`, `userFacingSummary`, `createdAt`). Mobile parsers only accepted enum-shaped fields (`updateType`, `affectedObjectType`). Result: mobile Today and Timeline could **silently drop** backend-shaped ModelUpdate rows.
+
+### Mobile fix (Agent 7 — `845fe7c`)
+
+**Files changed (mobile repo):**
+
+- `src/lib/backend-chat-api.ts`
+- `src/components/MindLabPrototype.today-alignment.test.ts`
+- `src/components/MindLabPrototype.timeline-model-layers-alignment.test.ts`
+
+**What changed:**
+
+- Today parser now accepts **enum-shaped rows and label-shaped backend rows**
+- Timeline model-layer parser now accepts **enum-shaped rows and label-shaped backend rows**
+- `userFacingSummary`, `createdAt`, and `affectedObjectHref` are preserved through parsing
+- Internal fields remain not stored or rendered
+- Optional Your Map list fallback now maps `area` before defaulting to `"Conclusion"`
+
+**Backend was not changed.**
+
+### Related prior closeout (unchanged)
+
+Public UserMapConclusion API projection remains **closed** from the prior backend block (`0b4641d`, `c2b4749`, `2c54bce`). This closeout does not reopen or alter that projection work.
+
+### What this closeout does not validate
+
+- Investigation live validation
+- Fieldwork live validation
+- Independent ModelUpdate candidate-lane live validation
+- Production trigger/backfill policy
+- `POST /api/user-map/conclusions` manual-create governance documentation
+
+These remain separate audit-wave / policy items.
+
+### Mobile verification (recorded from implementation pass)
+
+- `git diff --check`: pass
+- Targeted alignment tests passed:
+  - Today alignment
+  - Timeline model layers alignment
+  - What Changed alignment
+  - Timeline model movement evidence projection
+- `npm run verify` passed in mobile repo: 115 tests; production build
+
+### What remains partial (unchanged)
+
+- Phase 2 umbrella remains **partial**
+- Investigation, Fieldwork, and ModelUpdate candidate-lane live validation remain open
+- Production trigger/backfill policy and manual POST governance remain open
+- Remaining Phase 6 deferred items (Investigations list/detail, dedicated What Changed/Timeline detail pages, etc.) remain deferred
+
+### Next exact step
+
+No backend code follow-up required for Today/Timeline parser parity. Remaining audit-wave items (Investigation live validation, Fieldwork live validation, ModelUpdate candidate-lane live validation, production trigger/backfill policy, POST manual-create governance docs) to be scheduled separately.
+
+- **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
+- **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
