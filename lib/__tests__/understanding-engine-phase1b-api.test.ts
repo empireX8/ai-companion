@@ -385,8 +385,71 @@ describe("Understanding Engine Phase 1B API routes", () => {
           userId: "user-1",
           visibility: "user_visible",
         }),
+        select: expect.objectContaining({
+          id: true,
+          sourceDiversity: true,
+          timeSpreadDays: true,
+          createdAt: true,
+        }),
       })
     );
+  });
+
+  it("omits internal lifecycle fields from public user-map conclusion POST response", async () => {
+    prismaMock.userMapConclusion.create.mockResolvedValueOnce({
+      id: "umc-new-1",
+      title: "New conclusion",
+      summary: "New summary",
+      area: "operating_logic",
+      status: "hypothesis",
+      confidenceLevel: "low",
+      evidenceCount: 0,
+      sourceDiversity: 0,
+      timeSpreadDays: 0,
+      createdAt: new Date("2026-05-14T10:00:00.000Z"),
+      updatedAt: new Date("2026-05-14T10:00:00.000Z"),
+    });
+
+    const route = await import("../../app/api/user-map/conclusions/route");
+    const response = await route.POST(
+      new Request("http://localhost/api/user-map/conclusions", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          area: "operating_logic",
+          status: "hypothesis",
+          title: "New conclusion",
+          summary: "New summary",
+          confidenceScore: 0.3,
+          confidenceLevel: "low",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    const serialized = JSON.stringify(body);
+    expect(serialized).not.toContain("candidateLifecycleStatus");
+    expect(serialized).not.toContain("confidenceScore");
+    expect(serialized).not.toContain('"notes"');
+    expect(serialized).not.toContain("internal_only");
+    expect(body.item).toEqual({
+      id: "umc-new-1",
+      title: "New conclusion",
+      summary: "New summary",
+      area: "operating_logic",
+      status: "hypothesis",
+      confidenceLevel: "low",
+      evidenceCount: 0,
+      sourceDiversity: 0,
+      timeSpreadDays: 0,
+      createdAt: "2026-05-14T10:00:00.000Z",
+      updatedAt: "2026-05-14T10:00:00.000Z",
+    });
+    expect(body.item).not.toHaveProperty("visibility");
+    expect(body.item).not.toHaveProperty("userId");
+    expect(body.item).not.toHaveProperty("version");
+    expect(body.item).not.toHaveProperty("supersededById");
   });
 
   it("rejects user-map create when visibility is supplied", async () => {

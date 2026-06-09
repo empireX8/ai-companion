@@ -9,7 +9,10 @@ import {
 import { z } from "zod";
 
 import prismadb from "@/lib/prismadb";
-import { toUserMapConclusionPublicApiListItem } from "../../../../lib/public-intelligence-safe-slice";
+import {
+  toUserMapConclusionPublicApiDetailItem,
+  toUserMapConclusionPublicApiListItem,
+} from "../../../../lib/public-intelligence-safe-slice";
 import {
   MAX_LIMIT,
   SortOrder,
@@ -29,6 +32,20 @@ const USER_MAP_CONCLUSION_PUBLIC_LIST_SELECT = {
   status: true,
   confidenceLevel: true,
   evidenceCount: true,
+  updatedAt: true,
+} as const;
+
+const USER_MAP_CONCLUSION_PUBLIC_DETAIL_SELECT = {
+  id: true,
+  title: true,
+  summary: true,
+  area: true,
+  status: true,
+  confidenceLevel: true,
+  evidenceCount: true,
+  sourceDiversity: true,
+  timeSpreadDays: true,
+  createdAt: true,
   updatedAt: true,
 } as const;
 
@@ -256,9 +273,15 @@ export async function POST(req: Request) {
         visibility: UserMapConclusionVisibility.user_visible,
         ...parsed.data,
       },
+      select: USER_MAP_CONCLUSION_PUBLIC_DETAIL_SELECT,
     });
 
-    return NextResponse.json({ item: created }, { status: 201 });
+    const item = toUserMapConclusionPublicApiDetailItem(created);
+    if (!item) {
+      return errorResponse(500, "Internal Error", "INTERNAL_ERROR");
+    }
+
+    return NextResponse.json({ item }, { status: 201 });
   } catch (error) {
     console.error("[USER_MAP_CONCLUSIONS_POST_ERROR]", error);
     return errorResponse(500, "Internal Error", "INTERNAL_ERROR");
