@@ -1152,6 +1152,8 @@ Successful actions refresh the server-rendered list via `router.refresh()`.
 | `lib/validate-user-map-candidate-review-publish-flow.ts` | Direct helper calls for CLI proof |
 | `scripts/validate-investigation-candidate-review-publish-flow.ts` | Investigation candidate lane live-DB validation (dry-run default; not yet live-validated end-to-end) |
 | `lib/validate-investigation-candidate-review-publish-flow.ts` | Direct helper calls for Investigation review/publish proof |
+| `scripts/discover-investigation-candidate-proposal.ts` | Read-only dry-run scanner for users whose dark-run naturally produces Investigation proposals without UserMap proposals (no writes; not yet run against live DB in this slice) |
+| `lib/discover-investigation-candidate-proposal.ts` | Direct helper calls for Investigation proposal discovery proof |
 | `scripts/report-candidate-lifecycle-diagnostics.ts` | Read-only stale/duplicate diagnostics |
 
 ### Operational requirements
