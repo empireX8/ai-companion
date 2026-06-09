@@ -1154,6 +1154,8 @@ Successful actions refresh the server-rendered list via `router.refresh()`.
 | `lib/validate-investigation-candidate-review-publish-flow.ts` | Direct helper calls for Investigation review/publish proof |
 | `scripts/discover-investigation-candidate-proposal.ts` | Read-only dry-run scanner for users whose dark-run naturally produces Investigation proposals without UserMap proposals (no writes; not yet run against live DB in this slice) |
 | `lib/discover-investigation-candidate-proposal.ts` | Direct helper calls for Investigation proposal discovery proof |
+| `scripts/discover-candidate-family-proposals.ts` | Read-only dry-run scanner for FieldworkAssignment and ModelUpdate proposal availability (no writes; Fieldwork/ModelUpdate live validation not yet complete) |
+| `lib/discover-candidate-family-proposals.ts` | Direct helper calls for Fieldwork/ModelUpdate proposal discovery proof |
 | `scripts/report-candidate-lifecycle-diagnostics.ts` | Read-only stale/duplicate diagnostics |
 
 ### Operational requirements
