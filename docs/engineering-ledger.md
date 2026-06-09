@@ -1261,3 +1261,72 @@ No backend code follow-up required for Today/Timeline parser parity. Remaining a
 
 - **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
 - **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Post-UserMap Audit Wave Synthesis Closeout (2026-06-09)
+
+- **Status:** `CLOSED / VALIDATED` (docs-only synthesis closeout; no code changes)
+- **Validation base:** backend `f562d66 — Record mobile intelligence parser parity closeout` on `main`; mobile `845fe7c — Align mobile intelligence update parsers` on `/Users/user/Mindlabs-app` `main`
+- **Scope:** Synthesize six read-only post-UserMap audit verdicts into a single ledger record. No schema, routes, candidate generation, UI, mobile, or backend API changes in this closeout.
+
+### Six audits synthesized
+
+| # | Audit | Verdict | Summary |
+|---|-------|---------|---------|
+| 1 | Investigation Candidate Validation | **PARTIAL** | Pipeline wired end-to-end in code: proposal → persistence → review → lifecycle → publish → Active Questions + `investigation_opened` ModelUpdate. Not live-DB validated at UserMap level; diagnostics parity gap; expected low generation due to UserMap precedence. |
+| 2 | FieldworkAssignment Candidate Validation | **PARTIAL** | Pipeline wired end-to-end in code: proposal → persistence → review → lifecycle → publish → Watch For + `fieldwork_assigned` ModelUpdate. Not live-DB validated at UserMap level; diagnostics parity gap; expected low generation due to precedence and narrow abstain gate. |
+| 3 | ModelUpdate Candidate Validation | **PARTIAL** | `conclusion_added` from UserMap publish is proven. Independent `link_detected` ModelUpdate candidate lane is wired and test-covered but not live-validated. No runtime validation for ModelUpdate candidate lane; no reject/archive semantics. |
+| 4 | Production Trigger / Backfill Policy | **PARTIAL** | Candidate creation is event-driven through APP `journal_chat` / `explore_chat` messages and import-completion bridge. No automatic historical backfill. No scheduler. Backfill/rerun is script-only with `--execute`. Any governed rerun/backfill route requires separate product policy. |
+| 5 | Mobile/Web Parity | **PARTIAL → CLOSED** | Functional mobile failure for Today/Timeline ModelUpdate rows fixed by mobile `845fe7c`; backend docs closeout recorded in `f562d66`. |
+| 6 | POST Manual-Create Governance | **DOCUMENT AS LEGACY** | `POST /api/user-map/conclusions` is safe-projected now but remains a public Phase 1B manual-create path that can create `user_visible` conclusions outside candidate lifecycle. Docs-only clarification: POST is manual/legacy relative to production intelligence flow. |
+
+### Audit wave synthesis (current truth)
+
+1. **UserMap** — validated end-to-end (live-DB create → review → publish on imported dev data; PR #50–#52; operator workbench usable without scripts).
+2. **Investigation, Fieldwork, independent ModelUpdate candidate lanes** — wired and test-covered end-to-end in code but **not** live-validated at UserMap level.
+3. **Mobile Today/Timeline parser parity** — fixed and closed (`845fe7c` + `f562d66`).
+4. **Production candidate creation** — event-only (APP messages + import completion); no automatic historical backfill.
+5. **POST manual-create** — remains a governance/product decision, not a response-projection leak.
+
+### Production intelligence flow vs manual POST
+
+| Path | Flow | Reviewed intelligence? |
+|------|------|------------------------|
+| **Production intelligence** | candidate creation → internal review → publish | Yes — dark-engine proposal, lifecycle, operator publish |
+| **Manual POST** | authenticated manual/API creation → immediate `user_visible` | No — bypasses candidate lifecycle; safe from response-leak perspective after projection fix (`2c54bce`) but not equivalent to reviewed intelligence |
+
+Long-term POST status needs product decision: keep as manual, restrict, deprecate, or turn into first-class user-authored map entries. See cross-reference in `docs/step4b-phase1b-additive-api-contract.md` §5.1.
+
+### Recommended next implementation order
+
+1. **First:** validation-only scripts for Investigation / Fieldwork / ModelUpdate candidate lanes (mirror UserMap PR #51–#52 pattern; dry-run default; `--execute` optional).
+2. **Second:** docs/policy lock for production trigger/backfill before any governed rerun route.
+3. **Third:** POST governance decision before any restriction/deprecation.
+4. **Do not yet:** build automatic historical backfill; broaden candidate generation until live validation proves current lanes.
+
+### Explicit non-closures (do not claim)
+
+- Phase 2 is **not** fully closed.
+- Investigation live validation is **not** complete.
+- Fieldwork live validation is **not** complete.
+- Independent ModelUpdate candidate lane is **not** production-validated.
+- Automatic backfill does **not** exist.
+- POST governance is **not** resolved.
+- DB uniqueness constraints and expiry scheduler do **not** exist.
+
+### What remains partial (unchanged)
+
+- Candidate lifecycle cleanup / stale policy (diagnostics exist; no scheduler/auto-expiry)
+- Expiry scheduler
+- DB-level duplicate uniqueness
+- ModelUpdate reject/archive semantics
+- Non-UserMap candidate-lane live validation on imported data
+- POST manual-create product/governance decision
+
+### Next exact step
+
+Implement validation-only scripts for Investigation, Fieldwork, and ModelUpdate candidate lanes as the first bounded slice after this synthesis closeout.
+
+- **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`, `docs/step4b-phase1b-additive-api-contract.md` (POST cross-reference only)
+- **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
