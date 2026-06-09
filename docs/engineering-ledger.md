@@ -1095,3 +1095,94 @@ No code follow-up required for UserMapConclusion public API projection. Optional
 
 - **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
 - **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Internal Candidate Review Operator Workflow Audit Closeout (2026-06-09)
+
+- **Status:** `CLOSED / VALIDATED` (docs-only audit closeout; no code changes)
+- **Validation base:** `ce03ce8` on `main`
+- **Scope:** Read-only audit confirming whether allowlisted internal reviewers can complete the UserMapConclusion candidate review/publish loop through existing app surfaces without ad hoc scripts. No schema, routes, UI, candidate generation, or runtime behavior changes in this closeout.
+
+### Audit verdict
+
+**The core UserMapConclusion operator loop is already usable through the app.** An allowlisted reviewer can list, hold, promote, reject, expire (where allowed), and publish `internal_only` candidates from the hidden four-family workbench at `/internal/user-map/review` without validation scripts.
+
+`docs/step7-hidden-internal-user-map-review-page-closeout.md` describes an **older read-only** page checkpoint. It is **superseded** by the current operator workbench (Build Slice 4 + Internal Four-Family Candidate Review Workbench closeout on `be38253`). Do not treat Step 7 as the current capability ceiling.
+
+### Current operator workflow
+
+| Surface | Detail |
+|---------|--------|
+| **Hidden page** | `/internal/user-map/review` (not in public nav) |
+| **Families** | UserMapConclusion, Investigation, FieldworkAssignment, ModelUpdate (tabbed workbench) |
+| **Reviewer gate** | `INTERNAL_USER_MAP_REVIEWER_IDS` (empty allowlist denies all) |
+| **List API** | `GET /api/internal/user-map/review-candidates` (+ parallel family list routes) |
+| **Lifecycle API** | `POST /api/internal/user-map/candidates/[id]/lifecycle` with `newStatus` |
+| **Publish API** | `POST /api/internal/user-map/candidates/[id]/publish` |
+
+**UserMapConclusion operator path (UI + API):**
+
+- `proposed → held_for_more_evidence` — Hold for more evidence
+- `held_for_more_evidence → promoted` — Promote
+- `promoted → publish` — Publish (when `internal_only`)
+- Reject and Expire where Phase 2K transitions allow
+- **Direct `proposed → promoted` remains intentionally disallowed** (matches PR #52 live validation)
+
+Successful actions refresh the server-rendered list via `router.refresh()`.
+
+### Publish behavior
+
+- Requires `candidateLifecycleStatus: promoted` and `visibility: internal_only`
+- Changes `visibility` to `user_visible` only (Phase 2P semantics unchanged)
+- Creates meaningful `conclusion_added` ModelUpdate on publish
+- Published candidates **disappear** from the `internal_only` review pool on refresh (code filter + prior PR #52 validation for `cmq6frqdx0000ql8h6nkavzue`)
+
+### Evidence / provenance safety
+
+- Internal workbench shows safe provenance: link counts, source-type breakdown, safety levels, linked `sourceType`/`sourceId` pairs, derivation run/artifact refs, safe diagnostics fields
+- Does **not** render raw snippets, quotes, or message bodies on review cards
+- Public UserMapConclusion routes are safely projected after `0b4641d`, `c2b4749`, `2c54bce` (no `candidateLifecycleStatus` or full Prisma row leakage on public GET/PATCH/POST)
+
+### Scripts are dev/validation aids (not required for normal operator workflow)
+
+| Script / helper | Role |
+|-----------------|------|
+| `scripts/validate-user-map-candidate-review-publish-flow.ts` | Live-DB validation bypassing Clerk HTTP |
+| `lib/validate-user-map-candidate-review-publish-flow.ts` | Direct helper calls for CLI proof |
+| `scripts/report-candidate-lifecycle-diagnostics.ts` | Read-only stale/duplicate diagnostics |
+
+### Operational requirements
+
+- Deployment must set `INTERNAL_USER_MAP_REVIEWER_IDS` with comma-separated Clerk user IDs
+- Reviewers must know the hidden URL `/internal/user-map/review`
+- Empty User Map candidate tab is **not** a workflow bug when all candidates are published or none exist
+- Local DB was **unavailable** during this audit (`localhost:5432` unreachable); current live pool state was not rechecked. Published-candidate exclusion from the internal review pool is supported by code filters and prior PR #52 validation.
+
+### Remaining optional follow-ups (not blockers)
+
+- Document reviewer URL and allowlist setup in ops/runbook material
+- Optionally show ModelUpdate ID / Your Map link in publish success message
+- Optionally surface read-only stale/duplicate diagnostics on workbench header
+- Optionally support legacy `candidateLifecycleStatus: null` initialization if legacy rows exist in production
+- Optionally add supersede UI (`promoted → superseded`)
+
+**No code implementation is required** for the core UserMap operator loop based on this audit.
+
+### What did not change
+
+- No schema, candidate generation, internal review routes, publish helper semantics, public routes, mobile, or UI changes in this closeout
+
+### What remains partial (unchanged)
+
+- Phase 2 umbrella remains **partial**
+- No expiry scheduler, DB-level duplicate uniqueness, ModelUpdate reject/archive route
+- Legacy `candidateLifecycleStatus: null` rows still lack lifecycle buttons
+- No mobile operator surface
+
+### Next exact step
+
+No mandatory code follow-up from this audit. Optional ops/docs: reviewer allowlist + hidden URL runbook note.
+
+- **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`, `docs/step7-hidden-internal-user-map-review-page-closeout.md` (supersession note only)
+- **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.

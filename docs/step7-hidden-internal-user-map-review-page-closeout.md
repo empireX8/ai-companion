@@ -1,5 +1,7 @@
 # MindLab Step 7 — Hidden Internal User Map Review Page Closeout Checkpoint
 
+> **Supersession note (2026-06-09):** This checkpoint records the **original read-only** hidden review page scope. The current app includes a **four-family internal operator workbench** at `/internal/user-map/review` with lifecycle and publish controls for UserMapConclusion, Investigation, and Fieldwork, plus publish-only for ModelUpdate. See `docs/engineering-ledger.md` — *Internal Candidate Review Operator Workflow Audit Closeout* and *Internal Four-Family Candidate Review Workbench — Closeout*. Do not treat this document as the current capability ceiling.
+
 ## 1) Scope Completed
 
 Completed for this extension:
