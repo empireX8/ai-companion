@@ -567,6 +567,74 @@ describe("Understanding Engine Phase 1B API routes", () => {
     });
   });
 
+  it("omits internal lifecycle fields from public user-map conclusion PATCH response", async () => {
+    prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({
+      id: "umc-1",
+      status: "emerging",
+      evidenceCount: 5,
+      sourceDiversity: 2,
+      timeSpreadDays: 7,
+    });
+    prismaMock.userMapConclusion.update.mockResolvedValueOnce({
+      id: "umc-1",
+      title: "Updated conclusion",
+      summary: "Updated summary",
+      area: "operating_logic",
+      status: "supported",
+      confidenceLevel: "high",
+      evidenceCount: 6,
+      sourceDiversity: 3,
+      timeSpreadDays: 10,
+      createdAt: new Date("2026-05-10T08:00:00.000Z"),
+      updatedAt: new Date("2026-05-16T10:00:00.000Z"),
+    });
+
+    const route = await import("../../app/api/user-map/conclusions/[id]/route");
+    const response = await route.PATCH(
+      new Request("http://localhost/api/user-map/conclusions/umc-1", {
+        method: "PATCH",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ status: "supported" }),
+      }),
+      { params: Promise.resolve({ id: "umc-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(prismaMock.userMapConclusion.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "umc-1" },
+        data: { status: "supported" },
+        select: expect.objectContaining({
+          id: true,
+          sourceDiversity: true,
+          timeSpreadDays: true,
+          createdAt: true,
+        }),
+      })
+    );
+    const body = await response.json();
+    const serialized = JSON.stringify(body);
+    expect(serialized).not.toContain("candidateLifecycleStatus");
+    expect(serialized).not.toContain("confidenceScore");
+    expect(serialized).not.toContain('"notes"');
+    expect(serialized).not.toContain("internal_only");
+    expect(body.item).toEqual({
+      id: "umc-1",
+      title: "Updated conclusion",
+      summary: "Updated summary",
+      area: "operating_logic",
+      status: "supported",
+      confidenceLevel: "high",
+      evidenceCount: 6,
+      sourceDiversity: 3,
+      timeSpreadDays: 10,
+      createdAt: "2026-05-10T08:00:00.000Z",
+      updatedAt: "2026-05-16T10:00:00.000Z",
+    });
+    expect(body.item).not.toHaveProperty("visibility");
+    expect(body.item).not.toHaveProperty("userId");
+  });
+
   it("omits internal lifecycle fields from public user-map conclusion detail GET", async () => {
     prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({
       id: "umc-visible-1",

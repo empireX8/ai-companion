@@ -209,9 +209,15 @@ export async function PATCH(
     const updated = await prismadb.userMapConclusion.update({
       where: { id },
       data: parsed.data,
+      select: USER_MAP_CONCLUSION_PUBLIC_DETAIL_SELECT,
     });
 
-    return detailSuccess(updated);
+    const item = toUserMapConclusionPublicApiDetailItem(updated);
+    if (!item) {
+      return errorResponse(404, "Not found", "NOT_FOUND");
+    }
+
+    return detailSuccess(item);
   } catch (error) {
     console.error("[USER_MAP_CONCLUSION_PATCH_ERROR]", error);
     return errorResponse(500, "Internal Error", "INTERNAL_ERROR");
