@@ -948,3 +948,77 @@ Run a candidate lifecycle cleanup design audit covering stale-candidate policy, 
 
 - **Files changed:** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
 - **Verification (this docs closeout):** `git diff --check`: pass
+
+---
+
+## Candidate Loop Runtime Validation Block — Closeout (2026-06-09)
+
+- **Status:** `CLOSED / VALIDATED` (docs-only closeout)
+- **Validation base:** `1762b85` on `main` (post PR #52 merge)
+- **Scope:** Operational validation of candidate creation, lifecycle diagnostics, and review/publish on real imported dev data. No new schema, routes, UI, lifecycle policy, or production behavior from this closeout.
+
+### Slices closed
+
+1. **Candidate lifecycle diagnostics report** (PR #50, `e5b1b8b`) — read-only stale/duplicate diagnostics helper + `scripts/report-candidate-lifecycle-diagnostics.ts`; fingerprint-only output; no raw evidence/text.
+2. **Candidate creation runtime validation** (PR #51, `72fb3ff`) — `lib/candidate-creation-runtime-validation.ts` + `scripts/run-candidate-creation-runtime-validation.ts`; dry-run default; `--execute` uses existing dark-run + bridge persistence via `manual_internal` override; counts internal candidate-lane rows only; uses latest **completed** import session for diagnosis.
+3. **UserMap review/publish runtime validation** (PR #52, `1762b85`) — `lib/validate-user-map-candidate-review-publish-flow.ts` + `scripts/validate-user-map-candidate-review-publish-flow.ts`; dry-run default; `--execute` uses existing `updateCandidateLifecycleStatus` + `publishCandidate` helpers.
+
+### Dev dataset confirmed (imported user `user_34TUYA53pI1QRLK73O22Kve1a1G`)
+
+- Sessions: 640; messages: 18,582; evidenceSpans: 5,922; patternClaims: 7
+- All sessions `IMPORTED_ARCHIVE`; zero APP bridge-eligible sessions
+- Import completed **before** candidate bridge wiring — zero candidates until manual validation execute
+
+### Candidate creation validation proved
+
+- Dark-run harness passed; UserMap proposal present (`operating_logic`)
+- Persistence works via existing bridge helper (`--execute` on creation validation script)
+- Root cause of pre-validation zero candidates: **event-only triggers** (import completion + APP messages); no backfill for already-complete imports
+- `candidateCountsBefore`/`After` count internal candidate lane only (not user-visible production rows)
+- Diagnosis uses `latestCompletedImportSession` (`status: complete`), not pending/failed imports
+
+### Real UserMapConclusion candidate (created by validation execute)
+
+- id: `cmq6frqdx0000ql8h6nkavzue`
+- area: `operating_logic`; status: `emerging`
+- visibility: `internal_only` → `user_visible` (after publish validation)
+- candidateLifecycleStatus: `proposed` → `held_for_more_evidence` → `promoted` (publish validation)
+- confidenceScore: `0.85`; confidenceLevel: `medium`
+- evidenceCount: `50`; sourceDiversity: `9`
+- Lifecycle diagnostics after creation: UserMapConclusion total 1; stale 0; duplicate clusters 0; Investigation/Fieldwork/ModelUpdate candidates 0
+
+### Review/publish validation proved (PR #52 execute on real candidate)
+
+- Lifecycle path: `proposed → held_for_more_evidence → promoted` (direct `proposed → promoted` is **not** allowed per Phase 2K policy)
+- Publish changes visibility `internal_only` → `user_visible`; `candidateLifecycleStatus` remains `promoted`; `status` remains `emerging`
+- Evidence/provenance: 50 `understandingEvidenceLink` rows preserved
+- Public Your Map visibility: true after publish
+- Publish creates meaningful user-visible ModelUpdate: `updateType: conclusion_added`, `visibility: user_visible`, `isMeaningful: true` (id `cmq6h8ewn0000qlbwlg485jx1` on dev)
+
+### What this closeout does not claim
+
+- Phase 2 umbrella is **not** fully closed
+- No automatic candidate backfill for legacy imports
+- No expiry scheduler, DB-level duplicate uniqueness, or ModelUpdate reject/archive semantics
+- Investigation/Fieldwork/ModelUpdate candidate creation on imported data not validated in this block
+- Live-DB validation used dev scripts only; internal HTTP routes require Clerk reviewer auth (helpers are sufficient)
+
+### What remains partial
+
+- Candidate lifecycle cleanup / stale policy implementation (diagnostics exist; no scheduler/auto-expiry)
+- Expiry scheduler
+- DB-level duplicate uniqueness
+- ModelUpdate reject/archive semantics
+- Non-UserMap candidate backfill/validation on imported data
+- Broader four-family live-DB operator validation beyond UserMap
+
+### Next exact step
+
+Decide the next product/backend slice separately. Candidate lifecycle cleanup (stale policy, expiry sequencing, ModelUpdate reject/archive, DB uniqueness) remains a design decision — not started by this closeout.
+
+### Supersedes prior caveat
+
+- PR #47 in-memory smoke + this block's live-DB validation together close the "candidate loop unvalidated" gap for UserMap on imported dev data. Prior Product Polish closeout "live-DB operator validation remains separate" is now addressed for UserMap create → review → publish.
+
+- **Files changed:** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
+- **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
