@@ -25,6 +25,7 @@ vi.mock("../understanding-dark-engine/candidate-bridge-dark-run-persistence", ()
 }));
 
 import {
+  buildInternalCandidateLaneCountWhere,
   parseCandidateCreationRuntimeValidationCliArgs,
   runCandidateCreationRuntimeValidation,
 } from "../candidate-creation-runtime-validation";
@@ -84,14 +85,21 @@ function makeDb(overrides: Partial<Record<string, unknown>> = {}): PrismaClient 
     fieldworkAssignment: { count: vi.fn().mockResolvedValue(0) },
     modelUpdate: { count: vi.fn().mockResolvedValue(0) },
     importUploadSession: {
-      findFirst: vi.fn().mockResolvedValue({
-        id: "import-1",
-        status: "complete",
-        createdAt: new Date("2026-05-12T09:38:11.502Z"),
-        finishedAt: new Date("2026-05-12T09:41:37.814Z"),
-        sessionsCreated: 2,
-        messagesCreated: 10,
-      }),
+      findFirst: vi.fn().mockImplementation(
+        async (args: { where?: { status?: string } }) => {
+          if (args.where?.status === "complete") {
+            return {
+              id: "import-complete-1",
+              status: "complete",
+              createdAt: new Date("2026-05-12T09:38:11.502Z"),
+              finishedAt: new Date("2026-05-12T09:41:37.814Z"),
+              sessionsCreated: 2,
+              messagesCreated: 10,
+            };
+          }
+          return null;
+        }
+      ),
     },
     derivationRun: {
       findFirst: vi.fn().mockImplementation(
@@ -232,6 +240,103 @@ describe("candidate creation runtime validation", () => {
       expect(report.understandingDarkEngineDerivationRunCount).toBe(0);
       expect(report.sessionTriggerSummary.appBridgeEligibleSessions).toBe(0);
       expect(report.diagnosis.appMessageBridgeWouldRunForAnySession).toBe(false);
+    });
+
+    it("counts internal candidate-lane rows only, excluding user-visible production rows", async () => {
+      const userMapCount = vi.fn().mockResolvedValue(1);
+      const investigationCount = vi.fn().mockResolvedValue(0);
+      const fieldworkCount = vi.fn().mockResolvedValue(0);
+      const modelUpdateCount = vi.fn().mockResolvedValue(0);
+      const db = makeDb({
+        userMapConclusion: { count: userMapCount },
+        investigation: { count: investigationCount },
+        fieldworkAssignment: { count: fieldworkCount },
+        modelUpdate: { count: modelUpdateCount },
+      });
+
+      await runCandidateCreationRuntimeValidation({
+        userId: "user-1",
+        dryRun: true,
+        now: NOW,
+        db,
+      });
+
+      const expectedWhere = buildInternalCandidateLaneCountWhere("user-1");
+      expect(userMapCount).toHaveBeenCalledWith({ where: expectedWhere.userMapConclusion });
+      expect(investigationCount).toHaveBeenCalledWith({
+        where: expectedWhere.investigation,
+      });
+      expect(fieldworkCount).toHaveBeenCalledWith({
+        where: expectedWhere.fieldworkAssignment,
+      });
+      expect(modelUpdateCount).toHaveBeenCalledWith({ where: expectedWhere.modelUpdate });
+    });
+
+    it("uses latest completed import for diagnosis when a newer pending import exists", async () => {
+      const importFindFirst = vi.fn().mockImplementation(
+        async (args: { where?: { status?: string } }) => {
+          if (args.where?.status === "complete") {
+            return {
+              id: "import-complete-older",
+              status: "complete",
+              createdAt: new Date("2026-05-12T09:38:11.502Z"),
+              finishedAt: new Date("2026-05-12T09:41:37.814Z"),
+              sessionsCreated: 2,
+              messagesCreated: 10,
+            };
+          }
+          return null;
+        }
+      );
+      const db = makeDb({
+        importUploadSession: { findFirst: importFindFirst },
+      });
+
+      const report = await runCandidateCreationRuntimeValidation({
+        userId: "user-1",
+        dryRun: true,
+        now: NOW,
+        db,
+      });
+
+      expect(importFindFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: "user-1",
+            status: "complete",
+          }),
+        })
+      );
+      expect(report.latestCompletedImportSession).toEqual({
+        id: "import-complete-older",
+        status: "complete",
+        createdAt: "2026-05-12T09:38:11.502Z",
+        finishedAt: "2026-05-12T09:41:37.814Z",
+        sessionsCreated: 2,
+        messagesCreated: 10,
+      });
+      expect(report.diagnosis.importCompletionBridgeRerunnable).toBe(true);
+      expect(report.diagnosis.likelyRootCause).toContain("Import completed before candidate bridge");
+    });
+
+    it("does not treat a newer failed import as completed import evidence", async () => {
+      const importFindFirst = vi.fn().mockResolvedValue(null);
+      const db = makeDb({
+        importUploadSession: { findFirst: importFindFirst },
+      });
+
+      const report = await runCandidateCreationRuntimeValidation({
+        userId: "user-1",
+        dryRun: true,
+        now: NOW,
+        db,
+      });
+
+      expect(report.latestCompletedImportSession).toBeNull();
+      expect(report.diagnosis.importCompletionBridgeRerunnable).toBe(false);
+      expect(report.diagnosis.likelyRootCause).not.toContain(
+        "Import completed before candidate bridge"
+      );
     });
   });
 });

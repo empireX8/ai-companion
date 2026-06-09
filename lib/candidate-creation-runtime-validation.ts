@@ -1,4 +1,8 @@
-import type { PrismaClient } from "@prisma/client";
+import {
+  ImportUploadStatus,
+  type Prisma,
+  type PrismaClient,
+} from "@prisma/client";
 
 import { persistInternalCandidateFromNoWriteDarkRunOutput } from "./understanding-dark-engine/candidate-bridge-dark-run-persistence";
 import { shouldRunAppMessageCandidateBridgeForSession } from "./understanding-dark-engine/app-message-candidate-bridge";
@@ -109,7 +113,7 @@ export type CandidateCreationRuntimeValidationReport = {
   inputCounts: CandidateCreationInputCounts;
   candidateCountsBefore: CandidateFamilyCounts;
   candidateCountsAfter: CandidateFamilyCounts;
-  latestImportSession: CandidateCreationImportSessionSummary;
+  latestCompletedImportSession: CandidateCreationImportSessionSummary;
   latestDerivationRun: CandidateCreationDerivationRunSummary;
   latestUnderstandingDarkEngineDerivationRun: CandidateCreationDerivationRunSummary;
   understandingDarkEngineDerivationRunCount: number;
@@ -235,16 +239,48 @@ async function loadTriggerEligibility(args: {
   };
 }
 
+export function buildInternalCandidateLaneCountWhere(
+  userId: string
+): {
+  userMapConclusion: Prisma.UserMapConclusionWhereInput;
+  investigation: Prisma.InvestigationWhereInput;
+  fieldworkAssignment: Prisma.FieldworkAssignmentWhereInput;
+  modelUpdate: Prisma.ModelUpdateWhereInput;
+} {
+  return {
+    userMapConclusion: {
+      userId,
+      visibility: "internal_only",
+    },
+    investigation: {
+      userId,
+      visibility: "internal_only",
+      candidateLifecycleStatus: { not: null },
+    },
+    fieldworkAssignment: {
+      userId,
+      visibility: "internal_only",
+      candidateLifecycleStatus: { not: null },
+    },
+    modelUpdate: {
+      userId,
+      visibility: "internal_only",
+      isMeaningful: false,
+    },
+  };
+}
+
 async function countCandidateFamilies(
   db: PrismaClient,
   userId: string
 ): Promise<CandidateFamilyCounts> {
+  const where = buildInternalCandidateLaneCountWhere(userId);
   const [userMapConclusion, investigation, fieldworkAssignment, modelUpdate] =
     await Promise.all([
-      db.userMapConclusion.count({ where: { userId } }),
-      db.investigation.count({ where: { userId } }),
-      db.fieldworkAssignment.count({ where: { userId } }),
-      db.modelUpdate.count({ where: { userId } }),
+      db.userMapConclusion.count({ where: where.userMapConclusion }),
+      db.investigation.count({ where: where.investigation }),
+      db.fieldworkAssignment.count({ where: where.fieldworkAssignment }),
+      db.modelUpdate.count({ where: where.modelUpdate }),
     ]);
 
   return {
@@ -257,12 +293,12 @@ async function countCandidateFamilies(
 
 function buildDiagnosis(args: {
   latestUnderstandingDarkEngineDerivationRun: CandidateCreationDerivationRunSummary;
-  latestImportSession: CandidateCreationImportSessionSummary;
+  latestCompletedImportSession: CandidateCreationImportSessionSummary;
   appMessageBridgeWouldRunForAnySession: boolean;
 }): CandidateCreationRuntimeValidationReport["diagnosis"] {
   if (args.latestUnderstandingDarkEngineDerivationRun) {
     return {
-      importCompletionBridgeRerunnable: Boolean(args.latestImportSession),
+      importCompletionBridgeRerunnable: Boolean(args.latestCompletedImportSession),
       appMessageBridgeWouldRunForAnySession:
         args.appMessageBridgeWouldRunForAnySession,
       likelyRootCause:
@@ -270,7 +306,10 @@ function buildDiagnosis(args: {
     };
   }
 
-  if (!args.appMessageBridgeWouldRunForAnySession && args.latestImportSession) {
+  if (
+    !args.appMessageBridgeWouldRunForAnySession &&
+    args.latestCompletedImportSession
+  ) {
     return {
       importCompletionBridgeRerunnable: true,
       appMessageBridgeWouldRunForAnySession: false,
@@ -281,7 +320,7 @@ function buildDiagnosis(args: {
 
   if (!args.appMessageBridgeWouldRunForAnySession) {
     return {
-      importCompletionBridgeRerunnable: Boolean(args.latestImportSession),
+      importCompletionBridgeRerunnable: Boolean(args.latestCompletedImportSession),
       appMessageBridgeWouldRunForAnySession: false,
       likelyRootCause:
         "No APP journal_chat/explore_chat sessions exist; candidate bridge only triggers on import completion or new APP user messages.",
@@ -289,7 +328,7 @@ function buildDiagnosis(args: {
   }
 
   return {
-    importCompletionBridgeRerunnable: Boolean(args.latestImportSession),
+    importCompletionBridgeRerunnable: Boolean(args.latestCompletedImportSession),
     appMessageBridgeWouldRunForAnySession: true,
     likelyRootCause:
       "Candidate bridge triggers exist but no understanding-dark-engine derivation runs were recorded for this user.",
@@ -313,7 +352,7 @@ export async function runCandidateCreationRuntimeValidation(args: {
     messageCount,
     evidenceSpanCount,
     patternClaimCount,
-    latestImportSession,
+    latestCompletedImportSession,
     latestDerivationRun,
     latestUnderstandingDarkEngineDerivationRun,
     understandingDarkEngineDerivationRunCount,
@@ -327,7 +366,10 @@ export async function runCandidateCreationRuntimeValidation(args: {
     db.evidenceSpan.count({ where: { userId: args.userId } }),
     db.patternClaim.count({ where: { userId: args.userId } }),
     db.importUploadSession.findFirst({
-      where: { userId: args.userId },
+      where: {
+        userId: args.userId,
+        status: ImportUploadStatus.complete,
+      },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -454,16 +496,17 @@ export async function runCandidateCreationRuntimeValidation(args: {
 
   const candidateCountsAfter = await countCandidateFamilies(db, args.userId);
 
-  const latestImportSummary: CandidateCreationImportSessionSummary = latestImportSession
-    ? {
-        id: latestImportSession.id,
-        status: latestImportSession.status,
-        createdAt: latestImportSession.createdAt.toISOString(),
-        finishedAt: latestImportSession.finishedAt?.toISOString() ?? null,
-        sessionsCreated: latestImportSession.sessionsCreated,
-        messagesCreated: latestImportSession.messagesCreated,
-      }
-    : null;
+  const latestCompletedImportSummary: CandidateCreationImportSessionSummary =
+    latestCompletedImportSession
+      ? {
+          id: latestCompletedImportSession.id,
+          status: latestCompletedImportSession.status,
+          createdAt: latestCompletedImportSession.createdAt.toISOString(),
+          finishedAt: latestCompletedImportSession.finishedAt?.toISOString() ?? null,
+          sessionsCreated: latestCompletedImportSession.sessionsCreated,
+          messagesCreated: latestCompletedImportSession.messagesCreated,
+        }
+      : null;
 
   const latestUdeDerivation = summarizeDerivationRun(
     latestUnderstandingDarkEngineDerivationRun
@@ -481,7 +524,7 @@ export async function runCandidateCreationRuntimeValidation(args: {
     },
     candidateCountsBefore,
     candidateCountsAfter,
-    latestImportSession: latestImportSummary,
+    latestCompletedImportSession: latestCompletedImportSummary,
     latestDerivationRun: summarizeDerivationRun(latestDerivationRun),
     latestUnderstandingDarkEngineDerivationRun: latestUdeDerivation,
     understandingDarkEngineDerivationRunCount,
@@ -502,7 +545,7 @@ export async function runCandidateCreationRuntimeValidation(args: {
     persistence,
     diagnosis: buildDiagnosis({
       latestUnderstandingDarkEngineDerivationRun: latestUdeDerivation,
-      latestImportSession: latestImportSummary,
+      latestCompletedImportSession: latestCompletedImportSummary,
       appMessageBridgeWouldRunForAnySession: appBridgeEligibleSessions > 0,
     }),
   };
