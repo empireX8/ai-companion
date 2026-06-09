@@ -191,10 +191,16 @@ describe("Understanding Engine Phase 1B API routes", () => {
   it("returns user-map conclusion detail when row is user_visible", async () => {
     prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({
       id: "umc-visible-1",
-      userId: "user-1",
-      visibility: "user_visible",
+      title: "Visible conclusion",
+      summary: "Visible summary",
       area: "operating_logic",
       status: "hypothesis",
+      confidenceLevel: "low",
+      evidenceCount: 2,
+      sourceDiversity: 1,
+      timeSpreadDays: 3,
+      createdAt: new Date("2026-05-10T08:00:00.000Z"),
+      updatedAt: new Date("2026-05-15T10:00:00.000Z"),
     });
 
     const route = await import("../../app/api/user-map/conclusions/[id]/route");
@@ -457,10 +463,22 @@ describe("Understanding Engine Phase 1B API routes", () => {
     prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([
       {
         id: "umc-2",
+        title: "Second conclusion",
+        summary: "Second summary",
+        area: "operating_logic",
+        status: "emerging",
+        confidenceLevel: "medium",
+        evidenceCount: 4,
         updatedAt: new Date("2026-05-14T12:00:00.000Z"),
       },
       {
         id: "umc-3",
+        title: "Third conclusion",
+        summary: "Third summary",
+        area: "identity",
+        status: "hypothesis",
+        confidenceLevel: "low",
+        evidenceCount: 1,
         updatedAt: new Date("2026-05-14T11:00:00.000Z"),
       },
     ]);
@@ -477,15 +495,131 @@ describe("Understanding Engine Phase 1B API routes", () => {
           userId: "user-1",
           visibility: "user_visible",
         }),
+        select: expect.objectContaining({
+          id: true,
+          title: true,
+          summary: true,
+          area: true,
+          status: true,
+          confidenceLevel: true,
+          evidenceCount: true,
+          updatedAt: true,
+        }),
       })
     );
     await expect(response.json()).resolves.toEqual({
-      items: [{ id: "umc-2", updatedAt: "2026-05-14T12:00:00.000Z" }],
+      items: [
+        {
+          id: "umc-2",
+          title: "Second conclusion",
+          summary: "Second summary",
+          area: "operating_logic",
+          status: "emerging",
+          confidenceLevel: "medium",
+          evidenceCount: 4,
+          updatedAt: "2026-05-14T12:00:00.000Z",
+        },
+      ],
       pageInfo: {
         nextCursor: "2026-05-14T12:00:00.000Z",
         limit: 1,
         hasMore: true,
       },
+    });
+  });
+
+  it("omits internal lifecycle fields from public user-map conclusion list GET", async () => {
+    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([
+      {
+        id: "umc-visible-1",
+        title: "Visible conclusion",
+        summary: "Visible summary",
+        area: "operating_logic",
+        status: "emerging",
+        confidenceLevel: "low",
+        evidenceCount: 50,
+        updatedAt: new Date("2026-05-15T10:00:00.000Z"),
+      },
+    ]);
+
+    const route = await import("../../app/api/user-map/conclusions/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/user-map/conclusions")
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    const serialized = JSON.stringify(body);
+    expect(serialized).not.toContain("candidateLifecycleStatus");
+    expect(serialized).not.toContain("confidenceScore");
+    expect(serialized).not.toContain('"notes"');
+    expect(serialized).not.toContain("internal_only");
+    expect(serialized).not.toContain("user-1");
+    expect(body.items[0]).toEqual({
+      id: "umc-visible-1",
+      title: "Visible conclusion",
+      summary: "Visible summary",
+      area: "operating_logic",
+      status: "emerging",
+      confidenceLevel: "low",
+      evidenceCount: 50,
+      updatedAt: "2026-05-15T10:00:00.000Z",
+    });
+  });
+
+  it("omits internal lifecycle fields from public user-map conclusion detail GET", async () => {
+    prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({
+      id: "umc-visible-1",
+      title: "Visible conclusion",
+      summary: "Visible summary",
+      area: "operating_logic",
+      status: "emerging",
+      confidenceLevel: "low",
+      evidenceCount: 50,
+      sourceDiversity: 8,
+      timeSpreadDays: 14,
+      createdAt: new Date("2026-05-10T08:00:00.000Z"),
+      updatedAt: new Date("2026-05-15T10:00:00.000Z"),
+    });
+
+    const route = await import("../../app/api/user-map/conclusions/[id]/route");
+    const response = await route.GET(
+      new Request("http://localhost/api/user-map/conclusions/umc-visible-1"),
+      { params: Promise.resolve({ id: "umc-visible-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(prismaMock.userMapConclusion.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          visibility: "user_visible",
+        }),
+        select: expect.objectContaining({
+          id: true,
+          sourceDiversity: true,
+          timeSpreadDays: true,
+          createdAt: true,
+        }),
+      })
+    );
+    const body = await response.json();
+    const serialized = JSON.stringify(body);
+    expect(serialized).not.toContain("candidateLifecycleStatus");
+    expect(serialized).not.toContain("confidenceScore");
+    expect(serialized).not.toContain('"notes"');
+    expect(serialized).not.toContain("internal_only");
+    expect(body.item).toEqual({
+      id: "umc-visible-1",
+      title: "Visible conclusion",
+      summary: "Visible summary",
+      area: "operating_logic",
+      status: "emerging",
+      confidenceLevel: "low",
+      evidenceCount: 50,
+      sourceDiversity: 8,
+      timeSpreadDays: 14,
+      createdAt: "2026-05-10T08:00:00.000Z",
+      updatedAt: "2026-05-15T10:00:00.000Z",
     });
   });
 

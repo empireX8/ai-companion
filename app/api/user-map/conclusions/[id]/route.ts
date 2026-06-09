@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { UserMapConclusionVisibility } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
+import { toUserMapConclusionPublicApiDetailItem } from "../../../../../lib/public-intelligence-safe-slice";
 import {
   detailSuccess,
   errorResponse,
@@ -10,6 +11,20 @@ import {
   userMapConclusionPatchSchema,
   zodIssuesToDetails,
 } from "../../../../../lib/understanding-engine-api";
+
+const USER_MAP_CONCLUSION_PUBLIC_DETAIL_SELECT = {
+  id: true,
+  title: true,
+  summary: true,
+  area: true,
+  status: true,
+  confidenceLevel: true,
+  evidenceCount: true,
+  sourceDiversity: true,
+  timeSpreadDays: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
 
 export const dynamic = "force-dynamic";
 
@@ -36,10 +51,16 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const item = await prismadb.userMapConclusion.findFirst({
+    const row = await prismadb.userMapConclusion.findFirst({
       where: { id, userId, visibility: UserMapConclusionVisibility.user_visible },
+      select: USER_MAP_CONCLUSION_PUBLIC_DETAIL_SELECT,
     });
 
+    if (!row) {
+      return errorResponse(404, "Not found", "NOT_FOUND");
+    }
+
+    const item = toUserMapConclusionPublicApiDetailItem(row);
     if (!item) {
       return errorResponse(404, "Not found", "NOT_FOUND");
     }

@@ -9,6 +9,7 @@ import {
 import { z } from "zod";
 
 import prismadb from "@/lib/prismadb";
+import { toUserMapConclusionPublicApiListItem } from "../../../../lib/public-intelligence-safe-slice";
 import {
   MAX_LIMIT,
   SortOrder,
@@ -19,6 +20,17 @@ import {
   userMapConclusionCreateSchema,
   zodIssuesToDetails,
 } from "../../../../lib/understanding-engine-api";
+
+const USER_MAP_CONCLUSION_PUBLIC_LIST_SELECT = {
+  id: true,
+  title: true,
+  summary: true,
+  area: true,
+  status: true,
+  confidenceLevel: true,
+  evidenceCount: true,
+  updatedAt: true,
+} as const;
 
 export const dynamic = "force-dynamic";
 
@@ -152,7 +164,7 @@ export async function GET(req: Request) {
       sortOrder,
     });
 
-    const items = await prismadb.userMapConclusion.findMany({
+    const rows = await prismadb.userMapConclusion.findMany({
       where: {
         userId,
         visibility: UserMapConclusionVisibility.user_visible,
@@ -163,18 +175,22 @@ export async function GET(req: Request) {
           : {}),
         ...(updatedAtFilter ? { updatedAt: updatedAtFilter } : {}),
       },
+      select: USER_MAP_CONCLUSION_PUBLIC_LIST_SELECT,
       orderBy: [{ updatedAt: sortOrder }, { id: sortOrder }],
       take: limit + 1,
     });
 
-    const hasMore = items.length > limit;
-    const trimmed = hasMore ? items.slice(0, limit) : items;
+    const hasMore = rows.length > limit;
+    const trimmed = hasMore ? rows.slice(0, limit) : rows;
     const nextCursor =
       hasMore && trimmed.length > 0
         ? trimmed[trimmed.length - 1].updatedAt.toISOString()
         : null;
+    const items = trimmed
+      .map((row) => toUserMapConclusionPublicApiListItem(row))
+      .filter((item): item is NonNullable<typeof item> => item !== null);
 
-    return listSuccess(trimmed, limit, hasMore, nextCursor);
+    return listSuccess(items, limit, hasMore, nextCursor);
   } catch (error) {
     console.error("[USER_MAP_CONCLUSIONS_GET_ERROR]", error);
     return errorResponse(500, "Internal Error", "INTERNAL_ERROR");

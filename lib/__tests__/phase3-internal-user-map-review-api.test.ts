@@ -307,9 +307,16 @@ describe("Phase 3 internal user-map review candidates API", () => {
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(JSON.stringify(body)).not.toContain("linkedSources");
-    expect(JSON.stringify(body)).not.toContain("safetyLevels");
-    expect(JSON.stringify(body)).not.toContain("latestRunId");
+    const serialized = JSON.stringify(body);
+    expect(serialized).not.toContain("linkedSources");
+    expect(serialized).not.toContain("safetyLevels");
+    expect(serialized).not.toContain("latestRunId");
+    expect(serialized).not.toContain("candidateLifecycleStatus");
+    expect(serialized).not.toContain("confidenceScore");
+    expect(serialized).not.toContain('"notes"');
+    expect(serialized).not.toContain("internal_only");
+    expect(body.items[0]).not.toHaveProperty("visibility");
+    expect(body.items[0]).not.toHaveProperty("userId");
   });
 
   it("keeps public user-map list route hiding internal_only rows", async () => {

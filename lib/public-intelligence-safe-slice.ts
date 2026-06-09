@@ -340,6 +340,32 @@ export type YourMapDetailItem = {
   updatedAt: string;
 };
 
+/** Fields that must never appear on public UserMapConclusion API GET responses. */
+export const USER_MAP_CONCLUSION_PUBLIC_API_INTERNAL_FIELDS = [
+  "candidateLifecycleStatus",
+  "notes",
+  "confidenceScore",
+  "visibility",
+  "userId",
+] as const;
+
+export type UserMapConclusionPublicApiListItem = {
+  id: string;
+  title: string;
+  summary: string;
+  area: UserMapConclusionArea;
+  status: UserMapConclusionStatus;
+  confidenceLevel: UserMapConfidenceLevel;
+  evidenceCount: number;
+  updatedAt: string;
+};
+
+export type UserMapConclusionPublicApiDetailItem = UserMapConclusionPublicApiListItem & {
+  sourceDiversity: number;
+  timeSpreadDays: number;
+  createdAt: string;
+};
+
 export type WhatChangedListItem = {
   id: string;
   updateTypeLabel: string;
@@ -389,6 +415,42 @@ export function toYourMapDetailItem(row: UserMapDetailRecord): YourMapDetailItem
     timeSpreadDays: row.timeSpreadDays,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toUserMapConclusionPublicApiListItem(
+  row: UserMapListRecord
+): UserMapConclusionPublicApiListItem | null {
+  const safeId = toNonEmptyId(row.id);
+  if (!safeId) {
+    return null;
+  }
+
+  return {
+    id: safeId,
+    title: row.title,
+    summary: row.summary,
+    area: row.area,
+    status: row.status,
+    confidenceLevel: row.confidenceLevel,
+    evidenceCount: row.evidenceCount,
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toUserMapConclusionPublicApiDetailItem(
+  row: UserMapDetailRecord
+): UserMapConclusionPublicApiDetailItem | null {
+  const listItem = toUserMapConclusionPublicApiListItem(row);
+  if (!listItem) {
+    return null;
+  }
+
+  return {
+    ...listItem,
+    sourceDiversity: row.sourceDiversity,
+    timeSpreadDays: row.timeSpreadDays,
+    createdAt: row.createdAt.toISOString(),
   };
 }
 

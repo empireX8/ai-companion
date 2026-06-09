@@ -9,9 +9,12 @@ import {
   buildYourMapDetailHref,
   buildWatchForDetailHref,
   toActiveQuestionListItem,
+  toUserMapConclusionPublicApiDetailItem,
+  toUserMapConclusionPublicApiListItem,
   toWhatChangedListItem,
   toYourMapListItem,
   toWatchForListItem,
+  USER_MAP_CONCLUSION_PUBLIC_API_INTERNAL_FIELDS,
 } from "../public-intelligence-safe-slice";
 import { buildPublicObjectHref } from "../public-continuity-registry";
 
@@ -170,6 +173,66 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
     });
 
     expect(item).toBeNull();
+  });
+
+  it("maps public user-map API list items without internal lifecycle fields", () => {
+    const item = toUserMapConclusionPublicApiListItem({
+      id: "umc-1",
+      title: "Published conclusion",
+      summary: "Safe summary",
+      area: "operating_logic",
+      status: "emerging",
+      confidenceLevel: "medium",
+      evidenceCount: 50,
+      updatedAt: new Date("2026-05-17T10:00:00.000Z"),
+    });
+
+    expect(item).toEqual({
+      id: "umc-1",
+      title: "Published conclusion",
+      summary: "Safe summary",
+      area: "operating_logic",
+      status: "emerging",
+      confidenceLevel: "medium",
+      evidenceCount: 50,
+      updatedAt: "2026-05-17T10:00:00.000Z",
+    });
+    for (const field of USER_MAP_CONCLUSION_PUBLIC_API_INTERNAL_FIELDS) {
+      expect(item).not.toHaveProperty(field);
+    }
+  });
+
+  it("maps public user-map API detail items without internal lifecycle fields", () => {
+    const item = toUserMapConclusionPublicApiDetailItem({
+      id: "umc-1",
+      title: "Published conclusion",
+      summary: "Safe summary",
+      area: "operating_logic",
+      status: "emerging",
+      confidenceLevel: "medium",
+      evidenceCount: 50,
+      sourceDiversity: 8,
+      timeSpreadDays: 14,
+      createdAt: new Date("2026-05-10T08:00:00.000Z"),
+      updatedAt: new Date("2026-05-17T10:00:00.000Z"),
+    });
+
+    expect(item).toEqual({
+      id: "umc-1",
+      title: "Published conclusion",
+      summary: "Safe summary",
+      area: "operating_logic",
+      status: "emerging",
+      confidenceLevel: "medium",
+      evidenceCount: 50,
+      sourceDiversity: 8,
+      timeSpreadDays: 14,
+      createdAt: "2026-05-10T08:00:00.000Z",
+      updatedAt: "2026-05-17T10:00:00.000Z",
+    });
+    for (const field of USER_MAP_CONCLUSION_PUBLIC_API_INTERNAL_FIELDS) {
+      expect(item).not.toHaveProperty(field);
+    }
   });
 
   it("does not create fallback what-changed rows from labels when ID is missing", () => {
