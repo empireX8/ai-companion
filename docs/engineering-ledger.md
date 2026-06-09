@@ -1152,9 +1152,9 @@ Successful actions refresh the server-rendered list via `router.refresh()`.
 | `lib/validate-user-map-candidate-review-publish-flow.ts` | Direct helper calls for CLI proof |
 | `scripts/validate-investigation-candidate-review-publish-flow.ts` | Investigation candidate lane live-DB validation (dry-run default; not yet live-validated end-to-end) |
 | `lib/validate-investigation-candidate-review-publish-flow.ts` | Direct helper calls for Investigation review/publish proof |
-| `scripts/discover-investigation-candidate-proposal.ts` | Read-only dry-run scanner for users whose dark-run naturally produces Investigation proposals without UserMap proposals (no writes; not yet run against live DB in this slice) |
+| `scripts/discover-investigation-candidate-proposal.ts` | Read-only dry-run scanner for users whose dark-run naturally produces Investigation proposals without UserMap proposals (no writes; local scan recorded in Lower-Family Candidate Discovery Closeout) |
 | `lib/discover-investigation-candidate-proposal.ts` | Direct helper calls for Investigation proposal discovery proof |
-| `scripts/discover-candidate-family-proposals.ts` | Read-only dry-run scanner for FieldworkAssignment and ModelUpdate proposal availability (no writes; Fieldwork/ModelUpdate live validation not yet complete) |
+| `scripts/discover-candidate-family-proposals.ts` | Read-only dry-run scanner for FieldworkAssignment and ModelUpdate proposal availability (no writes; local scan recorded in Lower-Family Candidate Discovery Closeout) |
 | `lib/discover-candidate-family-proposals.ts` | Direct helper calls for Fieldwork/ModelUpdate proposal discovery proof |
 | `scripts/report-candidate-lifecycle-diagnostics.ts` | Read-only stale/duplicate diagnostics |
 
@@ -1335,4 +1335,115 @@ Long-term POST status needs product decision: keep as manual, restrict, deprecat
 Implement validation-only scripts for Investigation, Fieldwork, and ModelUpdate candidate lanes as the first bounded slice after this synthesis closeout.
 
 - **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`, `docs/step4b-phase1b-additive-api-contract.md` (POST cross-reference only)
+- **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Lower-Family Candidate Discovery Closeout (2026-06-09)
+
+- **Status:** `CLOSED / VALIDATED` (docs-only closeout; discovery tooling already merged)
+- **Validation base:** `3d662cf — Add Investigation proposal discovery scanner`; `0de2ce1 — Add Fieldwork and ModelUpdate proposal discovery scanner`
+- **Scope:** Record completion of read-only lower-family candidate proposal discovery tooling and local dry-run scan results. No code, schema, routes, candidate creation, UI, or mobile changes in this closeout.
+
+### Discovery tooling status: COMPLETE
+
+Read-only dry-run scanners now exist for all three lower-priority candidate families:
+
+| Family | Script | Helper |
+|--------|--------|--------|
+| Investigation | `scripts/discover-investigation-candidate-proposal.ts` | `lib/discover-investigation-candidate-proposal.ts` |
+| FieldworkAssignment | `scripts/discover-candidate-family-proposals.ts` | `lib/discover-candidate-family-proposals.ts` |
+| ModelUpdate | `scripts/discover-candidate-family-proposals.ts` | `lib/discover-candidate-family-proposals.ts` |
+
+### Safety model (all scanners)
+
+- Use `runCandidateCreationRuntimeValidation({ dryRun: true })` only
+- Do **not** import persistence helpers, lifecycle mutators, or publish helpers
+- Do **not** expose `--execute`
+- Do **not** create candidates, publish, or mutate lifecycle status
+- Do **not** call `persistInternalCandidateFromNoWriteDarkRunOutput`
+
+### Family precedence ladder (dark-run bridge)
+
+1. UserMapConclusion
+2. Investigation
+3. FieldworkAssignment
+4. ModelUpdate
+
+Safe-for-execute classification requires higher-priority families absent:
+
+| Family | Safe when |
+|--------|-----------|
+| Investigation | `investigation=true`, `userMap=false` |
+| Fieldwork | `fieldwork=true`, `userMap=false`, `investigation=false` |
+| ModelUpdate | `modelUpdate=true`, `userMap=false`, `investigation=false`, `fieldwork=false` |
+
+### Local dry-run scan results
+
+Scanners run against local DB (`--limit 10`):
+
+| Scanner | Users scanned | Safe users found |
+|---------|---------------|------------------|
+| Investigation (`discover-investigation-candidate-proposal.ts`) | 1 | 0 |
+| Fieldwork + ModelUpdate (`discover-candidate-family-proposals.ts`) | 1 | 0 |
+
+**Only local user found/scanned:** `user_34TUYA53pI1QRLK73O22Kve1a1G`
+
+**Dark-run proposal presence for that user:**
+
+| Field | Value |
+|-------|-------|
+| `proposalPresence.userMap` | `true` |
+| `proposalPresence.investigation` | `false` |
+| `proposalPresence.fieldwork` | `false` |
+| `proposalPresence.modelUpdate` | `false` |
+| `userMapGateDecision` | `pass` |
+| `harnessPassed` | `true` |
+
+**Conclusions:**
+
+- No safe Investigation-producing user found
+- No safe Fieldwork-producing user found
+- No safe ModelUpdate-producing user found
+
+### Interpretation
+
+- **Lower-family live validation remains BLOCKED by candidate absence.** This is not missing review/publish tooling — Investigation, Fieldwork, and ModelUpdate review/publish routes and workbench tabs already exist.
+- Available local evidence produces **UserMap first** under the precedence ladder. The sole local user is not a safe target for lower-family `--execute` validation.
+- **UserMap live validation:** COMPLETE (PR #50–#52; operator workbench usable).
+- **Investigation / Fieldwork / independent ModelUpdate live validation:** NOT COMPLETE.
+
+### Explicit warnings
+
+- **Do not** run `scripts/run-candidate-creation-runtime-validation.ts --execute` on the current dev user for lower-family validation — it would create or duplicate UserMap, not Investigation/Fieldwork/ModelUpdate.
+- **Do not** weaken gates to force lower-family candidates.
+- **Do not** hand-insert rows.
+- **Do not** implement automatic historical backfill from this finding.
+
+### Next decision (not implemented in this closeout)
+
+Choose one:
+
+1. **Wait** for natural evidence or an alternate user that naturally produces lower-family proposals under current gates, or
+2. **Design** a controlled dev-only seed/fixture strategy for all blocked lower-family validation together — seed strategy must be a **separate, explicitly approved slice**.
+
+### What this closeout does not claim
+
+- No Investigation, Fieldwork, or ModelUpdate candidate exists in local DB from discovery
+- Lower-family live validation is not complete
+- No automatic backfill or gate weakening was performed
+
+### What remains partial (unchanged)
+
+- Phase 2 umbrella remains **PARTIAL**
+- Investigation live validation blocked by candidate absence
+- Fieldwork live validation blocked by candidate absence
+- Independent ModelUpdate candidate-lane live validation blocked by candidate absence
+- Expiry scheduler, DB-level duplicate uniqueness, ModelUpdate reject/archive remain open
+
+### Next exact step
+
+No mandatory code follow-up from discovery tooling — scanners are complete. Next bounded slice is either wait for natural lower-family evidence or design an explicitly approved dev-only seed/fixture strategy for blocked lower-family validation.
+
+- **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
 - **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
