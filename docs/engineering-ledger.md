@@ -1150,6 +1150,8 @@ Successful actions refresh the server-rendered list via `router.refresh()`.
 |-----------------|------|
 | `scripts/validate-user-map-candidate-review-publish-flow.ts` | Live-DB validation bypassing Clerk HTTP |
 | `lib/validate-user-map-candidate-review-publish-flow.ts` | Direct helper calls for CLI proof |
+| `scripts/validate-investigation-candidate-review-publish-flow.ts` | Investigation candidate lane live-DB validation (dry-run default; not yet live-validated end-to-end) |
+| `lib/validate-investigation-candidate-review-publish-flow.ts` | Direct helper calls for Investigation review/publish proof |
 | `scripts/report-candidate-lifecycle-diagnostics.ts` | Read-only stale/duplicate diagnostics |
 
 ### Operational requirements
