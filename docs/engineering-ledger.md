@@ -1154,6 +1154,8 @@ Successful actions refresh the server-rendered list via `router.refresh()`.
 | `lib/validate-investigation-candidate-review-publish-flow.ts` | Direct helper calls for Investigation review/publish proof |
 | `scripts/validate-fieldwork-candidate-review-publish-flow.ts` | Fieldwork candidate lane live-DB validation (dry-run default; fixture-backed execute validation pending) |
 | `lib/validate-fieldwork-candidate-review-publish-flow.ts` | Direct helper calls for Fieldwork review/publish proof |
+| `scripts/validate-model-update-candidate-publish-flow.ts` | ModelUpdate candidate lane live-DB validation (dry-run default; publish-only; fixture-backed execute validation pending) |
+| `lib/validate-model-update-candidate-publish-flow.ts` | Direct helper calls for ModelUpdate publish proof via `publishModelUpdateCandidate` |
 | `scripts/discover-investigation-candidate-proposal.ts` | Read-only dry-run scanner for users whose dark-run naturally produces Investigation proposals without UserMap proposals (no writes; local scan recorded in Lower-Family Candidate Discovery Closeout) |
 | `lib/discover-investigation-candidate-proposal.ts` | Direct helper calls for Investigation proposal discovery proof |
 | `scripts/discover-candidate-family-proposals.ts` | Read-only dry-run scanner for FieldworkAssignment and ModelUpdate proposal availability (no writes; local scan recorded in Lower-Family Candidate Discovery Closeout) |
