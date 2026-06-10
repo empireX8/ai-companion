@@ -1572,3 +1572,47 @@ No mandatory code follow-up from fixture-backed validation — all three lower-f
 
 - **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
 - **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Phase 2 Umbrella Closeout Decision Contract (2026-06-10)
+
+- **Status:** `CONTRACT CREATED / READY FOR GOVERNANCE REVIEW` (docs-only; no code)
+- **Validation base:** `main @ 729eddc — Record lower-family fixture validation closeout`
+- **Audit input:** Agent 21 read-only Phase 2 post-validation foundation audit
+- **Contract doc:** `docs/phase2-umbrella-closeout-decision-contract.md`
+
+### Executive verdict
+
+**Phase 2 cannot be called complete today.** Foundation is validated (UserMap natural; lower-family fixture-backed; public projection; internal workbench). Umbrella remains **PARTIAL** pending policy locks and formal acceptance criteria.
+
+### Required wording (preserve)
+
+- Lower-family fixture-backed validation: **COMPLETE**
+- Lower-family natural validation: **BLOCKED / NOT COMPLETE**
+- Phase 2 umbrella: **PARTIAL** — pending umbrella closeout criteria and unresolved production policy decisions
+
+### Must-fix before Phase 2 umbrella close (policy lock minimum)
+
+1. Production trigger/backfill policy locked
+2. Scheduler/backfill accept-or-defer decision explicit in ledger
+3. ModelUpdate dismiss/reject/archive policy decided
+4. Expiry/stale candidate policy decided
+5. Duplicate uniqueness/race-window policy decided
+6. Formal Phase 2 acceptance criteria written into ledger
+7. `POST /api/user-map/conclusions` manual-create governance decided
+
+Natural lower-family validation on current local dataset is **not** a hard close blocker per this contract (UserMap precedence + data profile; not proven broken mechanics).
+
+### Recommended next slice
+
+**Production Trigger/Backfill Policy Contract** (docs-only) — see `docs/phase2-umbrella-closeout-decision-contract.md` §10.
+
+### What this contract does not claim
+
+- Phase 2 complete
+- Natural lower-family validation complete
+- Permission to weaken gates, hand-insert rows, or auto-backfill
+
+- **Files changed (this contract):** `docs/phase2-umbrella-closeout-decision-contract.md`, `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
+- **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
