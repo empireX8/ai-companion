@@ -13,6 +13,9 @@ const {
   publishModelUpdateMock,
   updateInvestigationLifecycleMock,
   updateFieldworkLifecycleMock,
+  findInvestigationFixtureMock,
+  findFieldworkFixtureMock,
+  findModelUpdateFixtureMock,
 } = vi.hoisted(() => ({
   assembleEvidencePacketV1Mock: vi.fn(),
   verifySourceOwnershipMock: vi.fn(),
@@ -25,6 +28,9 @@ const {
   publishModelUpdateMock: vi.fn(),
   updateInvestigationLifecycleMock: vi.fn(),
   updateFieldworkLifecycleMock: vi.fn(),
+  findInvestigationFixtureMock: vi.fn(),
+  findFieldworkFixtureMock: vi.fn(),
+  findModelUpdateFixtureMock: vi.fn(),
 }));
 
 vi.mock("../understanding-dark-engine/evidence-packet", () => ({
@@ -70,7 +76,9 @@ vi.mock("../fieldwork-candidate-lifecycle-persistence", () => ({
 
 import {
   DEV_FIXTURE_MARKER,
+  type LowerFamilyFixtureExecuteReport,
   parseSeedLowerFamilyValidationFixturesCliArgs,
+  runSeedLowerFamilyValidationFixtures,
   runSeedLowerFamilyValidationFixturesPreflight,
   selectFixtureEvidenceFromPacket,
 } from "../seed-lower-family-validation-fixtures";
@@ -164,6 +172,35 @@ function makeDb(): PrismaClient {
   } as unknown as PrismaClient;
 }
 
+function asExecuteReport(report: Awaited<ReturnType<typeof runSeedLowerFamilyValidationFixtures>>) {
+  expect(report.dryRun).toBe(false);
+  return report as LowerFamilyFixtureExecuteReport;
+}
+
+function makePersistResult(args: {
+  id: string;
+  idField: "persistedInvestigationId" | "persistedFieldworkAssignmentId" | "persistedModelUpdateId";
+  candidatesWritten?: number;
+  evidenceLinksWritten?: number;
+  blockedWriteReasons?: string[];
+}) {
+  return {
+    runId: "run-1",
+    artifactId: "artifact-1",
+    artifactType: "diagnostics",
+    processorVersion: "understanding-dark-engine-v1",
+    runCreatedAt: NOW.toISOString(),
+    persistedAt: NOW.toISOString(),
+    diagnostics: {},
+    payload: {
+      candidatesWritten: args.candidatesWritten ?? 1,
+      evidenceLinksWritten: args.evidenceLinksWritten ?? 2,
+      blockedWriteReasons: args.blockedWriteReasons ?? [],
+    },
+    [args.idField]: args.id,
+  };
+}
+
 describe("seed lower-family validation fixtures preflight", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -191,40 +228,51 @@ describe("seed lower-family validation fixtures preflight", () => {
     );
     verifySourceOwnershipMock.mockResolvedValue(true);
     verifyTargetOwnershipMock.mockResolvedValue(true);
+    findInvestigationFixtureMock.mockResolvedValue(null);
+    findFieldworkFixtureMock.mockResolvedValue(null);
+    findModelUpdateFixtureMock.mockResolvedValue(null);
+    persistInvestigationMock.mockResolvedValue(
+      makePersistResult({
+        id: "inv-created",
+        idField: "persistedInvestigationId",
+      })
+    );
+    persistFieldworkMock.mockResolvedValue(
+      makePersistResult({
+        id: "fw-created",
+        idField: "persistedFieldworkAssignmentId",
+      })
+    );
+    persistModelUpdateMock.mockResolvedValue(
+      makePersistResult({
+        id: "mu-created",
+        idField: "persistedModelUpdateId",
+      })
+    );
   });
 
-  it("requires explicit user id and rejects execute mode", () => {
+  it("requires explicit user id", () => {
     expect(parseSeedLowerFamilyValidationFixturesCliArgs([])).toEqual({
       ok: false,
       message: "--user-id is required.",
     });
-
-    expect(
-      parseSeedLowerFamilyValidationFixturesCliArgs([
-        "--user-id",
-        USER_ID,
-        "--execute",
-      ])
-    ).toEqual({
-      ok: false,
-      message:
-        "--execute is not supported in Phase 1 dry-run preflight. Remove --execute and rerun.",
-    });
   });
 
-  it("parses family filters", () => {
+  it("parses execute mode and family filters", () => {
     expect(
       parseSeedLowerFamilyValidationFixturesCliArgs([
         "--user-id",
         USER_ID,
         "--families",
         "investigation,fieldwork",
+        "--execute",
       ])
     ).toEqual({
       ok: true,
       args: {
         userId: USER_ID,
         families: ["investigation", "fieldwork"],
+        execute: true,
       },
     });
   });
@@ -271,13 +319,6 @@ describe("seed lower-family validation fixtures preflight", () => {
         userOwnedVerified: true,
       }),
     ]);
-
-    expect(verifySourceOwnershipMock).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: USER_ID, sourceId: "claim-1" })
-    );
-    expect(verifySourceOwnershipMock).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: USER_ID, sourceId: "msg-1" })
-    );
   });
 
   it("marks family blocked when linkable evidence is insufficient", async () => {
@@ -319,10 +360,11 @@ describe("seed lower-family validation fixtures preflight", () => {
     );
   });
 
-  it("does not call persistence, publish, or lifecycle mutators", async () => {
-    await runSeedLowerFamilyValidationFixturesPreflight({
+  it("dry-run does not call persistence, publish, or lifecycle mutators", async () => {
+    await runSeedLowerFamilyValidationFixtures({
       userId: USER_ID,
       families: ["investigation", "fieldwork", "model-update"],
+      execute: false,
       db: makeDb(),
       now: NOW,
     });
@@ -348,5 +390,203 @@ describe("seed lower-family validation fixtures preflight", () => {
     expect(report.investigation).not.toBeNull();
     expect(report.fieldwork).toBeNull();
     expect(report.modelUpdate).toBeNull();
+  });
+});
+
+describe("seed lower-family validation fixtures execute mode", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    assembleEvidencePacketV1Mock.mockResolvedValue(
+      buildPacket([
+        {
+          sourceType: "pattern_claim",
+          sourceId: "claim-1",
+          role: "signal",
+          linkable: true,
+          ownershipResolvable: true,
+          origin: "native",
+        },
+        {
+          sourceType: "message",
+          sourceId: "msg-1",
+          role: "receipt",
+          linkable: true,
+          ownershipResolvable: true,
+          origin: "native",
+          messageId: "msg-1",
+          sessionId: "session-1",
+        },
+      ])
+    );
+    verifySourceOwnershipMock.mockResolvedValue(true);
+    verifyTargetOwnershipMock.mockResolvedValue(true);
+    findInvestigationFixtureMock.mockResolvedValue(null);
+    findFieldworkFixtureMock.mockResolvedValue(null);
+    findModelUpdateFixtureMock.mockResolvedValue(null);
+    persistInvestigationMock.mockResolvedValue(
+      makePersistResult({
+        id: "inv-created",
+        idField: "persistedInvestigationId",
+      })
+    );
+    persistFieldworkMock.mockResolvedValue(
+      makePersistResult({
+        id: "fw-created",
+        idField: "persistedFieldworkAssignmentId",
+      })
+    );
+    persistModelUpdateMock.mockResolvedValue(
+      makePersistResult({
+        id: "mu-created",
+        idField: "persistedModelUpdateId",
+      })
+    );
+  });
+
+  it("calls persistence helpers only after preflightReady true", async () => {
+    const report = asExecuteReport(
+      await runSeedLowerFamilyValidationFixtures({
+        userId: USER_ID,
+        families: ["investigation", "fieldwork", "model-update"],
+        execute: true,
+        db: makeDb(),
+        now: NOW,
+        persistInvestigation: persistInvestigationMock,
+        persistFieldwork: persistFieldworkMock,
+        persistModelUpdate: persistModelUpdateMock,
+        findExistingInvestigation: findInvestigationFixtureMock,
+        findExistingFieldwork: findFieldworkFixtureMock,
+        findExistingModelUpdate: findModelUpdateFixtureMock,
+      })
+    );
+
+    expect(report.writesPerformed).toBe(true);
+    expect(report.devFixtureOnly).toBe(true);
+    expect(report.naturalValidation).toBe(false);
+    expect(persistInvestigationMock).toHaveBeenCalledOnce();
+    expect(persistFieldworkMock).toHaveBeenCalledOnce();
+    expect(persistModelUpdateMock).toHaveBeenCalledOnce();
+    expect(report.investigationExecute).toEqual(
+      expect.objectContaining({
+        status: "created",
+        candidateId: "inv-created",
+        evidenceLinksWritten: 2,
+      })
+    );
+  });
+
+  it("skips blocked family without calling its persistence helper", async () => {
+    assembleEvidencePacketV1Mock.mockResolvedValue(buildPacket([]));
+
+    const report = asExecuteReport(
+      await runSeedLowerFamilyValidationFixtures({
+        userId: USER_ID,
+        families: ["investigation", "fieldwork"],
+        execute: true,
+        db: makeDb(),
+        now: NOW,
+        persistInvestigation: persistInvestigationMock,
+        persistFieldwork: persistFieldworkMock,
+        findExistingInvestigation: findInvestigationFixtureMock,
+        findExistingFieldwork: findFieldworkFixtureMock,
+      })
+    );
+
+    expect(report.writesPerformed).toBe(false);
+    expect(report.investigationExecute?.status).toBe("skipped_not_ready");
+    expect(report.fieldworkExecute?.status).toBe("skipped_not_ready");
+    expect(persistInvestigationMock).not.toHaveBeenCalled();
+    expect(persistFieldworkMock).not.toHaveBeenCalled();
+  });
+
+  it("skips existing fixture without creating duplicate", async () => {
+    findInvestigationFixtureMock.mockResolvedValue("inv-existing");
+
+    const report = asExecuteReport(
+      await runSeedLowerFamilyValidationFixtures({
+        userId: USER_ID,
+        families: ["investigation"],
+        execute: true,
+        db: makeDb(),
+        now: NOW,
+        persistInvestigation: persistInvestigationMock,
+        findExistingInvestigation: findInvestigationFixtureMock,
+      })
+    );
+
+    expect(report.investigationExecute).toEqual(
+      expect.objectContaining({
+        status: "skipped_already_exists",
+        candidateId: "inv-existing",
+        candidatesWritten: 0,
+      })
+    );
+    expect(persistInvestigationMock).not.toHaveBeenCalled();
+    expect(report.writesPerformed).toBe(false);
+  });
+
+  it("does not call publish or lifecycle mutators in execute mode", async () => {
+    await runSeedLowerFamilyValidationFixtures({
+      userId: USER_ID,
+      execute: true,
+      db: makeDb(),
+      now: NOW,
+      persistInvestigation: persistInvestigationMock,
+      persistFieldwork: persistFieldworkMock,
+      persistModelUpdate: persistModelUpdateMock,
+      findExistingInvestigation: findInvestigationFixtureMock,
+      findExistingFieldwork: findFieldworkFixtureMock,
+      findExistingModelUpdate: findModelUpdateFixtureMock,
+    });
+
+    expect(publishInvestigationMock).not.toHaveBeenCalled();
+    expect(publishFieldworkMock).not.toHaveBeenCalled();
+    expect(publishModelUpdateMock).not.toHaveBeenCalled();
+    expect(updateInvestigationLifecycleMock).not.toHaveBeenCalled();
+    expect(updateFieldworkLifecycleMock).not.toHaveBeenCalled();
+  });
+
+  it("isolates per-family errors without blocking other families", async () => {
+    persistInvestigationMock.mockRejectedValue(new Error("investigation failed"));
+
+    const report = asExecuteReport(
+      await runSeedLowerFamilyValidationFixtures({
+        userId: USER_ID,
+        families: ["investigation", "fieldwork"],
+        execute: true,
+        db: makeDb(),
+        now: NOW,
+        persistInvestigation: persistInvestigationMock,
+        persistFieldwork: persistFieldworkMock,
+        findExistingInvestigation: findInvestigationFixtureMock,
+        findExistingFieldwork: findFieldworkFixtureMock,
+      })
+    );
+
+    expect(report.investigationExecute?.status).toBe("error");
+    expect(report.fieldworkExecute?.status).toBe("created");
+    expect(report.writesPerformed).toBe(true);
+    expect(report.transactionIsolation).toBe("per-family");
+  });
+
+  it("respects family filter in execute mode", async () => {
+    const report = asExecuteReport(
+      await runSeedLowerFamilyValidationFixtures({
+        userId: USER_ID,
+        families: ["model-update"],
+        execute: true,
+        db: makeDb(),
+        now: NOW,
+        persistModelUpdate: persistModelUpdateMock,
+        findExistingModelUpdate: findModelUpdateFixtureMock,
+      })
+    );
+
+    expect(report.investigationExecute).toBeNull();
+    expect(report.fieldworkExecute).toBeNull();
+    expect(report.modelUpdateExecute?.candidateId).toBe("mu-created");
+    expect(persistInvestigationMock).not.toHaveBeenCalled();
+    expect(persistFieldworkMock).not.toHaveBeenCalled();
+    expect(persistModelUpdateMock).toHaveBeenCalledOnce();
   });
 });

@@ -1,11 +1,17 @@
 import {
   InvestigationSeedType,
+  InvestigationVisibility,
   ModelUpdateType,
+  ModelUpdateVisibility,
+  FieldworkAssignmentVisibility,
   UnderstandingLinkSourceType,
   UnderstandingLinkTargetType,
   type PrismaClient,
 } from "@prisma/client";
 
+import { persistInternalFieldworkCandidate } from "./understanding-dark-engine/fieldwork-candidate-persistence";
+import { persistInternalInvestigationCandidate } from "./understanding-dark-engine/investigation-candidate-persistence";
+import { persistInternalModelUpdateCandidate } from "./understanding-dark-engine/model-update-candidate-persistence";
 import { assembleEvidencePacketV1 } from "./understanding-dark-engine/evidence-packet";
 import type { StructuredFieldworkCandidateProposal } from "./understanding-dark-engine/fieldwork-candidate-proposal";
 import { usesFieldworkCandidateSafeWording } from "./understanding-dark-engine/fieldwork-candidate-proposal";
@@ -38,7 +44,47 @@ export type LowerFamilyFixtureFamily = (typeof LOWER_FAMILY_FIXTURE_FAMILIES)[nu
 export type SeedLowerFamilyValidationFixturesCliArgs = {
   userId: string;
   families: LowerFamilyFixtureFamily[];
+  execute: boolean;
 };
+
+export type FamilyFixtureExecuteStatus =
+  | "created"
+  | "skipped_already_exists"
+  | "skipped_not_ready"
+  | "skipped_helper_blocked"
+  | "error";
+
+export type FamilyFixtureExecuteOutcome = {
+  family: LowerFamilyFixtureFamily;
+  status: FamilyFixtureExecuteStatus;
+  candidateId: string | null;
+  evidenceLinksWritten: number | null;
+  candidatesWritten: number | null;
+  blockedWriteReasons: string[];
+  skipReason: string | null;
+  errorMessage: string | null;
+  persistenceHelper: string;
+};
+
+export type LowerFamilyFixtureExecuteReport = Omit<
+  LowerFamilyFixturePreflightReport,
+  "dryRun" | "writesPerformed" | "diagnosticMessage"
+> & {
+  dryRun: false;
+  writesPerformed: boolean;
+  executeMode: true;
+  transactionIsolation: "per-family";
+  investigationExecute: FamilyFixtureExecuteOutcome | null;
+  fieldworkExecute: FamilyFixtureExecuteOutcome | null;
+  modelUpdateExecute: FamilyFixtureExecuteOutcome | null;
+  skippedFamilies: Array<{ family: LowerFamilyFixtureFamily; reason: string }>;
+  laterValidationCommands: string[];
+  diagnosticMessage: string;
+};
+
+export type LowerFamilyFixtureSeedReport =
+  | LowerFamilyFixturePreflightReport
+  | LowerFamilyFixtureExecuteReport;
 
 export type ParseSeedLowerFamilyValidationFixturesCliResult =
   | { ok: true; args: SeedLowerFamilyValidationFixturesCliArgs }
@@ -181,6 +227,7 @@ export function parseSeedLowerFamilyValidationFixturesCliArgs(
 ): ParseSeedLowerFamilyValidationFixturesCliResult {
   let userId: string | undefined;
   let families: LowerFamilyFixtureFamily[] = [...LOWER_FAMILY_FIXTURE_FAMILIES];
+  let execute = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]!;
@@ -188,6 +235,11 @@ export function parseSeedLowerFamilyValidationFixturesCliArgs(
     if (arg === "--user-id" && argv[index + 1]) {
       userId = argv[index + 1]!.trim();
       index += 1;
+      continue;
+    }
+
+    if (arg === "--execute") {
+      execute = true;
       continue;
     }
 
@@ -224,13 +276,6 @@ export function parseSeedLowerFamilyValidationFixturesCliArgs(
       continue;
     }
 
-    if (arg === "--execute") {
-      return {
-        ok: false,
-        message:
-          "--execute is not supported in Phase 1 dry-run preflight. Remove --execute and rerun.",
-      };
-    }
   }
 
   if (!userId) {
@@ -242,8 +287,71 @@ export function parseSeedLowerFamilyValidationFixturesCliArgs(
     args: {
       userId,
       families,
+      execute,
     },
   };
+}
+
+export function containsDevFixtureMarker(value: string): boolean {
+  return value.includes(DEV_FIXTURE_MARKER);
+}
+
+export async function findExistingDevFixtureInvestigationId(args: {
+  userId: string;
+  db: PrismaClient;
+}): Promise<string | null> {
+  const existing = await args.db.investigation.findFirst({
+    where: {
+      userId: args.userId,
+      visibility: InvestigationVisibility.internal_only,
+      OR: [
+        { title: { contains: DEV_FIXTURE_MARKER } },
+        { organizingQuestion: { contains: DEV_FIXTURE_MARKER } },
+      ],
+    },
+    select: { id: true },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  return existing?.id ?? null;
+}
+
+export async function findExistingDevFixtureFieldworkId(args: {
+  userId: string;
+  db: PrismaClient;
+}): Promise<string | null> {
+  const existing = await args.db.fieldworkAssignment.findFirst({
+    where: {
+      userId: args.userId,
+      visibility: FieldworkAssignmentVisibility.internal_only,
+      OR: [
+        { prompt: { contains: DEV_FIXTURE_MARKER } },
+        { reason: { contains: DEV_FIXTURE_MARKER } },
+      ],
+    },
+    select: { id: true },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  return existing?.id ?? null;
+}
+
+export async function findExistingDevFixtureModelUpdateId(args: {
+  userId: string;
+  db: PrismaClient;
+}): Promise<string | null> {
+  const existing = await args.db.modelUpdate.findFirst({
+    where: {
+      userId: args.userId,
+      visibility: ModelUpdateVisibility.internal_only,
+      isMeaningful: false,
+      userFacingSummary: { contains: DEV_FIXTURE_MARKER },
+    },
+    select: { id: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return existing?.id ?? null;
 }
 
 function isEligiblePacketItem(item: EvidencePacketItem): boolean {
@@ -700,7 +808,7 @@ function buildDiagnosticMessage(report: {
   if (readyFamilies.length === report.familiesRequested.length) {
     return (
       `Dry-run preflight ready for ${readyFamilies.join(", ")} on requested families. ` +
-      "No writes performed. Execute-mode seeding is not available in Phase 1."
+      "No writes performed. Re-run with --execute to seed internal fixture candidates."
     );
   }
 
@@ -720,13 +828,23 @@ function buildDiagnosticMessage(report: {
   );
 }
 
-export async function runSeedLowerFamilyValidationFixturesPreflight(args: {
+type PreflightContext = {
+  now: Date;
+  familiesRequested: LowerFamilyFixtureFamily[];
+  packet: EvidencePacket;
+  evidenceInventory: LowerFamilyFixturePreflightReport["evidenceInventory"];
+  investigation: InvestigationFixturePreflight | null;
+  fieldwork: FieldworkFixturePreflight | null;
+  modelUpdate: ModelUpdateFixturePreflight | null;
+};
+
+async function buildPreflightContext(args: {
   userId: string;
   families?: LowerFamilyFixtureFamily[];
   now?: Date;
   db: PrismaClient;
   assemblePacket?: typeof assembleEvidencePacketV1;
-}): Promise<LowerFamilyFixturePreflightReport> {
+}): Promise<PreflightContext> {
   const now = args.now ?? new Date();
   const familiesRequested = args.families ?? [...LOWER_FAMILY_FIXTURE_FAMILIES];
   const assemblePacket = args.assemblePacket ?? assembleEvidencePacketV1;
@@ -775,13 +893,9 @@ export async function runSeedLowerFamilyValidationFixturesPreflight(args: {
     : null;
 
   return {
-    dryRun: true,
-    writesPerformed: false,
-    devFixtureOnly: true,
-    naturalValidation: false,
-    generatedAt: now.toISOString(),
-    userId: args.userId,
+    now,
     familiesRequested,
+    packet,
     evidenceInventory: {
       patternClaimCount,
       messageCount,
@@ -792,11 +906,543 @@ export async function runSeedLowerFamilyValidationFixturesPreflight(args: {
     investigation,
     fieldwork,
     modelUpdate,
+  };
+}
+
+function toPreflightReport(context: PreflightContext): LowerFamilyFixturePreflightReport {
+  return {
+    dryRun: true,
+    writesPerformed: false,
+    devFixtureOnly: true,
+    naturalValidation: false,
+    generatedAt: context.now.toISOString(),
+    userId: context.packet.userId,
+    familiesRequested: context.familiesRequested,
+    evidenceInventory: context.evidenceInventory,
+    investigation: context.investigation,
+    fieldwork: context.fieldwork,
+    modelUpdate: context.modelUpdate,
     diagnosticMessage: buildDiagnosticMessage({
-      familiesRequested,
-      investigation,
-      fieldwork,
-      modelUpdate,
+      familiesRequested: context.familiesRequested,
+      investigation: context.investigation,
+      fieldwork: context.fieldwork,
+      modelUpdate: context.modelUpdate,
+    }),
+  };
+}
+
+function buildLaterValidationCommands(args: {
+  userId: string;
+  investigationId: string | null;
+  fieldworkId: string | null;
+  modelUpdateId: string | null;
+}): string[] {
+  const commands: string[] = [];
+
+  if (args.investigationId) {
+    commands.push(
+      `npx tsx scripts/validate-investigation-candidate-review-publish-flow.ts --user-id ${args.userId} --candidate-id ${args.investigationId}`
+    );
+  }
+
+  if (args.fieldworkId) {
+    commands.push(
+      `# Fieldwork review/publish validator not yet implemented — validate via internal workbench and publish helper for candidate ${args.fieldworkId}`
+    );
+  }
+
+  if (args.modelUpdateId) {
+    commands.push(
+      `# ModelUpdate review/publish validator not yet implemented — validate via internal workbench and publishModelUpdateCandidate for candidate ${args.modelUpdateId}`
+    );
+  }
+
+  return commands;
+}
+
+function buildExecuteDiagnosticMessage(args: {
+  createdFamilies: LowerFamilyFixtureFamily[];
+  skippedFamilies: Array<{ family: LowerFamilyFixtureFamily; reason: string }>;
+  writesPerformed: boolean;
+}): string {
+  if (args.writesPerformed) {
+    return (
+      `Execute-mode fixture seed created internal candidates for: ${args.createdFamilies.join(", ")}. ` +
+      "Fixture-backed only; natural production validation remains blocked. Review/publish validation is a later step."
+    );
+  }
+
+  if (args.skippedFamilies.length > 0) {
+    return (
+      "Execute-mode fixture seed performed no new writes. " +
+      `Skipped families: ${args.skippedFamilies.map((entry) => `${entry.family} (${entry.reason})`).join(", ")}.`
+    );
+  }
+
+  return "Execute-mode fixture seed performed no writes.";
+}
+
+async function executeInvestigationFixture(args: {
+  userId: string;
+  preflight: InvestigationFixturePreflight;
+  packet: EvidencePacket;
+  now: Date;
+  db: PrismaClient;
+  persistInvestigation?: typeof persistInternalInvestigationCandidate;
+  findExisting?: typeof findExistingDevFixtureInvestigationId;
+}): Promise<FamilyFixtureExecuteOutcome> {
+  const persistInvestigation = args.persistInvestigation ?? persistInternalInvestigationCandidate;
+  const findExisting = args.findExisting ?? findExistingDevFixtureInvestigationId;
+  const helperName = "persistInternalInvestigationCandidate";
+
+  if (!args.preflight.preflightReady) {
+    return {
+      family: "investigation",
+      status: "skipped_not_ready",
+      candidateId: null,
+      evidenceLinksWritten: null,
+      candidatesWritten: null,
+      blockedWriteReasons: args.preflight.blockers,
+      skipReason: "Preflight blockers present.",
+      errorMessage: null,
+      persistenceHelper: helperName,
+    };
+  }
+
+  const existingId = await findExisting({ userId: args.userId, db: args.db });
+  if (existingId) {
+    return {
+      family: "investigation",
+      status: "skipped_already_exists",
+      candidateId: existingId,
+      evidenceLinksWritten: null,
+      candidatesWritten: 0,
+      blockedWriteReasons: [],
+      skipReason: "Existing internal [DEV FIXTURE] Investigation candidate found.",
+      errorMessage: null,
+      persistenceHelper: helperName,
+    };
+  }
+
+  try {
+    const result = await persistInvestigation({
+      userId: args.userId,
+      proposal: args.preflight.proposalPreview,
+      packet: args.packet,
+      db: args.db as never,
+      now: args.now,
+    });
+
+    const candidateId = result.persistedInvestigationId;
+    const candidatesWritten = result.payload.candidatesWritten;
+    const evidenceLinksWritten = result.payload.evidenceLinksWritten;
+    const blockedWriteReasons = result.payload.blockedWriteReasons;
+
+    if (candidatesWritten > 0 && candidateId) {
+      return {
+        family: "investigation",
+        status: "created",
+        candidateId,
+        evidenceLinksWritten,
+        candidatesWritten,
+        blockedWriteReasons,
+        skipReason: null,
+        errorMessage: null,
+        persistenceHelper: helperName,
+      };
+    }
+
+    if (candidateId && blockedWriteReasons.includes("DUPLICATE_CANDIDATE")) {
+      return {
+        family: "investigation",
+        status: "skipped_already_exists",
+        candidateId,
+        evidenceLinksWritten,
+        candidatesWritten,
+        blockedWriteReasons,
+        skipReason: "Persistence helper reported DUPLICATE_CANDIDATE.",
+        errorMessage: null,
+        persistenceHelper: helperName,
+      };
+    }
+
+    return {
+      family: "investigation",
+      status: "skipped_helper_blocked",
+      candidateId,
+      evidenceLinksWritten,
+      candidatesWritten,
+      blockedWriteReasons,
+      skipReason: "Persistence helper did not create a candidate.",
+      errorMessage: null,
+      persistenceHelper: helperName,
+    };
+  } catch (error: unknown) {
+    return {
+      family: "investigation",
+      status: "error",
+      candidateId: null,
+      evidenceLinksWritten: null,
+      candidatesWritten: null,
+      blockedWriteReasons: [],
+      skipReason: null,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      persistenceHelper: helperName,
+    };
+  }
+}
+
+async function executeFieldworkFixture(args: {
+  userId: string;
+  preflight: FieldworkFixturePreflight;
+  packet: EvidencePacket;
+  now: Date;
+  db: PrismaClient;
+  persistFieldwork?: typeof persistInternalFieldworkCandidate;
+  findExisting?: typeof findExistingDevFixtureFieldworkId;
+}): Promise<FamilyFixtureExecuteOutcome> {
+  const persistFieldwork = args.persistFieldwork ?? persistInternalFieldworkCandidate;
+  const findExisting = args.findExisting ?? findExistingDevFixtureFieldworkId;
+  const helperName = "persistInternalFieldworkCandidate";
+
+  if (!args.preflight.preflightReady) {
+    return {
+      family: "fieldwork",
+      status: "skipped_not_ready",
+      candidateId: null,
+      evidenceLinksWritten: null,
+      candidatesWritten: null,
+      blockedWriteReasons: args.preflight.blockers,
+      skipReason: "Preflight blockers present.",
+      errorMessage: null,
+      persistenceHelper: helperName,
+    };
+  }
+
+  const existingId = await findExisting({ userId: args.userId, db: args.db });
+  if (existingId) {
+    return {
+      family: "fieldwork",
+      status: "skipped_already_exists",
+      candidateId: existingId,
+      evidenceLinksWritten: null,
+      candidatesWritten: 0,
+      blockedWriteReasons: [],
+      skipReason: "Existing internal [DEV FIXTURE] Fieldwork candidate found.",
+      errorMessage: null,
+      persistenceHelper: helperName,
+    };
+  }
+
+  try {
+    const result = await persistFieldwork({
+      userId: args.userId,
+      proposal: args.preflight.proposalPreview,
+      packet: args.packet,
+      db: args.db as never,
+      now: args.now,
+    });
+
+    const candidateId = result.persistedFieldworkAssignmentId;
+    const candidatesWritten = result.payload.candidatesWritten;
+    const evidenceLinksWritten = result.payload.evidenceLinksWritten;
+    const blockedWriteReasons = result.payload.blockedWriteReasons;
+
+    if (candidatesWritten > 0 && candidateId) {
+      return {
+        family: "fieldwork",
+        status: "created",
+        candidateId,
+        evidenceLinksWritten,
+        candidatesWritten,
+        blockedWriteReasons,
+        skipReason: null,
+        errorMessage: null,
+        persistenceHelper: helperName,
+      };
+    }
+
+    if (candidateId && blockedWriteReasons.includes("DUPLICATE_CANDIDATE")) {
+      return {
+        family: "fieldwork",
+        status: "skipped_already_exists",
+        candidateId,
+        evidenceLinksWritten,
+        candidatesWritten,
+        blockedWriteReasons,
+        skipReason: "Persistence helper reported DUPLICATE_CANDIDATE.",
+        errorMessage: null,
+        persistenceHelper: helperName,
+      };
+    }
+
+    return {
+      family: "fieldwork",
+      status: "skipped_helper_blocked",
+      candidateId,
+      evidenceLinksWritten,
+      candidatesWritten,
+      blockedWriteReasons,
+      skipReason: "Persistence helper did not create a candidate.",
+      errorMessage: null,
+      persistenceHelper: helperName,
+    };
+  } catch (error: unknown) {
+    return {
+      family: "fieldwork",
+      status: "error",
+      candidateId: null,
+      evidenceLinksWritten: null,
+      candidatesWritten: null,
+      blockedWriteReasons: [],
+      skipReason: null,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      persistenceHelper: helperName,
+    };
+  }
+}
+
+async function executeModelUpdateFixture(args: {
+  userId: string;
+  preflight: ModelUpdateFixturePreflight;
+  packet: EvidencePacket;
+  now: Date;
+  db: PrismaClient;
+  persistModelUpdate?: typeof persistInternalModelUpdateCandidate;
+  findExisting?: typeof findExistingDevFixtureModelUpdateId;
+}): Promise<FamilyFixtureExecuteOutcome> {
+  const persistModelUpdate = args.persistModelUpdate ?? persistInternalModelUpdateCandidate;
+  const findExisting = args.findExisting ?? findExistingDevFixtureModelUpdateId;
+  const helperName = "persistInternalModelUpdateCandidate";
+
+  if (!args.preflight.preflightReady) {
+    return {
+      family: "model-update",
+      status: "skipped_not_ready",
+      candidateId: null,
+      evidenceLinksWritten: null,
+      candidatesWritten: null,
+      blockedWriteReasons: args.preflight.blockers,
+      skipReason: "Preflight blockers present.",
+      errorMessage: null,
+      persistenceHelper: helperName,
+    };
+  }
+
+  const existingId = await findExisting({ userId: args.userId, db: args.db });
+  if (existingId) {
+    return {
+      family: "model-update",
+      status: "skipped_already_exists",
+      candidateId: existingId,
+      evidenceLinksWritten: null,
+      candidatesWritten: 0,
+      blockedWriteReasons: [],
+      skipReason: "Existing internal [DEV FIXTURE] ModelUpdate candidate found.",
+      errorMessage: null,
+      persistenceHelper: helperName,
+    };
+  }
+
+  try {
+    const result = await persistModelUpdate({
+      userId: args.userId,
+      proposal: args.preflight.proposalPreview,
+      packet: args.packet,
+      db: args.db as never,
+      now: args.now,
+    });
+
+    const candidateId = result.persistedModelUpdateId;
+    const candidatesWritten = result.payload.candidatesWritten;
+    const evidenceLinksWritten = result.payload.evidenceLinksWritten;
+    const blockedWriteReasons = result.payload.blockedWriteReasons;
+
+    if (candidatesWritten > 0 && candidateId) {
+      return {
+        family: "model-update",
+        status: "created",
+        candidateId,
+        evidenceLinksWritten,
+        candidatesWritten,
+        blockedWriteReasons,
+        skipReason: null,
+        errorMessage: null,
+        persistenceHelper: helperName,
+      };
+    }
+
+    if (candidateId && blockedWriteReasons.includes("DUPLICATE_CANDIDATE")) {
+      return {
+        family: "model-update",
+        status: "skipped_already_exists",
+        candidateId,
+        evidenceLinksWritten,
+        candidatesWritten,
+        blockedWriteReasons,
+        skipReason: "Persistence helper reported DUPLICATE_CANDIDATE.",
+        errorMessage: null,
+        persistenceHelper: helperName,
+      };
+    }
+
+    return {
+      family: "model-update",
+      status: "skipped_helper_blocked",
+      candidateId,
+      evidenceLinksWritten,
+      candidatesWritten,
+      blockedWriteReasons,
+      skipReason: "Persistence helper did not create a candidate.",
+      errorMessage: null,
+      persistenceHelper: helperName,
+    };
+  } catch (error: unknown) {
+    return {
+      family: "model-update",
+      status: "error",
+      candidateId: null,
+      evidenceLinksWritten: null,
+      candidatesWritten: null,
+      blockedWriteReasons: [],
+      skipReason: null,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      persistenceHelper: helperName,
+    };
+  }
+}
+
+export async function runSeedLowerFamilyValidationFixturesPreflight(args: {
+  userId: string;
+  families?: LowerFamilyFixtureFamily[];
+  now?: Date;
+  db: PrismaClient;
+  assemblePacket?: typeof assembleEvidencePacketV1;
+}): Promise<LowerFamilyFixturePreflightReport> {
+  const context = await buildPreflightContext(args);
+  return toPreflightReport(context);
+}
+
+export async function runSeedLowerFamilyValidationFixtures(args: {
+  userId: string;
+  families?: LowerFamilyFixtureFamily[];
+  execute?: boolean;
+  now?: Date;
+  db: PrismaClient;
+  assemblePacket?: typeof assembleEvidencePacketV1;
+  persistInvestigation?: typeof persistInternalInvestigationCandidate;
+  persistFieldwork?: typeof persistInternalFieldworkCandidate;
+  persistModelUpdate?: typeof persistInternalModelUpdateCandidate;
+  findExistingInvestigation?: typeof findExistingDevFixtureInvestigationId;
+  findExistingFieldwork?: typeof findExistingDevFixtureFieldworkId;
+  findExistingModelUpdate?: typeof findExistingDevFixtureModelUpdateId;
+}): Promise<LowerFamilyFixtureSeedReport> {
+  const context = await buildPreflightContext(args);
+  const preflight = toPreflightReport(context);
+
+  if (!args.execute) {
+    return preflight;
+  }
+
+  const investigationExecute = context.investigation
+    ? await executeInvestigationFixture({
+        userId: args.userId,
+        preflight: context.investigation,
+        packet: context.packet,
+        now: context.now,
+        db: args.db,
+        persistInvestigation: args.persistInvestigation,
+        findExisting: args.findExistingInvestigation,
+      })
+    : null;
+
+  const fieldworkExecute = context.fieldwork
+    ? await executeFieldworkFixture({
+        userId: args.userId,
+        preflight: context.fieldwork,
+        packet: context.packet,
+        now: context.now,
+        db: args.db,
+        persistFieldwork: args.persistFieldwork,
+        findExisting: args.findExistingFieldwork,
+      })
+    : null;
+
+  const modelUpdateExecute = context.modelUpdate
+    ? await executeModelUpdateFixture({
+        userId: args.userId,
+        preflight: context.modelUpdate,
+        packet: context.packet,
+        now: context.now,
+        db: args.db,
+        persistModelUpdate: args.persistModelUpdate,
+        findExisting: args.findExistingModelUpdate,
+      })
+    : null;
+
+  const skippedFamilies: Array<{ family: LowerFamilyFixtureFamily; reason: string }> = [];
+  const createdFamilies: LowerFamilyFixtureFamily[] = [];
+
+  for (const outcome of [investigationExecute, fieldworkExecute, modelUpdateExecute]) {
+    if (!outcome) {
+      continue;
+    }
+
+    if (outcome.status === "created") {
+      createdFamilies.push(outcome.family);
+      continue;
+    }
+
+    if (outcome.skipReason) {
+      skippedFamilies.push({
+        family: outcome.family,
+        reason: outcome.skipReason,
+      });
+    } else if (outcome.errorMessage) {
+      skippedFamilies.push({
+        family: outcome.family,
+        reason: outcome.errorMessage,
+      });
+    }
+  }
+
+  const writesPerformed = createdFamilies.length > 0;
+
+  return {
+    ...preflight,
+    dryRun: false,
+    writesPerformed,
+    executeMode: true,
+    transactionIsolation: "per-family",
+    investigationExecute,
+    fieldworkExecute,
+    modelUpdateExecute,
+    skippedFamilies,
+    laterValidationCommands: buildLaterValidationCommands({
+      userId: args.userId,
+      investigationId:
+        investigationExecute?.candidateId &&
+        (investigationExecute.status === "created" ||
+          investigationExecute.status === "skipped_already_exists")
+          ? investigationExecute.candidateId
+          : null,
+      fieldworkId:
+        fieldworkExecute?.candidateId &&
+        (fieldworkExecute.status === "created" ||
+          fieldworkExecute.status === "skipped_already_exists")
+          ? fieldworkExecute.candidateId
+          : null,
+      modelUpdateId:
+        modelUpdateExecute?.candidateId &&
+        (modelUpdateExecute.status === "created" ||
+          modelUpdateExecute.status === "skipped_already_exists")
+          ? modelUpdateExecute.candidateId
+          : null,
+    }),
+    diagnosticMessage: buildExecuteDiagnosticMessage({
+      createdFamilies,
+      skippedFamilies,
+      writesPerformed,
     }),
   };
 }

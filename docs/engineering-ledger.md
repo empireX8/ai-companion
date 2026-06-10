@@ -1156,8 +1156,8 @@ Successful actions refresh the server-rendered list via `router.refresh()`.
 | `lib/discover-investigation-candidate-proposal.ts` | Direct helper calls for Investigation proposal discovery proof |
 | `scripts/discover-candidate-family-proposals.ts` | Read-only dry-run scanner for FieldworkAssignment and ModelUpdate proposal availability (no writes; local scan recorded in Lower-Family Candidate Discovery Closeout) |
 | `lib/discover-candidate-family-proposals.ts` | Direct helper calls for Fieldwork/ModelUpdate proposal discovery proof |
-| `scripts/seed-lower-family-validation-fixtures.ts` | Dev-only dry-run preflight for lower-family fixture seeding (no writes; Phase 1 only; fixture-backed validation not complete) |
-| `lib/seed-lower-family-validation-fixtures.ts` | Direct helper calls for lower-family fixture preflight proof |
+| `scripts/seed-lower-family-validation-fixtures.ts` | Dev-only lower-family fixture seed tooling: dry-run preflight default; `--execute` creates internal-only fixture candidates via persistence helpers (no publish; fixture-backed validation not complete; natural validation remains blocked) |
+| `lib/seed-lower-family-validation-fixtures.ts` | Direct helper calls for lower-family fixture preflight and execute-mode seed proof |
 | `scripts/report-candidate-lifecycle-diagnostics.ts` | Read-only stale/duplicate diagnostics |
 
 ### Operational requirements
