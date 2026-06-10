@@ -1150,17 +1150,17 @@ Successful actions refresh the server-rendered list via `router.refresh()`.
 |-----------------|------|
 | `scripts/validate-user-map-candidate-review-publish-flow.ts` | Live-DB validation bypassing Clerk HTTP |
 | `lib/validate-user-map-candidate-review-publish-flow.ts` | Direct helper calls for CLI proof |
-| `scripts/validate-investigation-candidate-review-publish-flow.ts` | Investigation candidate lane live-DB validation (dry-run default; not yet live-validated end-to-end) |
-| `lib/validate-investigation-candidate-review-publish-flow.ts` | Direct helper calls for Investigation review/publish proof |
-| `scripts/validate-fieldwork-candidate-review-publish-flow.ts` | Fieldwork candidate lane live-DB validation (dry-run default; fixture-backed execute validation pending) |
+| `scripts/validate-investigation-candidate-review-publish-flow.ts` | Investigation candidate lane live-DB validation (dry-run default; fixture-backed validation complete for `cmq7xttgo0000qlwzet7g6j5f`; natural validation not complete) |
+| `lib/validate-investigation-candidate-review-publish-flow.ts` | Direct helper calls for Investigation review/publish proof (pre-existed before lower-family fixture slice) |
+| `scripts/validate-fieldwork-candidate-review-publish-flow.ts` | Fieldwork candidate lane live-DB validation (dry-run default; fixture-backed validation complete for `cmq7xttjg0003qlwzk3qmbq5j`; natural validation not complete) |
 | `lib/validate-fieldwork-candidate-review-publish-flow.ts` | Direct helper calls for Fieldwork review/publish proof |
-| `scripts/validate-model-update-candidate-publish-flow.ts` | ModelUpdate candidate lane live-DB validation (dry-run default; publish-only; fixture-backed execute validation pending) |
+| `scripts/validate-model-update-candidate-publish-flow.ts` | ModelUpdate candidate lane live-DB validation (dry-run default; publish-only; fixture-backed validation complete for `cmq7xttlh0006qlwzprysfdlu`; natural validation not complete) |
 | `lib/validate-model-update-candidate-publish-flow.ts` | Direct helper calls for ModelUpdate publish proof via `publishModelUpdateCandidate` |
 | `scripts/discover-investigation-candidate-proposal.ts` | Read-only dry-run scanner for users whose dark-run naturally produces Investigation proposals without UserMap proposals (no writes; local scan recorded in Lower-Family Candidate Discovery Closeout) |
 | `lib/discover-investigation-candidate-proposal.ts` | Direct helper calls for Investigation proposal discovery proof |
 | `scripts/discover-candidate-family-proposals.ts` | Read-only dry-run scanner for FieldworkAssignment and ModelUpdate proposal availability (no writes; local scan recorded in Lower-Family Candidate Discovery Closeout) |
 | `lib/discover-candidate-family-proposals.ts` | Direct helper calls for Fieldwork/ModelUpdate proposal discovery proof |
-| `scripts/seed-lower-family-validation-fixtures.ts` | Dev-only lower-family fixture seed tooling: dry-run preflight default; `--execute` creates internal-only fixture candidates via persistence helpers (no publish; fixture-backed validation not complete; natural validation remains blocked) |
+| `scripts/seed-lower-family-validation-fixtures.ts` | Dev-only lower-family fixture seed tooling: dry-run preflight default; `--execute` creates internal-only fixture candidates via persistence helpers; fixture-backed review/publish validation now complete for all three lower families; natural validation remains blocked |
 | `lib/seed-lower-family-validation-fixtures.ts` | Direct helper calls for lower-family fixture preflight and execute-mode seed proof |
 | `scripts/report-candidate-lifecycle-diagnostics.ts` | Read-only stale/duplicate diagnostics |
 
@@ -1450,6 +1450,125 @@ Choose one:
 ### Next exact step
 
 No mandatory code follow-up from discovery tooling — scanners are complete. Next bounded slice is either wait for natural lower-family evidence or design an explicitly approved dev-only seed/fixture strategy for blocked lower-family validation.
+
+- **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
+- **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Lower-Family Fixture-Backed Validation Closeout (2026-06-10)
+
+- **Status:** `CLOSED / VALIDATED` (docs-only closeout; fixture seed + validator tooling already merged)
+- **Validation base:** `main @ 2f9fe82 — Add ModelUpdate candidate validation script`
+- **Related commits:** `189f7ae — Add lower-family fixture seed preflight`; `46bdb2c — Add lower-family fixture seed execute mode`; `c71bbe6 — Add Fieldwork candidate validation script`; `2f9fe82 — Add ModelUpdate candidate validation script`
+- **Scope:** Record completion of dev-only fixture-backed review/publish validation for Investigation, Fieldwork, and independent ModelUpdate candidate lanes on local DB. No code, schema, routes, candidate creation, UI, or mobile changes in this closeout.
+
+### Distinction (required)
+
+| Validation type | Status |
+|-----------------|--------|
+| UserMap natural/live validation | **COMPLETE** |
+| Investigation fixture-backed validation | **COMPLETE** |
+| Fieldwork fixture-backed validation | **COMPLETE** |
+| Independent ModelUpdate fixture-backed validation | **COMPLETE** |
+| Investigation natural validation | **BLOCKED / NOT COMPLETE** |
+| Fieldwork natural validation | **BLOCKED / NOT COMPLETE** |
+| Independent ModelUpdate natural validation | **BLOCKED / NOT COMPLETE** |
+
+Fixture-backed validation proves review/publish mechanics on explicitly seeded dev fixtures using real persistence helpers and real user-owned evidence links. It does **not** prove natural production generation on the current dataset.
+
+### Fixture seed tooling
+
+| Commit | Role |
+|--------|------|
+| `189f7ae` | Dry-run preflight (`seed-lower-family-validation-fixtures.ts`) |
+| `46bdb2c` | Execute-mode per-family fixture seed via `persistInternal*Candidate` helpers |
+
+Dev user: `user_34TUYA53pI1QRLK73O22Kve1a1G`
+
+Evidence used for fixtures: `pattern_claim:cmp2fykzj00ddqlsybdeb96ql`, `message:b7915e9c-55ec-4dee-9396-fd0c726962aa`
+
+### Validated fixture-backed results
+
+#### 1. Investigation
+
+| Field | Value |
+|-------|-------|
+| Fixture candidate | `cmq7xttgo0000qlwzet7g6j5f` |
+| Validator | `scripts/validate-investigation-candidate-review-publish-flow.ts` (pre-existed before this fixture slice; used for fixture-backed execute validation) |
+| Path | `proposed` → `held_for_more_evidence` → `promoted` → `publish`; `internal_only` → `user_visible` |
+| Evidence links preserved | `2` |
+| Public Active Questions visible | `true` |
+| ModelUpdate created | `cmq7y0mq30000ql7yb85mq9q8` |
+| ModelUpdate `updateType` | `investigation_opened` |
+| ModelUpdate visibility | `user_visible` |
+| ModelUpdate `isMeaningful` | `true` |
+
+#### 2. Fieldwork
+
+| Field | Value |
+|-------|-------|
+| Fixture candidate | `cmq7xttjg0003qlwzk3qmbq5j` |
+| Validator | `scripts/validate-fieldwork-candidate-review-publish-flow.ts` (`c71bbe6`) |
+| Path | `proposed` → `held_for_more_evidence` → `promoted` → `publish`; `internal_only` → `user_visible` |
+| Evidence links preserved | `2` |
+| Public Watch For visible | `true` |
+| ModelUpdate created | `cmq7yc1nj0000qlau293mb1cz` |
+| ModelUpdate `updateType` | `fieldwork_assigned` |
+| ModelUpdate visibility | `user_visible` |
+| ModelUpdate `isMeaningful` | `true` |
+
+#### 3. Independent ModelUpdate
+
+| Field | Value |
+|-------|-------|
+| Fixture candidate | `cmq7xttlh0006qlwzprysfdlu` |
+| Validator | `scripts/validate-model-update-candidate-publish-flow.ts` (`2f9fe82`) |
+| Path | `internal_only` → `user_visible`; `isMeaningful` `false` → `true` (publish-only; no lifecycle hold/promote) |
+| `updateType` | `link_detected` |
+| Evidence links preserved | `2` |
+| Public What Changed visible | `true` |
+| Lifecycle hold/promote | Not applicable — publish-only model confirmed |
+
+### Natural validation remains blocked
+
+Local dark-run discovery verdict unchanged from Lower-Family Candidate Discovery Closeout (2026-06-09):
+
+| Field | Value |
+|-------|-------|
+| `proposalPresence.userMap` | `true` |
+| `proposalPresence.investigation` | `false` |
+| `proposalPresence.fieldwork` | `false` |
+| `proposalPresence.modelUpdate` | `false` |
+
+Current local data still produces UserMap first under the precedence ladder. Lower-family candidates were not naturally generated; fixtures were required for lane validation.
+
+### Explicit warnings (preserve)
+
+- **Do not** claim natural production validation from this closeout.
+- **Do not** claim lower-family generation naturally works on the current dataset.
+- **Do not** run `scripts/run-candidate-creation-runtime-validation.ts --execute` on the current dev user for lower-family natural validation — it would create or duplicate UserMap, not Investigation/Fieldwork/ModelUpdate.
+- **Do not** weaken gates or precedence to force lower-family candidates.
+- **Do not** hand-insert rows.
+- **Do not** add automatic backfill from this result.
+
+### What this closeout does not claim
+
+- Investigation, Fieldwork, or independent ModelUpdate **natural** validation is not complete
+- Lower-family candidates are not naturally produced on the current dev dataset
+- No gate weakening, hand-inserted rows, or automatic backfill was performed
+- Phase 2 umbrella is not fully closed by this fixture pass alone
+
+### What remains partial (unchanged)
+
+- Phase 2 umbrella remains **PARTIAL**
+- Investigation / Fieldwork / independent ModelUpdate **natural** validation blocked by candidate absence on current dataset
+- Expiry scheduler, DB-level duplicate uniqueness, ModelUpdate reject/archive remain open
+- Production trigger/backfill policy for governed lower-family generation remains a separate decision
+
+### Next exact step
+
+No mandatory code follow-up from fixture-backed validation — all three lower-family lanes are validated on dev fixtures. Next decision is either wait for natural lower-family evidence/alternate user under current gates, or pursue governed production trigger/backfill policy as a separate explicitly approved slice. Do not treat fixture success as permission to weaken gates or auto-backfill.
 
 - **Files changed (this closeout):** `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
 - **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
