@@ -1606,7 +1606,7 @@ Natural lower-family validation on current local dataset is **not** a hard close
 
 ### Recommended next slice
 
-**Production Trigger/Backfill Policy Contract** (docs-only) — see `docs/phase2-umbrella-closeout-decision-contract.md` §10.
+~~**Production Trigger/Backfill Policy Contract** (docs-only)~~ — **DONE** (see below). Next: **Candidate Lifecycle Operations Policy Contract** (docs-only).
 
 ### What this contract does not claim
 
@@ -1615,4 +1615,45 @@ Natural lower-family validation on current local dataset is **not** a hard close
 - Permission to weaken gates, hand-insert rows, or auto-backfill
 
 - **Files changed (this contract):** `docs/phase2-umbrella-closeout-decision-contract.md`, `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
+- **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Phase 2 Production Trigger / Backfill Policy Contract (2026-06-10)
+
+- **Status:** `CONTRACT CREATED / POLICY LOCKED` (docs-only; no code)
+- **Validation base:** `main @ e8a0d59 — Add Phase 2 umbrella closeout decision contract`
+- **Contract doc:** `docs/phase2-production-trigger-backfill-policy-contract.md`
+- **Parent contract:** `docs/phase2-umbrella-closeout-decision-contract.md`
+
+### Policy decision (Option C)
+
+**Event-only candidate generation accepted for Phase 2.** Official production triggers: APP `journal_chat`/`explore_chat` message bridge + import-completion bridge. Scheduler/cron and automatic historical backfill **deferred beyond Phase 2** (not required before close). Manual `run-candidate-creation-runtime-validation.ts --execute` is **dev-only**, not production backfill. Trailing-pending retry (`shouldMarkPending`) **deferred**, not a close blocker.
+
+### Decision table (summary)
+
+| Item | Decision |
+|------|----------|
+| APP message trigger | **ACCEPTED** |
+| Import-completion trigger | **ACCEPTED** |
+| Scheduler / cron | **DEFERRED beyond Phase 2** |
+| Automatic historical backfill | **DEFERRED beyond Phase 2** |
+| Manual backfill | **DEV-ONLY** |
+| Retry/pending semantics | **DEFERRED beyond Phase 2** |
+
+### Agent 22 blocker clearance
+
+- **#1 Production trigger/backfill policy:** CLEARED
+- **#2 Scheduler/backfill accept-or-defer:** CLEARED
+- **#3–#7:** OPEN (ModelUpdate dismiss, expiry/stale, duplicate uniqueness, formal acceptance criteria, POST governance)
+
+### Phase 2 closeout wording (preserve)
+
+> Production candidate generation policy (Phase 2): event-only via APP messages and import completion. Scheduler and automatic historical backfill deferred beyond Phase 2. Lower-family fixture-backed validation complete; natural validation blocked/not complete. Phase 2 umbrella remains PARTIAL until remaining lifecycle/governance blockers are locked.
+
+### Recommended next slice
+
+**Candidate Lifecycle Operations Policy Contract** (docs-only) — ModelUpdate dismiss, expiry/stale, duplicate uniqueness.
+
+- **Files changed (this contract):** `docs/phase2-production-trigger-backfill-policy-contract.md`, `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
 - **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
