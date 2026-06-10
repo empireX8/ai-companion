@@ -1606,7 +1606,7 @@ Natural lower-family validation on current local dataset is **not** a hard close
 
 ### Recommended next slice
 
-~~**Production Trigger/Backfill Policy Contract** (docs-only)~~ — **DONE** (see below). Next: **Candidate Lifecycle Operations Policy Contract** (docs-only).
+~~**Production Trigger/Backfill Policy Contract** (docs-only)~~ — **DONE** (see below). ~~**Candidate Lifecycle Operations Policy Contract** (docs-only)~~ — **DONE** (see below). Next: **Phase 2 umbrella acceptance criteria + POST governance** (docs-only).
 
 ### What this contract does not claim
 
@@ -1653,7 +1653,49 @@ Natural lower-family validation on current local dataset is **not** a hard close
 
 ### Recommended next slice
 
-**Candidate Lifecycle Operations Policy Contract** (docs-only) — ModelUpdate dismiss, expiry/stale, duplicate uniqueness.
+~~**Candidate Lifecycle Operations Policy Contract** (docs-only)~~ — **DONE** (see below). Next: **Phase 2 umbrella acceptance criteria + POST `/api/user-map/conclusions` governance** (docs-only).
 
 - **Files changed (this contract):** `docs/phase2-production-trigger-backfill-policy-contract.md`, `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
+- **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Phase 2 Candidate Lifecycle Operations Policy Contract (2026-06-10)
+
+- **Status:** `CONTRACT CREATED / POLICY LOCKED` (docs-only; no code)
+- **Validation base:** `main @ 786562d — Add production trigger backfill policy contract`
+- **Contract doc:** `docs/phase2-candidate-lifecycle-operations-policy-contract.md`
+- **Parent contract:** `docs/phase2-umbrella-closeout-decision-contract.md`
+
+### Policy decision (Option B/C composite)
+
+**Lifecycle-managed families (UserMap, Investigation, Fieldwork):** manual promote/hold/reject/expire + publish gates accepted for Phase 2. **ModelUpdate:** publish-only accepted (`internal_only` + `isMeaningful: false`); reject/archive/expire **deferred beyond Phase 2**. **Stale/expiry:** manual operator expire/reject + diagnostics script accepted; automatic expiry scheduler **deferred beyond Phase 2**. **Duplicates:** application-level dedupe inside bridge transactions accepted; DB-level uniqueness and concurrent-bridge race hardening **deferred beyond Phase 2**.
+
+### Decision table (summary)
+
+| Item | Decision |
+|------|----------|
+| ModelUpdate reject/archive/expire | **Deferred beyond Phase 2** (publish-only accepted) |
+| Lifecycle-managed manual expire/reject | **Accepted** (already implemented) |
+| Automatic stale cleanup | **Deferred beyond Phase 2** |
+| App-level dedupe | **Accepted** |
+| DB-level uniqueness / bridge race-window | **Deferred beyond Phase 2** |
+
+### Agent 22 blocker clearance
+
+- **#1–#2:** CLEARED (Agent 23)
+- **#3 ModelUpdate dismiss/reject/archive policy:** CLEARED (publish-only accepted; implementation deferred)
+- **#4 Expiry/stale candidate policy:** CLEARED (manual accepted; automation deferred)
+- **#5 Duplicate uniqueness/race-window policy:** CLEARED (app-level accepted; DB/race deferred)
+- **#6–#7:** OPEN (formal acceptance criteria, POST governance)
+
+### Phase 2 closeout wording (preserve)
+
+> Candidate lifecycle operations policy (Phase 2): UserMap/Investigation/Fieldwork lifecycle-managed with manual operator actions. ModelUpdate publish-only; reject/archive/expire deferred. Stale handling manual; automatic expiry deferred. Duplicate protection app-level; DB uniqueness and bridge race hardening deferred. Accepted risks documented in `docs/phase2-candidate-lifecycle-operations-policy-contract.md`. Phase 2 umbrella remains PARTIAL until #6 and #7 locked.
+
+### Recommended next slice
+
+**Phase 2 umbrella acceptance criteria + POST `/api/user-map/conclusions` governance** (docs-only) — locks Agent 22 blockers #6 and #7.
+
+- **Files changed (this contract):** `docs/phase2-candidate-lifecycle-operations-policy-contract.md`, `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
 - **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
