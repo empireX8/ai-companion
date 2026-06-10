@@ -1695,7 +1695,75 @@ Natural lower-family validation on current local dataset is **not** a hard close
 
 ### Recommended next slice
 
-**Phase 2 umbrella acceptance criteria + POST `/api/user-map/conclusions` governance** (docs-only) — locks Agent 22 blockers #6 and #7.
+~~**Phase 2 umbrella acceptance criteria + POST `/api/user-map/conclusions` governance** (docs-only)~~ — **DONE** (see below).
 
 - **Files changed (this contract):** `docs/phase2-candidate-lifecycle-operations-policy-contract.md`, `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
 - **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Phase 2 Umbrella Acceptance Closeout (2026-06-10)
+
+- **Status:** `CLOSED / VALIDATED` (docs-only umbrella acceptance; no code)
+- **Validation base:** `main @ c34de06 — Add candidate lifecycle operations policy contract`
+- **Contract doc:** `docs/phase2-final-acceptance-post-governance-contract.md`
+- **Parent contracts:** `docs/phase2-umbrella-closeout-decision-contract.md`, `docs/phase2-production-trigger-backfill-policy-contract.md`, `docs/phase2-candidate-lifecycle-operations-policy-contract.md`
+
+### Executive verdict
+
+**Phase 2 umbrella is closed under accepted Phase 2 scope.** All seven Agent 22 must-fix blockers are cleared. No mandatory implementation slice remains before close.
+
+### Validated foundation (accepted scope)
+
+| Lane | Status |
+|------|--------|
+| UserMap natural create → review → publish | **COMPLETE** |
+| Investigation fixture-backed review → publish | **COMPLETE** |
+| Fieldwork fixture-backed review → publish | **COMPLETE** |
+| Independent ModelUpdate fixture-backed publish | **COMPLETE** |
+| Public projection safety (UserMap API + intelligence surfaces) | **COMPLETE** |
+| Four-family internal operator workbench | **COMPLETE** |
+
+### Locked policies
+
+| Policy | Decision | Contract |
+|--------|----------|----------|
+| Production generation | Event-only (APP message + import-completion) | Agent 23 |
+| Scheduler / automatic backfill | Deferred beyond Phase 2 | Agent 23 |
+| ModelUpdate operator semantics | Publish-only; reject/archive deferred | Agent 24 |
+| Expiry / stale handling | Manual expire/reject; automation deferred | Agent 24 |
+| Duplicate protection | App-level; DB/race deferred | Agent 24 |
+| POST manual-create | **Option A** — keep as legacy affordance outside production intelligence lifecycle | Agent 25 |
+
+### POST governance (Option A)
+
+- `POST /api/user-map/conclusions` remains public authenticated manual-create
+- Always creates `user_visible` rows; bypasses candidate lifecycle and ModelUpdate receipt path
+- Response projection safe (`0b4641d`, `c2b4749`, `2c54bce`); tests verify omitted internal fields
+- **Not** production intelligence path; **not** a close blocker
+- Restriction/deprecation deferred beyond Phase 2
+
+### Required wording (preserve)
+
+- Lower-family fixture-backed validation: **COMPLETE**
+- Lower-family natural validation: **BLOCKED / NOT COMPLETE**
+- Phase 2 umbrella: **CLOSED / VALIDATED** under accepted scope (deferred items remain open beyond Phase 2)
+
+### Agent 22 blocker clearance (final)
+
+| # | Blocker | Status |
+|---|---------|--------|
+| 1–5 | Trigger, scheduler, lifecycle ops | **CLEARED** (Agents 23–24) |
+| 6 | Formal acceptance criteria | **CLEARED** |
+| 7 | POST governance | **CLEARED** (Option A; no code required) |
+
+### Deferred beyond Phase 2 (not done)
+
+Natural lower-family validation on current dataset; scheduler/cron; automatic historical backfill; automatic stale cleanup; DB-level duplicate uniqueness; ModelUpdate reject/archive; POST restrict/deprecate; Phase 2E schema migration; mobile operator UI.
+
+### Next steps after Phase 2
+
+Optional future slices per `docs/phase2-final-acceptance-post-governance-contract.md` §13 — none mandatory for Phase 2 close.
+
+- **Files changed (this closeout):** `docs/phase2-final-acceptance-post-governance-contract.md`, `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
+- **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
