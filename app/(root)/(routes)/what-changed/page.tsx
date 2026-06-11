@@ -10,6 +10,13 @@ import { applyVerifiedAffectedObjectHrefs } from "@/lib/public-linked-object-con
 
 export const dynamic = "force-dynamic";
 
+const PAGE_INTRO =
+  "What changed in your model recently — shifts MindLab surfaced from your evidence.";
+const LIST_SECTION_LABEL = "Recent changes";
+const EMPTY_PRIMARY = "Nothing has changed in your model yet.";
+const EMPTY_SECONDARY =
+  "When your understanding shifts, updates will appear here. Keep journaling or checking in to build signal.";
+
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -60,13 +67,16 @@ export default async function WhatChangedPage() {
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
       <PageHeader
         title="What Changed"
-        meta="Read-only meaningful updates anchored to user-visible backend records."
+        meta="Recent shifts in your understanding"
       />
 
-      <SectionLabel>Meaningful updates</SectionLabel>
+      <p className="text-[13px] text-meta mb-6 max-w-2xl">{PAGE_INTRO}</p>
+
+      <SectionLabel>{LIST_SECTION_LABEL}</SectionLabel>
       {verifiedItems.length === 0 ? (
-        <div className="card-standard p-4 text-[13px] text-meta">
-          No meaningful changes yet.
+        <div className="card-standard p-5 text-[13px] text-meta space-y-1">
+          <p>{EMPTY_PRIMARY}</p>
+          <p className="text-meta/80">{EMPTY_SECONDARY}</p>
         </div>
       ) : (
         <div className="space-y-3">

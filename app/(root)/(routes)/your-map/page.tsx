@@ -10,11 +10,11 @@ import { toYourMapListItem } from "@/lib/public-intelligence-safe-slice";
 export const dynamic = "force-dynamic";
 
 const PAGE_INTRO =
-  "Published conclusions from reviewed intelligence. Each item summarizes what your model currently holds as supported understanding.";
-const LIST_SECTION_LABEL = "Map conclusions";
-const EMPTY_PRIMARY = "No published map conclusions yet.";
+  "What MindLab currently understands about you from your evidence. Each item is read-only and links to supporting signals when available.";
+const LIST_SECTION_LABEL = "On your map";
+const EMPTY_PRIMARY = "Nothing on your map yet.";
 const EMPTY_SECONDARY =
-  "When reviewed intelligence is published to your map, confirmed conclusions will appear here with safe evidence links.";
+  "When there is enough evidence, MindLab will surface conclusions here. Keep journaling, checking in, or exploring to build more signal.";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
@@ -61,7 +61,7 @@ export default async function YourMapPage() {
 
   return (
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
-      <PageHeader title="Your Map" meta="Published understanding conclusions" />
+      <PageHeader title="Your Map" meta="Supported understanding from your evidence" />
 
       <p className="text-[13px] text-meta mb-6 max-w-2xl">{PAGE_INTRO}</p>
 

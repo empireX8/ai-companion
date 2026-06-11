@@ -21,9 +21,17 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
 });
 
-function formatDateTime(value: string | null): string {
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return DATE_FORMATTER.format(date);
+}
+
+function formatResolvedAt(value: string | null): string | null {
   if (!value) {
-    return "Not set";
+    return null;
   }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -107,9 +115,8 @@ export default async function ActiveQuestionDetailPage({
       </Link>
 
       <PageHeader
-        eyebrow={item.statusLabel}
+        eyebrow={`${item.statusLabel} · ${item.seedTypeLabel}`}
         title={item.title}
-        meta={`Seed: ${item.seedTypeLabel}`}
       />
 
       <section className="card-standard p-5 mb-8">
@@ -127,7 +134,7 @@ export default async function ActiveQuestionDetailPage({
         <SectionLabel>Competing theories</SectionLabel>
         {renderBulletList(
           item.competingTheories,
-          "No competing theories recorded yet. The model may add these as the investigation develops."
+          "No competing theories yet. MindLab may add these as the question develops."
         )}
       </section>
 
@@ -146,7 +153,9 @@ export default async function ActiveQuestionDetailPage({
             {item.resolutionSummary ?? "This question has not reached a resolution summary yet."}
           </div>
           <div className="label-meta mt-3">
-            Resolved at {formatDateTime(item.resolvedAt)}
+            {formatResolvedAt(item.resolvedAt)
+              ? `Resolved ${formatResolvedAt(item.resolvedAt)}`
+              : "Still open — not resolved yet."}
           </div>
           {item.reopenReason ? (
             <div className="label-meta mt-2">Reopen reason: {item.reopenReason}</div>

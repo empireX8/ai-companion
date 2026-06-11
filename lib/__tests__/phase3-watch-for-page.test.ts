@@ -86,7 +86,7 @@ describe("Phase 3 Watch For page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("No observation prompts right now.");
+    expect(html).toContain("Nothing to watch for yet.");
     expect(prismaMock.fieldworkAssignment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: buildPublicWatchForWhere({ userId: "user-1" }),
@@ -251,7 +251,7 @@ describe("Phase 3 Watch For page", () => {
     });
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("Expires at");
+    expect(html).toContain("Watch until");
     expect(html).not.toContain("Completed at");
     expect(html).toContain("Source unavailable.");
     expect(html).not.toContain("/active-questions/inv-12");

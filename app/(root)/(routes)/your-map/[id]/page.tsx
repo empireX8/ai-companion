@@ -13,9 +13,9 @@ import { toYourMapDetailItem } from "@/lib/public-intelligence-safe-slice";
 export const dynamic = "force-dynamic";
 
 const PROVENANCE_INTRO =
-  "Safe links to related patterns or signals that support this conclusion. Raw message content is never shown here.";
+  "Patterns and signals linked to this conclusion. Message content is never shown here.";
 const EVIDENCE_BREADTH_INTRO =
-  "Aggregate signal counts from persisted evidence links — not a certainty score.";
+  "Counts from linked evidence — not a certainty score.";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",

@@ -10,11 +10,11 @@ import { toActiveQuestionListItem } from "@/lib/public-intelligence-safe-slice";
 export const dynamic = "force-dynamic";
 
 const PAGE_INTRO =
-  "Open questions your model is still testing. Each thread stays read-only and traces to persisted investigation records.";
+  "Open questions MindLab is still investigating. Each thread is read-only.";
 const LIST_SECTION_LABEL = "Open questions";
-const EMPTY_PRIMARY = "No open questions right now.";
+const EMPTY_PRIMARY = "No open questions yet.";
 const EMPTY_SECONDARY =
-  "When reviewed intelligence opens a new investigation, active questions will appear here for you to follow.";
+  "When there is enough evidence, MindLab may surface questions to test here. Journal, check in, or explore to add signal.";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
@@ -58,7 +58,7 @@ export default async function ActiveQuestionsPage() {
 
   return (
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
-      <PageHeader title="Active Questions" meta="Open investigation threads" />
+      <PageHeader title="Active Questions" meta="Questions still being investigated" />
 
       <p className="text-[13px] text-meta mb-6 max-w-2xl">{PAGE_INTRO}</p>
 

@@ -15,11 +15,11 @@ import { buildPublicWatchForWhere } from "@/lib/watch-for";
 export const dynamic = "force-dynamic";
 
 const PAGE_INTRO =
-  "Observation prompts for signals worth watching in your material. Each prompt links to a verified related object when available.";
-const LIST_SECTION_LABEL = "Observation prompts";
-const EMPTY_PRIMARY = "No observation prompts right now.";
+  "Small things to notice in real life, drawn from your evidence. Each prompt links to a related item when available.";
+const LIST_SECTION_LABEL = "Watch prompts";
+const EMPTY_PRIMARY = "Nothing to watch for yet.";
 const EMPTY_SECONDARY =
-  "When reviewed intelligence assigns fieldwork, watch-for prompts will appear here for you to track.";
+  "When there is enough evidence, MindLab may surface observation prompts here. Keep capturing signal in journal or check-ins.";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
@@ -71,7 +71,7 @@ export default async function WatchForPage() {
 
   return (
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
-      <PageHeader title="Watch For" meta="Fieldwork observation prompts" />
+      <PageHeader title="Watch For" meta="Small things to notice" />
 
       <p className="text-[13px] text-meta mb-6 max-w-2xl">{PAGE_INTRO}</p>
 

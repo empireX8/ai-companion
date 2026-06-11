@@ -73,7 +73,7 @@ describe("Phase 3 What Changed page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("No meaningful changes yet.");
+    expect(html).toContain("Nothing has changed in your model yet.");
     expect(prismaMock.modelUpdate.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {

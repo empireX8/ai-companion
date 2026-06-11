@@ -58,7 +58,7 @@ describe("Phase 3 Your Map page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("No published map conclusions yet.");
+    expect(html).toContain("Nothing on your map yet.");
     expect(prismaMock.userMapConclusion.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {

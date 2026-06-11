@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 const LINKED_TARGET_INTRO =
   "Verified link to the related pattern, signal, question, or map item this prompt watches.";
 const OBSERVATION_INTRO =
-  "Your recorded observations for this prompt. These are summary fields only — not raw evidence.";
+  "Notes you add for this prompt. Summary fields only — not raw evidence.";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
@@ -26,10 +26,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
 });
 
-function formatDateTime(value: Date | null): string {
-  if (!value) {
-    return "Not set";
-  }
+function formatDateTime(value: Date): string {
   return DATE_FORMATTER.format(value);
 }
 
@@ -140,7 +137,11 @@ export default async function WatchForDetailPage({
       <section>
         <SectionLabel>Timing</SectionLabel>
         <div className="card-standard p-5 text-[13.5px] text-[hsl(216_11%_70%)] space-y-2">
-          <div>Expires at {formatDateTime(item.expiresAt)}</div>
+          <div>
+            {item.expiresAt
+              ? `Watch until ${formatDateTime(item.expiresAt)}`
+              : "No end date set."}
+          </div>
         </div>
       </section>
     </div>
