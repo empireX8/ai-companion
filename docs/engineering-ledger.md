@@ -1825,3 +1825,21 @@ Optional future slices per `docs/phase2-final-acceptance-post-governance-contrac
 - **Deep Research PDF:** Not in workspace at authoring; mechanics via 3C-1 + user brief
 - **Next step:** 3C-R2 — Deep Research synthesis (docs-only, recommended)
 - **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Phase 3C-R2 — Deep Research Suite Synthesis
+
+- **Status:** complete (docs-only contract lock)
+- **Scope:** Filter Deep Research competitor mechanics through suite meta-goal; accepted/rejected matrices; destination buckets; locked decisions; R3–R10 roadmap
+- **Runtime behavior:** unchanged
+- **Validation base:** Backend/docs `main @ 310e21d`; mobile reference `97853d9`
+- **Files changed:**
+  - `docs/phase3c-r2-deep-research-suite-synthesis.md` — created
+  - `docs/phase3c-r1-suite-os-architecture-contract.md` — R2 pointer addendum
+  - `docs/engineering-ledger.md` — this entry
+  - `docs/mindlab-roadmap-status-ledger.md` — Phase 3C-R2 pass row
+- **Key decisions:** MindOS not AI journal; web = operating console; mobile = field instrument; light-first; chat not home shell; What Changed + Watch For + fieldwork as retention/progress/resurface loops; agents/pricing/domain OSs deferred
+- **Deep Research PDF:** Not in workspace at authoring; synthesis via 3C-1, R1, agent brief
+- **Next step:** 3C-R3 — Web/Mobile Surface Role Contract (recommended)
+- **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.

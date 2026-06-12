@@ -523,3 +523,11 @@ Do R2 next: synthesize the Deep Research into suite-level decisions before more 
 ---
 
 *Contract locked 2026-06-12. Supersedes 3C-1 for meta-goal, web/mobile hierarchy, and light-first visual default. Does not supersede 3C-1 surface doctrine or Today hierarchy rules.*
+
+---
+
+## Addendum — Phase 3C-R2 Deep Research Suite Synthesis (2026-06-12)
+
+**Status:** Competitor mechanics synthesis locked in `docs/phase3c-r2-deep-research-suite-synthesis.md`
+
+Read R2 for authoritative **accepted/rejected mechanics matrices**, destination buckets, and locked product decisions #1–17. **R3** (web/mobile surface roles) is the recommended next slice.
