@@ -1784,3 +1784,44 @@ Optional future slices per `docs/phase2-final-acceptance-post-governance-contrac
 - **What remains partial:** All mobile redesign slices (3C-2 onward) not started; dark graphite mode deferred until hierarchy stable
 - **Next step:** 3C-2 — Today hierarchy redesign in mobile repo per contract §12
 - **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+- **R1 addendum (2026-06-12):** Meta-goal superseded by `docs/phase3c-r1-suite-os-architecture-contract.md` for suite hierarchy, web/mobile roles, light-first default
+
+---
+
+## Phase 3C-2 — Today Hierarchy Redesign (mobile)
+
+- **Status:** complete (mobile implementation)
+- **Scope:** Today screen hierarchy redesign per 3C-1 §6
+- **Repo:** `/Users/user/Mindlabs-app`
+- **Validation base:** Mobile `97853d9`
+- **What shipped:** Hero mirror; merged Model Updates (max 2); Watch For / Active Question / continue session caps; View-all anchors
+- **Next step:** 3C-R2 docs synthesis before further mobile redesign
+
+---
+
+## Phase 3C-SAFE — Mobile Trust + Readability Cleanup (mobile)
+
+- **Status:** complete (mobile implementation)
+- **Scope:** Evidence basis summaries; backend label cleanup; generic session fallback; Today regression guards
+- **Repo:** `/Users/user/Mindlabs-app`
+- **Validation base:** Mobile `97853d9`
+- **What shipped:** `mobile-evidence-basis.ts`; removed repeated hidden-evidence placeholders; scope stats removed; Candidate→Forming
+- **Next step:** 3C-R1 suite OS contract; then 3C-R2
+
+---
+
+## Phase 3C-R1 — Suite OS Architecture Reconciliation Contract
+
+- **Status:** complete (docs-only contract lock)
+- **Scope:** Meta-goal reconciliation — MindOS as central intelligence layer of OS suite; web vs mobile roles; light-first identity; competitor reinterpretation; R2–R9 roadmap
+- **Runtime behavior:** unchanged
+- **Validation base:** Backend/docs `main @ e14cb52`; mobile reference `97853d9`
+- **Files changed:**
+  - `docs/phase3c-r1-suite-os-architecture-contract.md` — created
+  - `docs/phase3c-product-design-architecture-contract.md` — R1 addendum
+  - `docs/engineering-ledger.md` — this entry
+  - `docs/mindlab-roadmap-status-ledger.md` — Phase 3C-R1 pass row
+- **Contract locks:** suite meta-product; web = operating console; mobile = daily field instrument; light-first brand default; agent vision deferred
+- **Deep Research PDF:** Not in workspace at authoring; mechanics via 3C-1 + user brief
+- **Next step:** 3C-R2 — Deep Research synthesis (docs-only, recommended)
+- **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.

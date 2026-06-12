@@ -676,3 +676,21 @@ This navigation is **accepted for 3C-2**. Section anchors and View all links may
 ---
 
 *Contract locked 2026-06-12. Supersedes informal Phase 3C-0 audit recommendations for implementation sequencing.*
+
+---
+
+## Addendum — Phase 3C-R1 Suite OS Reconciliation (2026-06-12)
+
+**Status:** Meta-goal correction locked in `docs/phase3c-r1-suite-os-architecture-contract.md`
+
+Phase 3C-R1 reconciles this contract with the **suite OS meta-goal**. Read R1 for authoritative guidance on:
+
+- **Meta-product:** OS suite with MindOS as central intelligence layer (not standalone mobile journal app)
+- **Web vs mobile:** Web = full operating console; Mobile = daily capture / quick mirror / action surface
+- **Visual identity:** Light-first suite brand default; dark graphite deferred to optional focus mode (adjusts §10 Direction C priority, not hierarchy rules)
+- **Competitor research:** Mechanics only — filtered through suite goal; journaling-app framing must not define meta-product
+- **Roadmap reframe:** 3C-R2 through 3C-R9 (see R1 §8); 3C-3/3C-6/3C-8 reframed as R6/R5/R3 respectively
+
+**Unchanged by R1:** Surface doctrine (§4), Today hierarchy (§6 — implemented 3C-2), evidence rules (§8 — extended by 3C-SAFE on mobile), product category (§2), competitor avoid list (§9).
+
+**Next recommended slice:** 3C-R2 — Deep Research synthesis filtered through suite meta-goal (docs-only).
