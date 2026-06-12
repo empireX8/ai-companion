@@ -1767,3 +1767,20 @@ Optional future slices per `docs/phase2-final-acceptance-post-governance-contrac
 
 - **Files changed (this closeout):** `docs/phase2-final-acceptance-post-governance-contract.md`, `docs/engineering-ledger.md`, `docs/mindlab-roadmap-status-ledger.md`
 - **Verification (this docs closeout):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## Phase 3C-1 — Product / Design Architecture Contract
+
+- **Status:** complete (docs-only contract lock)
+- **Scope:** Product and design architecture contract for mobile redesign slices 3C-2 onward; no backend intelligence work; no mobile UI implementation
+- **Runtime behavior:** unchanged
+- **Validation base:** Backend `main @ a3c3cda`; mobile reference `main @ 7ba728f`; Phase 3C-0 audit
+- **Files changed:**
+  - `docs/phase3c-product-design-architecture-contract.md` — created (Phase 3C product/design architecture contract)
+  - `docs/engineering-ledger.md` — this entry
+  - `docs/mindlab-roadmap-status-ledger.md` — Phase 3C implementation pass row
+- **Contract locks:** evidence-backed personal intelligence category; surface doctrine; Today hierarchy (§6); Your Map rules (§7); evidence row rules (§8); Direction C dual-mode visual identity; 3C-2→3C-8 roadmap; 3C-2 bounded next slice
+- **What remains partial:** All mobile redesign slices (3C-2 onward) not started; dark graphite mode deferred until hierarchy stable
+- **Next step:** 3C-2 — Today hierarchy redesign in mobile repo per contract §12
+- **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
