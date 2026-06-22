@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Check, Clock3, Pencil, X } from "lucide-react";
 
@@ -247,11 +247,11 @@ function ReviewItemCard({
   );
 }
 
-function Chip({ children }: { children: React.ReactNode }) {
+function Chip({ children }: { children: ReactNode }) {
   return <span className="label-meta px-2 py-1 rounded bg-white/[0.04]">{children}</span>;
 }
 
-function DisabledAction({ icon, label }: { icon: React.ReactNode; label: string }) {
+function DisabledAction({ icon, label }: { icon: ReactNode; label: string }) {
   return (
     <button
       type="button"
