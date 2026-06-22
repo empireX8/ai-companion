@@ -34,6 +34,15 @@ type SurfaceSession = {
   endedAt: string | null;
 };
 
+type SurfaceSessionScopedRenderArgs = {
+  selectedSessionId: string | null;
+  refreshKey: number;
+  isSending: boolean;
+  isBooting: boolean;
+  isLoadingSession: boolean;
+  messageCount: number;
+};
+
 type SurfaceChatShellProps = {
   title: string;
   subtitle: string;
@@ -43,6 +52,8 @@ type SurfaceChatShellProps = {
   emptyPrompt: string;
   contextBanner?: ReactNode;
   contextPanel?: ReactNode;
+  renderSessionPanel?: (args: SurfaceSessionScopedRenderArgs) => ReactNode;
+  renderSessionContextPanel?: (args: SurfaceSessionScopedRenderArgs) => ReactNode;
   footerNote?: string;
   assistantEyebrow: string;
 };
@@ -106,6 +117,8 @@ export function SurfaceChatShell({
   emptyPrompt,
   contextBanner,
   contextPanel,
+  renderSessionPanel,
+  renderSessionContextPanel,
   footerNote,
   assistantEyebrow,
 }: SurfaceChatShellProps) {
@@ -119,6 +132,7 @@ export function SurfaceChatShell({
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sessionScopedRefreshKey, setSessionScopedRefreshKey] = useState(0);
 
   const voice = useVoiceInput();
 
@@ -152,6 +166,27 @@ export function SurfaceChatShell({
     () => toSessionTitle(selectedSession, messages),
     [messages, selectedSession]
   );
+
+  const sessionScopedRenderArgs = useMemo(
+    () => ({
+      selectedSessionId,
+      refreshKey: sessionScopedRefreshKey,
+      isSending,
+      isBooting,
+      isLoadingSession,
+      messageCount: messages.length,
+    }),
+    [
+      isBooting,
+      isLoadingSession,
+      isSending,
+      messages.length,
+      selectedSessionId,
+      sessionScopedRefreshKey,
+    ]
+  );
+
+  const hasDrawerContent = Boolean(contextPanel || renderSessionContextPanel);
 
   const persistSessionSelection = useCallback((sessionId: string | null) => {
     if (typeof window === "undefined") {
@@ -239,6 +274,7 @@ export function SurfaceChatShell({
         setSelectedSessionId(sessionId);
         persistSessionSelection(sessionId);
         setMessages(nextMessages);
+        setSessionScopedRefreshKey((current) => current + 1);
       } finally {
         setIsLoadingSession(false);
       }
@@ -298,6 +334,7 @@ export function SurfaceChatShell({
         setSelectedSessionId(nextSessionId);
         persistSessionSelection(nextSessionId);
         setMessages(nextMessages);
+        setSessionScopedRefreshKey((current) => current + 1);
       } catch (error) {
         if (cancelled) {
           return;
@@ -470,6 +507,7 @@ export function SurfaceChatShell({
 
       const reconciledMessages = await loadMessages(selectedSessionId);
       setMessages(reconciledMessages);
+      setSessionScopedRefreshKey((current) => current + 1);
 
       void fetch("/api/session/title", {
         method: "POST",
@@ -494,6 +532,7 @@ export function SurfaceChatShell({
       try {
         const reconciledMessages = await loadMessages(selectedSessionId);
         setMessages(reconciledMessages);
+        setSessionScopedRefreshKey((current) => current + 1);
       } catch {
         setMessages((current) =>
           current.filter((message) => message.id !== assistantTempId)
@@ -566,7 +605,7 @@ export function SurfaceChatShell({
             </div>
             <h1 className="text-[18px] font-semibold tracking-tight">{sessionTitle}</h1>
           </div>
-          {contextPanel ? (
+          {hasDrawerContent ? (
             <button
               onClick={() => setDrawerOpen((current) => !current)}
               className="label-meta px-3 h-8 rounded card-standard hover:border-[hsl(187_100%_50%/0.3)]"
@@ -609,6 +648,7 @@ export function SurfaceChatShell({
             {errorMessage && (
               <div className="text-[12px] text-[hsl(12_80%_64%)]">{errorMessage}</div>
             )}
+            {renderSessionPanel ? renderSessionPanel(sessionScopedRenderArgs) : null}
           </div>
         </div>
 
@@ -689,9 +729,14 @@ export function SurfaceChatShell({
         </div>
       </div>
 
-      {drawerOpen && contextPanel ? (
+      {drawerOpen && hasDrawerContent ? (
         <div className="w-[300px] shrink-0 border-l hairline p-5 overflow-y-auto">
           {contextPanel}
+          {renderSessionContextPanel ? (
+            <div className={contextPanel ? "mt-5 pt-5 border-t hairline" : ""}>
+              {renderSessionContextPanel(sessionScopedRenderArgs)}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
