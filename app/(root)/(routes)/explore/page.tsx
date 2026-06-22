@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Compass, Loader2 } from "lucide-react";
 
+import { ExploreConversationReviewPanel } from "@/components/explore/ExploreConversationReviewPanel";
 import { fetchActionsPageData } from "@/lib/actions-api";
 import {
   EXPLORE_ACTION_ID_PARAM,
@@ -114,6 +115,20 @@ export default function ExplorePage() {
       footerNote="Saves automatically"
       contextBanner={contextBanner}
       contextPanel={contextPanel}
+      renderSessionPanel={({ selectedSessionId, refreshKey }) => (
+        <ExploreConversationReviewPanel
+          sessionId={selectedSessionId}
+          refreshKey={refreshKey}
+          variant="strip"
+        />
+      )}
+      renderSessionContextPanel={({ selectedSessionId, refreshKey }) => (
+        <ExploreConversationReviewPanel
+          sessionId={selectedSessionId}
+          refreshKey={refreshKey}
+          variant="inspector"
+        />
+      )}
     />
   );
 }
