@@ -8,9 +8,14 @@ import { UserMapConclusionArea, UserMapConclusionStatus, UserMapConfidenceLevel 
 import type { TodayIntelligenceUpdateItem } from "../today-intelligence-updates";
 import {
   TODAY_REENTRY_ENDPOINTS,
+  TODAY_SECTION_ORDER,
   buildTodayAttentionRows,
   buildTodayBriefingMeta,
   buildTodayBriefingTitle,
+  buildTodayChangeRows,
+  buildTodayFieldworkRows,
+  buildTodayOpenLoopRows,
+  buildTodayReceiptCards,
   hasTodayReentryContent,
   pickTodayHeroItem,
   type TodayReentrySnapshot,
@@ -165,7 +170,7 @@ describe("today-reentry hero priority", () => {
 });
 
 describe("today-reentry attention rows", () => {
-  it("builds rows only from real snapshot data and excludes hero duplicate", () => {
+  it("builds rows only from review-oriented snapshot data and excludes hero duplicate", () => {
     const snapshot: TodayReentrySnapshot = {
       ...emptySnapshot(),
       intelligenceUpdates: [movementItem("mu-1"), movementItem("mu-2")],
@@ -183,6 +188,17 @@ describe("today-reentry attention rows", () => {
           updatedAt: "2026-06-19T10:00:00.000Z",
         },
       ],
+      investigations: [
+        {
+          id: "inv-1",
+          title: "Why do I stall before deadlines?",
+          organizingQuestion: "What triggers the stall?",
+          status: "open",
+          statusLabel: "Open",
+          createdAt: "2026-06-17T10:00:00.000Z",
+          updatedAt: "2026-06-17T10:00:00.000Z",
+        },
+      ],
     };
 
     const hero = pickTodayHeroItem(snapshot);
@@ -190,10 +206,11 @@ describe("today-reentry attention rows", () => {
 
     expect(rows.some((row) => row.id === "attention-movement-mu-2")).toBe(true);
     expect(rows.some((row) => row.id === hero?.id)).toBe(false);
-    expect(rows.some((row) => row.id === "attention-fieldwork-wf-1")).toBe(true);
+    expect(rows.some((row) => row.id === "attention-fieldwork-wf-1")).toBe(false);
+    expect(rows.some((row) => row.id === "attention-investigation-inv-1")).toBe(false);
   });
 
-  it("includes investigation rows without inspector selection", () => {
+  it("routes fieldwork and open loops to dedicated section builders", () => {
     const investigation: ActiveQuestionItem = {
       id: "inv-1",
       title: "Why do I stall before deadlines?",
@@ -203,17 +220,31 @@ describe("today-reentry attention rows", () => {
       createdAt: "2026-06-17T10:00:00.000Z",
       updatedAt: "2026-06-17T10:00:00.000Z",
     };
+    const watchFor: WatchForItem = {
+      id: "wf-1",
+      prompt: "Notice energy dips",
+      reason: "Linked to recent journal.",
+      status: "active",
+      statusLabel: "Active",
+      linkedObjectType: "pattern_claim",
+      linkedObjectId: "pattern-1",
+      linkedObjectHref: "/patterns/pattern-1",
+      createdAt: "2026-06-19T10:00:00.000Z",
+      updatedAt: "2026-06-19T10:00:00.000Z",
+    };
 
-    const rows = buildTodayAttentionRows(
-      {
-        ...emptySnapshot(),
-        investigations: [investigation],
-      },
-      null
-    );
+    const snapshot: TodayReentrySnapshot = {
+      ...emptySnapshot(),
+      watchForItems: [watchFor],
+      investigations: [investigation],
+    };
 
-    expect(rows[0]?.href).toBe("/active-questions/inv-1");
-    expect(rows[0]?.selection).toBeNull();
+    const fieldworkRows = buildTodayFieldworkRows(snapshot, null);
+    const openLoopRows = buildTodayOpenLoopRows(snapshot);
+
+    expect(fieldworkRows[0]?.href).toBe("/watch-for/wf-1");
+    expect(openLoopRows[0]?.href).toBe("/active-questions/inv-1");
+    expect(openLoopRows[0]?.selection).toBeNull();
   });
 });
 
@@ -281,6 +312,58 @@ describe("today-reentry data safety", () => {
   });
 });
 
+describe("today-reentry hierarchy", () => {
+  it("locks the Today section order for re-entry scanning", () => {
+    expect(TODAY_SECTION_ORDER).toEqual([
+      "primary",
+      "attention",
+      "changes",
+      "fieldwork",
+      "open_loops",
+      "receipts",
+      "capture",
+    ]);
+  });
+
+  it("excludes the hero movement from change rows", () => {
+    const snapshot: TodayReentrySnapshot = {
+      ...emptySnapshot(),
+      intelligenceUpdates: [movementItem("mu-1"), movementItem("mu-2")],
+    };
+    const hero = pickTodayHeroItem(snapshot);
+    const changeRows = buildTodayChangeRows(snapshot, hero);
+
+    expect(changeRows.map((item) => item.id)).toEqual(["mu-2"]);
+  });
+
+  it("builds receipt cards only from real receipt hrefs", () => {
+    const cards = buildTodayReceiptCards({
+      ...emptySnapshot(),
+      surfacingCards: [
+        {
+          kind: "Recent Pattern",
+          title: "I overcommit",
+          body: "3 evidence receipts.",
+          meta: "Strength · Medium",
+          detailHref: "/patterns/pattern-1",
+          receiptHref: "/library/receipt-pattern-pattern-1",
+        },
+        {
+          kind: "Recent Journal",
+          title: "Morning",
+          body: "Grounded.",
+          meta: "recently",
+          detailHref: "/library/journal-1",
+          receiptHref: null,
+        },
+      ],
+    });
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0]?.receiptHref).toContain("/library/receipt-");
+  });
+});
+
 describe("today page re-entry wiring", () => {
   it("loads re-entry snapshot through the helper module", () => {
     const source = readTodayPageSource();
@@ -294,11 +377,20 @@ describe("today page re-entry wiring", () => {
 
   it("renders attention section and inspector selection affordances", () => {
     const source = readTodayPageSource();
+    expect(source).toContain("TODAY_PRIMARY_SECTION_LABEL");
     expect(source).toContain("TODAY_ATTENTION_SECTION_LABEL");
+    expect(source).toContain("TODAY_FIELDWORK_SECTION_LABEL");
+    expect(source).toContain("TODAY_OPEN_LOOPS_LABEL");
+    expect(source).toContain("TODAY_RECEIPTS_SECTION_LABEL");
+    expect(source).toContain("buildTodayFieldworkRows");
+    expect(source).toContain("buildTodayOpenLoopRows");
+    expect(source).toContain("buildTodayChangeRows");
     expect(source).toContain("selectObject");
     expect(source).toContain('tab: "movement"');
     expect(source).toContain("See movement");
     expect(source).toContain("parseSelectableObjectFromHref");
+    expect(source.includes("TODAY_TIMELINE_MOVEMENT_LABEL")).toBe(false);
+    expect(source.includes("lg:grid-cols-")).toBe(false);
   });
 
   it("clears loading in finally when fetching re-entry snapshot", () => {

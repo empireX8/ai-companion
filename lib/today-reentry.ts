@@ -21,13 +21,36 @@ import { buildTimelineModelLayersRequestUrl } from "./timeline-model-layers";
 import type { TimelineModelLayerItem } from "./timeline-model-layers";
 import type { WatchForItem } from "./watch-for";
 import { YOUR_MAP_CONCLUSIONS_ENDPOINT } from "./your-map-surface";
-import { ORVEK_COPY } from "./trust-language";
+import { ORVEK_COPY, PRODUCT_NAME } from "./trust-language";
 
+/** Re-entry section order: primary → attention → changes → fieldwork → open loops → receipts → capture. */
+export const TODAY_SECTION_ORDER = [
+  "primary",
+  "attention",
+  "changes",
+  "fieldwork",
+  "open_loops",
+  "receipts",
+  "capture",
+] as const;
+
+export type TodaySectionId = (typeof TODAY_SECTION_ORDER)[number];
+
+export const TODAY_PRIMARY_SECTION_LABEL = "Most consequential now";
+export const TODAY_PRIMARY_EMPTY_COPY =
+  `Nothing consequential right now. When ${PRODUCT_NAME} surfaces a meaningful shift, it will appear here first.`;
 export const TODAY_ATTENTION_SECTION_LABEL = "Needs attention now";
 export const TODAY_ATTENTION_EMPTY_COPY =
-  "Nothing needs attention right now. Capture or check in to build more signal.";
-export const TODAY_OPEN_LOOPS_LABEL = "Open loops";
-export const TODAY_TIMELINE_MOVEMENT_LABEL = "Recent timeline movement";
+  "Nothing needs review right now. Recent shifts and tensions will appear here when supported.";
+export const TODAY_FIELDWORK_SECTION_LABEL = "Fieldwork / Watch For";
+export const TODAY_FIELDWORK_EMPTY_COPY =
+  "No active watch prompts. When evidence supports field observation, prompts appear here.";
+export const TODAY_OPEN_LOOPS_LABEL = "Open loops / active questions";
+export const TODAY_OPEN_LOOPS_EMPTY_COPY =
+  "No open loops or active questions right now.";
+export const TODAY_RECEIPTS_SECTION_LABEL = "Resurfaced receipts";
+export const TODAY_RECEIPTS_EMPTY_COPY =
+  "No receipts resurfaced in this window.";
 export const TODAY_REPORT_READY_LABEL = "Report ready";
 
 export const TODAY_REENTRY_ENDPOINTS = {
@@ -390,49 +413,11 @@ function rowFromSurfacingCard(card: TodaySurfacingCard): TodayAttentionRow {
   };
 }
 
-export function buildTodayAttentionRows(
-  snapshot: TodayReentrySnapshot,
-  hero: TodayHeroItem | null
+function dedupeAttentionRows(
+  candidates: TodayAttentionRow[],
+  heroId: string | null,
+  limit = 8
 ): TodayAttentionRow[] {
-  const heroId = hero?.id ?? null;
-  const usedMovementIds = new Set(
-    snapshot.intelligenceUpdates.slice(0, 1).map((item) => item.id)
-  );
-
-  const candidates: TodayAttentionRow[] = [];
-
-  for (const item of snapshot.intelligenceUpdates.slice(1)) {
-    candidates.push(rowFromMovement(item));
-  }
-
-  for (const item of snapshot.watchForItems) {
-    if (item.status === "active" || item.status === "assigned") {
-      candidates.push(rowFromFieldwork(item));
-    }
-  }
-
-  for (const action of snapshot.actions) {
-    if (action.status === "not_started") {
-      candidates.push(rowFromAction(action));
-    }
-  }
-
-  for (const investigation of snapshot.investigations) {
-    candidates.push(rowFromInvestigation(investigation));
-  }
-
-  for (const item of snapshot.timelineMovements) {
-    if (!usedMovementIds.has(item.id)) {
-      candidates.push(rowFromTimelineMovement(item));
-    }
-  }
-
-  for (const card of snapshot.surfacingCards) {
-    if (card.receiptHref || card.kind !== "Recent Journal") {
-      candidates.push(rowFromSurfacingCard(card));
-    }
-  }
-
   const deduped = new Map<string, TodayAttentionRow>();
   for (const row of candidates) {
     if (row.id === heroId) {
@@ -448,7 +433,81 @@ export function buildTodayAttentionRows(
       (left, right) =>
         new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
     )
-    .slice(0, 8);
+    .slice(0, limit);
+}
+
+export function buildTodayAttentionRows(
+  snapshot: TodayReentrySnapshot,
+  hero: TodayHeroItem | null
+): TodayAttentionRow[] {
+  const heroId = hero?.id ?? null;
+  const usedMovementIds = new Set(
+    snapshot.intelligenceUpdates.slice(0, 1).map((item) => item.id)
+  );
+
+  const candidates: TodayAttentionRow[] = [];
+
+  for (const item of snapshot.intelligenceUpdates.slice(1)) {
+    candidates.push(rowFromMovement(item));
+  }
+
+  for (const item of snapshot.timelineMovements) {
+    if (!usedMovementIds.has(item.id)) {
+      candidates.push(rowFromTimelineMovement(item));
+    }
+  }
+
+  for (const card of snapshot.surfacingCards) {
+    if (card.kind === "Active Tension" || card.kind === "Recent Pattern") {
+      candidates.push(rowFromSurfacingCard(card));
+    }
+  }
+
+  return dedupeAttentionRows(candidates, heroId);
+}
+
+export function buildTodayFieldworkRows(
+  snapshot: TodayReentrySnapshot,
+  hero: TodayHeroItem | null
+): TodayAttentionRow[] {
+  const heroId = hero?.id ?? null;
+  const candidates: TodayAttentionRow[] = [];
+
+  for (const item of snapshot.watchForItems) {
+    if (item.status === "active" || item.status === "assigned") {
+      candidates.push(rowFromFieldwork(item));
+    }
+  }
+
+  return dedupeAttentionRows(candidates, heroId, 6);
+}
+
+export function buildTodayOpenLoopRows(snapshot: TodayReentrySnapshot): TodayAttentionRow[] {
+  const candidates: TodayAttentionRow[] = [];
+
+  for (const investigation of snapshot.investigations) {
+    candidates.push(rowFromInvestigation(investigation));
+  }
+
+  for (const action of snapshot.actions) {
+    if (action.status === "not_started") {
+      candidates.push(rowFromAction(action));
+    }
+  }
+
+  return dedupeAttentionRows(candidates, null, 8);
+}
+
+export function buildTodayReceiptCards(snapshot: TodayReentrySnapshot): TodaySurfacingCard[] {
+  return snapshot.surfacingCards.filter((card) => card.receiptHref);
+}
+
+export function buildTodayChangeRows(
+  snapshot: TodayReentrySnapshot,
+  hero: TodayHeroItem | null
+): TodayIntelligenceUpdateItem[] {
+  const heroMovementId = hero?.movement?.id ?? null;
+  return snapshot.intelligenceUpdates.filter((item) => item.id !== heroMovementId);
 }
 
 export function buildTodayBriefingTitle(snapshot: TodayReentrySnapshot): string {

@@ -2,7 +2,6 @@
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import {
-  TODAY_INTELLIGENCE_EMPTY_COPY,
   TODAY_INTELLIGENCE_LOADING_COPY,
   type TodaySurfacingCard,
 } from "@/lib/today-surface";
@@ -15,12 +14,21 @@ import {
 import {
   TODAY_ATTENTION_EMPTY_COPY,
   TODAY_ATTENTION_SECTION_LABEL,
+  TODAY_FIELDWORK_EMPTY_COPY,
+  TODAY_FIELDWORK_SECTION_LABEL,
+  TODAY_OPEN_LOOPS_EMPTY_COPY,
   TODAY_OPEN_LOOPS_LABEL,
+  TODAY_PRIMARY_EMPTY_COPY,
+  TODAY_PRIMARY_SECTION_LABEL,
+  TODAY_RECEIPTS_SECTION_LABEL,
   TODAY_REPORT_READY_LABEL,
-  TODAY_TIMELINE_MOVEMENT_LABEL,
   buildTodayAttentionRows,
   buildTodayBriefingMeta,
   buildTodayBriefingTitle,
+  buildTodayChangeRows,
+  buildTodayFieldworkRows,
+  buildTodayOpenLoopRows,
+  buildTodayReceiptCards,
   fetchTodayReentrySnapshot,
   pickTodayHeroItem,
   type TodayAttentionRow,
@@ -32,12 +40,13 @@ import { PublicLinkedObjectContinuity } from "../../lib/public-continuity-displa
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
 import { ArrowUpRight, GitCompareArrows, Mic, Receipt } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { useInspector } from "@/components/inspector/InspectorContext";
 import { parseSelectableObjectFromHref } from "@/lib/inspector-selection";
+import { cn } from "@/lib/utils";
 
 const EMPTY_SNAPSHOT: TodayReentrySnapshot = {
   surfacingCards: [],
@@ -115,6 +124,23 @@ function applyInspectorSelection(
     sourceSurface: "today",
     tab: selection.tab,
   });
+}
+
+function TodaySectionShell({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn("ml-material rounded-2xl p-5", className)}>
+      <SectionLabel>{label}</SectionLabel>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
 }
 
 function TodayLaneChip({ label }: { label: string }) {
@@ -447,6 +473,16 @@ export default function Today() {
     () => buildTodayAttentionRows(snapshot, hero),
     [snapshot, hero]
   );
+  const fieldworkRows = useMemo(
+    () => buildTodayFieldworkRows(snapshot, hero),
+    [snapshot, hero]
+  );
+  const openLoopRows = useMemo(() => buildTodayOpenLoopRows(snapshot), [snapshot]);
+  const changeRows = useMemo(
+    () => buildTodayChangeRows(snapshot, hero),
+    [snapshot, hero]
+  );
+  const receiptCards = useMemo(() => buildTodayReceiptCards(snapshot), [snapshot]);
 
   const briefingTitle = useMemo(() => buildTodayBriefingTitle(snapshot), [snapshot]);
   const briefingMeta = useMemo(
@@ -454,10 +490,7 @@ export default function Today() {
     [snapshot, isLoadingSnapshot]
   );
 
-  const receiptCards = snapshot.surfacingCards.filter((card) => card.receiptHref);
-  const openLoopCount =
-    snapshot.investigations.length +
-    snapshot.actions.filter((action) => action.status === "not_started").length;
+  const hasReportReady = snapshot.intelligenceUpdates.length > 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -499,213 +532,191 @@ export default function Today() {
 
   return (
     <div className="animate-fade-in px-6 py-7 lg:px-10">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-3xl space-y-5">
         <PageHeader eyebrow={dateStr} title={briefingTitle} meta={briefingMeta} />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-          <div className="min-w-0 space-y-5">
-            {hero && !isLoadingSnapshot ? (
-              <TodayHeroView hero={hero} />
-            ) : isLoadingSnapshot ? (
-              <div className="ml-material rounded-2xl p-5 text-[13px] text-muted-foreground">
-                {TODAY_INTELLIGENCE_LOADING_COPY}
-              </div>
-            ) : (
-              <div className="ml-material rounded-2xl p-5 text-[13px] text-muted-foreground">
-                {TODAY_INTELLIGENCE_EMPTY_COPY}
-              </div>
-            )}
-
-            <section className="ml-material rounded-2xl p-5">
-              <SectionLabel>{TODAY_ATTENTION_SECTION_LABEL}</SectionLabel>
-              {isLoadingSnapshot ? (
-                <p className="mt-2 text-[13px] text-muted-foreground">
-                  {TODAY_INTELLIGENCE_LOADING_COPY}
-                </p>
-              ) : attentionRows.length === 0 ? (
-                <p className="mt-2 text-[13px] text-muted-foreground">
-                  {TODAY_ATTENTION_EMPTY_COPY}
-                </p>
-              ) : (
-                <div className="mt-3 space-y-2">
-                  {attentionRows.map((row) => (
-                    <TodayAttentionRowView key={row.id} row={row} />
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section className="ml-material rounded-2xl p-5">
-              <SectionLabel>Capture</SectionLabel>
-              <textarea
-                ref={captureTextareaRef}
-                rows={3}
-                placeholder="What's present right now…"
-                value={
-                  voice.state === "recording" && voice.interimTranscript
-                    ? captureText
-                      ? `${captureText}\n${voice.interimTranscript}`
-                      : voice.interimTranscript
-                    : captureText
-                }
-                onChange={(event) => {
-                  setCaptureText(event.target.value);
-                  if (captureMessage) {
-                    setCaptureMessage(null);
-                  }
-                }}
-                className="w-full max-h-[200px] resize-none overflow-y-auto border-0 bg-transparent text-[16px] leading-relaxed placeholder:text-meta-deep focus:outline-none"
-              />
-              <div className="mt-3 flex items-center justify-between border-t ml-hairline pt-3">
-                <button
-                  onClick={() => {
-                    void voice.toggle();
-                  }}
-                  className={`ml-calm flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] ${
-                    voice.state === "recording"
-                      ? "text-[hsl(12_80%_64%)] bg-[hsl(12_80%_64%/0.1)]"
-                      : "text-meta hover:bg-white/[0.05] hover:text-foreground"
-                  }`}
-                  title="Voice input"
-                >
-                  {voice.state === "recording" ? (
-                    <>
-                      <VoiceWaveform active={true} />
-                      <span className="ml-1">Recording…</span>
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="h-3.5 w-3.5" strokeWidth={1.5} />
-                      Voice
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={handleSaveCapture}
-                  disabled={!trimmedCaptureText}
-                  className="ml-calm rounded-lg bg-cyan px-4 py-1.5 text-[12px] font-medium text-black hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Continue
-                </button>
-              </div>
-            </section>
-
-            <section>
-              <SectionLabel>Quick check-in</SectionLabel>
-              <div className="flex flex-wrap gap-2">
-                {checkInStates.map((state) => (
-                  <Link
-                    key={state.id}
-                    href={`/check-ins?state=${todayQuickCheckInMap[state.id]}`}
-                    className="ml-calm ml-material flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] hover:bg-white/[0.03]"
-                  >
-                    <span className="h-2 w-2 rounded-full" style={{ background: state.color }} />
-                    {state.label}
-                  </Link>
-                ))}
-              </div>
-            </section>
-          </div>
-
-          <aside className="min-w-0 space-y-4">
-            <div className="ml-float rounded-2xl p-4">
-              <div className="flex items-center justify-between gap-2">
-                <SectionLabel>{TODAY_CHANGES_SUBSECTION_LABEL}</SectionLabel>
-                {snapshot.intelligenceUpdates.length > 0 ? (
-                  <Link
-                    href={TODAY_CHANGES_VIEW_ALL_HREF}
-                    className="text-[11px] font-medium text-muted-foreground hover:text-cyan"
-                  >
-                    View all
-                  </Link>
-                ) : null}
-              </div>
-              {isLoadingSnapshot ? (
-                <p className="text-[13px] text-muted-foreground">{TODAY_INTELLIGENCE_LOADING_COPY}</p>
-              ) : snapshot.intelligenceUpdates.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground">{TODAY_CHANGES_EMPTY_COPY}</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {snapshot.intelligenceUpdates.map((item) => (
-                    <TodayMovementRow key={`rail-${item.id}`} item={item} />
-                  ))}
-                </div>
-              )}
+        <section className="space-y-3">
+          <SectionLabel>{TODAY_PRIMARY_SECTION_LABEL}</SectionLabel>
+          {isLoadingSnapshot ? (
+            <div className="ml-material rounded-2xl p-5 text-[13px] text-muted-foreground">
+              {TODAY_INTELLIGENCE_LOADING_COPY}
             </div>
+          ) : hero ? (
+            <TodayHeroView hero={hero} />
+          ) : (
+            <div className="ml-material rounded-2xl p-5 text-[13px] text-muted-foreground">
+              {TODAY_PRIMARY_EMPTY_COPY}
+            </div>
+          )}
+        </section>
 
-            {snapshot.intelligenceUpdates.length > 0 ? (
-              <div className="ml-material rounded-2xl p-4">
-                <SectionLabel>{TODAY_REPORT_READY_LABEL}</SectionLabel>
+        <TodaySectionShell label={TODAY_ATTENTION_SECTION_LABEL}>
+          {isLoadingSnapshot ? (
+            <p className="text-[13px] text-muted-foreground">{TODAY_INTELLIGENCE_LOADING_COPY}</p>
+          ) : attentionRows.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">{TODAY_ATTENTION_EMPTY_COPY}</p>
+          ) : (
+            <div className="space-y-2">
+              {attentionRows.map((row) => (
+                <TodayAttentionRowView key={row.id} row={row} />
+              ))}
+            </div>
+          )}
+        </TodaySectionShell>
+
+        <TodaySectionShell label={TODAY_CHANGES_SUBSECTION_LABEL}>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-[12px] text-muted-foreground">
+              {hasReportReady ? TODAY_REPORT_READY_LABEL : "What Changed"}
+            </p>
+            {hasReportReady ? (
+              <Link
+                href={TODAY_CHANGES_VIEW_ALL_HREF}
+                className="text-[11px] font-medium text-muted-foreground hover:text-cyan"
+              >
+                View all
+              </Link>
+            ) : null}
+          </div>
+          {isLoadingSnapshot ? (
+            <p className="text-[13px] text-muted-foreground">{TODAY_INTELLIGENCE_LOADING_COPY}</p>
+          ) : changeRows.length === 0 && !hasReportReady ? (
+            <p className="text-[13px] text-muted-foreground">{TODAY_CHANGES_EMPTY_COPY}</p>
+          ) : (
+            <div className="space-y-2.5">
+              {changeRows.map((item) => (
+                <TodayMovementRow key={`change-${item.id}`} item={item} />
+              ))}
+              {hasReportReady ? (
                 <Link
                   href={TODAY_CHANGES_VIEW_ALL_HREF}
-                  className="ml-calm mt-2 flex items-center justify-between rounded-lg px-2 py-2 text-[13px] hover:bg-white/[0.04]"
+                  className="ml-calm flex items-center justify-between rounded-lg px-2 py-2 text-[13px] hover:bg-white/[0.04]"
                 >
-                  <span>What changed report</span>
+                  <span>What Changed report</span>
                   <ArrowUpRight className="size-3.5 text-meta" aria-hidden />
                 </Link>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
+          )}
+        </TodaySectionShell>
 
-            {snapshot.timelineMovements.length > 0 ? (
-              <div className="ml-material rounded-2xl p-4">
-                <SectionLabel>{TODAY_TIMELINE_MOVEMENT_LABEL}</SectionLabel>
-                <ul className="mt-2 space-y-2">
-                  {snapshot.timelineMovements.map((item) => (
-                    <li key={`timeline-rail-${item.id}`}>
-                      <TodayMovementRow item={item} />
-                    </li>
-                  ))}
-                </ul>
+        {(isLoadingSnapshot || fieldworkRows.length > 0) && (
+          <TodaySectionShell label={TODAY_FIELDWORK_SECTION_LABEL}>
+            {isLoadingSnapshot ? (
+              <p className="text-[13px] text-muted-foreground">{TODAY_INTELLIGENCE_LOADING_COPY}</p>
+            ) : fieldworkRows.length === 0 ? (
+              <p className="text-[13px] text-muted-foreground">{TODAY_FIELDWORK_EMPTY_COPY}</p>
+            ) : (
+              <div className="space-y-2">
+                {fieldworkRows.map((row) => (
+                  <TodayAttentionRowView key={row.id} row={row} />
+                ))}
               </div>
-            ) : null}
+            )}
+          </TodaySectionShell>
+        )}
 
-            {openLoopCount > 0 ? (
-              <div className="ml-material rounded-2xl p-4">
-                <SectionLabel>{TODAY_OPEN_LOOPS_LABEL}</SectionLabel>
-                <ul className="mt-2 space-y-1.5">
-                  {snapshot.investigations.slice(0, 3).map((item) => (
-                    <li key={`loop-investigation-${item.id}`}>
-                      <Link
-                        href={`/active-questions/${item.id}`}
-                        className="ml-calm block rounded-lg px-2 py-1.5 text-[13px] hover:bg-white/[0.04]"
-                      >
-                        <span className="line-clamp-1 font-medium">{item.title}</span>
-                        <span className="label-meta block">{item.statusLabel}</span>
-                      </Link>
-                    </li>
-                  ))}
-                  {snapshot.actions
-                    .filter((action) => action.status === "not_started")
-                    .slice(0, 3)
-                    .map((action) => (
-                      <li key={`loop-action-${action.id}`}>
-                        <Link
-                          href="/actions"
-                          className="ml-calm block rounded-lg px-2 py-1.5 text-[13px] hover:bg-white/[0.04]"
-                        >
-                          <span className="line-clamp-1 font-medium">{action.title}</span>
-                          <span className="label-meta block">Not started</span>
-                        </Link>
-                      </li>
-                    ))}
-                </ul>
+        {(isLoadingSnapshot || openLoopRows.length > 0) && (
+          <TodaySectionShell label={TODAY_OPEN_LOOPS_LABEL}>
+            {isLoadingSnapshot ? (
+              <p className="text-[13px] text-muted-foreground">{TODAY_INTELLIGENCE_LOADING_COPY}</p>
+            ) : openLoopRows.length === 0 ? (
+              <p className="text-[13px] text-muted-foreground">{TODAY_OPEN_LOOPS_EMPTY_COPY}</p>
+            ) : (
+              <div className="space-y-2">
+                {openLoopRows.map((row) => (
+                  <TodayAttentionRowView key={row.id} row={row} />
+                ))}
               </div>
-            ) : null}
+            )}
+          </TodaySectionShell>
+        )}
 
-            {receiptCards.length > 0 ? (
-              <div className="ml-material rounded-2xl p-4">
-                <SectionLabel>Resurfaced receipts</SectionLabel>
-                <ul className="space-y-2">
-                  {receiptCards.map((card) => (
-                    <li key={`receipt-${card.title}`}>
-                      <TodayReceiptRow card={card} />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </aside>
-        </div>
+        {(isLoadingSnapshot || receiptCards.length > 0) && (
+          <TodaySectionShell label={TODAY_RECEIPTS_SECTION_LABEL}>
+            {isLoadingSnapshot ? (
+              <p className="text-[13px] text-muted-foreground">{TODAY_INTELLIGENCE_LOADING_COPY}</p>
+            ) : (
+              <ul className="space-y-2">
+                {receiptCards.map((card) => (
+                  <li key={`receipt-${card.title}`}>
+                    <TodayReceiptRow card={card} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </TodaySectionShell>
+        )}
+
+        <TodaySectionShell label="Capture">
+          <textarea
+            ref={captureTextareaRef}
+            rows={3}
+            placeholder="What's present right now…"
+            value={
+              voice.state === "recording" && voice.interimTranscript
+                ? captureText
+                  ? `${captureText}\n${voice.interimTranscript}`
+                  : voice.interimTranscript
+                : captureText
+            }
+            onChange={(event) => {
+              setCaptureText(event.target.value);
+              if (captureMessage) {
+                setCaptureMessage(null);
+              }
+            }}
+            className="w-full max-h-[200px] resize-none overflow-y-auto border-0 bg-transparent text-[16px] leading-relaxed placeholder:text-meta-deep focus:outline-none"
+          />
+          <div className="mt-3 flex items-center justify-between border-t ml-hairline pt-3">
+            <button
+              onClick={() => {
+                void voice.toggle();
+              }}
+              className={`ml-calm flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] ${
+                voice.state === "recording"
+                  ? "text-[hsl(12_80%_64%)] bg-[hsl(12_80%_64%/0.1)]"
+                  : "text-meta hover:bg-white/[0.05] hover:text-foreground"
+              }`}
+              title="Voice input"
+            >
+              {voice.state === "recording" ? (
+                <>
+                  <VoiceWaveform active={true} />
+                  <span className="ml-1">Recording…</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  Voice
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleSaveCapture}
+              disabled={!trimmedCaptureText}
+              className="ml-calm rounded-lg bg-cyan px-4 py-1.5 text-[12px] font-medium text-black hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Continue
+            </button>
+          </div>
+        </TodaySectionShell>
+
+        <section>
+          <SectionLabel>Quick check-in</SectionLabel>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {checkInStates.map((state) => (
+              <Link
+                key={state.id}
+                href={`/check-ins?state=${todayQuickCheckInMap[state.id]}`}
+                className="ml-calm ml-material flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] hover:bg-white/[0.03]"
+              >
+                <span className="h-2 w-2 rounded-full" style={{ background: state.color }} />
+                {state.label}
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );
