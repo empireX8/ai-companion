@@ -112,4 +112,27 @@ describe("timeline semantic layers", () => {
     expect(modelChangeMatchesFilter("model_movement")).toBe(true);
     expect(modelChangeMatchesFilter("sessions_activity")).toBe(false);
   });
+
+  it("keeps fieldwork entries on real detail pages without inspector object types", () => {
+    const fieldwork = mapWatchForToTimelineEntries(
+      [
+        {
+          id: "fw-1",
+          prompt: "Watch for overload cues",
+          reason: "Linked to recovery pattern",
+          status: "active",
+          statusLabel: "Active",
+          linkedObjectType: "pattern_claim",
+          linkedObjectId: "pc-1",
+          linkedObjectHref: "/patterns/pc-1",
+          createdAt: "2026-05-10T09:00:00.000Z",
+          updatedAt: "2026-05-18T10:00:00.000Z",
+        },
+      ],
+      windowStart
+    );
+
+    expect(fieldwork[0]?.href).toBe("/watch-for/fw-1");
+    expect(fieldwork[0]?.selectableObjectType).toBeNull();
+  });
 });

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { TimelineInspectorAction } from "@/components/timeline/TimelineInspectorAction";
 import { OccurrenceDots } from "@/components/Visuals";
 import { ArrowRight } from "lucide-react";
 
@@ -32,14 +34,24 @@ import {
   TIMELINE_MODEL_CHANGE_CHIP,
   TIMELINE_MODEL_LAYERS_ERROR_COPY,
   TIMELINE_MODEL_LAYERS_LOADING_COPY,
+  TIMELINE_PAGE_INTRO,
   TIMELINE_PAGE_META,
+  TIMELINE_REENTRY_LINKS,
+  TIMELINE_RHYTHMS_EMPTY_COPY,
+  TIMELINE_RHYTHMS_NO_EVENTS_COPY,
+  TIMELINE_RHYTHMS_NO_STATES_COPY,
+  TIMELINE_RHYTHMS_SECTION_INTRO,
+  TIMELINE_RHYTHMS_SECTION_LABEL,
+  TIMELINE_SIGNALS_NO_LINKS_COPY,
+  TIMELINE_SIGNALS_NO_SIGNALS_COPY,
+  TIMELINE_SIGNALS_POSSIBLE_LINKS_LABEL,
+  TIMELINE_SIGNALS_REPEATED_LABEL,
+  TIMELINE_SIGNALS_SECTION_INTRO,
   TIMELINE_SIGNALS_SECTION_LABEL,
   toTimelineLondonDateKey,
   type TimelineModelLayerItem,
 } from "@/lib/timeline-model-layers";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
-import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "@/lib/public-continuity-registry";
-import { useInspector } from "@/components/inspector/InspectorContext";
 import { parseSelectableObjectFromHref } from "@/lib/inspector-selection";
 import {
   enrichTimelineActivityEntry,
@@ -70,19 +82,6 @@ function formatTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-    timeZone: "Europe/London",
-  }).format(date);
-}
-
-function formatDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
     timeZone: "Europe/London",
   }).format(date);
 }
@@ -122,7 +121,6 @@ function stateLabel(stateTag: QuickCheckInStateTag | null): string {
 }
 
 function ActivityStreamEntry({ entry }: { entry: TimelineEntry }) {
-  const { selectObject } = useInspector();
   const lane = entry.lane ?? "sessions_activity";
   const isMovementLane = lane === "model_movement";
   const laneLabel =
@@ -130,29 +128,20 @@ function ActivityStreamEntry({ entry }: { entry: TimelineEntry }) {
       ? TIMELINE_LANE_LABELS[entry.lane]
       : entry.chip;
 
-  const handleSelect = () => {
-    if (entry.selectableObjectType && entry.selectableObjectId) {
-      selectObject({
-        objectType: entry.selectableObjectType,
-        objectId: entry.selectableObjectId,
-        title: entry.title,
-        sourceSurface: "timeline",
-        tab: entry.selectableObjectType === "model_update" ? "movement" : "evidence",
-      });
-      return;
-    }
+  const inspectorTarget =
+    entry.selectableObjectType && entry.selectableObjectId
+      ? {
+          objectType: entry.selectableObjectType,
+          objectId: entry.selectableObjectId,
+        }
+      : parseSelectableObjectFromHref(entry.href);
 
-    const parsed = parseSelectableObjectFromHref(entry.href);
-    if (!parsed) {
-      return;
-    }
-    selectObject({
-      ...parsed,
-      title: entry.title,
-      sourceSurface: "timeline",
-      tab: "evidence",
-    });
-  };
+  const rowClassName = cn(
+    "relative flex w-full gap-3 py-3 pl-5 text-left",
+    "before:absolute before:bottom-1 before:left-0 before:top-1 before:w-[3px] before:rounded-r",
+    isMovementLane ? "before:bg-cyan/80" : "before:bg-white/25",
+    entry.href && !inspectorTarget ? "ml-calm hover:bg-white/[0.02]" : ""
+  );
 
   const content = (
     <>
@@ -184,8 +173,13 @@ function ActivityStreamEntry({ entry }: { entry: TimelineEntry }) {
         {entry.sourceLabel ? (
           <span className="label-meta text-meta mt-1 block">{entry.sourceLabel}</span>
         ) : null}
-        {!entry.href ? (
-          <span className="label-meta text-meta mt-1 block">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</span>
+        {inspectorTarget ? (
+          <TimelineInspectorAction
+            objectType={inspectorTarget.objectType}
+            objectId={inspectorTarget.objectId}
+            title={entry.title}
+            tab={inspectorTarget.objectType === "model_update" ? "movement" : "evidence"}
+          />
         ) : null}
       </span>
     </>
@@ -193,53 +187,20 @@ function ActivityStreamEntry({ entry }: { entry: TimelineEntry }) {
 
   return (
     <div className={cn(entry.weight === "low" && "opacity-60")}>
-      {entry.href || entry.selectableObjectId ? (
-        <button
-          type="button"
-          onClick={() => {
-            handleSelect();
-          }}
-          className={cn(
-            "ml-calm relative flex w-full gap-3 py-3 pl-5 text-left hover:bg-white/[0.02]",
-            "before:absolute before:bottom-1 before:left-0 before:top-1 before:w-[3px] before:rounded-r",
-            isMovementLane ? "before:bg-cyan/80" : "before:bg-white/25"
-          )}
-        >
+      {entry.href && !inspectorTarget ? (
+        <Link href={entry.href} className={rowClassName}>
           {content}
-        </button>
+        </Link>
       ) : (
-        <div
-          className={cn(
-            "ml-calm relative flex w-full gap-3 py-3 pl-5 text-left",
-            "before:absolute before:bottom-1 before:left-0 before:top-1 before:w-[3px] before:rounded-r",
-            isMovementLane ? "before:bg-cyan/80" : "before:bg-white/25"
-          )}
-        >
-          {content}
-        </div>
+        <div className={rowClassName}>{content}</div>
       )}
     </div>
   );
 }
 
 function ModelChangeStreamEntry({ item }: { item: TimelineModelLayerItem }) {
-  const { selectObject } = useInspector();
-
   return (
-    <button
-      type="button"
-      onClick={() => {
-        selectObject({
-          objectType: "model_update",
-          objectId: item.id,
-          modelUpdateId: item.id,
-          title: `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`,
-          sourceSurface: "timeline",
-          tab: "movement",
-        });
-      }}
-      className="ml-calm relative flex w-full gap-3 py-3 pl-5 text-left before:absolute before:bottom-1 before:left-0 before:top-1 before:w-[3px] before:rounded-r before:bg-cyan/80 hover:bg-white/[0.02]"
-    >
+    <div className="relative flex w-full gap-3 py-3 pl-5 text-left before:absolute before:bottom-1 before:left-0 before:top-1 before:w-[3px] before:rounded-r before:bg-cyan/80">
       <span className="mt-1.5 size-2 shrink-0 rounded-full bg-cyan/80" aria-hidden />
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
@@ -251,6 +212,9 @@ function ModelChangeStreamEntry({ item }: { item: TimelineModelLayerItem }) {
           </span>
           <span className="rounded-full bg-cyan/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan/80">
             {TIMELINE_MODEL_CHANGE_CHIP}
+          </span>
+          <span className="rounded-full bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {TIMELINE_LANE_LABELS.model_movement}
           </span>
         </span>
         <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground line-clamp-2">
@@ -264,8 +228,15 @@ function ModelChangeStreamEntry({ item }: { item: TimelineModelLayerItem }) {
             context="model_update"
           />
         </div>
+        <TimelineInspectorAction
+          objectType="model_update"
+          objectId={item.id}
+          modelUpdateId={item.id}
+          title={`${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`}
+          tab="movement"
+        />
       </span>
-    </button>
+    </div>
   );
 }
 
@@ -487,12 +458,14 @@ export default function TimelineSurface() {
         }
       />
 
+      <p className="mb-6 max-w-2xl text-[13px] text-muted-foreground">{TIMELINE_PAGE_INTRO}</p>
+
       <section className="ml-material mb-8 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="label-meta mb-1">Recent rhythms</div>
+            <div className="label-meta mb-1">{TIMELINE_RHYTHMS_SECTION_LABEL}</div>
             <div className="text-[15px]">Check-in cadence · last {windowValue}</div>
-            <div className="label-meta text-meta mt-1">Based on check-ins in this window.</div>
+            <div className="label-meta text-meta mt-1">{TIMELINE_RHYTHMS_SECTION_INTRO}</div>
           </div>
           <div className="flex gap-4 text-right">
             <Stat label="Check-in days" value={String(checkInDayCount)} />
@@ -500,7 +473,7 @@ export default function TimelineSurface() {
           </div>
         </div>
         {!rhythmReady ? (
-          <div className="card-standard p-4 text-[13px] text-meta mt-4">Not enough check-ins to show a rhythm yet.</div>
+          <div className="card-standard p-4 text-[13px] text-meta mt-4">{TIMELINE_RHYTHMS_EMPTY_COPY}</div>
         ) : (
           <div className="space-y-3 mt-4">
             <div className="flex gap-2 flex-wrap">
@@ -511,7 +484,7 @@ export default function TimelineSurface() {
                   </span>
                 ))
               ) : (
-                <span className="label-meta text-meta">No check-ins in this window yet.</span>
+                <span className="label-meta text-meta">{TIMELINE_RHYTHMS_NO_STATES_COPY}</span>
               )}
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -522,7 +495,7 @@ export default function TimelineSurface() {
                   </span>
                 ))
               ) : (
-                <span className="label-meta text-meta">No repeated events in this window yet.</span>
+                <span className="label-meta text-meta">{TIMELINE_RHYTHMS_NO_EVENTS_COPY}</span>
               )}
             </div>
           </div>
@@ -531,12 +504,10 @@ export default function TimelineSurface() {
 
       <section className="mb-10">
         <SectionLabel>{TIMELINE_SIGNALS_SECTION_LABEL}</SectionLabel>
-        <div className="label-meta text-meta mb-4">
-          Recurring state/event pairings and ranked signals from check-ins in this window.
-        </div>
+        <div className="label-meta text-meta mb-4">{TIMELINE_SIGNALS_SECTION_INTRO}</div>
 
         <div className="mb-6">
-          <div className="label-meta mb-3">Possible links</div>
+          <div className="label-meta mb-3">{TIMELINE_SIGNALS_POSSIBLE_LINKS_LABEL}</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {possibleLinks.length > 0 ? (
               possibleLinks.map((link, index) => (
@@ -551,14 +522,14 @@ export default function TimelineSurface() {
               ))
             ) : (
               <div className="card-standard p-4 text-[13px] text-meta md:col-span-2">
-                No recurring state/event links yet.
+                {TIMELINE_SIGNALS_NO_LINKS_COPY}
               </div>
             )}
           </div>
         </div>
 
         <div>
-          <div className="label-meta mb-3">Repeated signals</div>
+          <div className="label-meta mb-3">{TIMELINE_SIGNALS_REPEATED_LABEL}</div>
           <div className="card-standard divide-y divide-white/[0.05]">
             {(repeatedSignals?.rankedItems ?? []).length > 0 ? (
               (repeatedSignals?.rankedItems ?? []).map((signal, index) => {
@@ -581,7 +552,7 @@ export default function TimelineSurface() {
                 );
               })
             ) : (
-              <div className="p-4 text-[13px] text-meta">No repeated signals in this window yet.</div>
+              <div className="p-4 text-[13px] text-meta">{TIMELINE_SIGNALS_NO_SIGNALS_COPY}</div>
             )}
           </div>
         </div>
@@ -671,6 +642,18 @@ export default function TimelineSurface() {
           </>
         )}
       </section>
+
+      <p className="label-meta mt-8 text-meta">
+        Re-enter from:{" "}
+        {TIMELINE_REENTRY_LINKS.map((link, index) => (
+          <span key={link.href}>
+            {index > 0 ? " · " : null}
+            <Link href={link.href} className="hover:text-cyan transition-colors">
+              {link.label}
+            </Link>
+          </span>
+        ))}
+      </p>
       </div>
     </div>
   );

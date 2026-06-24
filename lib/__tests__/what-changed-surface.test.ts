@@ -60,8 +60,6 @@ describe("what-changed page wiring", () => {
   it("renders report-style hierarchy without internal lifecycle fields", () => {
     const pageSource = readSource("app/(root)/(routes)/what-changed/page.tsx");
     const heroSource = readSource("components/what-changed/WhatChangedHeroMovement.tsx");
-    const cardSource = readSource("components/what-changed/WhatChangedMovementCard.tsx");
-
     const inspectorSource = readSource("components/what-changed/WhatChangedInspectorButton.tsx");
 
     expect(pageSource).toContain("splitWhatChangedMovements");

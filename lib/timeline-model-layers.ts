@@ -5,7 +5,7 @@ import {
   type WhatChangedListItem,
 } from "./public-intelligence-safe-slice";
 import type { TimelineEntry } from "./timeline-surface";
-import { ORVEK_COPY } from "./trust-language";
+import { ORVEK_COPY, PRODUCT_NAME } from "./trust-language";
 
 type TimelineModelLayerRecord = Pick<
   ModelUpdate,
@@ -25,18 +25,51 @@ export const TIMELINE_MODEL_LAYERS_LIMIT = 20;
 export const TIMELINE_DISPLAY_TIMEZONE = "Europe/London";
 
 export const TIMELINE_PAGE_META =
-  `How your understanding evolved — ${ORVEK_COPY.mindModelMovement}, decisions, fieldwork, and activity`;
+  `Semantic evolution — ${ORVEK_COPY.mindModelMovement}, evidence, decisions, and fieldwork over time`;
+
+export const TIMELINE_PAGE_INTRO =
+  `Timeline shows how your ${ORVEK_COPY.mindModel.toLowerCase()}, evidence, patterns, questions, decisions, and fieldwork evolved — not a generic activity feed. Movement appears when ${PRODUCT_NAME} publishes it from your signal.`;
+
+export const TIMELINE_REENTRY_LINKS = [
+  { href: "/", label: "Today" },
+  { href: "/your-map", label: "Your Map" },
+  { href: "/what-changed", label: "What Changed" },
+  { href: "/watch-for", label: "Fieldwork" },
+  { href: "/actions", label: "Decisions" },
+] as const;
+
+export const TIMELINE_RHYTHMS_SECTION_LABEL = "Check-in rhythms";
+export const TIMELINE_RHYTHMS_SECTION_INTRO =
+  "Cadence and recurring state/event pairings from check-ins in this window — signal context, not a calendar.";
+export const TIMELINE_RHYTHMS_EMPTY_COPY =
+  "Not enough check-ins to show a rhythm yet.";
+export const TIMELINE_RHYTHMS_NO_STATES_COPY =
+  "No check-ins in this window yet.";
+export const TIMELINE_RHYTHMS_NO_EVENTS_COPY =
+  "No repeated events in this window yet.";
+
 export const TIMELINE_SIGNALS_SECTION_LABEL = "Signals in this window";
+export const TIMELINE_SIGNALS_SECTION_INTRO =
+  "Recurring pairings and ranked signals from check-ins — possible links to notice, not conclusions.";
+export const TIMELINE_SIGNALS_POSSIBLE_LINKS_LABEL = "Possible links";
+export const TIMELINE_SIGNALS_REPEATED_LABEL = "Repeated signals";
+export const TIMELINE_SIGNALS_NO_LINKS_COPY =
+  "No recurring state/event links yet.";
+export const TIMELINE_SIGNALS_NO_SIGNALS_COPY =
+  "No repeated signals in this window yet.";
+
 export const TIMELINE_ACTIVITY_SECTION_LABEL = "Evolution stream";
 export const TIMELINE_ACTIVITY_SECTION_INTRO =
-  `Semantic evolution across ${ORVEK_COPY.mindModelMovement}, decisions, fieldwork, reports, and sessions — grouped by day.`;
-export const TIMELINE_MODEL_CHANGE_CHIP = "Mind Model change";
-export const TIMELINE_ACTIVITY_LOADING_COPY = "Loading activity and Mind Model changes…";
+  `Published ${ORVEK_COPY.mindModelMovement.toLowerCase()}, decisions, fieldwork, evidence, and sessions — grouped by day.`;
+export const TIMELINE_MODEL_CHANGE_CHIP = ORVEK_COPY.mindModelMovement;
+export const TIMELINE_ACTIVITY_LOADING_COPY =
+  "Loading evolution stream for this window…";
 export const TIMELINE_ACTIVITY_EMPTY_COPY =
-  "No activity or Mind Model changes in this window yet.";
+  `No published evolution in this window yet. Capture in journal, Explore, or Fieldwork — ${ORVEK_COPY.mindModelMovement.toLowerCase()} appears when ${PRODUCT_NAME} publishes it.`;
 export const TIMELINE_MODEL_LAYERS_LOADING_COPY =
-  "Loading Mind Model changes for this window…";
-export const TIMELINE_MODEL_LAYERS_ERROR_COPY = "Could not load Mind Model changes.";
+  `Loading ${ORVEK_COPY.mindModelMovement.toLowerCase()} for this window…`;
+export const TIMELINE_MODEL_LAYERS_ERROR_COPY =
+  `Could not load ${ORVEK_COPY.mindModelMovement.toLowerCase()}.`;
 
 export type TimelineStreamItem =
   | { kind: "activity"; occurredAt: string; entry: TimelineEntry }

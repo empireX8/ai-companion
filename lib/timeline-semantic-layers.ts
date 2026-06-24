@@ -38,23 +38,26 @@ export const TIMELINE_SEMANTIC_FILTERS: {
   id: TimelineSemanticFilter;
   label: string;
 }[] = [
-  { id: "all", label: "All" },
+  { id: "all", label: "All evolution" },
   { id: "model_movement", label: ORVEK_COPY.mindModelMovement },
-  { id: "evidence_receipts", label: "Evidence / receipts" },
-  { id: "decisions_actions", label: "Actions / decisions" },
-  { id: "fieldwork", label: "Fieldwork / watch-for" },
-  { id: "reports_imports", label: "Reports / imports" },
-  { id: "sessions_activity", label: "Sessions / activity" },
+  { id: "evidence_receipts", label: "Evidence" },
+  { id: "decisions_actions", label: "Decisions" },
+  { id: "fieldwork", label: "Fieldwork" },
+  { id: "reports_imports", label: "Imports" },
+  { id: "sessions_activity", label: "Sessions" },
 ];
 
 export const TIMELINE_LANE_LABELS: Record<TimelineSemanticLane, string> = {
   model_movement: ORVEK_COPY.mindModelMovement,
   decisions_actions: "Decisions",
   fieldwork: "Fieldwork",
-  reports: "Reports",
+  reports: "Imports",
   sessions_activity: "Sessions",
-  receipts_activity: "Receipts",
+  receipts_activity: "Evidence",
 };
+
+export const TIMELINE_INSPECTOR_LABEL = "Open in Inspector";
+export const TIMELINE_MOVEMENT_INSPECTOR_LABEL = "Open movement in Inspector";
 
 export const TIMELINE_SEMANTIC_ENDPOINTS = {
   watchFor: "/api/watch-for",

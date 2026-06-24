@@ -30,11 +30,15 @@ describe("inspector surface wiring", () => {
     const source = readSource(
       "app/(root)/(routes)/timeline/_components/TimelineSurface.tsx"
     );
-    expect(source).toContain('objectType: "model_update"');
-    expect(source).toContain('tab: "movement"');
+    const inspectorSource = readSource("components/timeline/TimelineInspectorAction.tsx");
+    expect(source).toContain("TimelineInspectorAction");
+    expect(source).toContain('objectType="model_update"');
+    expect(source).toContain('tab="movement"');
+    expect(inspectorSource).toContain('objectType === "model_update"');
+    expect(inspectorSource).toContain('sourceSurface: "timeline"');
     expect(source).toContain("TIMELINE_SEMANTIC_FILTERS");
     expect(source).toContain("fetchTimelineSemanticEntries");
-    expect(source).toContain('sourceSurface: "timeline"');
+    expect(source).toContain("parseSelectableObjectFromHref");
   });
 
   it("keeps inspector context lightweight and tab defaults explicit", () => {

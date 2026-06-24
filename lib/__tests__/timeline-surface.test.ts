@@ -18,8 +18,6 @@ import {
   TIMELINE_MODEL_LAYERS_ERROR_COPY,
   toTimelineLondonDateKey,
 } from "../timeline-model-layers";
-import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "../public-continuity-registry";
-
 function makeSummary(totalCheckIns = 0): TimelineStateSummary {
   return {
     window: "30d",
@@ -295,10 +293,8 @@ describe("timeline-surface rhythm honesty", () => {
     );
 
     expect(source.includes("RhythmGraph")).toBe(false);
-    expect(source.includes("Based on check-ins in this window.")).toBe(true);
-    expect(source.includes("Not enough check-ins to show a rhythm yet.")).toBe(
-      true
-    );
+    expect(source.includes("TIMELINE_RHYTHMS_SECTION_INTRO")).toBe(true);
+    expect(source.includes("TIMELINE_RHYTHMS_EMPTY_COPY")).toBe(true);
   });
 
   it("integrates model changes into activity stream with coherent section labels and no unwired affordances", () => {
@@ -311,19 +307,20 @@ describe("timeline-surface rhythm honesty", () => {
     );
 
     expect(source.includes("TIMELINE_PAGE_META")).toBe(true);
+    expect(source.includes("TIMELINE_PAGE_INTRO")).toBe(true);
     expect(source.includes("TIMELINE_SIGNALS_SECTION_LABEL")).toBe(true);
     expect(source.includes("TIMELINE_ACTIVITY_SECTION_LABEL")).toBe(true);
     expect(source.includes("TIMELINE_ACTIVITY_EMPTY_COPY")).toBe(true);
     expect(source.includes("TIMELINE_MODEL_CHANGE_CHIP")).toBe(true);
     expect(TIMELINE_ACTIVITY_SECTION_LABEL).toBe("Evolution stream");
-    expect(TIMELINE_MODEL_CHANGE_CHIP).toBe("Mind Model change");
+    expect(TIMELINE_MODEL_CHANGE_CHIP).toBe("Mind Model movement");
     expect(source.includes("buildTimelineStreamItems")).toBe(true);
     expect(source.includes("groupTimelineStreamByDate")).toBe(true);
     expect(source.includes("TIMELINE_SEMANTIC_FILTERS")).toBe(true);
     expect(source.includes("fetchTimelineSemanticEntries")).toBe(true);
     expect(source.includes("modelLayerError")).toBe(true);
     expect(source.includes("TIMELINE_MODEL_LAYERS_ERROR_COPY")).toBe(true);
-    expect(TIMELINE_MODEL_LAYERS_ERROR_COPY).toBe("Could not load Mind Model changes.");
+    expect(TIMELINE_MODEL_LAYERS_ERROR_COPY).toBe("Could not load mind model movement.");
     expect(source.includes("showActivityEmptyState")).toBe(true);
     expect(source.includes('role="alert"')).toBe(true);
     expect(source.includes("grid-cols-1 md:grid-cols-2")).toBe(true);
@@ -332,8 +329,7 @@ describe("timeline-surface rhythm honesty", () => {
     expect(source.includes("Connected activity")).toBe(false);
     expect(source.includes("Possible links</SectionLabel>")).toBe(false);
     expect(source.includes("ChevronRight")).toBe(false);
-    expect(source.includes("PUBLIC_LINKED_DETAIL_FALLBACK_COPY")).toBe(true);
-    expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe("Source unavailable.");
+    expect(source.includes("TimelineInspectorAction")).toBe(true);
     expect(source.includes("PublicLinkedObjectContinuity")).toBe(true);
     expect(source.includes("Linked target:")).toBe(false);
     expect(source.includes("Promote")).toBe(false);
@@ -348,5 +344,6 @@ describe("timeline-surface rhythm honesty", () => {
     expect(source.includes("receipt-action-")).toBe(false);
     expect(source.includes(".replace(\"/patterns/\"")).toBe(false);
     expect(source.includes(".replace(\"/contradictions/\"")).toBe(false);
+    expect(source.includes("TIMELINE_REENTRY_LINKS")).toBe(true);
   });
 });
