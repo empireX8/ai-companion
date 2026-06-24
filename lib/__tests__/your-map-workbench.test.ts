@@ -17,6 +17,7 @@ describe("your-map workbench", () => {
     expect(workbenchSource).toContain("YourMapListRail");
     expect(workbenchSource).toContain("YourMapDetailPane");
     expect(workbenchSource).toContain("YourMapMindContextPanel");
+    expect(workbenchSource).toContain("YourMapPreviewBands");
     expect(mindContextSource).toContain('data-testid="your-map-mind-context-panel"');
     expect(mindContextSource).toContain("fetchMindContextSnapshot");
     expect(mindContextSource).toContain("MIND_CONTEXT_EMPTY_PRIMARY");
@@ -49,6 +50,17 @@ describe("your-map workbench", () => {
     expect(surfaceSource).toContain("journal, explore, import, decisions");
     expect(workbenchSource).not.toContain("v0");
     expect(workbenchSource).not.toContain("mock");
+  });
+
+  it("renders movement and open-question preview bands with inspector wiring for published movement", () => {
+    const previewSource = readSource("components/your-map/YourMapPreviewBands.tsx");
+    const surfaceSource = readSource("lib/your-map-preview-surface.ts");
+
+    expect(previewSource).toContain("MAP_MOVEMENT_EMPTY_COPY");
+    expect(previewSource).toContain("MAP_OPEN_QUESTIONS_EMPTY_COPY");
+    expect(previewSource).toContain('sourceSurface: "map"');
+    expect(surfaceSource).toContain("TODAY_INTELLIGENCE_UPDATES_ENDPOINT");
+    expect(surfaceSource).toContain("ACTIVE_QUESTIONS_ENDPOINT");
   });
 
   it("keeps conclusion groups separate from Mind Context foundation", () => {

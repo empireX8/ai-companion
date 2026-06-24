@@ -22,6 +22,7 @@ import type { UserMapConclusionPublicApiListItem } from "@/lib/public-intelligen
 import { YourMapDetailPane } from "./YourMapDetailPane";
 import { YourMapListRail } from "./YourMapListRail";
 import { YourMapMindContextPanel } from "./YourMapMindContextPanel";
+import { YourMapPreviewBands } from "./YourMapPreviewBands";
 
 export function YourMapWorkbench() {
   const router = useRouter();
@@ -117,6 +118,7 @@ export function YourMapWorkbench() {
         <p className="mb-4 max-w-2xl text-sm text-muted-foreground">{YOUR_MAP_PAGE_INTRO}</p>
 
         <YourMapMindContextPanel className="mb-5" />
+        <YourMapPreviewBands />
 
         {isLoading ? (
           <div className="ml-material rounded-2xl p-5 text-[13px] text-muted-foreground">
