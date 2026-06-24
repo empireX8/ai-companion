@@ -6,6 +6,12 @@ import {
 } from "./quick-check-ins";
 import { type TimelineStateSummary } from "./timeline-aggregation";
 
+import type {
+  TimelineSemanticEventKind,
+  TimelineSemanticLane,
+} from "./timeline-semantic-layers";
+import type { InspectorSelectableObjectType } from "./inspector-selection";
+
 export type TimelineImportedActivityItem = {
   id: string;
   startedAt: string;
@@ -39,11 +45,16 @@ export type TimelineResponse = {
 export type TimelineEntry = {
   id: string;
   occurredAt: string;
-  chip: "Check-in" | "Journal" | "Journal Chat" | "Explore" | "Imported";
+  chip: "Check-in" | "Journal" | "Journal Chat" | "Explore" | "Imported" | "Fieldwork" | "Investigation" | "Decision" | string;
   title: string;
   body: string | null;
   href: string | null;
   weight?: "low";
+  kind?: TimelineSemanticEventKind;
+  lane?: TimelineSemanticLane;
+  sourceLabel?: string | null;
+  selectableObjectType?: InspectorSelectableObjectType | null;
+  selectableObjectId?: string | null;
 };
 
 const STATE_DISPLAY_LABELS: Record<QuickCheckInStateTag, string> = {

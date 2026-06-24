@@ -1,226 +1,127 @@
 /**
- * V1 Navigation Structure regression tests (P1-12)
+ * V1 Navigation Structure regression tests
  *
- * Guards the V1 IA constants against accidental drift.
+ * Guards the Orvek workbench IA constants against accidental drift.
  * Source of truth: lib/v1-nav.ts
  */
 
 import { describe, expect, it } from "vitest";
 import {
   V1_CORE_ROUTES,
-  V1_SECONDARY_ROUTES,
-  V1_HIDDEN_INTERNAL_ROUTES,
-  V1_VISIBLE_HREFS,
   V1_HIDDEN_HREFS,
+  V1_HIDDEN_INTERNAL_ROUTES,
+  V1_LAYER_ROUTES,
+  V1_LEGACY_SUPPORT_ROUTES,
+  V1_PRIMARY_ROUTES,
+  V1_SECONDARY_ROUTES,
+  V1_VISIBLE_HREFS,
+  resolveV1SectionLabel,
 } from "../v1-nav";
 
-// Typed as string[] to avoid TS literal-overlap errors on `as const` arrays.
-const coreHrefs: string[] = V1_CORE_ROUTES.map((r) => r.href);
-const secondaryHrefs: string[] = V1_SECONDARY_ROUTES.map((r) => r.href);
-const hiddenHrefs: string[] = V1_HIDDEN_INTERNAL_ROUTES.map((r) => r.href);
+const primaryHrefs = V1_PRIMARY_ROUTES.map((route) => route.href);
+const layerHrefs = V1_LAYER_ROUTES.map((route) => route.href);
+const legacyHrefs = V1_LEGACY_SUPPORT_ROUTES.map((route) => route.href);
+const hiddenHrefs = V1_HIDDEN_INTERNAL_ROUTES.map((route) => route.href);
 
-// ── Core routes ───────────────────────────────────────────────────────────────
-
-describe("V1_CORE_ROUTES", () => {
-  it("contains exactly five routes", () => {
-    expect(V1_CORE_ROUTES).toHaveLength(5);
+describe("V1_PRIMARY_ROUTES", () => {
+  it("locks the five primary workbench surfaces", () => {
+    expect(V1_PRIMARY_ROUTES).toHaveLength(5);
+    expect(primaryHrefs).toEqual(["/", "/your-map", "/actions", "/timeline", "/explore"]);
   });
 
-  it("contains /chat as the first core route", () => {
-    expect(V1_CORE_ROUTES[0]).toMatchObject({ href: "/chat", label: "Chat" });
+  it("labels Decisions on /actions", () => {
+    expect(V1_PRIMARY_ROUTES.find((route) => route.href === "/actions")?.label).toBe(
+      "Decisions"
+    );
   });
 
-  it("contains /check-ins as a core route", () => {
-    expect(coreHrefs).toContain("/check-ins");
-  });
-
-  it("contains /timeline as a core route", () => {
-    expect(coreHrefs).toContain("/timeline");
-  });
-
-  it("contains /patterns as a core route", () => {
-    expect(coreHrefs).toContain("/patterns");
-  });
-
-  it("contains /history as a core route", () => {
-    expect(coreHrefs).toContain("/history");
-  });
-
-  it("does not include any hidden internal routes", () => {
-    for (const href of coreHrefs) {
-      expect(V1_HIDDEN_HREFS.has(href)).toBe(false);
-    }
-  });
-
-  it("does not include /contradictions", () => {
-    expect(coreHrefs).not.toContain("/contradictions");
-  });
-
-  it("does not include /projections", () => {
-    expect(coreHrefs).not.toContain("/projections");
-  });
-
-  it("does not include /references", () => {
-    expect(coreHrefs).not.toContain("/references");
-  });
-
-  it("does not include /audit", () => {
-    expect(coreHrefs).not.toContain("/audit");
+  it("does not promote Import as a primary surface", () => {
+    expect(primaryHrefs).not.toContain("/import");
   });
 });
 
-// ── Secondary routes ──────────────────────────────────────────────────────────
-
-describe("V1_SECONDARY_ROUTES", () => {
-  it("contains exactly five routes", () => {
-    expect(V1_SECONDARY_ROUTES).toHaveLength(5);
+describe("V1_LAYER_ROUTES", () => {
+  it("groups utility surfaces separately from primary nav", () => {
+    expect(layerHrefs).toContain("/what-changed");
+    expect(layerHrefs).toContain("/watch-for");
+    expect(layerHrefs).toContain("/import");
+    expect(layerHrefs).toContain("/context");
+    expect(layerHrefs).toContain("/memories");
   });
 
-  it("contains /actions as a secondary route", () => {
-    expect(secondaryHrefs).toContain("/actions");
-  });
-
-  it("contains /context as a secondary route", () => {
-    expect(secondaryHrefs).toContain("/context");
-  });
-
-  it("contains /memories as a secondary route", () => {
-    expect(secondaryHrefs).toContain("/memories");
-  });
-
-  it("contains /import as a secondary route", () => {
-    expect(secondaryHrefs).toContain("/import");
-  });
-
-  it("contains /settings as a secondary route", () => {
-    expect(secondaryHrefs).toContain("/settings");
-  });
-
-  it("does not include any hidden internal routes", () => {
-    for (const href of secondaryHrefs) {
-      expect(V1_HIDDEN_HREFS.has(href)).toBe(false);
+  it("does not duplicate primary destinations", () => {
+    for (const href of primaryHrefs) {
+      expect(layerHrefs).not.toContain(href);
     }
-  });
-
-  it("does not include /contradictions", () => {
-    expect(secondaryHrefs).not.toContain("/contradictions");
-  });
-
-  it("does not include /projections", () => {
-    expect(secondaryHrefs).not.toContain("/projections");
   });
 });
 
-// ── Hidden internal routes ────────────────────────────────────────────────────
+describe("V1_LEGACY_SUPPORT_ROUTES", () => {
+  it("keeps legacy MindLab routes reachable in support grouping", () => {
+    expect(legacyHrefs).toContain("/chat");
+    expect(legacyHrefs).toContain("/patterns");
+    expect(legacyHrefs).toContain("/history");
+    expect(legacyHrefs).toContain("/contradictions");
+    expect(legacyHrefs).toContain("/check-ins");
+    expect(legacyHrefs).toContain("/journal-chat");
+  });
+
+  it("does not promote legacy routes to primary IA", () => {
+    for (const href of legacyHrefs) {
+      expect(primaryHrefs).not.toContain(href);
+    }
+  });
+});
 
 describe("V1_HIDDEN_INTERNAL_ROUTES", () => {
-  it("contains exactly five routes", () => {
-    expect(V1_HIDDEN_INTERNAL_ROUTES).toHaveLength(5);
-  });
-
-  it("includes /contradictions as hidden", () => {
-    expect(hiddenHrefs).toContain("/contradictions");
-  });
-
-  it("includes /references as hidden", () => {
-    expect(hiddenHrefs).toContain("/references");
-  });
-
-  it("includes /audit as hidden", () => {
+  it("keeps engineering surfaces out of primary/layer lists", () => {
     expect(hiddenHrefs).toContain("/audit");
-  });
-
-  it("includes /evidence as hidden", () => {
     expect(hiddenHrefs).toContain("/evidence");
-  });
-
-  it("includes /metrics as hidden", () => {
     expect(hiddenHrefs).toContain("/metrics");
-  });
-
-  it("does not include /projections (not in locked hidden list)", () => {
-    expect(hiddenHrefs).not.toContain("/projections");
-  });
-
-  it("does not include /help (not in locked hidden list)", () => {
-    expect(hiddenHrefs).not.toContain("/help");
-  });
-
-  it("does not include /internal/user-map/review in hidden nav list", () => {
-    expect(hiddenHrefs).not.toContain("/internal/user-map/review");
-  });
-
-  it("every hidden route has a reason string", () => {
-    for (const route of V1_HIDDEN_INTERNAL_ROUTES) {
-      expect(typeof route.reason).toBe("string");
-      expect(route.reason.length).toBeGreaterThan(0);
+    for (const href of hiddenHrefs) {
+      expect(primaryHrefs).not.toContain(href);
+      expect(layerHrefs).not.toContain(href);
     }
+  });
+
+  it("no longer hides contradictions from support access", () => {
+    expect(hiddenHrefs).not.toContain("/contradictions");
+    expect(legacyHrefs).toContain("/contradictions");
   });
 });
 
-// ── Derived sets ──────────────────────────────────────────────────────────────
+describe("deprecated aliases", () => {
+  it("maps V1_CORE_ROUTES to primary routes", () => {
+    expect(V1_CORE_ROUTES).toEqual(V1_PRIMARY_ROUTES);
+  });
+
+  it("maps V1_SECONDARY_ROUTES to layer routes", () => {
+    expect(V1_SECONDARY_ROUTES).toEqual(V1_LAYER_ROUTES);
+  });
+});
 
 describe("V1_VISIBLE_HREFS", () => {
-  it("contains all core hrefs", () => {
-    for (const route of V1_CORE_ROUTES) {
-      expect(V1_VISIBLE_HREFS.has(route.href)).toBe(true);
+  it("includes primary, layer, and legacy support without hidden engineering routes", () => {
+    for (const href of [...primaryHrefs, ...layerHrefs, ...legacyHrefs]) {
+      expect(V1_VISIBLE_HREFS.has(href)).toBe(true);
     }
-  });
-
-  it("contains all secondary hrefs", () => {
-    for (const route of V1_SECONDARY_ROUTES) {
-      expect(V1_VISIBLE_HREFS.has(route.href)).toBe(true);
-    }
-  });
-
-  it("does not contain any hidden hrefs", () => {
-    for (const href of V1_HIDDEN_HREFS) {
+    for (const href of hiddenHrefs) {
       expect(V1_VISIBLE_HREFS.has(href)).toBe(false);
     }
   });
-
-  it("has size equal to core + secondary count", () => {
-    // Core (5) + Secondary (5) = 10
-    expect(V1_VISIBLE_HREFS.size).toBe(
-      V1_CORE_ROUTES.length + V1_SECONDARY_ROUTES.length
-    );
-  });
 });
 
-describe("V1_HIDDEN_HREFS", () => {
-  it("contains all hidden internal hrefs", () => {
-    for (const route of V1_HIDDEN_INTERNAL_ROUTES) {
-      expect(V1_HIDDEN_HREFS.has(route.href)).toBe(true);
-    }
+describe("resolveV1SectionLabel", () => {
+  it("returns primary labels for workbench routes", () => {
+    expect(resolveV1SectionLabel("/")).toBe("Today");
+    expect(resolveV1SectionLabel("/your-map/umc-1")).toBe("Map");
+    expect(resolveV1SectionLabel("/actions")).toBe("Decisions");
+    expect(resolveV1SectionLabel("/timeline")).toBe("Timeline");
+    expect(resolveV1SectionLabel("/explore")).toBe("Explore");
   });
 
-  it("has size equal to hidden internal routes count", () => {
-    expect(V1_HIDDEN_HREFS.size).toBe(V1_HIDDEN_INTERNAL_ROUTES.length);
-  });
-
-  it("does not contain any visible hrefs", () => {
-    for (const href of V1_VISIBLE_HREFS) {
-      expect(V1_HIDDEN_HREFS.has(href)).toBe(false);
-    }
-  });
-});
-
-// ── Disjoint sets invariant ───────────────────────────────────────────────────
-
-describe("visible + hidden sets are disjoint", () => {
-  it("no href appears in both visible and hidden sets", () => {
-    const intersection = [...V1_VISIBLE_HREFS].filter((h) => V1_HIDDEN_HREFS.has(h));
-    expect(intersection).toHaveLength(0);
-  });
-
-  it("core and secondary route sets do not overlap", () => {
-    const overlap = secondaryHrefs.filter((h) => coreHrefs.includes(h));
-    expect(overlap).toHaveLength(0);
-  });
-
-  it("internal review page is absent from visible nav sets", () => {
-    const internalReviewHref = "/internal/user-map/review";
-    expect(V1_VISIBLE_HREFS.has(internalReviewHref)).toBe(false);
-    expect(V1_HIDDEN_HREFS.has(internalReviewHref)).toBe(false);
+  it("returns legacy labels for support routes", () => {
+    expect(resolveV1SectionLabel("/chat")).toBe("Chat");
+    expect(resolveV1SectionLabel("/patterns")).toBe("Patterns");
   });
 });

@@ -24,11 +24,11 @@ export const TIMELINE_MODEL_LAYERS_LIMIT = 20;
 export const TIMELINE_DISPLAY_TIMEZONE = "Europe/London";
 
 export const TIMELINE_PAGE_META =
-  "Rhythms, signals, activity, and model changes in this window";
+  "How your understanding evolved — model movement, decisions, fieldwork, and activity";
 export const TIMELINE_SIGNALS_SECTION_LABEL = "Signals in this window";
-export const TIMELINE_ACTIVITY_SECTION_LABEL = "Activity & changes";
+export const TIMELINE_ACTIVITY_SECTION_LABEL = "Evolution stream";
 export const TIMELINE_ACTIVITY_SECTION_INTRO =
-  "Connected activity and meaningful model changes, grouped by day.";
+  "Semantic evolution across model movement, decisions, fieldwork, reports, and sessions — grouped by day.";
 export const TIMELINE_MODEL_CHANGE_CHIP = "Model change";
 export const TIMELINE_ACTIVITY_LOADING_COPY = "Loading activity and model changes…";
 export const TIMELINE_ACTIVITY_EMPTY_COPY =

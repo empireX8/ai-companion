@@ -43,6 +43,9 @@ type SurfaceChatShellProps = {
   emptyPrompt: string;
   contextBanner?: ReactNode;
   contextPanel?: ReactNode;
+  sessionAccessory?: ReactNode;
+  onActiveSessionIdChange?: (sessionId: string | null) => void;
+  onConversationUpdated?: () => void;
   footerNote?: string;
   assistantEyebrow: string;
 };
@@ -106,6 +109,9 @@ export function SurfaceChatShell({
   emptyPrompt,
   contextBanner,
   contextPanel,
+  sessionAccessory,
+  onActiveSessionIdChange,
+  onConversationUpdated,
   footerNote,
   assistantEyebrow,
 }: SurfaceChatShellProps) {
@@ -152,6 +158,10 @@ export function SurfaceChatShell({
     () => toSessionTitle(selectedSession, messages),
     [messages, selectedSession]
   );
+
+  useEffect(() => {
+    onActiveSessionIdChange?.(selectedSessionId);
+  }, [onActiveSessionIdChange, selectedSessionId]);
 
   const persistSessionSelection = useCallback((sessionId: string | null) => {
     if (typeof window === "undefined") {
@@ -470,6 +480,7 @@ export function SurfaceChatShell({
 
       const reconciledMessages = await loadMessages(selectedSessionId);
       setMessages(reconciledMessages);
+      onConversationUpdated?.();
 
       void fetch("/api/session/title", {
         method: "POST",
@@ -503,7 +514,7 @@ export function SurfaceChatShell({
       abortRef.current = null;
       setIsSending(false);
     }
-  }, [draft, isSending, loadMessages, refreshSessions, selectedSessionId]);
+  }, [draft, isSending, loadMessages, onConversationUpdated, refreshSessions, selectedSessionId]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -511,9 +522,9 @@ export function SurfaceChatShell({
   };
 
   return (
-    <div className="flex h-screen">
-      <div className="w-[280px] shrink-0 border-r hairline flex flex-col">
-        <div className="p-5 border-b hairline flex items-center justify-between">
+    <div className="flex h-full min-h-0">
+      <div className="ml-sunken flex w-[260px] shrink-0 flex-col border-r ml-hairline">
+        <div className="flex items-center justify-between border-b ml-hairline p-4">
           <div>
             <h2 className="text-[15px] font-semibold">{title}</h2>
             <div className="label-meta mt-0.5">{subtitle}</div>
@@ -523,7 +534,7 @@ export function SurfaceChatShell({
               void onCreateNewSession();
             }}
             disabled={isCreatingSession || isBooting || isSending}
-            className="h-8 w-8 rounded-md card-standard hover:border-[hsl(187_100%_50%/0.3)] flex items-center justify-center disabled:opacity-45 disabled:cursor-not-allowed"
+            className="ml-calm flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-45"
             aria-label="Create new session"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -538,10 +549,10 @@ export function SurfaceChatShell({
                 onClick={() => {
                   void onSelectSession(session.id);
                 }}
-                className={`w-full text-left px-5 py-3 transition-colors ${
+                className={`ml-calm w-full border-l-2 px-4 py-3 text-left transition-colors ${
                   active
-                    ? "bg-[hsl(187_100%_50%/0.04)] border-l-2 border-cyan"
-                    : "hover:bg-white/[0.02] border-l-2 border-transparent"
+                    ? "border-cyan bg-white/[0.04]"
+                    : "border-transparent hover:bg-white/[0.02]"
                 }`}
               >
                 <div className="label-meta mb-1">{formatDayLabel(session.startedAt)}</div>
@@ -558,8 +569,8 @@ export function SurfaceChatShell({
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 flex flex-col">
-        <div className="px-10 py-5 border-b hairline flex items-center justify-between">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex items-center justify-between border-b ml-hairline px-6 py-4 lg:px-8">
           <div>
             <div className="label-meta mb-1">
               Session {selectedSession ? `· ${formatDayLabel(selectedSession.startedAt)}` : ""}
@@ -569,7 +580,7 @@ export function SurfaceChatShell({
           {contextPanel ? (
             <button
               onClick={() => setDrawerOpen((current) => !current)}
-              className="label-meta px-3 h-8 rounded card-standard hover:border-[hsl(187_100%_50%/0.3)]"
+              className="ml-calm label-meta rounded-lg bg-white/[0.04] px-3 py-1.5 hover:bg-white/[0.07]"
             >
               Context {drawerOpen ? "·" : "+"}
             </button>
@@ -577,11 +588,15 @@ export function SurfaceChatShell({
         </div>
 
         {contextBanner ? (
-          <div className="px-10 py-4 border-b hairline">{contextBanner}</div>
+          <div className="border-b ml-hairline px-6 py-3 lg:px-8">{contextBanner}</div>
         ) : null}
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-10 py-8">
-          <div className="max-w-[720px] mx-auto space-y-6">
+        {sessionAccessory ? (
+          <div className="border-b ml-hairline px-6 py-3 lg:px-8">{sessionAccessory}</div>
+        ) : null}
+
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6 lg:px-10">
+          <div className="mx-auto max-w-[720px] space-y-6">
             {isBooting || isLoadingSession ? (
               <div className="text-[13px] text-meta">Loading conversation...</div>
             ) : messages.length === 0 ? (

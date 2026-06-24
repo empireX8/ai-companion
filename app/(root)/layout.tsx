@@ -4,7 +4,6 @@ import { GlobalRailProvider } from "@/components/layout/GlobalRailContext";
 import { TopBarSlotProvider } from "@/components/layout/TopBarSlotContext";
 import { AppShell } from "@/components/layout/AppShell";
 import { InspectorProvider } from "@/components/inspector/InspectorContext";
-import { MemoryInspectorDrawer } from "@/components/inspector/MemoryInspectorDrawer";
 import { CommandPaletteProvider } from "@/components/command/CommandPaletteContext";
 import { CommandPalette } from "@/components/command/CommandPalette";
 
@@ -23,7 +22,6 @@ const RootGroupLayout = ({
             </DomainListProvider>
           </TopBarSlotProvider>
           <UndoToastContainer />
-          <MemoryInspectorDrawer />
         </InspectorProvider>
       </GlobalRailProvider>
       <CommandPalette />

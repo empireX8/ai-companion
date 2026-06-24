@@ -1,0 +1,167 @@
+/* MindLab workbench material system — dark, atmospheric, floating (Orvek v0 direction) */
+
+.ml-workbench {
+  --ml-canvas: oklch(0.17 0.004 250);
+  --ml-evidence: oklch(0.72 0.05 220);
+  --ml-evidence-muted: oklch(0.4 0.03 220);
+  --ml-action: oklch(0.78 0.12 72);
+  --ml-action-muted: oklch(0.42 0.06 65);
+  --ml-action-foreground: oklch(0.22 0.05 60);
+  color-scheme: dark;
+}
+
+@layer components {
+  .ml-ambient {
+    background-color: var(--ml-canvas, hsl(0 0% 0%));
+    background-image:
+      radial-gradient(
+        120% 90% at 82% -10%,
+        color-mix(in oklab, hsl(187 100% 50%) 8%, transparent),
+        transparent 55%
+      ),
+      radial-gradient(
+        120% 100% at -10% 120%,
+        color-mix(in oklab, var(--ml-action, hsl(32 90% 60%)) 7%, transparent),
+        transparent 52%
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--ml-canvas, hsl(0 0% 0%)) 70%, transparent),
+        color-mix(in oklab, var(--ml-canvas, hsl(0 0% 0%)) 86%, transparent)
+      ),
+      url("/orvek-atmosphere.png");
+    background-size: cover, cover, cover, cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .ml-shell {
+    background-color: color-mix(in oklab, hsl(210 39% 6%) 62%, transparent);
+    -webkit-backdrop-filter: saturate(150%) blur(36px);
+    backdrop-filter: saturate(150%) blur(36px);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 8%, transparent),
+      inset 0 0 0 1px color-mix(in oklab, white 4%, transparent),
+      0 40px 120px -30px oklch(0.05 0.01 250 / 0.7);
+  }
+
+  .ml-glass {
+    background-color: color-mix(in oklab, hsl(210 39% 6%) 40%, transparent);
+    -webkit-backdrop-filter: saturate(160%) blur(20px);
+    backdrop-filter: saturate(160%) blur(20px);
+  }
+
+  .ml-material {
+    background-color: color-mix(in oklab, hsl(210 39% 6%) 80%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 5%, transparent),
+      0 2px 10px -6px oklch(0.05 0.01 250 / 0.5);
+  }
+
+  .ml-float {
+    background-color: color-mix(in oklab, hsl(210 39% 6%) 70%, transparent);
+    -webkit-backdrop-filter: saturate(150%) blur(26px);
+    backdrop-filter: saturate(150%) blur(26px);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 7%, transparent),
+      inset 0 0 0 1px color-mix(in oklab, white 3%, transparent),
+      0 24px 70px -28px oklch(0.04 0.01 250 / 0.75);
+  }
+
+  .ml-raised {
+    background-color: color-mix(in oklab, hsl(210 39% 6%) 88%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 8%, transparent),
+      0 24px 60px -24px oklch(0.04 0.01 250 / 0.7);
+  }
+
+  .ml-sunken {
+    background-color: color-mix(in oklab, oklch(0.12 0.004 250) 32%, transparent);
+  }
+
+  .ml-hairline {
+    border-color: color-mix(in oklab, hsl(0 0% 100% / 0.08) 45%, transparent);
+  }
+
+  .ml-calm {
+    transition:
+      background-color 200ms cubic-bezier(0.32, 0.72, 0, 1),
+      border-color 200ms cubic-bezier(0.32, 0.72, 0, 1),
+      box-shadow 220ms cubic-bezier(0.32, 0.72, 0, 1),
+      color 160ms ease,
+      opacity 160ms ease;
+  }
+
+  .ml-surface-soft {
+    border-radius: 1rem;
+    background-color: color-mix(in oklab, hsl(210 39% 6%) 80%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklab, white 5%, transparent),
+      0 2px 10px -6px oklch(0.05 0.01 250 / 0.5);
+  }
+
+  .ml-segmented {
+    display: inline-flex;
+    border-radius: 10px;
+    padding: 0.25rem;
+    background-color: color-mix(in oklab, oklch(0.12 0.004 250) 32%, transparent);
+  }
+
+  .ml-segment-active {
+    border-radius: 7px;
+    background-color: var(--card);
+    color: var(--foreground);
+    box-shadow: 0 1px 3px -1px oklch(0.05 0.01 250 / 0.18);
+    transition:
+      background-color 200ms cubic-bezier(0.32, 0.72, 0, 1),
+      color 160ms ease;
+  }
+
+  .ml-segment-inactive {
+    border-radius: 7px;
+    color: var(--muted-foreground);
+    transition: background-color 200ms ease, color 160ms ease;
+  }
+
+  .ml-segment-inactive:hover {
+    color: var(--foreground);
+  }
+}
+
+@keyframes ml-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+.ml-breathe {
+  animation: ml-breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes ml-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ml-inspector-body {
+  animation: ml-enter 240ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ml-breathe,
+  .ml-inspector-body {
+    animation: none;
+  }
+}

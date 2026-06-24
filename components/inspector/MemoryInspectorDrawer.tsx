@@ -6,14 +6,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PanelBar } from "@/components/ui/PanelBar";
 import { useInspector } from "./InspectorContext";
-import { ChatInspectorPanel } from "./panels/ChatInspectorPanel";
-import { ContradictionsInspectorPanel } from "./panels/ContradictionsInspectorPanel";
-import { ReferencesInspectorPanel } from "./panels/ReferencesInspectorPanel";
-import { AuditInspectorPanel } from "./panels/AuditInspectorPanel";
-import { ImportInspectorPanel } from "./panels/ImportInspectorPanel";
-import { DefaultInspectorPanel } from "./panels/DefaultInspectorPanel";
-
-// ── Domain detection ──────────────────────────────────────────────────────────
+import { InspectorPanelRouter } from "./InspectorPanelRouter";
 
 type Domain =
   | "chat"
@@ -29,6 +22,7 @@ export function useInspectorContextFromPathname(): {
 } {
   const pathname = usePathname();
   if (pathname.startsWith("/chat")) return { domain: "chat", label: "Chat" };
+  if (pathname.startsWith("/explore")) return { domain: "chat", label: "Explore" };
   if (pathname.startsWith("/contradictions"))
     return { domain: "contradictions", label: "Contradictions" };
   if (pathname.startsWith("/memories"))
@@ -37,66 +31,97 @@ export function useInspectorContextFromPathname(): {
     return { domain: "references", label: "Memories" };
   if (pathname.startsWith("/audit")) return { domain: "audit", label: "Audit" };
   if (pathname.startsWith("/import")) return { domain: "import", label: "Import" };
-  return { domain: "default", label: "Inspector" };
+  if (pathname.startsWith("/your-map")) return { domain: "default", label: "Map" };
+  if (pathname.startsWith("/actions")) return { domain: "default", label: "Decisions" };
+  if (pathname === "/") return { domain: "default", label: "Today" };
+  if (pathname.startsWith("/timeline")) return { domain: "default", label: "Timeline" };
+  if (pathname.startsWith("/what-changed")) return { domain: "default", label: "Reports" };
+  if (pathname.startsWith("/watch-for")) return { domain: "default", label: "Fieldwork" };
+  if (pathname.startsWith("/context")) return { domain: "default", label: "Context" };
+  return { domain: "default", label: "Context" };
 }
 
-// ── Panel map ─────────────────────────────────────────────────────────────────
+const INSPECTOR_TABS = [
+  { id: "evidence" as const, label: "Evidence / Context" },
+  { id: "movement" as const, label: "Model Movement" },
+];
 
-const PANELS: Record<Domain, React.ComponentType> = {
-  chat: ChatInspectorPanel,
-  contradictions: ContradictionsInspectorPanel,
-  references: ReferencesInspectorPanel,
-  audit: AuditInspectorPanel,
-  import: ImportInspectorPanel,
-  default: DefaultInspectorPanel,
-};
+function InspectorTabContent() {
+  return <InspectorPanelRouter />;
+}
 
-// ── Drawer ────────────────────────────────────────────────────────────────────
+/** Inspector body for desktop workbench chrome. */
+export function InspectorPanelBody() {
+  return <InspectorPanelRouter />;
+}
 
-export function MemoryInspectorDrawer() {
-  const { isOpen, close } = useInspector();
-  const { domain, label } = useInspectorContextFromPathname();
-
-  const Panel = PANELS[domain];
+/** Mobile-only slide-over drawer with tabs. */
+export function MobileInspectorDrawer() {
+  const { isOpen, close, tab, setTab, selection } = useInspector();
+  const { label } = useInspectorContextFromPathname();
 
   return (
     <>
-      {/* Mobile backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
           onClick={close}
         />
       )}
 
-      {/* Drawer panel */}
       <aside
         className={cn(
-          "fixed top-0 bottom-0 right-0 z-50 flex w-full flex-col border-l border-border bg-background md:w-80",
+          "fixed top-0 bottom-0 right-0 z-50 flex w-full flex-col lg:hidden",
           "transition-transform duration-200 ease-in-out",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
-        {/* Header */}
-        <PanelBar
-          left={<span className="text-sm font-medium text-foreground">{label}</span>}
-          right={
-            <button
-              type="button"
-              onClick={close}
-              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-              aria-label="Close inspector"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          }
-        />
+        <div className="ml-float m-2 flex h-[calc(100%-1rem)] flex-col overflow-hidden rounded-2xl">
+          <PanelBar
+            left={<span className="text-sm font-medium text-foreground">{label}</span>}
+            right={
+              <button
+                type="button"
+                onClick={close}
+                className="rounded p-1 text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"
+                aria-label="Close inspector"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            }
+          />
 
-        {/* Body — panel mounts only when open, unmounts on close (fresh data each open) */}
-        <div className="flex-1 overflow-y-auto">
-          {isOpen && <Panel />}
+          <div className="ml-segmented mx-3 mt-2">
+            {INSPECTOR_TABS.map((item) => {
+              const active = tab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setTab(item.id)}
+                  className={cn(
+                    "flex-1 px-2 py-1.5 text-[11px] font-medium",
+                    active ? "ml-segment-active" : "ml-segment-inactive"
+                  )}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div key={`${tab}-${selection?.selectedObjectId ?? "none"}`} className="ml-inspector-body flex-1 overflow-y-auto">
+            {isOpen && <InspectorTabContent />}
+          </div>
         </div>
       </aside>
     </>
   );
+}
+
+/**
+ * @deprecated Desktop inspector lives in WorkbenchInspector. Mobile drawer only.
+ */
+export function MemoryInspectorDrawer() {
+  return <MobileInspectorDrawer />;
 }

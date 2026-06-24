@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildTodaySurfacingCards,
-  TODAY_INTELLIGENCE_SECTION_TITLE,
   TODAY_SURFACING_ENDPOINTS,
   type TodayPatternsResponse,
   type TodayTopContradiction,
@@ -12,7 +11,6 @@ import {
 import { TODAY_CHANGES_VIEW_ALL_HREF } from "../today-intelligence-updates";
 import {
   DEFERRED_RECEIPT_NAMESPACE_PREFIXES,
-  PUBLIC_LINKED_DETAIL_FALLBACK_COPY,
 } from "../public-continuity-registry";
 
 function readTodayPageSource(): string {
@@ -190,7 +188,7 @@ describe("today-surface safety and honest copy", () => {
     expect(TODAY_SURFACING_ENDPOINTS.patterns).toBe("/api/patterns");
   });
 
-  it("does not reference internal user-map APIs", () => {
+  it("does not reference internal user-map APIs from the Today page", () => {
     const source = readTodayPageSource();
     expect(source.includes("/api/internal/user-map/review-candidates")).toBe(
       false
@@ -199,19 +197,15 @@ describe("today-surface safety and honest copy", () => {
     expect(source.includes("internal_only")).toBe(false);
   });
 
-  it("keeps honest placeholder and fallback copy in a unified intelligence snapshot", () => {
+  it("keeps honest placeholder and fallback copy on Today re-entry", () => {
     const source = readTodayPageSource();
-    expect(source.includes("PUBLIC_LINKED_DETAIL_FALLBACK_COPY")).toBe(true);
-    expect(PUBLIC_LINKED_DETAIL_FALLBACK_COPY).toBe("Source unavailable.");
-    expect(source.includes("TODAY_INTELLIGENCE_SECTION_TITLE")).toBe(true);
-    expect(source.includes("TODAY_INTELLIGENCE_SECTION_INTRO")).toBe(true);
-    expect(source.includes("TODAY_SURFACED_SUBSECTION_LABEL")).toBe(true);
-    expect(source.includes("TODAY_CHANGES_SUBSECTION_LABEL")).toBe(true);
     expect(source.includes("TODAY_INTELLIGENCE_LOADING_COPY")).toBe(true);
     expect(source.includes("TODAY_INTELLIGENCE_EMPTY_COPY")).toBe(true);
+    expect(source.includes("TODAY_CHANGES_SUBSECTION_LABEL")).toBe(true);
     expect(source.includes("TODAY_CHANGES_EMPTY_COPY")).toBe(true);
     expect(source.includes("TODAY_CHANGES_VIEW_ALL_HREF")).toBe(true);
-    expect(TODAY_INTELLIGENCE_SECTION_TITLE).toBe("Intelligence snapshot");
+    expect(source.includes("TODAY_ATTENTION_SECTION_LABEL")).toBe(true);
+    expect(source.includes("TODAY_ATTENTION_EMPTY_COPY")).toBe(true);
     expect(TODAY_CHANGES_VIEW_ALL_HREF).toBe("/what-changed");
     expect(source.includes("Surfacing now")).toBe(false);
     expect(source.includes("Intelligence updates")).toBe(false);
@@ -245,16 +239,15 @@ describe("today-surface safety and honest copy", () => {
     expect(source.includes(".replace(\"/contradictions/\"")).toBe(false);
   });
 
-  it("uses today intelligence-updates safe endpoint and avoids direct model-updates usage", () => {
+  it("avoids direct model-updates usage on the Today page", () => {
     const source = readTodayPageSource();
-    expect(source.includes("TODAY_INTELLIGENCE_UPDATES_ENDPOINT")).toBe(true);
     expect(source.includes("/api/model-updates")).toBe(false);
     expect(source.includes("/api/model-updates/[id]")).toBe(false);
+    expect(source.includes("fetchTodayReentrySnapshot")).toBe(true);
   });
 
-  it("renders intelligence snapshot as read-only without review/write/timeline coupling", () => {
+  it("renders Today as read-only without review/write/timeline coupling in page source", () => {
     const source = readTodayPageSource();
-    expect(source.includes("TODAY_INTELLIGENCE_SECTION_TITLE")).toBe(true);
     expect(source.includes("Promote")).toBe(false);
     expect(source.includes("Publish")).toBe(false);
     expect(source.includes("Edit")).toBe(false);

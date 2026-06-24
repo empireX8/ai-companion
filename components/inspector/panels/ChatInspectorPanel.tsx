@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+
+import { ExploreConversationReviewInspectorList } from "@/components/explore/ExploreConversationReviewStrip";
+import { EXPLORE_REVIEW_INSPECTOR_SECTION_LABEL } from "@/lib/explore-conversation-review";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -48,12 +52,20 @@ function CountCell({ label, value }: { label: string; value: number }) {
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
 export function ChatInspectorPanel() {
+  const pathname = usePathname();
+  const isExplore = pathname.startsWith("/explore");
   const [topItems, setTopItems] = useState<TopItem[]>([]);
   const [summary, setSummary] = useState<ContradictionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    if (isExplore) {
+      setLoading(false);
+      setError(false);
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     setError(false);
@@ -87,14 +99,24 @@ export function ChatInspectorPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isExplore]);
+
+  if (isExplore) {
+    return (
+      <div className="p-3">
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          {EXPLORE_REVIEW_INSPECTOR_SECTION_LABEL}
+        </p>
+        <ExploreConversationReviewInspectorList />
+      </div>
+    );
+  }
 
   if (loading) return <PanelSkeleton />;
   if (error) return <p className="p-3 text-xs text-destructive">Failed to load.</p>;
 
   return (
     <div className="divide-y divide-border/60">
-      {/* Surfaced contradictions */}
       <div className="p-3">
         <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Surfaced Contradictions

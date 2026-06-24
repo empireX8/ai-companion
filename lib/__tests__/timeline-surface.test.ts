@@ -315,10 +315,12 @@ describe("timeline-surface rhythm honesty", () => {
     expect(source.includes("TIMELINE_ACTIVITY_SECTION_LABEL")).toBe(true);
     expect(source.includes("TIMELINE_ACTIVITY_EMPTY_COPY")).toBe(true);
     expect(source.includes("TIMELINE_MODEL_CHANGE_CHIP")).toBe(true);
-    expect(TIMELINE_ACTIVITY_SECTION_LABEL).toBe("Activity & changes");
+    expect(TIMELINE_ACTIVITY_SECTION_LABEL).toBe("Evolution stream");
     expect(TIMELINE_MODEL_CHANGE_CHIP).toBe("Model change");
     expect(source.includes("buildTimelineStreamItems")).toBe(true);
     expect(source.includes("groupTimelineStreamByDate")).toBe(true);
+    expect(source.includes("TIMELINE_SEMANTIC_FILTERS")).toBe(true);
+    expect(source.includes("fetchTimelineSemanticEntries")).toBe(true);
     expect(source.includes("modelLayerError")).toBe(true);
     expect(source.includes("TIMELINE_MODEL_LAYERS_ERROR_COPY")).toBe(true);
     expect(TIMELINE_MODEL_LAYERS_ERROR_COPY).toBe("Could not load model changes.");
@@ -326,7 +328,6 @@ describe("timeline-surface rhythm honesty", () => {
     expect(source.includes('role="alert"')).toBe(true);
     expect(source.includes("grid-cols-1 md:grid-cols-2")).toBe(true);
     expect(source.includes("cn(entry.weight === \"low\" && \"opacity-60\")")).toBe(true);
-    expect(source.includes("Model movement")).toBe(false);
     expect(source.includes("No model movement in this window.")).toBe(false);
     expect(source.includes("Connected activity")).toBe(false);
     expect(source.includes("Possible links</SectionLabel>")).toBe(false);

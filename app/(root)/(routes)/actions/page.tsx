@@ -15,10 +15,12 @@ import {
 } from "@/lib/actions-api";
 import { buildPublicReceiptHref } from "@/lib/public-continuity-registry";
 import { buildExploreActionHandoffHref } from "@/lib/explore-action-handoff";
+import { useInspector } from "@/components/inspector/InspectorContext";
 
 export default function ActionsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { selectObject } = useInspector();
   const [tab, setTab] = useState<ActionBucket>("stabilize");
   const [data, setData] = useState<ActionsPageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -123,12 +125,14 @@ export default function ActionsPage() {
   };
 
   return (
-    <div className="px-12 py-10 max-w-[1000px] mx-auto animate-fade-in">
+    <div className="animate-fade-in px-6 py-7 lg:px-10">
+      <div className="mx-auto max-w-4xl">
       <PageHeader
-        title="Actions"
-        meta="Invitations connected to recent patterns and tensions"
+        title="Decisions"
+        meta="Decision workspace — invitations connected to recent patterns and tensions. Full decision lifecycle wiring deferred."
+        compact
         right={
-          <div className="inline-flex card-standard p-1 rounded-md">
+          <div className="ml-segmented">
             {[
               { id: "stabilize", label: "Stabilize Now" },
               { id: "build", label: "Build Forward" },
@@ -136,7 +140,7 @@ export default function ActionsPage() {
               <button
                 key={option.id}
                 onClick={() => setTab(option.id as ActionBucket)}
-                className={`px-4 h-8 rounded text-[12.5px] ${tab === option.id ? "bg-[hsl(187_100%_50%/0.12)] text-cyan" : "text-meta hover:text-white"}`}
+                className={`px-3 py-1.5 text-[11px] font-medium ${tab === option.id ? "ml-segment-active" : "ml-segment-inactive"}`}
               >
                 {option.label}
               </button>
@@ -148,13 +152,13 @@ export default function ActionsPage() {
       <SectionLabel>Recommended for you</SectionLabel>
 
       {isLoading ? (
-        <div className="card-standard p-4 text-[13px] text-meta">Loading actions...</div>
+        <div className="ml-material rounded-xl p-4 text-[13px] text-muted-foreground">Loading actions...</div>
       ) : errorMessage ? (
-        <div className="card-standard p-4 text-[13px] text-[hsl(12_80%_64%)]">{errorMessage}</div>
+        <div className="ml-material rounded-xl p-4 text-[13px] text-[hsl(12_80%_64%)]">{errorMessage}</div>
       ) : list.length === 0 ? (
-        <div className="card-standard p-4 text-[13px] text-meta">No actions are available yet.</div>
+        <div className="ml-material rounded-xl p-4 text-[13px] text-muted-foreground">No actions are available yet.</div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {list.map((action) => {
             const receiptHref = buildPublicReceiptHref({
               namespace: "receipt-pattern",
@@ -165,7 +169,7 @@ export default function ActionsPage() {
             const createError = createErrorByActionId[action.id];
 
             return (
-              <div key={action.id} className="card-standard p-5 hover:border-[hsl(187_100%_50%/0.18)] transition-colors">
+              <div key={action.id} className="ml-material ml-calm rounded-xl p-4 hover:bg-white/[0.02]">
                 <div className="flex items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
@@ -182,7 +186,28 @@ export default function ActionsPage() {
                       {action.whySuggested}
                     </div>
                     <div className="label-meta inline-flex items-center gap-2">
-                      Based on <span className="text-cyan">{action.linkedClaimSummary ?? action.linkedGoalStatement ?? "Recent activity"}</span>
+                      Based on{" "}
+                      {action.linkedClaimId ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            selectObject({
+                              objectType: "pattern_claim",
+                              objectId: action.linkedClaimId!,
+                              title: action.linkedClaimSummary ?? action.title,
+                              sourceSurface: "decisions",
+                              tab: "evidence",
+                            });
+                          }}
+                          className="text-cyan hover:underline"
+                        >
+                          {action.linkedClaimSummary ?? action.linkedGoalStatement ?? "Recent activity"}
+                        </button>
+                      ) : (
+                        <span className="text-cyan">
+                          {action.linkedClaimSummary ?? action.linkedGoalStatement ?? "Recent activity"}
+                        </span>
+                      )}
                     </div>
                     <div className="mt-3 pt-3 border-t hairline">
                       <div className="flex items-center gap-4">
@@ -231,10 +256,11 @@ export default function ActionsPage() {
         </div>
       )}
 
-      <div className="label-meta text-center mt-10">
+      <div className="label-meta mt-10 text-center text-muted-foreground">
         {tab === "stabilize"
           ? "These are invitations, not tasks."
           : "These are experiments, not commitments."}
+      </div>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const authMock = vi.fn();
@@ -21,6 +22,21 @@ vi.mock("@clerk/nextjs/server", () => ({
 vi.mock("@/components/AppShell", () => ({
   PageHeader: () => null,
   SectionLabel: ({ children }: { children: unknown }) => children,
+}));
+
+vi.mock("@/components/your-map/YourMapWorkbench", () => ({
+  YourMapWorkbench: () =>
+    React.createElement(
+      "div",
+      { "data-testid": "your-map-workbench" },
+      "Nothing on your map yet."
+    ),
+}));
+
+vi.mock("@/components/inspector/InspectorSelectButton", () => ({
+  MapDetailInspectorSync: () => null,
+  InspectorSelectButton: ({ children }: { children: unknown }) => children,
+  InspectorSelectFromHrefButton: ({ children }: { children: unknown }) => children,
 }));
 
 vi.mock("@/lib/public-intelligence-safe-slice", async () => {
@@ -53,53 +69,23 @@ describe("Phase 3 Your Map page", () => {
     listYourMapPublicEvidenceContinuityMock.mockResolvedValue([]);
   });
 
-  it("filters to authenticated user-owned user_visible conclusions and shows honest empty state", async () => {
+  it("renders the map workbench for authenticated users", async () => {
     const page = await import("../../app/(root)/(routes)/your-map/page");
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
+    expect(html).toContain("your-map-workbench");
     expect(html).toContain("Nothing on your map yet.");
-    expect(prismaMock.userMapConclusion.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          userId: "user-1",
-          visibility: "user_visible",
-        },
-      })
-    );
+    expect(prismaMock.userMapConclusion.findMany).not.toHaveBeenCalled();
   });
 
-  it("renders detail links from real conclusion IDs only and drops invalid fallback rows", async () => {
-    prismaMock.userMapConclusion.findMany.mockResolvedValueOnce([
-      {
-        id: "umc-1",
-        title: "Rest before overload events",
-        summary: "Recovery windows improve regulation after high-conflict periods.",
-        area: "recovery_architecture",
-        status: "supported",
-        confidenceLevel: "medium",
-        evidenceCount: 3,
-        updatedAt: new Date("2026-05-17T09:00:00.000Z"),
-      },
-      {
-        id: "   ",
-        title: "umc-from-title should never become an ID",
-        summary: "Synthetic fallback row",
-        area: "operating_logic",
-        status: "emerging",
-        confidenceLevel: "low",
-        evidenceCount: 0,
-        updatedAt: new Date("2026-05-17T08:00:00.000Z"),
-      },
-    ]);
+  it("returns null for unauthenticated users", async () => {
+    authMock.mockResolvedValueOnce({ userId: null });
 
     const page = await import("../../app/(root)/(routes)/your-map/page");
     const element = await page.default();
-    const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("/your-map/umc-1");
-    expect(html).toContain("Rest before overload events");
-    expect(html).not.toContain("umc-from-title should never become an ID");
+    expect(element).toBeNull();
   });
 
   it("hides detail for missing, unowned, and internal-only records through the same not-found path", async () => {
@@ -220,7 +206,7 @@ describe("Phase 3 Your Map page", () => {
     });
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("Provenance");
+    expect(html).toContain("Supporting evidence");
     expect(html).toContain("Related pattern");
     expect(html).toContain("Related signal");
     expect(html).toContain("/patterns/pc-1");

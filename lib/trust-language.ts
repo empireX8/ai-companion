@@ -13,16 +13,22 @@
 /** The canonical product name. Use this everywhere the product name appears. */
 export const PRODUCT_NAME = "MindLab" as const;
 
-/** Canonical visible surface names — matches V1_CORE_ROUTES + V1_SECONDARY_ROUTES. */
+/** Canonical visible surface names — matches V1 primary, layer, and legacy support routes. */
 export const SURFACE_NAMES = {
+  Today: "Today",
+  Map: "Map",
+  Decisions: "Decisions",
+  Timeline: "Timeline",
+  Explore: "Explore",
+  WhatChanged: "What Changed",
+  WatchFor: "Watch For",
+  Import: "Import",
+  Context: "Context",
+  References: "References",
   Chat: "Chat",
   CheckIns: "Check-ins",
   Patterns: "Patterns",
   History: "History",
-  Actions: "Actions",
-  Context: "Context",
-  Memories: "Memories",
-  Import: "Import",
   Settings: "Settings",
 } as const;
 

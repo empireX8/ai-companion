@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { OccurrenceDots } from "@/components/Visuals";
 import { ArrowRight } from "lucide-react";
-import Link from "next/link";
 
 import {
   TIMELINE_WINDOWS,
@@ -40,6 +39,17 @@ import {
 } from "@/lib/timeline-model-layers";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { PUBLIC_LINKED_DETAIL_FALLBACK_COPY } from "@/lib/public-continuity-registry";
+import { useInspector } from "@/components/inspector/InspectorContext";
+import { parseSelectableObjectFromHref } from "@/lib/inspector-selection";
+import {
+  enrichTimelineActivityEntry,
+  fetchTimelineSemanticEntries,
+  modelChangeMatchesFilter,
+  TIMELINE_LANE_LABELS,
+  TIMELINE_SEMANTIC_FILTERS,
+  timelineEntryMatchesFilter,
+  type TimelineSemanticFilter,
+} from "@/lib/timeline-semantic-layers";
 import { cn } from "@/lib/utils";
 
 const STATE_DISPLAY_LABELS: Record<QuickCheckInStateTag, string> = {
@@ -112,64 +122,161 @@ function stateLabel(stateTag: QuickCheckInStateTag | null): string {
 }
 
 function ActivityStreamEntry({ entry }: { entry: TimelineEntry }) {
+  const { selectObject } = useInspector();
+  const lane = entry.lane ?? "sessions_activity";
+  const isMovementLane = lane === "model_movement";
+  const laneLabel =
+    entry.lane && entry.lane in TIMELINE_LANE_LABELS
+      ? TIMELINE_LANE_LABELS[entry.lane]
+      : entry.chip;
+
+  const handleSelect = () => {
+    if (entry.selectableObjectType && entry.selectableObjectId) {
+      selectObject({
+        objectType: entry.selectableObjectType,
+        objectId: entry.selectableObjectId,
+        title: entry.title,
+        sourceSurface: "timeline",
+        tab: entry.selectableObjectType === "model_update" ? "movement" : "evidence",
+      });
+      return;
+    }
+
+    const parsed = parseSelectableObjectFromHref(entry.href);
+    if (!parsed) {
+      return;
+    }
+    selectObject({
+      ...parsed,
+      title: entry.title,
+      sourceSurface: "timeline",
+      tab: "evidence",
+    });
+  };
+
+  const content = (
+    <>
+      <span
+        className={cn(
+          "mt-1.5 size-2 shrink-0 rounded-full",
+          isMovementLane ? "bg-cyan/80" : "bg-muted-foreground"
+        )}
+        aria-hidden
+      />
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            {formatTime(entry.occurredAt)}
+          </span>
+          <span className="text-[14px] font-medium text-[hsl(216_11%_82%)]">{entry.title}</span>
+          <span className="rounded-full bg-cyan/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan/80">
+            {entry.chip}
+          </span>
+          <span className="rounded-full bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {laneLabel}
+          </span>
+        </span>
+        {entry.body ? (
+          <span className="mt-0.5 block text-[13px] leading-relaxed text-muted-foreground line-clamp-2">
+            {entry.body}
+          </span>
+        ) : null}
+        {entry.sourceLabel ? (
+          <span className="label-meta text-meta mt-1 block">{entry.sourceLabel}</span>
+        ) : null}
+        {!entry.href ? (
+          <span className="label-meta text-meta mt-1 block">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</span>
+        ) : null}
+      </span>
+    </>
+  );
+
   return (
     <div className={cn(entry.weight === "low" && "opacity-60")}>
-      <div className="flex items-center gap-3 mb-1">
-        <span className="label-meta">{formatTime(entry.occurredAt)}</span>
-        {entry.href ? (
-          <Link href={entry.href} className="text-[14px] font-medium hover:text-cyan transition-colors">
-            {entry.title}
-          </Link>
-        ) : (
-          <span className="text-[14px] font-medium text-[hsl(216_11%_82%)]">{entry.title}</span>
-        )}
-        <span className="label-meta text-cyan/70 px-2 h-5 rounded bg-[hsl(187_100%_50%/0.08)] inline-flex items-center">
-          {entry.chip}
-        </span>
-      </div>
-      {entry.body ? (
-        <div className="text-[13px] text-meta leading-relaxed line-clamp-2">{entry.body}</div>
-      ) : null}
-      {!entry.href ? (
-        <div className="label-meta text-meta mt-1">{PUBLIC_LINKED_DETAIL_FALLBACK_COPY}</div>
-      ) : null}
+      {entry.href || entry.selectableObjectId ? (
+        <button
+          type="button"
+          onClick={() => {
+            handleSelect();
+          }}
+          className={cn(
+            "ml-calm relative flex w-full gap-3 py-3 pl-5 text-left hover:bg-white/[0.02]",
+            "before:absolute before:bottom-1 before:left-0 before:top-1 before:w-[3px] before:rounded-r",
+            isMovementLane ? "before:bg-cyan/80" : "before:bg-white/25"
+          )}
+        >
+          {content}
+        </button>
+      ) : (
+        <div
+          className={cn(
+            "ml-calm relative flex w-full gap-3 py-3 pl-5 text-left",
+            "before:absolute before:bottom-1 before:left-0 before:top-1 before:w-[3px] before:rounded-r",
+            isMovementLane ? "before:bg-cyan/80" : "before:bg-white/25"
+          )}
+        >
+          {content}
+        </div>
+      )}
     </div>
   );
 }
 
 function ModelChangeStreamEntry({ item }: { item: TimelineModelLayerItem }) {
+  const { selectObject } = useInspector();
+
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-1">
-        <span className="label-meta">{formatTime(item.createdAt)}</span>
-        <span className="text-[14px] font-medium text-[hsl(216_11%_82%)]">
-          {item.updateTypeLabel}
+    <button
+      type="button"
+      onClick={() => {
+        selectObject({
+          objectType: "model_update",
+          objectId: item.id,
+          modelUpdateId: item.id,
+          title: `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`,
+          sourceSurface: "timeline",
+          tab: "movement",
+        });
+      }}
+      className="ml-calm relative flex w-full gap-3 py-3 pl-5 text-left before:absolute before:bottom-1 before:left-0 before:top-1 before:w-[3px] before:rounded-r before:bg-cyan/80 hover:bg-white/[0.02]"
+    >
+      <span className="mt-1.5 size-2 shrink-0 rounded-full bg-cyan/80" aria-hidden />
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            {formatTime(item.createdAt)}
+          </span>
+          <span className="text-[14px] font-medium text-[hsl(216_11%_82%)]">
+            {item.updateTypeLabel}
+          </span>
+          <span className="rounded-full bg-cyan/10 px-1.5 py-0.5 text-[10px] font-medium text-cyan/80">
+            {TIMELINE_MODEL_CHANGE_CHIP}
+          </span>
         </span>
-        <span className="label-meta text-cyan/70 px-2 h-5 rounded bg-[hsl(187_100%_50%/0.08)] inline-flex items-center">
-          {TIMELINE_MODEL_CHANGE_CHIP}
-        </span>
-      </div>
-      <p className="text-[13px] text-meta leading-relaxed line-clamp-2">
-        {item.userFacingSummary}
-      </p>
-      <div className="mt-2">
-        <PublicLinkedObjectContinuity
-          objectType={item.affectedObjectType}
-          objectId={item.affectedObjectId}
-          href={item.affectedObjectHref}
-          context="model_update"
-        />
-        <div className="label-meta mt-1">Recorded {formatDateTime(item.createdAt)}</div>
-      </div>
-    </div>
+        <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground line-clamp-2">
+          {item.userFacingSummary}
+        </p>
+        <div className="mt-2">
+          <PublicLinkedObjectContinuity
+            objectType={item.affectedObjectType}
+            objectId={item.affectedObjectId}
+            href={item.affectedObjectHref}
+            context="model_update"
+          />
+        </div>
+      </span>
+    </button>
   );
 }
 
 export default function TimelineSurface() {
   const [windowValue, setWindowValue] = useState<TimelineWindow>("30d");
+  const [semanticFilter, setSemanticFilter] = useState<TimelineSemanticFilter>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [payload, setPayload] = useState<TimelineResponse | null>(null);
+  const [semanticEntries, setSemanticEntries] = useState<TimelineEntry[]>([]);
+  const [isLoadingSemantic, setIsLoadingSemantic] = useState(true);
   const [modelLayers, setModelLayers] = useState<TimelineModelLayerItem[]>([]);
   const [isLoadingModelLayers, setIsLoadingModelLayers] = useState(true);
   const [modelLayerError, setModelLayerError] = useState<string | null>(null);
@@ -212,6 +319,34 @@ export default function TimelineSurface() {
     };
 
     void loadTimeline();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [windowValue]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSemantic = async () => {
+      setIsLoadingSemantic(true);
+      try {
+        const entries = await fetchTimelineSemanticEntries(windowValue);
+        if (!cancelled) {
+          setSemanticEntries(entries);
+        }
+      } catch {
+        if (!cancelled) {
+          setSemanticEntries([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingSemantic(false);
+        }
+      }
+    };
+
+    void loadSemantic();
 
     return () => {
       cancelled = true;
@@ -265,19 +400,28 @@ export default function TimelineSurface() {
     };
   }, [windowValue]);
 
-  const timelineEntries = useMemo(
-    () => (payload ? mapTimelineEntries(payload) : []),
-    [payload]
-  );
+  const timelineEntries = useMemo(() => {
+    const activity = payload
+      ? mapTimelineEntries(payload).map(enrichTimelineActivityEntry)
+      : [];
+    return [...activity, ...semanticEntries];
+  }, [payload, semanticEntries]);
 
-  const streamItems = useMemo(
-    () =>
-      buildTimelineStreamItems({
-        activity: timelineEntries,
-        modelLayers,
-      }),
-    [timelineEntries, modelLayers]
-  );
+  const streamItems = useMemo(() => {
+    const items = buildTimelineStreamItems({
+      activity: timelineEntries,
+      modelLayers,
+    });
+    if (semanticFilter === "all") {
+      return items;
+    }
+    return items.filter((item) => {
+      if (item.kind === "model_change") {
+        return modelChangeMatchesFilter(semanticFilter);
+      }
+      return timelineEntryMatchesFilter(item.entry, semanticFilter);
+    });
+  }, [timelineEntries, modelLayers, semanticFilter]);
 
   const rhythms = payload?.stateSummary.rhythms ?? null;
   const repeatedSignals = payload?.stateSummary.repeatedSignals ?? null;
@@ -313,23 +457,28 @@ export default function TimelineSurface() {
     return dayKeys.size;
   }, [payload?.checkIns]);
 
-  const isLoadingActivityStream = isLoading || isLoadingModelLayers;
+  const isLoadingActivityStream = isLoading || isLoadingModelLayers || isLoadingSemantic;
   const hasStreamItems = streamItems.length > 0;
   const showActivityEmptyState =
     !hasStreamItems && !errorMessage && !modelLayerError;
 
   return (
-    <div className="px-12 py-10 max-w-[1180px] mx-auto animate-fade-in">
+    <div className="animate-fade-in px-6 py-7 lg:px-10">
+      <div className="mx-auto max-w-5xl">
       <PageHeader
         title="Timeline"
         meta={TIMELINE_PAGE_META}
+        compact
         right={
-          <div className="inline-flex card-standard p-1 rounded-md">
+          <div className="ml-segmented">
             {TIMELINE_WINDOWS.map((windowKey) => (
               <button
                 key={windowKey}
                 onClick={() => setWindowValue(windowKey)}
-                className={`label-meta px-3 h-7 rounded ${windowValue === windowKey ? "bg-[hsl(187_100%_50%/0.12)] text-cyan" : "text-meta hover:text-white"}`}
+                className={cn(
+                  "px-3 py-1.5 text-[11px] font-medium",
+                  windowValue === windowKey ? "ml-segment-active" : "ml-segment-inactive"
+                )}
               >
                 {windowKey}
               </button>
@@ -338,7 +487,7 @@ export default function TimelineSurface() {
         }
       />
 
-      <section className="card-focal p-6 mb-8">
+      <section className="ml-material mb-8 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <div className="label-meta mb-1">Recent rhythms</div>
@@ -440,7 +589,24 @@ export default function TimelineSurface() {
 
       <section>
         <SectionLabel>{TIMELINE_ACTIVITY_SECTION_LABEL}</SectionLabel>
-        <p className="text-[13px] text-meta mb-4">{TIMELINE_ACTIVITY_SECTION_INTRO}</p>
+        <p className="text-[13px] text-meta mb-3">{TIMELINE_ACTIVITY_SECTION_INTRO}</p>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {TIMELINE_SEMANTIC_FILTERS.map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              onClick={() => setSemanticFilter(filter.id)}
+              className={cn(
+                "ml-calm rounded-full px-3 py-1 text-[11px] font-medium",
+                semanticFilter === filter.id
+                  ? "bg-cyan/15 text-cyan"
+                  : "bg-white/[0.04] text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
         {isLoadingActivityStream ? (
           <div className="card-standard p-4 text-[13px] text-meta">
             {isLoading ? TIMELINE_ACTIVITY_LOADING_COPY : TIMELINE_MODEL_LAYERS_LOADING_COPY}
@@ -464,14 +630,19 @@ export default function TimelineSurface() {
               </div>
             ) : null}
             {hasStreamItems ? (
-              <div className="space-y-6">
+              <div className="relative pl-5">
+                <div
+                  className="absolute bottom-2 left-[5px] top-2 w-px bg-white/10"
+                  aria-hidden
+                />
+                <div className="space-y-6">
                 {groupedActivity.map((group) => (
                   <div key={group.date}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-1.5 w-1.5 rounded-full bg-cyan glow-cyan" />
-                      <div className="label-meta">{group.date}</div>
+                    <div className="relative mb-2.5">
+                      <span className="absolute -left-[19px] top-0.5 size-3 rounded-full border-2 border-cyan/70 bg-card shadow-[0_0_0_3px_var(--card)]" />
+                      <SectionLabel>{group.date}</SectionLabel>
                     </div>
-                    <div className="ml-[3px] border-l hairline pl-6 space-y-4">
+                    <div className="ml-material overflow-hidden rounded-xl divide-y ml-hairline">
                       {group.items.map((item) => (
                         <div
                           key={
@@ -479,9 +650,7 @@ export default function TimelineSurface() {
                               ? `activity-${item.entry.id}`
                               : `model-${item.item.id}`
                           }
-                          className="relative"
                         >
-                          <div className="absolute -left-[27px] top-1.5 h-1.5 w-1.5 rounded-full bg-white/20" />
                           {item.kind === "activity" ? (
                             <ActivityStreamEntry entry={item.entry} />
                           ) : (
@@ -492,15 +661,17 @@ export default function TimelineSurface() {
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
             ) : showActivityEmptyState ? (
-              <div className="card-standard p-4 text-[13px] text-meta">
+              <div className="ml-material rounded-xl p-4 text-[13px] text-muted-foreground">
                 {TIMELINE_ACTIVITY_EMPTY_COPY}
               </div>
             ) : null}
           </>
         )}
       </section>
+      </div>
     </div>
   );
 }

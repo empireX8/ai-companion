@@ -3,11 +3,16 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
-import { V1_CORE_ROUTES, V1_SECONDARY_ROUTES } from "@/lib/v1-nav";
+import {
+  V1_LAYER_ACTIONS,
+  V1_LAYER_ROUTES,
+  V1_LEGACY_SUPPORT_ROUTES,
+  V1_PRIMARY_ROUTES,
+} from "@/lib/v1-nav";
 import { useCommandPalette } from "./CommandPaletteContext";
 import { dispatchChatEvent, CHAT_EVENTS } from "./chatEvents";
 
-type CommandGroup = "navigation" | "chat";
+type CommandGroup = "primary" | "layers" | "legacy" | "chat";
 
 type Command = {
   id: string;
@@ -17,9 +22,13 @@ type Command = {
 };
 
 const GROUP_LABELS: Record<CommandGroup, string> = {
-  navigation: "Go to",
+  primary: "Workbench",
+  layers: "Layers & utilities",
+  legacy: "Legacy & support",
   chat: "Chat",
 };
+
+const GROUP_ORDER: CommandGroup[] = ["primary", "layers", "legacy", "chat"];
 
 export function CommandPalette() {
   const { isOpen, close } = useCommandPalette();
@@ -30,17 +39,63 @@ export function CommandPalette() {
 
   const commands = useMemo<Command[]>(
     () => [
-      ...[...V1_CORE_ROUTES, ...V1_SECONDARY_ROUTES].map((route) => ({
-        id: `nav-${route.href.slice(1)}`,
+      ...V1_PRIMARY_ROUTES.map((route) => ({
+        id: `primary-${route.href === "/" ? "today" : route.href.slice(1)}`,
         label: route.label,
-        group: "navigation" as const,
+        group: "primary" as const,
         action: () => router.push(route.href),
       })),
-      { id: "chat-new-session", label: "New session", group: "chat", action: () => dispatchChatEvent(CHAT_EVENTS.NEW_SESSION) },
-      { id: "chat-focus", label: "Focus composer", group: "chat", action: () => dispatchChatEvent(CHAT_EVENTS.FOCUS_COMPOSER) },
-      { id: "chat-toggle-memory", label: "Toggle memory panel", group: "chat", action: () => dispatchChatEvent(CHAT_EVENTS.TOGGLE_MEMORY) },
-      { id: "chat-toggle-sessions", label: "Toggle sessions panel", group: "chat", action: () => dispatchChatEvent(CHAT_EVENTS.TOGGLE_SESSIONS) },
-      { id: "chat-toggle-context", label: "Toggle context panel", group: "chat", action: () => dispatchChatEvent(CHAT_EVENTS.TOGGLE_CONTEXT) },
+      ...V1_LAYER_ROUTES.map((route) => ({
+        id: `layer-${route.href.slice(1)}`,
+        label: route.label,
+        group: "layers" as const,
+        action: () => router.push(route.href),
+      })),
+      ...V1_LAYER_ACTIONS.map((action) => ({
+        id: `layer-action-${action.id}`,
+        label: action.label,
+        group: "layers" as const,
+        action: () => {
+          // Search opens the palette itself; keep focus for query.
+          inputRef.current?.focus();
+        },
+      })),
+      ...V1_LEGACY_SUPPORT_ROUTES.map((route) => ({
+        id: `legacy-${route.href.slice(1).replace(/\//g, "-")}`,
+        label: route.label,
+        group: "legacy" as const,
+        action: () => router.push(route.href),
+      })),
+      {
+        id: "chat-new-session",
+        label: "New session",
+        group: "chat",
+        action: () => dispatchChatEvent(CHAT_EVENTS.NEW_SESSION),
+      },
+      {
+        id: "chat-focus",
+        label: "Focus composer",
+        group: "chat",
+        action: () => dispatchChatEvent(CHAT_EVENTS.FOCUS_COMPOSER),
+      },
+      {
+        id: "chat-toggle-memory",
+        label: "Toggle memory panel",
+        group: "chat",
+        action: () => dispatchChatEvent(CHAT_EVENTS.TOGGLE_MEMORY),
+      },
+      {
+        id: "chat-toggle-sessions",
+        label: "Toggle sessions panel",
+        group: "chat",
+        action: () => dispatchChatEvent(CHAT_EVENTS.TOGGLE_SESSIONS),
+      },
+      {
+        id: "chat-toggle-context",
+        label: "Toggle context panel",
+        group: "chat",
+        action: () => dispatchChatEvent(CHAT_EVENTS.TOGGLE_CONTEXT),
+      },
     ],
     [router]
   );
@@ -49,26 +104,24 @@ export function CommandPalette() {
     const q = query.trim().toLowerCase();
     if (!q) return commands;
     return commands.filter(
-      (c) => c.label.toLowerCase().includes(q) || c.group.includes(q)
+      (command) =>
+        command.label.toLowerCase().includes(q) ||
+        GROUP_LABELS[command.group].toLowerCase().includes(q)
     );
   }, [commands, query]);
 
-  // Reset on open
   useEffect(() => {
     if (isOpen) {
       setQuery("");
       setActiveIndex(0);
-      // Defer focus so the element is mounted
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [isOpen]);
 
-  // Reset cursor when filtered list changes
   useEffect(() => {
     setActiveIndex(0);
   }, [filtered.length]);
 
-  // Keyboard navigation inside palette
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
@@ -89,7 +142,9 @@ export function CommandPalette() {
         const cmd = filtered[activeIndex];
         if (cmd) {
           cmd.action();
-          close();
+          if (cmd.id !== "layer-action-search") {
+            close();
+          }
         }
       }
     };
@@ -98,8 +153,6 @@ export function CommandPalette() {
   }, [isOpen, close, filtered, activeIndex]);
 
   if (!isOpen) return null;
-
-  const groups = Array.from(new Set(filtered.map((c) => c.group)));
 
   return (
     <div
@@ -110,7 +163,6 @@ export function CommandPalette() {
         className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Search */}
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             ⌘K
@@ -125,13 +177,15 @@ export function CommandPalette() {
           />
         </div>
 
-        {/* Results */}
         <div className="max-h-80 overflow-y-auto py-1">
           {filtered.length === 0 ? (
             <p className="px-4 py-3 text-xs text-muted-foreground">No commands found</p>
           ) : (
-            groups.map((group) => {
-              const groupCmds = filtered.filter((c) => c.group === group);
+            GROUP_ORDER.map((group) => {
+              const groupCmds = filtered.filter((command) => command.group === group);
+              if (groupCmds.length === 0) {
+                return null;
+              }
               return (
                 <div key={group}>
                   <p className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
@@ -146,7 +200,9 @@ export function CommandPalette() {
                         type="button"
                         onClick={() => {
                           cmd.action();
-                          close();
+                          if (cmd.id !== "layer-action-search") {
+                            close();
+                          }
                         }}
                         onMouseEnter={() => setActiveIndex(idx)}
                         className={`w-full px-4 py-2 text-left text-sm transition-colors ${

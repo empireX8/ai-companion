@@ -8,25 +8,11 @@ import { PanelRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
 import { useInspector } from "@/components/inspector/InspectorContext";
-import { V1_CORE_ROUTES, V1_SECONDARY_ROUTES } from "@/lib/v1-nav";
+import { resolveV1SectionLabel } from "@/lib/v1-nav";
 import { useTopBarSlot } from "./TopBarSlotContext";
 
-const SECTION_LABELS: Array<[string, string]> = [
-  ...[...V1_CORE_ROUTES, ...V1_SECONDARY_ROUTES].map((route) => [
-    route.href,
-    route.label,
-  ] as [string, string]),
-  ["/contradictions", "Tensions"],
-  ["/references", "Memories"],
-  ["/audit", "Review"],
-  ["/metrics", "Metrics"],
-];
-
 function getSectionLabel(pathname: string): string {
-  for (const [prefix, label] of SECTION_LABELS) {
-    if (pathname === prefix || pathname.startsWith(prefix + "/")) return label;
-  }
-  return "MindLab";
+  return resolveV1SectionLabel(pathname);
 }
 
 export function ContentTopBar() {

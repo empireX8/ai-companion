@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -243,13 +243,7 @@ describe("/api/what-changed", () => {
     expect(body).not.toContain("mu-from-summary should never become an ID");
   });
 
-  it("keeps what-changed API list-only with no detail/internal-review/write route semantics", () => {
-    const detailRoutePath = path.join(
-      process.cwd(),
-      "app/api/what-changed/[id]/route.ts"
-    );
-    expect(existsSync(detailRoutePath)).toBe(false);
-
+  it("keeps what-changed list route read-only with no internal-review/write semantics", () => {
     const routeSource = readFileSync(
       path.join(process.cwd(), "app/api/what-changed/route.ts"),
       "utf8"

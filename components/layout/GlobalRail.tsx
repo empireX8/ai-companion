@@ -4,46 +4,56 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import {
-  Sparkles,
-  BookText,
-  MessageCircle,
-  Compass,
   Activity,
-  Waves,
+  Compass,
+  Download,
   GitBranch,
-  Lightbulb,
-  CircleDot,
-  Library,
-  CircleHelp,
-  Eye,
-  History,
+  Home,
+  Layers,
   Map,
+  PanelRight,
+  Search,
+  Sparkles,
+  User,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const primaryNav = [
-  { href: "/", label: "Today", icon: Sparkles, end: true },
-  { href: "/journal", label: "Journal", icon: BookText },
-  { href: "/journal-chat", label: "Journal Chat", icon: MessageCircle },
-  { href: "/explore", label: "Explore", icon: Compass },
+import { useCommandPalette } from "@/components/command/CommandPaletteContext";
+import { useInspector } from "@/components/inspector/InspectorContext";
+import { V1_GLOBAL_RAIL_LAYER, V1_GLOBAL_RAIL_PRIMARY } from "@/lib/v1-nav";
+import { cn } from "@/lib/utils";
+
+const PRIMARY_ICONS: Record<string, LucideIcon> = {
+  "/": Home,
+  "/your-map": Map,
+  "/actions": GitBranch,
+  "/timeline": Activity,
+  "/explore": Compass,
+};
+
+const LAYER_ICONS: Record<string, LucideIcon> = {
+  "/what-changed": Sparkles,
+  "/watch-for": Layers,
+  "/import": Download,
+  "/context": User,
+};
+
+const LAYER_NAV: {
+  href?: string;
+  label: string;
+  icon: LucideIcon;
+  action?: "search" | "inspector";
+}[] = [
+  ...V1_GLOBAL_RAIL_LAYER.map((route) => ({
+    href: route.href,
+    label: route.label,
+    icon: LAYER_ICONS[route.href] ?? Sparkles,
+  })),
+  { label: "Search", icon: Search, action: "search" as const },
+  { label: "Inspector", icon: PanelRight, action: "inspector" as const },
 ];
 
-const insightNav = [
-  { href: "/timeline", label: "Timeline", icon: Activity },
-  { href: "/patterns", label: "Patterns", icon: Waves },
-  { href: "/contradictions", label: "Tensions", icon: GitBranch },
-  { href: "/actions", label: "Actions", icon: Lightbulb },
-  { href: "/active-questions", label: "Active Questions", icon: CircleHelp },
-  { href: "/watch-for", label: "Watch For", icon: Eye },
-  { href: "/your-map", label: "Your Map", icon: Map },
-  { href: "/what-changed", label: "What Changed", icon: History },
-  { href: "/check-ins", label: "Check-ins", icon: CircleDot },
-];
-
-const archiveNav = [
-  { href: "/library", label: "Library", icon: Library },
-];
-
-function NavItem({
+function PrimaryNavItem({
   href,
   label,
   icon: Icon,
@@ -51,35 +61,89 @@ function NavItem({
 }: {
   href: string;
   label: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: LucideIcon;
   end?: boolean;
 }) {
   const pathname = usePathname();
   const isActive = end ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <Link
-      href={href}
-      className={`group flex items-center gap-3 rounded-lg px-3 h-9 text-[13px] transition-colors ${
-        isActive
-          ? "text-cyan bg-[hsl(187_100%_50%/0.06)] border border-[hsl(187_100%_50%/0.18)]"
-          : "text-[hsl(216_11%_65%)] hover:text-white border border-transparent"
-      }`}
-    >
-      <Icon
-        className={`h-[16px] w-[16px] ${isActive ? "text-cyan" : "text-[hsl(209_18%_42%)] group-hover:text-[hsl(216_11%_65%)]"}`}
-        strokeWidth={1.5}
-      />
-      <span className="truncate">{label}</span>
-      {isActive && <span className="ml-auto h-1 w-1 rounded-full bg-cyan glow-cyan" />}
+    <li className="w-full">
+      <Link
+        href={href}
+        aria-current={isActive ? "page" : undefined}
+        title={label}
+        className={cn(
+          "ml-calm group relative flex aspect-square w-full items-center justify-center rounded-[13px]",
+          isActive
+            ? "bg-white/[0.08] text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]"
+            : "text-muted-foreground hover:bg-white/[0.05] hover:text-foreground"
+        )}
+      >
+        <Icon
+          className={cn(
+            "ml-calm size-[19px]",
+            isActive ? "text-cyan" : "text-muted-foreground group-hover:text-foreground"
+          )}
+          strokeWidth={1.5}
+          aria-hidden
+        />
+        <span className="sr-only">{label}</span>
+      </Link>
+    </li>
+  );
+}
+
+function LayerNavItem({
+  item,
+  onSearch,
+  onInspector,
+}: {
+  item: (typeof LAYER_NAV)[number];
+  onSearch: () => void;
+  onInspector: () => void;
+}) {
+  const pathname = usePathname();
+  const Icon = item.icon;
+
+  const className = cn(
+    "ml-calm flex w-full items-center justify-center rounded-[10px] p-2 text-muted-foreground hover:bg-white/[0.05] hover:text-foreground",
+    item.href && (pathname === item.href || pathname.startsWith(`${item.href}/`))
+      ? "bg-white/[0.06] text-foreground"
+      : ""
+  );
+
+  if (item.action === "search") {
+    return (
+      <button type="button" title={item.label} onClick={onSearch} className={className}>
+        <Icon className="size-4" strokeWidth={1.5} aria-hidden />
+        <span className="sr-only">{item.label}</span>
+      </button>
+    );
+  }
+
+  if (item.action === "inspector") {
+    return (
+      <button type="button" title={item.label} onClick={onInspector} className={className}>
+        <Icon className="size-4" strokeWidth={1.5} aria-hidden />
+        <span className="sr-only">{item.label}</span>
+      </button>
+    );
+  }
+
+  return (
+    <Link href={item.href!} title={item.label} className={className}>
+      <Icon className="size-4" strokeWidth={1.5} aria-hidden />
+      <span className="sr-only">{item.label}</span>
     </Link>
   );
 }
 
 export function GlobalRail() {
   const { isLoaded, isSignedIn, user } = useUser();
+  const { open: openSearch } = useCommandPalette();
+  const { toggle: toggleInspector } = useInspector();
 
-  // Safe initials — never crash on undefined access
   const initials = (() => {
     if (!user) return "ML";
     const first = user.firstName?.trim();
@@ -89,52 +153,46 @@ export function GlobalRail() {
     return "ML";
   })();
 
-  // Display name from real auth only — no fake fallback
-  const displayName = (() => {
-    if (!isLoaded) return "Loading…";
-    if (!isSignedIn || !user) return "Signed out";
-    return (
-      user.fullName?.trim() ||
-      [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
-      user.username ||
-      "User"
-    );
-  })();
-
   return (
-    <aside className="w-[224px] shrink-0 h-screen sticky top-0 border-r hairline bg-black z-10 flex flex-col">
-      {/* Wordmark */}
-      <div className="px-4 h-14 flex items-center gap-2 border-b hairline">
-        <div className="h-6 w-6 rounded-md bg-[hsl(187_100%_50%/0.12)] border border-[hsl(187_100%_50%/0.4)] flex items-center justify-center">
-          <div className="h-1.5 w-1.5 rounded-full bg-cyan glow-cyan" />
-        </div>
-        <span className="text-[13px] font-medium tracking-tight">MindLab</span>
-        <span className="ml-auto label-meta text-[10px]">v2</span>
+    <nav className="flex h-full w-[68px] shrink-0 flex-col items-center border-r ml-hairline pb-3 pt-1">
+      <ul className="flex w-full flex-col items-center gap-1.5 px-2.5">
+        {V1_GLOBAL_RAIL_PRIMARY.map((item) => (
+          <PrimaryNavItem
+            key={item.href}
+            href={item.href}
+            label={item.label}
+            icon={PRIMARY_ICONS[item.href] ?? Home}
+            end={item.href === "/"}
+          />
+        ))}
+      </ul>
+
+      <div className="my-3 h-px w-8 bg-white/[0.06]" aria-hidden />
+
+      <div className="flex w-full flex-col items-center gap-1 px-2">
+        {LAYER_NAV.map((item) => (
+          <LayerNavItem
+            key={item.label}
+            item={item}
+            onSearch={openSearch}
+            onInspector={toggleInspector}
+          />
+        ))}
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-2 space-y-1">
-        {primaryNav.map((n) => <NavItem key={n.href} {...n} />)}
-        <div className="my-2 mx-3 h-px bg-white/5" />
-        {insightNav.map((n) => <NavItem key={n.href} {...n} />)}
-        <div className="my-2 mx-3 h-px bg-white/5" />
-        {archiveNav.map((n) => <NavItem key={n.href} {...n} />)}
-      </nav>
-
-      {/* Account */}
-      <div className="p-2 border-t hairline">
+      <div className="mt-auto px-2">
         <Link
           href="/account"
-          className="flex items-center gap-3 rounded-lg px-2 h-11 transition-colors hover:bg-white/[0.02]"
+          title={
+            isLoaded && isSignedIn && user
+              ? user.fullName?.trim() || user.username || "Account"
+              : "Account"
+          }
+          className="ml-calm flex size-9 items-center justify-center rounded-full border border-[hsl(187_100%_50%/0.25)] bg-gradient-to-br from-[hsl(187_100%_50%/0.2)] to-transparent text-[10px] font-medium"
         >
-          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[hsl(187_100%_50%/0.3)] to-[hsl(187_100%_50%/0.05)] border border-[hsl(187_100%_50%/0.4)] flex items-center justify-center text-[11px] font-medium">
-            {initials}
-          </div>
-          <div className="min-w-0 leading-tight">
-            <div className="text-[12.5px] truncate">{displayName}</div>
-            <div className="label-meta text-[9.5px]">Account</div>
-          </div>
+          {initials}
         </Link>
       </div>
-    </aside>
+    </nav>
   );
 }
