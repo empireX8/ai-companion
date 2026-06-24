@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { buildPublicWatchForWhere } from "../fieldwork-public-visibility";
@@ -9,6 +10,7 @@ const notFoundMock = vi.fn(() => {
 });
 const resolvePublicLinkedObjectHrefMock = vi.fn();
 const resolvePublicLinkedObjectHrefsMock = vi.fn();
+const listPublicEvidenceContinuityForTargetMock = vi.fn();
 
 const prismaMock = {
   fieldworkAssignment: {
@@ -59,6 +61,30 @@ vi.mock("@/lib/public-linked-object-continuity", () => ({
   },
 }));
 
+vi.mock("@/components/watch-for/WatchForItemCard", () => ({
+  WatchForItemCard: ({
+    item,
+    verifiedHref,
+  }: {
+    item: { id: string; prompt: string; detailHref: string };
+    verifiedHref: string | null;
+  }) =>
+    React.createElement(
+      "article",
+      null,
+      React.createElement("a", { href: item.detailHref }, item.prompt),
+      verifiedHref ? React.createElement("a", { href: verifiedHref }, verifiedHref) : "Source unavailable."
+    ),
+}));
+
+vi.mock("@/components/watch-for/WatchForInspectorAction", () => ({
+  WatchForInspectorAction: () => null,
+}));
+
+vi.mock("@/lib/public-evidence-continuity", () => ({
+  listPublicEvidenceContinuityForTarget: listPublicEvidenceContinuityForTargetMock,
+}));
+
 vi.mock("@/lib/prismadb", () => ({
   default: prismaMock,
 }));
@@ -79,6 +105,7 @@ describe("Phase 3 Watch For page", () => {
     prismaMock.fieldworkAssignment.findFirst.mockResolvedValue(null);
     resolvePublicLinkedObjectHrefsMock.mockResolvedValue(new Map());
     resolvePublicLinkedObjectHrefMock.mockResolvedValue(null);
+    listPublicEvidenceContinuityForTargetMock.mockResolvedValue([]);
   });
 
   it("filters to authenticated user-owned watch-for records and shows honest empty state", async () => {
@@ -86,7 +113,7 @@ describe("Phase 3 Watch For page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("Nothing to watch for yet.");
+    expect(html).toContain("No fieldwork prompts are active right now.");
     expect(prismaMock.fieldworkAssignment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: buildPublicWatchForWhere({ userId: "user-1" }),
@@ -159,6 +186,8 @@ describe("Phase 3 Watch For page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
+    expect(html).toContain("Active in the field");
+    expect(html).toContain("Ready to try");
     expect(html).toContain("/watch-for/fw-1");
     expect(html).toContain("/patterns/pc-1");
     expect(html).toContain("/contradictions/cn-1");
