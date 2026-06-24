@@ -20,7 +20,29 @@ import {
 import { ExploreModelMovementStrip } from "@/components/explore/ExploreModelMovementStrip";
 import { ExploreConversationReviewStrip } from "@/components/explore/ExploreConversationReviewStrip";
 import { useInspector } from "@/components/inspector/InspectorContext";
-import { ORVEK_COPY } from "@/lib/trust-language";
+import {
+  EXPLORE_CHAT_EMPTY_PROMPT,
+  EXPLORE_CHAT_FOOTER_NOTE,
+  EXPLORE_CHAT_PLACEHOLDER,
+  EXPLORE_DRAFT_REVIEW_SECTION_INTRO,
+  EXPLORE_DRAFT_REVIEW_SECTION_LABEL,
+  EXPLORE_GROUNDING_SECTION_INTRO,
+  EXPLORE_GROUNDING_SECTION_LABEL,
+  EXPLORE_HANDOFF_BANNER_LABEL,
+  EXPLORE_HANDOFF_LINKED_SOURCE_LABEL,
+  EXPLORE_HANDOFF_LOADING_COPY,
+  EXPLORE_HANDOFF_OPEN_PATTERN_LABEL,
+  EXPLORE_HANDOFF_SECTION_LABEL,
+  EXPLORE_HANDOFF_UNAVAILABLE_COPY,
+  EXPLORE_HANDOFF_VIEW_DECISION_LABEL,
+  EXPLORE_HANDOFF_WHY_LABEL,
+  EXPLORE_PAGE_INTRO,
+  EXPLORE_PAGE_SUBTITLE,
+  EXPLORE_PAGE_TITLE,
+  EXPLORE_PUBLISHED_MOVEMENT_SECTION_INTRO,
+  EXPLORE_PUBLISHED_MOVEMENT_SECTION_LABEL,
+  EXPLORE_REENTRY_LINKS,
+} from "@/lib/explore-surface";
 import { SurfaceChatShell } from "../chat/_components/SurfaceChatShell";
 
 const EXPLORE_CHAT_STORAGE_KEY = "mindlabs:explore:session-id";
@@ -65,7 +87,7 @@ export default function ExplorePage() {
 
     if (!parsedActionId) {
       setHandoffContext(null);
-      setHandoffError("Action handoff is unavailable.");
+      setHandoffError(EXPLORE_HANDOFF_UNAVAILABLE_COPY);
       setIsLoadingHandoff(false);
       return;
     }
@@ -83,7 +105,7 @@ export default function ExplorePage() {
         const context = resolveExploreActionHandoffContext(data, parsedActionId);
         if (!context) {
           setHandoffContext(null);
-          setHandoffError("Action handoff is unavailable.");
+          setHandoffError(EXPLORE_HANDOFF_UNAVAILABLE_COPY);
           return;
         }
 
@@ -91,7 +113,7 @@ export default function ExplorePage() {
       } catch {
         if (!cancelled) {
           setHandoffContext(null);
-          setHandoffError("Action handoff is unavailable.");
+          setHandoffError(EXPLORE_HANDOFF_UNAVAILABLE_COPY);
         }
       } finally {
         if (!cancelled) {
@@ -127,14 +149,14 @@ export default function ExplorePage() {
 
   return (
     <SurfaceChatShell
-      title="Explore"
-      subtitle="Open reflection"
+      title={EXPLORE_PAGE_TITLE}
+      subtitle={EXPLORE_PAGE_SUBTITLE}
       surfaceType="explore_chat"
       sessionStorageKey={EXPLORE_CHAT_STORAGE_KEY}
-      placeholder="Bring anything..."
-      emptyPrompt="What feels most important to explore right now?"
-      assistantEyebrow="Open reflection"
-      footerNote="Saves automatically"
+      placeholder={EXPLORE_CHAT_PLACEHOLDER}
+      emptyPrompt={EXPLORE_CHAT_EMPTY_PROMPT}
+      assistantEyebrow={EXPLORE_PAGE_SUBTITLE}
+      footerNote={EXPLORE_CHAT_FOOTER_NOTE}
       contextBanner={contextBanner}
       contextPanel={contextPanel}
       sessionAccessory={
@@ -162,7 +184,7 @@ function ExploreActionHandoffBanner({
     return (
       <div className="ml-material flex items-center gap-3 rounded-xl px-4 py-3">
         <Loader2 className="h-4 w-4 text-cyan animate-spin" strokeWidth={1.5} />
-        <div className="label-meta">Loading action handoff...</div>
+        <div className="label-meta">{EXPLORE_HANDOFF_LOADING_COPY}</div>
       </div>
     );
   }
@@ -171,7 +193,7 @@ function ExploreActionHandoffBanner({
     return (
       <div className="ml-material flex items-center gap-3 rounded-xl px-4 py-3">
         <Compass className="h-4 w-4 text-meta" strokeWidth={1.5} />
-        <div className="label-meta">{error ?? "Action handoff is unavailable."}</div>
+        <div className="label-meta">{error ?? EXPLORE_HANDOFF_UNAVAILABLE_COPY}</div>
       </div>
     );
   }
@@ -180,7 +202,7 @@ function ExploreActionHandoffBanner({
     <div className="card-surfaced px-4 py-3 flex items-center gap-3">
       <Compass className="h-4 w-4 text-cyan" strokeWidth={1.5} />
       <div className="flex-1">
-        <div className="label-meta text-cyan/70 mb-0.5">Opened from Action</div>
+        <div className="label-meta text-cyan/70 mb-0.5">{EXPLORE_HANDOFF_BANNER_LABEL}</div>
         <div className="text-[13.5px]">{context.title}</div>
         <div className="label-meta mt-1">
           {toBucketLabel(context.bucket)} · {toStatusLabel(context.status)}
@@ -190,7 +212,7 @@ function ExploreActionHandoffBanner({
         href={`/actions?bucket=${context.bucket}`}
         className="label-meta px-2.5 h-7 rounded bg-white/5 hover:bg-white/10 inline-flex items-center"
       >
-        View action
+        {EXPLORE_HANDOFF_VIEW_DECISION_LABEL}
       </Link>
     </div>
   );
@@ -210,8 +232,8 @@ function ExploreActionHandoffPanel({
   if (isLoading) {
     return (
       <>
-        <div className="label-meta mb-3">Handoff context</div>
-        <div className="card-standard p-3 text-[13px] text-meta">Loading action handoff...</div>
+        <div className="label-meta mb-3">{EXPLORE_HANDOFF_SECTION_LABEL}</div>
+        <div className="card-standard p-3 text-[13px] text-meta">{EXPLORE_HANDOFF_LOADING_COPY}</div>
       </>
     );
   }
@@ -219,9 +241,9 @@ function ExploreActionHandoffPanel({
   if (!context) {
     return (
       <>
-        <div className="label-meta mb-3">Handoff context</div>
+        <div className="label-meta mb-3">{EXPLORE_HANDOFF_SECTION_LABEL}</div>
         <div className="card-standard p-3 text-[13px] text-meta">
-          {error ?? "Action handoff is unavailable."}
+          {error ?? EXPLORE_HANDOFF_UNAVAILABLE_COPY}
         </div>
       </>
     );
@@ -229,20 +251,20 @@ function ExploreActionHandoffPanel({
 
   return (
     <>
-      <div className="label-meta mb-3">Handoff context</div>
+      <div className="label-meta mb-3">{EXPLORE_HANDOFF_SECTION_LABEL}</div>
       <div className="card-standard p-3 mb-3">
-        <div className="label-meta mb-1.5">Action</div>
+        <div className="label-meta mb-1.5">Decision</div>
         <div className="text-[13px] leading-snug">{context.title}</div>
         <div className="text-[11.5px] text-meta mt-1">
           {toBucketLabel(context.bucket)} · {toStatusLabel(context.status)}
         </div>
       </div>
       <div className="card-standard p-3 mb-3">
-        <div className="label-meta mb-1.5">Why this was suggested</div>
+        <div className="label-meta mb-1.5">{EXPLORE_HANDOFF_WHY_LABEL}</div>
         <div className="text-[13px] leading-snug">{context.whySuggested}</div>
       </div>
       <div className="card-standard p-3 mb-3">
-        <div className="label-meta mb-1.5">Linked source</div>
+        <div className="label-meta mb-1.5">{EXPLORE_HANDOFF_LINKED_SOURCE_LABEL}</div>
         <div className="text-[13px] leading-snug">
           {context.linkedClaimSummary ?? context.linkedSourceLabel}
         </div>
@@ -260,7 +282,7 @@ function ExploreActionHandoffPanel({
             }}
             className="mt-2 label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
           >
-            Open linked pattern in Inspector
+            {EXPLORE_HANDOFF_OPEN_PATTERN_LABEL}
           </button>
         ) : null}
       </div>
@@ -272,29 +294,39 @@ function ExploreDefaultContextPanel() {
   return (
     <>
       <div className="label-meta mb-3">Context</div>
+      <p className="mb-3 text-[12px] leading-relaxed text-muted-foreground">{EXPLORE_PAGE_INTRO}</p>
       <div className="ml-material mb-3 rounded-xl p-3">
-        <div className="label-meta mb-1.5">Mode</div>
-        <div className="text-[13px] leading-snug">
-          Open reflection without a preset handoff.
+        <div className="label-meta mb-1.5">{EXPLORE_GROUNDING_SECTION_LABEL}</div>
+        <div className="text-[12px] leading-relaxed text-muted-foreground">
+          {EXPLORE_GROUNDING_SECTION_INTRO}
         </div>
       </div>
       <div className="ml-material mb-3 rounded-xl p-3">
-        <div className="label-meta mb-1.5">Conversation review</div>
+        <div className="label-meta mb-1.5">{EXPLORE_DRAFT_REVIEW_SECTION_LABEL}</div>
         <div className="text-[12px] leading-relaxed text-muted-foreground">
-          Draft review items from this conversation appear above the chat. Published
-          movement is shown separately in the strip above and in Inspector → {ORVEK_COPY.mindModelMovementTab}.
+          {EXPLORE_DRAFT_REVIEW_SECTION_INTRO}
         </div>
       </div>
       <div className="ml-material mb-3 rounded-xl p-3">
-        <div className="label-meta mb-1.5">{ORVEK_COPY.mindModelMovement}</div>
+        <div className="label-meta mb-1.5">{EXPLORE_PUBLISHED_MOVEMENT_SECTION_LABEL}</div>
         <div className="text-[12px] leading-relaxed text-muted-foreground">
-          Published movement from this conversation appears above the chat and in the
-          Inspector → {ORVEK_COPY.mindModelMovementTab} tab.
+          {EXPLORE_PUBLISHED_MOVEMENT_SECTION_INTRO}
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
           {EXPLORE_MOVEMENT_EMPTY_SUBCOPY}
         </p>
       </div>
+      <p className="label-meta text-meta">
+        Re-enter from:{" "}
+        {EXPLORE_REENTRY_LINKS.map((link, index) => (
+          <span key={link.href}>
+            {index > 0 ? " · " : null}
+            <Link href={link.href} className="hover:text-cyan transition-colors">
+              {link.label}
+            </Link>
+          </span>
+        ))}
+      </p>
     </>
   );
 }

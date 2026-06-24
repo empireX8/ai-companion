@@ -188,13 +188,13 @@ describe("explore movement UI wiring", () => {
     expect(explorePage).toContain("ExploreModelMovementStrip");
     expect(explorePage).toContain("ExploreConversationReviewStrip");
     expect(explorePage).toContain("onConversationUpdated");
+    expect(explorePage).toContain("EXPLORE_PAGE_SUBTITLE");
     expect(explorePage).toContain("refreshExploreSessionMovement");
     expect(explorePage).not.toContain("This will update your model");
     expect(explorePage).not.toContain("We extracted these");
 
-    expect(movementStripSource).toContain('objectType: "model_update"');
-    expect(movementStripSource).toContain('sourceSurface: "explore"');
-    expect(movementStripSource).toContain('tab: "movement"');
+    expect(movementStripSource).toContain("ExploreInspectorAction");
+    expect(movementStripSource).toContain("EXPLORE_MOVEMENT_PUBLISHED_BADGE");
     expect(movementStripSource).toContain("EXPLORE_MOVEMENT_EMPTY_COPY");
     expect(movementStripSource).not.toContain("may update");
 

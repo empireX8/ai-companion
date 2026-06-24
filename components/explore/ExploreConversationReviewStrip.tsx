@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ClipboardList } from "lucide-react";
 
-import { useInspector } from "@/components/inspector/InspectorContext";
+import { ExploreInspectorAction } from "@/components/explore/ExploreInspectorAction";
 import { useExploreSessionBridge } from "@/lib/explore-session-bridge";
 import {
+  EXPLORE_REVIEW_DRAFT_BADGE,
   EXPLORE_REVIEW_EMPTY_COPY,
   EXPLORE_REVIEW_EMPTY_SUBCOPY,
   EXPLORE_REVIEW_HAS_ITEMS_HEADLINE,
@@ -18,6 +19,7 @@ import {
   rejectExploreReferenceReviewItem,
   type ExploreConversationReviewItem,
 } from "@/lib/explore-conversation-review";
+import { EXPLORE_REVIEW_ERROR_COPY } from "@/lib/explore-surface";
 
 function useExploreSessionReviewItems(): {
   items: ExploreConversationReviewItem[];
@@ -83,23 +85,8 @@ function ExploreConversationReviewCard({
   item: ExploreConversationReviewItem;
   onActionComplete: () => void;
 }) {
-  const { selectObject } = useInspector();
   const [isActing, setIsActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-
-  const handleSelect = () => {
-    if (!item.selectableObject) {
-      return;
-    }
-    selectObject({
-      objectType: item.selectableObject.objectType,
-      objectId: item.selectableObject.objectId,
-      modelUpdateId: item.selectableObject.selectedModelUpdateId,
-      title: item.selectableObject.title ?? item.title,
-      sourceSurface: "explore",
-      tab: "evidence",
-    });
-  };
 
   const handleConfirm = async () => {
     if (!item.referenceAction?.referenceId || !item.actions.canConfirm) {
@@ -141,6 +128,9 @@ function ExploreConversationReviewCard({
             <span className="inline-flex rounded-md bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan/75">
               {item.kindLabel}
             </span>
+            <span className="rounded-full bg-white/[0.05] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+              {EXPLORE_REVIEW_DRAFT_BADGE}
+            </span>
             <span className="text-[10px] font-medium uppercase tracking-wide text-meta">
               {item.statusLabel}
             </span>
@@ -156,6 +146,15 @@ function ExploreConversationReviewCard({
           ) : null}
           {item.linkedObjectLabel ? (
             <div className="label-meta mt-1">{item.linkedObjectLabel}</div>
+          ) : null}
+          {item.selectableObject ? (
+            <ExploreInspectorAction
+              objectType={item.selectableObject.objectType}
+              objectId={item.selectableObject.objectId}
+              modelUpdateId={item.selectableObject.selectedModelUpdateId}
+              title={item.selectableObject.title ?? item.title}
+              tab="evidence"
+            />
           ) : null}
         </div>
       </div>
@@ -193,18 +192,6 @@ function ExploreConversationReviewCard({
     </>
   );
 
-  if (item.selectableObject) {
-    return (
-      <button
-        type="button"
-        onClick={handleSelect}
-        className="ml-material ml-calm w-full rounded-xl px-3.5 py-3 text-left hover:bg-white/[0.02]"
-      >
-        {body}
-      </button>
-    );
-  }
-
   if (item.linkedObjectHref) {
     return (
       <Link
@@ -239,7 +226,7 @@ export function ExploreConversationReviewStrip() {
   if (error) {
     return (
       <div className="ml-material rounded-xl px-4 py-3 text-[12px] text-muted-foreground">
-        Could not check conversation review right now.
+        {EXPLORE_REVIEW_ERROR_COPY}
       </div>
     );
   }
@@ -316,7 +303,7 @@ export function ExploreConversationReviewInspectorList() {
   return (
     <div className="space-y-2 px-4 py-3">
       <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-        Draft review items
+        {EXPLORE_REVIEW_DRAFT_BADGE}
       </p>
       <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
         {EXPLORE_REVIEW_HAS_ITEMS_SUBCOPY}

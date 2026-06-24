@@ -198,8 +198,8 @@ describe("explore conversation review UI separation", () => {
     expect(explorePage).toContain("ExploreConversationReviewStrip");
     expect(explorePage).toContain("onConversationUpdated");
 
-    expect(movementStrip).toContain("EXPLORE_MOVEMENT_HAS_UPDATES_HEADLINE");
-    expect(movementStrip).toContain('objectType: "model_update"');
+    expect(movementStrip).toContain("ExploreInspectorAction");
+    expect(movementStrip).toContain("EXPLORE_MOVEMENT_PUBLISHED_BADGE");
     expect(movementStrip).not.toContain("model_update_candidate");
 
     expect(reviewStrip).toContain("EXPLORE_REVIEW_HAS_ITEMS_HEADLINE");

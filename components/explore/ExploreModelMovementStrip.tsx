@@ -3,18 +3,20 @@
 import { useEffect, useState } from "react";
 import { GitCompareArrows } from "lucide-react";
 
-import { useInspector } from "@/components/inspector/InspectorContext";
+import { ExploreInspectorAction } from "@/components/explore/ExploreInspectorAction";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import {
   EXPLORE_MOVEMENT_EMPTY_COPY,
   EXPLORE_MOVEMENT_EMPTY_SUBCOPY,
   EXPLORE_MOVEMENT_HAS_UPDATES_HEADLINE,
   EXPLORE_MOVEMENT_LOADING_COPY,
+  EXPLORE_MOVEMENT_PUBLISHED_BADGE,
   buildExploreMovementHasUpdatesMeta,
   fetchExploreSessionModelUpdates,
   type ExploreSessionModelUpdateItem,
 } from "@/lib/explore-session-model-updates";
 import { useExploreSessionBridge } from "@/lib/explore-session-bridge";
+import { EXPLORE_MOVEMENT_ERROR_COPY } from "@/lib/explore-surface";
 import { ORVEK_COPY } from "@/lib/trust-language";
 
 function formatDateTime(value: string): string {
@@ -37,28 +39,21 @@ export function ExploreModelMovementRow({
   item: ExploreSessionModelUpdateItem;
   compact?: boolean;
 }) {
-  const { selectObject } = useInspector();
   const title = `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`;
 
   return (
-    <button
-      type="button"
-      onClick={() => {
-        selectObject({
-          objectType: "model_update",
-          objectId: item.id,
-          modelUpdateId: item.id,
-          title,
-          sourceSurface: "explore",
-          tab: "movement",
-        });
-      }}
-      className={`ml-material ml-calm w-full rounded-xl text-left hover:bg-white/[0.02] ${
+    <div
+      className={`ml-material w-full rounded-xl ${
         compact ? "px-3 py-2.5" : "px-3.5 py-3"
       }`}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-cyan/75">
-        {item.updateTypeLabel}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-cyan/75">
+          {item.updateTypeLabel}
+        </span>
+        <span className="rounded-full bg-cyan/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-cyan/80">
+          {EXPLORE_MOVEMENT_PUBLISHED_BADGE}
+        </span>
       </div>
       <p
         className={`mt-1 leading-relaxed text-[hsl(216_11%_75%)] ${
@@ -80,7 +75,14 @@ export function ExploreModelMovementRow({
       ) : (
         <div className="label-meta mt-1">{formatDateTime(item.createdAt)}</div>
       )}
-    </button>
+      <ExploreInspectorAction
+        objectType="model_update"
+        objectId={item.id}
+        modelUpdateId={item.id}
+        title={title}
+        tab="movement"
+      />
+    </div>
   );
 }
 
@@ -155,7 +157,7 @@ export function ExploreModelMovementStrip() {
   if (error) {
     return (
       <div className="ml-material rounded-xl px-4 py-3 text-[12px] text-muted-foreground">
-        Could not check for published movement right now.
+        {EXPLORE_MOVEMENT_ERROR_COPY}
       </div>
     );
   }

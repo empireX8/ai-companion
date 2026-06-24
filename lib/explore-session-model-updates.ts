@@ -1,5 +1,5 @@
 import type { WhatChangedListItem } from "./public-intelligence-safe-slice";
-import { ORVEK_COPY } from "./trust-language";
+import { ORVEK_COPY, PRODUCT_NAME } from "./trust-language";
 
 export const EXPLORE_SESSION_MODEL_UPDATES_LIMIT = 3;
 
@@ -10,13 +10,15 @@ export const EXPLORE_SESSION_MODEL_UPDATES_ENDPOINT = (
 ): string =>
   `/api/explore/sessions/${encodeURIComponent(sessionId)}/model-updates`;
 
-export const EXPLORE_MOVEMENT_LOADING_COPY = "Checking for published movement…";
+export const EXPLORE_MOVEMENT_LOADING_COPY =
+  `Checking for published ${ORVEK_COPY.mindModelMovement.toLowerCase()}…`;
 export const EXPLORE_MOVEMENT_EMPTY_COPY =
-  `No published ${ORVEK_COPY.mindModelMovement} from this conversation yet.`;
+  `No published ${ORVEK_COPY.mindModelMovement.toLowerCase()} from this conversation yet.`;
 export const EXPLORE_MOVEMENT_EMPTY_SUBCOPY =
-  "When evidence is reviewed and published, meaningful changes appear here.";
+  `When evidence is reviewed and published, meaningful shifts appear here — separate from draft proposals above.`;
 export const EXPLORE_MOVEMENT_HAS_UPDATES_HEADLINE =
-  `This conversation has published ${ORVEK_COPY.mindModelMovement}`;
+  `Published ${ORVEK_COPY.mindModelMovement} from this conversation`;
+export const EXPLORE_MOVEMENT_PUBLISHED_BADGE = "Published";
 
 export function buildExploreMovementHasUpdatesMeta(count: number): string {
   return `${count} published update${count === 1 ? "" : "s"} from this session`;

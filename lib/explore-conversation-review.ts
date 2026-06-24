@@ -51,13 +51,15 @@ export type ExploreConversationReviewItem = {
   };
 };
 
-export const EXPLORE_REVIEW_LOADING_COPY = "Checking conversation review…";
-export const EXPLORE_REVIEW_EMPTY_COPY = "No proposed updates from this conversation yet.";
+export const EXPLORE_REVIEW_LOADING_COPY = "Checking proposed updates…";
+export const EXPLORE_REVIEW_EMPTY_COPY =
+  "No proposed updates from this conversation yet.";
 export const EXPLORE_REVIEW_EMPTY_SUBCOPY =
-  `Draft review items appear here when the conversation produces something to inspect. Published ${ORVEK_COPY.mindModelMovement} is shown separately.`;
-export const EXPLORE_REVIEW_HAS_ITEMS_HEADLINE = "Review possible updates from this conversation";
+  `Draft or proposed items appear here when the conversation surfaces something to review. Published ${ORVEK_COPY.mindModelMovement} is shown separately below.`;
+export const EXPLORE_REVIEW_HAS_ITEMS_HEADLINE = "Proposed updates to review";
 export const EXPLORE_REVIEW_HAS_ITEMS_SUBCOPY =
-  `These are drafts until you confirm them. Review before applying. Published ${ORVEK_COPY.mindModelMovement} appears separately.`;
+  `These are drafts or proposals — ${ORVEK_COPY.reviewBeforeApplying}. Published ${ORVEK_COPY.mindModelMovement} appears separately.`;
+export const EXPLORE_REVIEW_DRAFT_BADGE = "Draft / proposed";
 export const EXPLORE_REVIEW_ACTIONS_DEFERRED_COPY = "Review actions for this item are not available yet.";
 export const EXPLORE_REVIEW_INSPECTOR_SECTION_LABEL = "Conversation review";
 

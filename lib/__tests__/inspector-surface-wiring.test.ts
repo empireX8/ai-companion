@@ -84,9 +84,9 @@ describe("inspector surface wiring", () => {
     );
 
     expect(reviewSource).toContain("ORVEK_COPY.mindModelMovement");
-    expect(reviewSource).toContain("Review before applying");
+    expect(reviewSource).toContain("ORVEK_COPY.reviewBeforeApplying");
     expect(movementSource).toContain("ORVEK_COPY.mindModelMovement");
-    expect(reviewStripSource).toContain("Draft review items");
+    expect(reviewStripSource).toContain("EXPLORE_REVIEW_DRAFT_BADGE");
     expect(reviewStripSource).not.toContain("published Mind Model movement from this conversation");
   });
 
