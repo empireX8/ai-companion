@@ -1,34 +1,30 @@
 import React from "react";
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { ModelUpdateVisibility } from "@prisma/client";
+import { ModelUpdateVisibility, UnderstandingLinkTargetType } from "@prisma/client";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { WhatChangedHeroMovement } from "@/components/what-changed/WhatChangedHeroMovement";
+import { WhatChangedMovementCard } from "@/components/what-changed/WhatChangedMovementCard";
 import prismadb from "@/lib/prismadb";
+import { listPublicEvidenceContinuityForTarget } from "@/lib/public-evidence-continuity";
+import { toWhatChangedListItem } from "@/lib/public-intelligence-safe-slice";
+import { applyVerifiedAffectedObjectHrefs } from "@/lib/public-linked-object-continuity";
 import {
+  splitWhatChangedMovements,
+  WHAT_CHANGED_EARLIER_SECTION_INTRO,
+  WHAT_CHANGED_EARLIER_SECTION_LABEL,
   WHAT_CHANGED_EMPTY_PRIMARY,
   WHAT_CHANGED_EMPTY_SECONDARY,
-  WHAT_CHANGED_LIST_SECTION_LABEL,
   WHAT_CHANGED_PAGE_INTRO,
+  WHAT_CHANGED_PAGE_META,
+  WHAT_CHANGED_PAGE_TITLE,
+  WHAT_CHANGED_PRIMARY_SECTION_INTRO,
+  WHAT_CHANGED_PRIMARY_SECTION_LABEL,
+  WHAT_CHANGED_REENTRY_LINKS,
 } from "../../../../lib/what-changed-surface";
-import { toWhatChangedListItem } from "@/lib/public-intelligence-safe-slice";
-import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
-import { applyVerifiedAffectedObjectHrefs } from "@/lib/public-linked-object-continuity";
 
 export const dynamic = "force-dynamic";
-
-const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "Europe/London",
-});
-
-function formatDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return DATE_FORMATTER.format(date);
-}
 
 export default async function WhatChangedPage() {
   const { userId } = await auth();
@@ -62,47 +58,70 @@ export default async function WhatChangedPage() {
     items,
   });
 
+  const { primary, earlier } = splitWhatChangedMovements(verifiedItems);
+  const primaryEvidence = primary
+    ? await listPublicEvidenceContinuityForTarget({
+        userId,
+        targetType: UnderstandingLinkTargetType.model_update,
+        targetId: primary.id,
+      })
+    : [];
+
   return (
-    <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
-      <PageHeader
-        title="What Changed"
-        meta="Recent shifts in your understanding"
-      />
+    <div className="animate-fade-in px-6 py-7 lg:px-10">
+      <div className="mx-auto max-w-3xl">
+        <PageHeader
+          title={WHAT_CHANGED_PAGE_TITLE}
+          meta={WHAT_CHANGED_PAGE_META}
+        />
 
-      <p className="text-[13px] text-meta mb-6 max-w-2xl">{WHAT_CHANGED_PAGE_INTRO}</p>
+        <p className="mb-6 max-w-2xl text-[13px] text-muted-foreground">{WHAT_CHANGED_PAGE_INTRO}</p>
 
-      <SectionLabel>{WHAT_CHANGED_LIST_SECTION_LABEL}</SectionLabel>
-      {verifiedItems.length === 0 ? (
-        <div className="card-standard p-5 text-[13px] text-meta space-y-1">
-          <p>{WHAT_CHANGED_EMPTY_PRIMARY}</p>
-          <p className="text-meta/80">{WHAT_CHANGED_EMPTY_SECONDARY}</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {verifiedItems.map((item) => (
-            <article key={item.id} className="card-standard p-5">
-              <div className="label-meta text-cyan/70 mb-2">
-                {item.updateTypeLabel} · {item.affectedObjectTypeLabel}
-              </div>
-              <p className="text-[14px] text-[hsl(216_11%_70%)] leading-relaxed">
-                {item.userFacingSummary}
-              </p>
+        {verifiedItems.length === 0 ? (
+          <div className="ml-material space-y-1 rounded-2xl p-5 text-[13px] text-muted-foreground">
+            <p>{WHAT_CHANGED_EMPTY_PRIMARY}</p>
+            <p className="text-muted-foreground/80">{WHAT_CHANGED_EMPTY_SECONDARY}</p>
+          </div>
+        ) : (
+          <div className="space-y-6" data-testid="what-changed-list">
+            {primary ? (
+              <section>
+                <SectionLabel>{WHAT_CHANGED_PRIMARY_SECTION_LABEL}</SectionLabel>
+                <p className="mt-1 mb-3 text-[12px] text-muted-foreground">
+                  {WHAT_CHANGED_PRIMARY_SECTION_INTRO}
+                </p>
+                <WhatChangedHeroMovement item={primary} evidenceItems={primaryEvidence} />
+              </section>
+            ) : null}
 
-              <div className="mt-3 pt-3 border-t hairline">
-                <PublicLinkedObjectContinuity
-                  objectType={item.affectedObjectType}
-                  objectId={item.affectedObjectId}
-                  href={item.affectedObjectHref}
-                  context="model_update"
-                />
-                <div className="label-meta mt-2">
-                  Recorded {formatDateTime(item.createdAt)}
+            {earlier.length > 0 ? (
+              <section>
+                <SectionLabel>{WHAT_CHANGED_EARLIER_SECTION_LABEL}</SectionLabel>
+                <p className="mt-1 mb-3 text-[12px] text-muted-foreground">
+                  {WHAT_CHANGED_EARLIER_SECTION_INTRO}
+                </p>
+                <div className="space-y-3">
+                  {earlier.map((item) => (
+                    <WhatChangedMovementCard key={item.id} item={item} />
+                  ))}
                 </div>
-              </div>
-            </article>
+              </section>
+            ) : null}
+          </div>
+        )}
+
+        <p className="label-meta mt-8 text-meta">
+          Re-enter from:{" "}
+          {WHAT_CHANGED_REENTRY_LINKS.map((link, index) => (
+            <React.Fragment key={link.href}>
+              {index > 0 ? " · " : null}
+              <Link href={link.href} className="hover:text-cyan transition-colors">
+                {link.label}
+              </Link>
+            </React.Fragment>
           ))}
-        </div>
-      )}
+        </p>
+      </div>
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { WHAT_CHANGED_EMPTY_PRIMARY } from "../what-changed-surface";
+import { PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY } from "../public-continuity-registry";
 
 vi.mock("server-only", () => ({}));
 
@@ -49,6 +51,46 @@ vi.mock("@/lib/public-linked-object-continuity", async () => {
   const actual = await import("../public-linked-object-continuity");
   return actual;
 });
+
+vi.mock("@/lib/public-evidence-continuity", () => ({
+  listPublicEvidenceContinuityForTarget: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("@/components/what-changed/WhatChangedInspectorButton", () => ({
+  WhatChangedInspectorButton: () => null,
+}));
+
+vi.mock("@/components/what-changed/WhatChangedHeroMovement", () => ({
+  WhatChangedHeroMovement: ({
+    item,
+  }: {
+    item: { userFacingSummary: string; affectedObjectHref: string | null };
+  }) =>
+    React.createElement(
+      "div",
+      { "data-testid": "what-changed-primary-movement" },
+      React.createElement("span", null, item.userFacingSummary),
+      item.affectedObjectHref
+        ? React.createElement("a", { href: item.affectedObjectHref }, "linked")
+        : React.createElement("span", null, PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY)
+    ),
+}));
+
+vi.mock("@/components/what-changed/WhatChangedMovementCard", () => ({
+  WhatChangedMovementCard: ({
+    item,
+  }: {
+    item: { userFacingSummary: string; affectedObjectHref: string | null };
+  }) =>
+    React.createElement(
+      "div",
+      { "data-testid": "what-changed-movement-card" },
+      React.createElement("span", null, item.userFacingSummary),
+      item.affectedObjectHref
+        ? React.createElement("a", { href: item.affectedObjectHref }, "linked")
+        : React.createElement("span", null, PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY)
+    ),
+}));
 
 vi.mock("@/lib/prismadb", () => ({
   default: prismaMock,
@@ -169,6 +211,7 @@ describe("Phase 3 What Changed page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
+    expect(html).toContain("Earlier movement");
     expect(html).toContain("/your-map/umc-1");
     expect(html).toContain("/patterns/pc-safe");
     expect(html).toContain("/contradictions/cn-safe");
