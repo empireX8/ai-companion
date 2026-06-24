@@ -12,7 +12,7 @@ type ReceiptGuardCase = {
 const RECEIPT_GUARD_CASES: readonly ReceiptGuardCase[] = [
   {
     label: "actions page",
-    filePath: "app/(root)/(routes)/actions/page.tsx",
+    filePath: "components/decisions/DecisionItemCard.tsx",
     requiredNamespaces: ["receipt-pattern"],
   },
   {

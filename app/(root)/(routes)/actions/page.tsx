@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { PageHeader, SectionLabel } from "@/components/AppShell";
-import { Clock, Compass, Receipt } from "lucide-react";
 import Link from "next/link";
 
+import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { DecisionItemCard } from "@/components/decisions/DecisionItemCard";
+import { DecisionsPriorityBand } from "@/components/decisions/DecisionsPriorityBand";
 import {
   createFieldworkFromAction,
   fetchActionsPageData,
@@ -13,14 +14,25 @@ import {
   type ActionsPageData,
   type SurfacedActionView,
 } from "@/lib/actions-api";
-import { buildPublicReceiptHref } from "@/lib/public-continuity-registry";
-import { buildExploreActionHandoffHref } from "@/lib/explore-action-handoff";
-import { useInspector } from "@/components/inspector/InspectorContext";
+import {
+  DECISIONS_BUILD_TAB_LABEL,
+  DECISIONS_EMPTY_COPY,
+  DECISIONS_ERROR_COPY,
+  DECISIONS_FOOTER_BUILD_COPY,
+  DECISIONS_FOOTER_STABILIZE_COPY,
+  DECISIONS_LOADING_COPY,
+  DECISIONS_PAGE_INTRO,
+  DECISIONS_PAGE_META,
+  DECISIONS_PAGE_TITLE,
+  DECISIONS_SEND_TO_FIELDWORK_ERROR_COPY,
+  DECISIONS_STABILIZE_TAB_LABEL,
+  getDecisionTabIntro,
+  groupDecisionsByResolution,
+} from "@/lib/decisions-surface";
 
 export default function ActionsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { selectObject } = useInspector();
   const [tab, setTab] = useState<ActionBucket>("stabilize");
   const [data, setData] = useState<ActionsPageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +68,7 @@ export default function ActionsPage() {
 
         if (!nextData) {
           setData(null);
-          setErrorMessage("Could not load actions.");
+          setErrorMessage(DECISIONS_ERROR_COPY);
           return;
         }
 
@@ -64,7 +76,7 @@ export default function ActionsPage() {
       } catch {
         if (!cancelled) {
           setData(null);
-          setErrorMessage("Could not load actions.");
+          setErrorMessage(DECISIONS_ERROR_COPY);
         }
       } finally {
         if (!cancelled) {
@@ -88,7 +100,9 @@ export default function ActionsPage() {
     return tab === "stabilize" ? data.stabilizeNow : data.buildForward;
   }, [data, tab]);
 
-  const handleTurnIntoExperiment = async (
+  const groups = useMemo(() => groupDecisionsByResolution(list), [list]);
+
+  const handleSendToFieldwork = async (
     action: Pick<SurfacedActionView, "id" | "title" | "whySuggested">
   ) => {
     if (creatingActionId === action.id) {
@@ -111,7 +125,7 @@ export default function ActionsPage() {
       if (!created?.id) {
         setCreateErrorByActionId((current) => ({
           ...current,
-          [action.id]: "Could not create experiment.",
+          [action.id]: DECISIONS_SEND_TO_FIELDWORK_ERROR_COPY,
         }));
         return;
       }
@@ -126,149 +140,90 @@ export default function ActionsPage() {
 
   return (
     <div className="animate-fade-in px-6 py-7 lg:px-10">
-      <div className="mx-auto max-w-4xl">
-      <PageHeader
-        title="Decisions"
-        meta="Decision workspace — invitations connected to recent patterns and tensions. Full decision lifecycle wiring deferred."
-        compact
-        right={
-          <div className="ml-segmented">
-            {[
-              { id: "stabilize", label: "Stabilize Now" },
-              { id: "build", label: "Build Forward" },
-            ].map((option) => (
-              <button
-                key={option.id}
-                onClick={() => setTab(option.id as ActionBucket)}
-                className={`px-3 py-1.5 text-[11px] font-medium ${tab === option.id ? "ml-segment-active" : "ml-segment-inactive"}`}
-              >
-                {option.label}
-              </button>
+      <div className="mx-auto max-w-3xl">
+        <PageHeader
+          title={DECISIONS_PAGE_TITLE}
+          meta={DECISIONS_PAGE_META}
+          compact
+          right={
+            <div className="ml-segmented">
+              {[
+                { id: "stabilize" as const, label: DECISIONS_STABILIZE_TAB_LABEL },
+                { id: "build" as const, label: DECISIONS_BUILD_TAB_LABEL },
+              ].map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setTab(option.id)}
+                  className={`px-3 py-1.5 text-[11px] font-medium ${tab === option.id ? "ml-segment-active" : "ml-segment-inactive"}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          }
+        />
+
+        <p className="mb-5 max-w-2xl text-[13px] text-muted-foreground">{DECISIONS_PAGE_INTRO}</p>
+
+        {data ? <DecisionsPriorityBand snapshot={data.currentPriority} /> : null}
+
+        <p className="mb-3 text-[12px] text-muted-foreground">{getDecisionTabIntro(tab)}</p>
+
+        {isLoading ? (
+          <div className="ml-material rounded-xl p-4 text-[13px] text-muted-foreground">
+            {DECISIONS_LOADING_COPY}
+          </div>
+        ) : errorMessage ? (
+          <div className="ml-material rounded-xl p-4 text-[13px] text-[hsl(12_80%_64%)]">
+            {errorMessage}
+          </div>
+        ) : list.length === 0 ? (
+          <div className="ml-material space-y-1 rounded-xl p-4 text-[13px] text-muted-foreground">
+            <p>{DECISIONS_EMPTY_COPY}</p>
+          </div>
+        ) : (
+          <div className="space-y-6" data-testid="decisions-list">
+            {groups.map((group) => (
+              <section key={group.key}>
+                <SectionLabel>{group.label}</SectionLabel>
+                <p className="mt-1 mb-3 text-[12px] text-muted-foreground">{group.intro}</p>
+                <div className="space-y-2.5">
+                  {group.items.map((action) => (
+                    <DecisionItemCard
+                      key={action.id}
+                      action={action}
+                      isCreating={creatingActionId === action.id}
+                      createError={createErrorByActionId[action.id]}
+                      onSendToFieldwork={(item) => {
+                        void handleSendToFieldwork(item);
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
-        }
-      />
+        )}
 
-      <SectionLabel>Recommended for you</SectionLabel>
+        <p className="label-meta mt-8 text-center text-muted-foreground">
+          {tab === "stabilize" ? DECISIONS_FOOTER_STABILIZE_COPY : DECISIONS_FOOTER_BUILD_COPY}
+        </p>
 
-      {isLoading ? (
-        <div className="ml-material rounded-xl p-4 text-[13px] text-muted-foreground">Loading actions...</div>
-      ) : errorMessage ? (
-        <div className="ml-material rounded-xl p-4 text-[13px] text-[hsl(12_80%_64%)]">{errorMessage}</div>
-      ) : list.length === 0 ? (
-        <div className="ml-material rounded-xl p-4 text-[13px] text-muted-foreground">No actions are available yet.</div>
-      ) : (
-        <div className="space-y-2.5">
-          {list.map((action) => {
-            const receiptHref = buildPublicReceiptHref({
-              namespace: "receipt-pattern",
-              id: action.linkedClaimId,
-            });
-            const reflectHref = buildExploreActionHandoffHref(action.id);
-            const isCreating = creatingActionId === action.id;
-            const createError = createErrorByActionId[action.id];
-
-            return (
-              <div key={action.id} className="ml-material ml-calm rounded-xl p-4 hover:bg-white/[0.02]">
-                <div className="flex items-start gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="label-meta text-cyan/70">{action.linkedSourceLabel}</div>
-                      <span className="label-meta">·</span>
-                      <div className="label-meta inline-flex items-center gap-1">
-                        <Clock className="h-3 w-3" strokeWidth={1.5} /> {action.effort}
-                      </div>
-                      <span className="label-meta">·</span>
-                      <span className="label-meta">{toStatusLabel(action.status)}</span>
-                    </div>
-                    <div className="text-[15.5px] font-medium mb-1.5">{action.title}</div>
-                    <div className="text-[13.5px] text-[hsl(216_11%_70%)] leading-relaxed mb-3 max-w-[640px]">
-                      {action.whySuggested}
-                    </div>
-                    <div className="label-meta inline-flex items-center gap-2">
-                      Based on{" "}
-                      {action.linkedClaimId ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            selectObject({
-                              objectType: "pattern_claim",
-                              objectId: action.linkedClaimId!,
-                              title: action.linkedClaimSummary ?? action.title,
-                              sourceSurface: "decisions",
-                              tab: "evidence",
-                            });
-                          }}
-                          className="text-cyan hover:underline"
-                        >
-                          {action.linkedClaimSummary ?? action.linkedGoalStatement ?? "Recent activity"}
-                        </button>
-                      ) : (
-                        <span className="text-cyan">
-                          {action.linkedClaimSummary ?? action.linkedGoalStatement ?? "Recent activity"}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-3 pt-3 border-t hairline">
-                      <div className="flex items-center gap-4">
-                        <button
-                          type="button"
-                          disabled={isCreating}
-                          onClick={() => {
-                            void handleTurnIntoExperiment(action);
-                          }}
-                          className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors disabled:opacity-60 disabled:hover:text-meta"
-                        >
-                          {isCreating
-                            ? "Creating experiment..."
-                            : "Turn into experiment"}
-                        </button>
-                        {reflectHref ? (
-                          <Link
-                            href={reflectHref}
-                            className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
-                          >
-                            <Compass className="h-3 w-3" strokeWidth={1.5} />
-                            Reflect in Explore
-                          </Link>
-                        ) : null}
-                        {receiptHref ? (
-                          <Link
-                            href={receiptHref}
-                            className="label-meta inline-flex items-center gap-1.5 text-meta hover:text-cyan transition-colors"
-                          >
-                            <Receipt className="h-3 w-3" strokeWidth={1.5} />
-                            Receipts
-                          </Link>
-                        ) : null}
-                      </div>
-                      {createError ? (
-                        <div className="label-meta text-[hsl(12_80%_64%)] mt-2">
-                          {createError}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="label-meta mt-10 text-center text-muted-foreground">
-        {tab === "stabilize"
-          ? "These are invitations, not tasks."
-          : "These are experiments, not commitments."}
-      </div>
+        <p className="label-meta mt-6 text-center text-meta">
+          Related:{" "}
+          <Link href="/watch-for" className="hover:text-cyan transition-colors">
+            Fieldwork
+          </Link>{" "}
+          ·{" "}
+          <Link href="/your-map" className="hover:text-cyan transition-colors">
+            Your Map
+          </Link>{" "}
+          ·{" "}
+          <Link href="/" className="hover:text-cyan transition-colors">
+            Today
+          </Link>
+        </p>
       </div>
     </div>
   );
-}
-
-function toStatusLabel(status: SurfacedActionView["status"]): string {
-  if (status === "done") return "Done";
-  if (status === "helped") return "Helped";
-  if (status === "didnt_help") return "Didn't help";
-  return "Not started";
 }
