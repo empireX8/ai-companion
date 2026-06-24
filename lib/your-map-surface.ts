@@ -12,6 +12,7 @@ import { ORVEK_COPY, PRODUCT_NAME } from "./trust-language";
 
 export const YOUR_MAP_PAGE_TITLE = "Your Map";
 export const YOUR_MAP_PAGE_META = "Current understanding from your evidence";
+export const YOUR_MAP_UNDERSTANDINGS_SECTION_LABEL = "Current understandings";
 export const YOUR_MAP_PAGE_INTRO =
   `What ${PRODUCT_NAME} currently understands about you from your evidence. Each item is read-only and links to supporting signals when available.`;
 

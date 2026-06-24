@@ -15,12 +15,13 @@ import {
   YOUR_MAP_PAGE_INTRO,
   YOUR_MAP_PAGE_META,
   YOUR_MAP_PAGE_TITLE,
+  YOUR_MAP_UNDERSTANDINGS_SECTION_LABEL,
 } from "@/lib/your-map-surface";
-import { ORVEK_COPY } from "@/lib/trust-language";
 import type { UserMapConclusionPublicApiListItem } from "@/lib/public-intelligence-safe-slice";
 
 import { YourMapDetailPane } from "./YourMapDetailPane";
 import { YourMapListRail } from "./YourMapListRail";
+import { YourMapMindContextPanel } from "./YourMapMindContextPanel";
 
 export function YourMapWorkbench() {
   const router = useRouter();
@@ -115,6 +116,8 @@ export function YourMapWorkbench() {
         <PageHeader title={YOUR_MAP_PAGE_TITLE} meta={YOUR_MAP_PAGE_META} compact />
         <p className="mb-4 max-w-2xl text-sm text-muted-foreground">{YOUR_MAP_PAGE_INTRO}</p>
 
+        <YourMapMindContextPanel className="mb-5" />
+
         {isLoading ? (
           <div className="ml-material rounded-2xl p-5 text-[13px] text-muted-foreground">
             Loading your map…
@@ -125,7 +128,8 @@ export function YourMapWorkbench() {
           </div>
         ) : items.length === 0 ? (
           <div className="ml-material space-y-1 rounded-2xl p-5 text-[13px] text-muted-foreground">
-            <p>{YOUR_MAP_EMPTY_PRIMARY}</p>
+            <SectionLabel>{YOUR_MAP_UNDERSTANDINGS_SECTION_LABEL}</SectionLabel>
+            <p className="mt-3">{YOUR_MAP_EMPTY_PRIMARY}</p>
             <p className="text-muted-foreground/80">{YOUR_MAP_EMPTY_SECONDARY}</p>
           </div>
         ) : (
@@ -135,7 +139,10 @@ export function YourMapWorkbench() {
           >
             <aside className="min-h-0 border-b ml-hairline lg:border-b-0 lg:border-r">
               <div className="px-3 py-3">
-                <SectionLabel>Current {ORVEK_COPY.mindModel}</SectionLabel>
+                <SectionLabel>{YOUR_MAP_UNDERSTANDINGS_SECTION_LABEL}</SectionLabel>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Conclusions from your evidence — grouped by status.
+                </p>
               </div>
               <div className="max-h-[42vh] overflow-y-auto px-3 pb-4 lg:max-h-none lg:flex-1">
                 <YourMapListRail
