@@ -9,12 +9,13 @@
  *
  * V1 scope: read-only. No forecast framing. No tension/audit links.
  * No /projections, /contradictions, /audit references.
- * Language is honest: "What the assistant knows about you."
+ * Language is honest: Mind Context — what Orvek currently understands.
  */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Clock3, Brain, BookOpen } from "lucide-react";
+import { ORVEK_COPY, PRODUCT_NAME } from "@/lib/trust-language";
 
 // ── Quality filter ────────────────────────────────────────────────────────────
 
@@ -107,7 +108,7 @@ export default function ContextPage() {
             <h1 className="text-base font-semibold text-foreground">Context</h1>
           </div>
           <p className="text-xs text-muted-foreground">
-            What the assistant currently knows about you.
+            What {PRODUCT_NAME} currently understands — your {ORVEK_COPY.mindContext.toLowerCase()}.
           </p>
         </div>
 

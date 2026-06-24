@@ -316,14 +316,14 @@ describe("timeline-surface rhythm honesty", () => {
     expect(source.includes("TIMELINE_ACTIVITY_EMPTY_COPY")).toBe(true);
     expect(source.includes("TIMELINE_MODEL_CHANGE_CHIP")).toBe(true);
     expect(TIMELINE_ACTIVITY_SECTION_LABEL).toBe("Evolution stream");
-    expect(TIMELINE_MODEL_CHANGE_CHIP).toBe("Model change");
+    expect(TIMELINE_MODEL_CHANGE_CHIP).toBe("Mind Model change");
     expect(source.includes("buildTimelineStreamItems")).toBe(true);
     expect(source.includes("groupTimelineStreamByDate")).toBe(true);
     expect(source.includes("TIMELINE_SEMANTIC_FILTERS")).toBe(true);
     expect(source.includes("fetchTimelineSemanticEntries")).toBe(true);
     expect(source.includes("modelLayerError")).toBe(true);
     expect(source.includes("TIMELINE_MODEL_LAYERS_ERROR_COPY")).toBe(true);
-    expect(TIMELINE_MODEL_LAYERS_ERROR_COPY).toBe("Could not load model changes.");
+    expect(TIMELINE_MODEL_LAYERS_ERROR_COPY).toBe("Could not load Mind Model changes.");
     expect(source.includes("showActivityEmptyState")).toBe(true);
     expect(source.includes('role="alert"')).toBe(true);
     expect(source.includes("grid-cols-1 md:grid-cols-2")).toBe(true);

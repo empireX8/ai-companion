@@ -8,6 +8,7 @@ import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { resolvePublicLinkedObjectHref } from "@/lib/public-linked-object-continuity";
 import prismadb from "@/lib/prismadb";
 import { buildPublicActiveInvestigationWhere } from "@/lib/active-questions";
+import { ACTIVE_QUESTIONS_COMPETING_THEORIES_EMPTY } from "../../../../../lib/active-questions-surface";
 import { toActiveQuestionDetailItem } from "@/lib/public-intelligence-safe-slice";
 
 export const dynamic = "force-dynamic";
@@ -134,7 +135,7 @@ export default async function ActiveQuestionDetailPage({
         <SectionLabel>Competing theories</SectionLabel>
         {renderBulletList(
           item.competingTheories,
-          "No competing theories yet. MindLab may add these as the question develops."
+          ACTIVE_QUESTIONS_COMPETING_THEORIES_EMPTY
         )}
       </section>
 

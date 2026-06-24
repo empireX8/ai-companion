@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { PRODUCT_NAME } from "@/lib/trust-language";
 
 type UploadStatus =
   | "pending"
@@ -339,7 +340,7 @@ export default function ImportPage() {
       <Link href="/account" className="inline-flex items-center gap-1.5 label-meta hover:text-white mb-6">
         <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} /> Account
       </Link>
-      <PageHeader eyebrow="Account · Sync" title="Import" meta="Bring external conversation history into MindLab" />
+      <PageHeader eyebrow="Account · Sync" title="Import" meta={`Bring external conversation history into ${PRODUCT_NAME}`} />
 
       <input
         ref={inputRef}

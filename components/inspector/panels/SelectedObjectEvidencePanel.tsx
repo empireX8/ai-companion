@@ -15,6 +15,7 @@ import {
   type InspectorEvidenceLinkItem,
 } from "@/lib/inspector-object-api";
 import type { InspectorSelection } from "@/lib/inspector-selection";
+import { ORVEK_COPY } from "@/lib/trust-language";
 import { STRENGTH_LABELS } from "@/lib/patterns-api";
 import type { PatternClaimView } from "@/lib/patterns-api";
 import type { UserMapConclusionPublicApiDetailItem } from "@/lib/public-intelligence-safe-slice";
@@ -273,13 +274,13 @@ function ModelUpdateEvidencePanel({ selection }: { selection: InspectorSelection
   }
 
   if (!detail) {
-    return <UnavailableState objectTypeLabel="Model movement" />;
+    return <UnavailableState objectTypeLabel={ORVEK_COPY.mindModelMovement} />;
   }
 
   return (
     <>
       <ObjectHeader
-        typeLabel="Model movement"
+        typeLabel={ORVEK_COPY.mindModelMovement}
         title={selection.selectedTitle ?? detail.updateTypeLabel}
         meta={detail.affectedObjectTypeLabel}
       />
@@ -296,7 +297,7 @@ function ModelUpdateEvidencePanel({ selection }: { selection: InspectorSelection
           />
         </div>
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Open the Model Movement tab for linked evidence on this update.
+          Open the {ORVEK_COPY.mindModelMovementTab} tab for linked evidence on this update.
         </p>
       </section>
     </>

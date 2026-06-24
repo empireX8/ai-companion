@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 import { BookOpen, HelpCircle, Brain, MessageSquare, Sparkles } from "lucide-react";
+import { PRODUCT_NAME } from "@/lib/trust-language";
 
 export default function HelpPage() {
   return (
@@ -20,7 +21,7 @@ export default function HelpPage() {
           <div>
             <h1 className="text-lg font-semibold text-foreground">How This Works</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              A quick guide to the core concepts in MindLab.
+              A quick guide to the core concepts in {PRODUCT_NAME}.
             </p>
           </div>
         </div>

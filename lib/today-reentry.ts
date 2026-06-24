@@ -21,6 +21,7 @@ import { buildTimelineModelLayersRequestUrl } from "./timeline-model-layers";
 import type { TimelineModelLayerItem } from "./timeline-model-layers";
 import type { WatchForItem } from "./watch-for";
 import { YOUR_MAP_CONCLUSIONS_ENDPOINT } from "./your-map-surface";
+import { ORVEK_COPY } from "./trust-language";
 
 export const TODAY_ATTENTION_SECTION_LABEL = "Needs attention now";
 export const TODAY_ATTENTION_EMPTY_COPY =
@@ -125,12 +126,12 @@ function mapConclusionSelection(
 function heroFromMovement(item: TodayIntelligenceUpdateItem): TodayHeroItem {
   return {
     id: `hero-movement-${item.id}`,
-    laneLabel: "Model movement",
+    laneLabel: ORVEK_COPY.mindModelMovement,
     typeLabel: item.updateTypeLabel,
     title: `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`,
     summary: item.userFacingSummary,
     meta: null,
-    whyItMatters: "Your model shifted based on recent evidence.",
+    whyItMatters: `Your ${ORVEK_COPY.mindModel.toLowerCase()} shifted based on recent evidence.`,
     occurredAt: item.createdAt,
     href: null,
     selection: movementSelection(item),
@@ -292,8 +293,8 @@ export function pickTodayHeroItem(snapshot: TodayReentrySnapshot): TodayHeroItem
 function rowFromMovement(item: TodayIntelligenceUpdateItem): TodayAttentionRow {
   return {
     id: `attention-movement-${item.id}`,
-    laneLabel: "Model movement",
-    typeLabel: "Model change",
+    laneLabel: ORVEK_COPY.mindModelMovement,
+    typeLabel: "Mind Model change",
     title: `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`,
     reason: item.userFacingSummary,
     meta: null,
@@ -453,7 +454,7 @@ export function buildTodayAttentionRows(
 export function buildTodayBriefingTitle(snapshot: TodayReentrySnapshot): string {
   if (snapshot.intelligenceUpdates.length > 0) {
     const count = snapshot.intelligenceUpdates.length;
-    return `Your model moved in ${count} place${count === 1 ? "" : "s"}.`;
+    return `Your ${ORVEK_COPY.mindModel} moved in ${count} place${count === 1 ? "" : "s"}.`;
   }
   if (
     snapshot.userMapConclusions.length > 0 ||

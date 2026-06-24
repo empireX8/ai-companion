@@ -3,6 +3,7 @@
 import { PanelRight, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { ORVEK_COPY } from "@/lib/trust-language";
 import {
   InspectorPanelBody,
   MobileInspectorDrawer,
@@ -11,9 +12,9 @@ import {
 import { useInspector } from "./InspectorContext";
 
 const INSPECTOR_TABS = [
-  { id: "evidence" as const, label: "Evidence / Context" },
-  { id: "movement" as const, label: "Model Movement" },
-];
+  { id: "evidence" as const, label: `Evidence / ${ORVEK_COPY.mindContext}` },
+  { id: "movement" as const, label: ORVEK_COPY.mindModelMovementTab },
+] as const;
 
 function InspectorChrome({ className }: { className?: string }) {
   const { isOpen, close, tab, setTab, selection } = useInspector();

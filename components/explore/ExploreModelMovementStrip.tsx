@@ -15,6 +15,7 @@ import {
   type ExploreSessionModelUpdateItem,
 } from "@/lib/explore-session-model-updates";
 import { useExploreSessionBridge } from "@/lib/explore-session-bridge";
+import { ORVEK_COPY } from "@/lib/trust-language";
 
 function formatDateTime(value: string): string {
   const date = new Date(value);
@@ -215,7 +216,7 @@ export function ExploreSessionMovementInspectorList() {
   if (error) {
     return (
       <div className="px-5 py-8 text-center text-[13px] text-muted-foreground">
-        Could not load session model movement.
+        Could not load session {ORVEK_COPY.mindModelMovement}.
       </div>
     );
   }
@@ -232,7 +233,7 @@ export function ExploreSessionMovementInspectorList() {
   return (
     <div className="space-y-3 px-4 py-4">
       <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-        Published movement from this conversation
+        Published {ORVEK_COPY.mindModelMovement} from this conversation
       </p>
       {items.map((item) => (
         <ExploreModelMovementRow key={item.id} item={item} />

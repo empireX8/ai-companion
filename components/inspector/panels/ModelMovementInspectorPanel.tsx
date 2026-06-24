@@ -19,6 +19,7 @@ import {
   TODAY_INTELLIGENCE_UPDATES_ENDPOINT,
   type TodayIntelligenceUpdateItem,
 } from "@/lib/today-intelligence-updates";
+import { ORVEK_COPY, PRODUCT_NAME } from "@/lib/trust-language";
 import { useInspector } from "../InspectorContext";
 
 function formatDateTime(value: string): string {
@@ -79,7 +80,7 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
   if (notFound || !detail) {
     return (
       <div className="px-5 py-8 text-center text-[13px] text-muted-foreground">
-        This model movement is not available through the public projection.
+        This {ORVEK_COPY.mindModelMovement} is not available through the public projection.
       </div>
     );
   }
@@ -88,7 +89,7 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
     <div className="space-y-3 px-4 py-4">
       <header className="border-b ml-hairline pb-3">
         <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-cyan/75">
-          Model movement
+          {ORVEK_COPY.mindModelMovement}
         </div>
         <h3 className="mt-1 text-[15px] font-semibold leading-snug">
           {detail.updateTypeLabel} · {detail.affectedObjectTypeLabel}
@@ -192,7 +193,7 @@ function GlobalModelMovementList() {
   if (error) {
     return (
       <div className="px-5 py-8 text-center text-[13px] text-muted-foreground">
-        Could not load recent model movement.
+        Could not load recent {ORVEK_COPY.mindModelMovement}.
       </div>
     );
   }
@@ -203,7 +204,7 @@ function GlobalModelMovementList() {
         <GitCompareArrows className="size-6 text-muted-foreground" aria-hidden />
         <p className="text-sm font-medium text-foreground">No recent movement</p>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          When MindLab updates its understanding from your evidence, the summary appears here.
+          When {PRODUCT_NAME} updates its understanding from your evidence, the summary appears here.
         </p>
         <Link
           href="/what-changed"
@@ -218,7 +219,7 @@ function GlobalModelMovementList() {
   return (
     <div className="space-y-3 px-4 py-4">
       <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-        Recent model movement
+        Recent {ORVEK_COPY.mindModelMovement}
       </p>
       {items.map((item) => (
         <article key={item.id} className="ml-material rounded-xl px-3.5 py-3">

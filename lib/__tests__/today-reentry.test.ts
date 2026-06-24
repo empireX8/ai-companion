@@ -223,7 +223,7 @@ describe("today-reentry briefing copy", () => {
       ...emptySnapshot(),
       intelligenceUpdates: [movementItem("mu-1"), movementItem("mu-2")],
     };
-    expect(buildTodayBriefingTitle(snapshot)).toBe("Your model moved in 2 places.");
+    expect(buildTodayBriefingTitle(snapshot)).toBe("Your Mind Model moved in 2 places.");
   });
 
   it("uses sparse fallback title when only non-movement data exists", () => {

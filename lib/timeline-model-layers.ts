@@ -5,6 +5,7 @@ import {
   type WhatChangedListItem,
 } from "./public-intelligence-safe-slice";
 import type { TimelineEntry } from "./timeline-surface";
+import { ORVEK_COPY } from "./trust-language";
 
 type TimelineModelLayerRecord = Pick<
   ModelUpdate,
@@ -24,18 +25,18 @@ export const TIMELINE_MODEL_LAYERS_LIMIT = 20;
 export const TIMELINE_DISPLAY_TIMEZONE = "Europe/London";
 
 export const TIMELINE_PAGE_META =
-  "How your understanding evolved — model movement, decisions, fieldwork, and activity";
+  `How your understanding evolved — ${ORVEK_COPY.mindModelMovement}, decisions, fieldwork, and activity`;
 export const TIMELINE_SIGNALS_SECTION_LABEL = "Signals in this window";
 export const TIMELINE_ACTIVITY_SECTION_LABEL = "Evolution stream";
 export const TIMELINE_ACTIVITY_SECTION_INTRO =
-  "Semantic evolution across model movement, decisions, fieldwork, reports, and sessions — grouped by day.";
-export const TIMELINE_MODEL_CHANGE_CHIP = "Model change";
-export const TIMELINE_ACTIVITY_LOADING_COPY = "Loading activity and model changes…";
+  `Semantic evolution across ${ORVEK_COPY.mindModelMovement}, decisions, fieldwork, reports, and sessions — grouped by day.`;
+export const TIMELINE_MODEL_CHANGE_CHIP = "Mind Model change";
+export const TIMELINE_ACTIVITY_LOADING_COPY = "Loading activity and Mind Model changes…";
 export const TIMELINE_ACTIVITY_EMPTY_COPY =
-  "No activity or model changes in this window yet.";
+  "No activity or Mind Model changes in this window yet.";
 export const TIMELINE_MODEL_LAYERS_LOADING_COPY =
-  "Loading model changes for this window…";
-export const TIMELINE_MODEL_LAYERS_ERROR_COPY = "Could not load model changes.";
+  "Loading Mind Model changes for this window…";
+export const TIMELINE_MODEL_LAYERS_ERROR_COPY = "Could not load Mind Model changes.";
 
 export type TimelineStreamItem =
   | { kind: "activity"; occurredAt: string; entry: TimelineEntry }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useInspectorContextFromPathname } from "../MemoryInspectorDrawer";
+import { ORVEK_COPY } from "@/lib/trust-language";
 
 const SURFACE_EMPTY_COPY: Record<string, { title: string; body: string }> = {
   Today: {
@@ -21,7 +22,7 @@ const SURFACE_EMPTY_COPY: Record<string, { title: string; body: string }> = {
   },
   Explore: {
     title: "Review conversation drafts",
-    body: "Draft review items appear here during Explore. Published movement is on the Model Movement tab.",
+    body: `Draft review items appear here during Explore. Published movement is on the ${ORVEK_COPY.mindModelMovementTab} tab.`,
   },
   Reports: {
     title: "Inspect from the list",

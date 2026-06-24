@@ -4,18 +4,17 @@ import { ModelUpdateVisibility } from "@prisma/client";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import prismadb from "@/lib/prismadb";
+import {
+  WHAT_CHANGED_EMPTY_PRIMARY,
+  WHAT_CHANGED_EMPTY_SECONDARY,
+  WHAT_CHANGED_LIST_SECTION_LABEL,
+  WHAT_CHANGED_PAGE_INTRO,
+} from "../../../../lib/what-changed-surface";
 import { toWhatChangedListItem } from "@/lib/public-intelligence-safe-slice";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { applyVerifiedAffectedObjectHrefs } from "@/lib/public-linked-object-continuity";
 
 export const dynamic = "force-dynamic";
-
-const PAGE_INTRO =
-  "What changed in your model recently — shifts MindLab surfaced from your evidence.";
-const LIST_SECTION_LABEL = "Recent changes";
-const EMPTY_PRIMARY = "Nothing has changed in your model yet.";
-const EMPTY_SECONDARY =
-  "When your understanding shifts, updates will appear here. Keep journaling or checking in to build signal.";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
@@ -70,13 +69,13 @@ export default async function WhatChangedPage() {
         meta="Recent shifts in your understanding"
       />
 
-      <p className="text-[13px] text-meta mb-6 max-w-2xl">{PAGE_INTRO}</p>
+      <p className="text-[13px] text-meta mb-6 max-w-2xl">{WHAT_CHANGED_PAGE_INTRO}</p>
 
-      <SectionLabel>{LIST_SECTION_LABEL}</SectionLabel>
+      <SectionLabel>{WHAT_CHANGED_LIST_SECTION_LABEL}</SectionLabel>
       {verifiedItems.length === 0 ? (
         <div className="card-standard p-5 text-[13px] text-meta space-y-1">
-          <p>{EMPTY_PRIMARY}</p>
-          <p className="text-meta/80">{EMPTY_SECONDARY}</p>
+          <p>{WHAT_CHANGED_EMPTY_PRIMARY}</p>
+          <p className="text-meta/80">{WHAT_CHANGED_EMPTY_SECONDARY}</p>
         </div>
       ) : (
         <div className="space-y-3">

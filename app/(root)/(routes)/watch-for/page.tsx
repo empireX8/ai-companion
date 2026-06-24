@@ -11,15 +11,14 @@ import {
 import prismadb from "@/lib/prismadb";
 import { toWatchForListItem } from "@/lib/public-intelligence-safe-slice";
 import { buildPublicWatchForWhere } from "@/lib/watch-for";
+import {
+  WATCH_FOR_EMPTY_PRIMARY,
+  WATCH_FOR_EMPTY_SECONDARY,
+  WATCH_FOR_LIST_SECTION_LABEL,
+  WATCH_FOR_PAGE_INTRO,
+} from "../../../../lib/watch-for-surface";
 
 export const dynamic = "force-dynamic";
-
-const PAGE_INTRO =
-  "Small things to notice in real life, drawn from your evidence. Each prompt links to a related item when available.";
-const LIST_SECTION_LABEL = "Watch prompts";
-const EMPTY_PRIMARY = "Nothing to watch for yet.";
-const EMPTY_SECONDARY =
-  "When there is enough evidence, MindLab may surface observation prompts here. Keep capturing signal in journal or check-ins.";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
@@ -73,13 +72,13 @@ export default async function WatchForPage() {
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
       <PageHeader title="Watch For" meta="Small things to notice" />
 
-      <p className="text-[13px] text-meta mb-6 max-w-2xl">{PAGE_INTRO}</p>
+      <p className="text-[13px] text-meta mb-6 max-w-2xl">{WATCH_FOR_PAGE_INTRO}</p>
 
-      <SectionLabel>{LIST_SECTION_LABEL}</SectionLabel>
+      <SectionLabel>{WATCH_FOR_LIST_SECTION_LABEL}</SectionLabel>
       {items.length === 0 ? (
         <div className="card-standard p-5 text-[13px] text-meta space-y-1">
-          <p>{EMPTY_PRIMARY}</p>
-          <p className="text-meta/80">{EMPTY_SECONDARY}</p>
+          <p>{WATCH_FOR_EMPTY_PRIMARY}</p>
+          <p className="text-meta/80">{WATCH_FOR_EMPTY_SECONDARY}</p>
         </div>
       ) : (
         <div className="space-y-3">

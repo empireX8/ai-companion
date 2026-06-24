@@ -20,6 +20,7 @@ import {
 import { ExploreModelMovementStrip } from "@/components/explore/ExploreModelMovementStrip";
 import { ExploreConversationReviewStrip } from "@/components/explore/ExploreConversationReviewStrip";
 import { useInspector } from "@/components/inspector/InspectorContext";
+import { ORVEK_COPY } from "@/lib/trust-language";
 import { SurfaceChatShell } from "../chat/_components/SurfaceChatShell";
 
 const EXPLORE_CHAT_STORAGE_KEY = "mindlabs:explore:session-id";
@@ -281,14 +282,14 @@ function ExploreDefaultContextPanel() {
         <div className="label-meta mb-1.5">Conversation review</div>
         <div className="text-[12px] leading-relaxed text-muted-foreground">
           Draft review items from this conversation appear above the chat. Published
-          movement is shown separately in the strip above and in Inspector → Model Movement.
+          movement is shown separately in the strip above and in Inspector → {ORVEK_COPY.mindModelMovementTab}.
         </div>
       </div>
       <div className="ml-material mb-3 rounded-xl p-3">
-        <div className="label-meta mb-1.5">Model movement</div>
+        <div className="label-meta mb-1.5">{ORVEK_COPY.mindModelMovement}</div>
         <div className="text-[12px] leading-relaxed text-muted-foreground">
           Published movement from this conversation appears above the chat and in the
-          Inspector → Model Movement tab.
+          Inspector → {ORVEK_COPY.mindModelMovementTab} tab.
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
           {EXPLORE_MOVEMENT_EMPTY_SUBCOPY}

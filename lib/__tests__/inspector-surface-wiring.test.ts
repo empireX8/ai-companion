@@ -59,7 +59,8 @@ describe("inspector surface wiring", () => {
     expect(panelSource).toContain("ExploreSessionMovementInspectorList");
 
     const exploreMovementSource = readSource("components/explore/ExploreModelMovementStrip.tsx");
-    expect(exploreMovementSource).toContain("Published movement from this conversation");
+    expect(exploreMovementSource).toContain("ORVEK_COPY.mindModelMovement");
+    expect(exploreMovementSource).toContain("from this conversation");
   });
 
   it("clears cross-surface inspector selection on navigation", () => {
@@ -78,10 +79,11 @@ describe("inspector surface wiring", () => {
       "components/explore/ExploreConversationReviewStrip.tsx"
     );
 
-    expect(reviewSource).toContain("Published model movement appears separately");
-    expect(movementSource).toContain("published model movement");
+    expect(reviewSource).toContain("ORVEK_COPY.mindModelMovement");
+    expect(reviewSource).toContain("Review before applying");
+    expect(movementSource).toContain("ORVEK_COPY.mindModelMovement");
     expect(reviewStripSource).toContain("Draft review items");
-    expect(reviewStripSource).not.toContain("published model movement from this conversation");
+    expect(reviewStripSource).not.toContain("published Mind Model movement from this conversation");
   });
 
   it("does not expose internal candidate fields in inspector API routes", () => {

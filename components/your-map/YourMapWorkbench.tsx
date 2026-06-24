@@ -16,6 +16,7 @@ import {
   YOUR_MAP_PAGE_META,
   YOUR_MAP_PAGE_TITLE,
 } from "@/lib/your-map-surface";
+import { ORVEK_COPY } from "@/lib/trust-language";
 import type { UserMapConclusionPublicApiListItem } from "@/lib/public-intelligence-safe-slice";
 
 import { YourMapDetailPane } from "./YourMapDetailPane";
@@ -134,7 +135,7 @@ export function YourMapWorkbench() {
           >
             <aside className="min-h-0 border-b ml-hairline lg:border-b-0 lg:border-r">
               <div className="px-3 py-3">
-                <SectionLabel>Current model</SectionLabel>
+                <SectionLabel>Current {ORVEK_COPY.mindModel}</SectionLabel>
               </div>
               <div className="max-h-[42vh] overflow-y-auto px-3 pb-4 lg:max-h-none lg:flex-1">
                 <YourMapListRail

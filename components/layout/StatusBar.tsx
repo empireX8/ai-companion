@@ -1,5 +1,7 @@
 import { Brain, Circle } from "lucide-react";
 
+import { PRODUCT_NAME } from "@/lib/trust-language";
+
 export function StatusBar() {
   return (
     <div className="flex h-6 shrink-0 items-center justify-between border-t border-border/40 bg-background px-3">
@@ -14,7 +16,7 @@ export function StatusBar() {
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-[10px] text-muted-foreground/50">MindLab v0.1</span>
+        <span className="text-[10px] text-muted-foreground/50">{PRODUCT_NAME} v0.1</span>
       </div>
     </div>
   );

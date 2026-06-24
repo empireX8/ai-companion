@@ -6,15 +6,14 @@ import { PageHeader, SectionLabel } from "@/components/AppShell";
 import prismadb from "@/lib/prismadb";
 import { buildPublicActiveInvestigationWhere } from "@/lib/active-questions";
 import { toActiveQuestionListItem } from "@/lib/public-intelligence-safe-slice";
+import {
+  ACTIVE_QUESTIONS_EMPTY_PRIMARY,
+  ACTIVE_QUESTIONS_EMPTY_SECONDARY,
+  ACTIVE_QUESTIONS_LIST_SECTION_LABEL,
+  ACTIVE_QUESTIONS_PAGE_INTRO,
+} from "../../../../lib/active-questions-surface";
 
 export const dynamic = "force-dynamic";
-
-const PAGE_INTRO =
-  "Open questions MindLab is still investigating. Each thread is read-only.";
-const LIST_SECTION_LABEL = "Open questions";
-const EMPTY_PRIMARY = "No open questions yet.";
-const EMPTY_SECONDARY =
-  "When there is enough evidence, MindLab may surface questions to test here. Journal, check in, or explore to add signal.";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
@@ -60,13 +59,13 @@ export default async function ActiveQuestionsPage() {
     <div className="px-12 py-10 max-w-[1100px] mx-auto animate-fade-in">
       <PageHeader title="Active Questions" meta="Questions still being investigated" />
 
-      <p className="text-[13px] text-meta mb-6 max-w-2xl">{PAGE_INTRO}</p>
+      <p className="text-[13px] text-meta mb-6 max-w-2xl">{ACTIVE_QUESTIONS_PAGE_INTRO}</p>
 
-      <SectionLabel>{LIST_SECTION_LABEL}</SectionLabel>
+      <SectionLabel>{ACTIVE_QUESTIONS_LIST_SECTION_LABEL}</SectionLabel>
       {items.length === 0 ? (
         <div className="card-standard p-5 text-[13px] text-meta space-y-1">
-          <p>{EMPTY_PRIMARY}</p>
-          <p className="text-meta/80">{EMPTY_SECONDARY}</p>
+          <p>{ACTIVE_QUESTIONS_EMPTY_PRIMARY}</p>
+          <p className="text-meta/80">{ACTIVE_QUESTIONS_EMPTY_SECONDARY}</p>
         </div>
       ) : (
         <div className="space-y-3">

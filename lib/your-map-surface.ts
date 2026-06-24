@@ -8,22 +8,23 @@ import {
   type UserMapConclusionPublicApiDetailItem,
   type UserMapConclusionPublicApiListItem,
 } from "./public-intelligence-safe-slice";
+import { ORVEK_COPY, PRODUCT_NAME } from "./trust-language";
 
 export const YOUR_MAP_PAGE_TITLE = "Your Map";
 export const YOUR_MAP_PAGE_META = "Current understanding from your evidence";
 export const YOUR_MAP_PAGE_INTRO =
-  "What MindLab currently understands about you from your evidence. Each item is read-only and links to supporting signals when available.";
+  `What ${PRODUCT_NAME} currently understands about you from your evidence. Each item is read-only and links to supporting signals when available.`;
 
 export const YOUR_MAP_EMPTY_PRIMARY = "Nothing on your map yet.";
 export const YOUR_MAP_EMPTY_SECONDARY =
-  "MindLab builds this map from journal, explore, import, decisions, and linked evidence over time. Keep capturing signal and conclusions will appear here when supported.";
+  `${PRODUCT_NAME} builds this map from journal, explore, import, decisions, and linked evidence over time. Keep capturing signal and conclusions will appear here when supported.`;
 
 export const YOUR_MAP_PROVENANCE_INTRO =
   "Patterns and signals linked to this conclusion. Message content is never shown here.";
 export const YOUR_MAP_EVIDENCE_BREADTH_INTRO =
   "Counts from linked evidence — not a certainty score.";
 export const YOUR_MAP_CORRECTION_DEFERRED_COPY =
-  "Correction controls deferred — use Explore or Journal to add contradicting evidence.";
+  `To correct ${ORVEK_COPY.orveksRead}, use Explore or Journal to add contradicting evidence. Correction controls are deferred here.`;
 export const YOUR_MAP_INSPECTOR_EVIDENCE_HINT =
   "Open the Inspector Evidence tab for the full linked-evidence list.";
 

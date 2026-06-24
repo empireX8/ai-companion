@@ -1,7 +1,7 @@
 /**
  * Trust-language — terminology registry and banned-language guardrails (P4-01, P4-02)
  *
- * Single source of truth for approved visible terminology in MindLab V1.
+ * Single source of truth for approved visible terminology in Orvek V1.
  * Imported by UI surfaces, the trust-copy module, and regression tests.
  *
  * LOCKED: Do not add terms without a Packet 4 decision.
@@ -11,7 +11,19 @@
 // ── P4-01: Terminology registry ───────────────────────────────────────────────
 
 /** The canonical product name. Use this everywhere the product name appears. */
-export const PRODUCT_NAME = "MindLab" as const;
+export const PRODUCT_NAME = "Orvek" as const;
+
+/** Governed Orvek / Mind Model user-facing terminology. */
+export const ORVEK_COPY = {
+  mindModel: "Mind Model",
+  mindContext: "Mind Context",
+  mindModelMovement: "Mind Model movement",
+  mindModelMovementTab: "Mind Model movement",
+  orveksRead: "Orvek's read",
+  currentUnderstanding: "current understanding",
+  possibleUpdate: "possible update",
+  reviewBeforeApplying: "review before applying",
+} as const;
 
 /** Canonical visible surface names — matches V1 primary, layer, and legacy support routes. */
 export const SURFACE_NAMES = {

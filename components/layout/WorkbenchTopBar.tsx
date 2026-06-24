@@ -5,6 +5,7 @@ import { Download, PanelRight, Plus, Search } from "lucide-react";
 
 import { useCommandPalette } from "@/components/command/CommandPaletteContext";
 import { useInspector } from "@/components/inspector/InspectorContext";
+import { PRODUCT_NAME } from "@/lib/trust-language";
 import { cn } from "@/lib/utils";
 
 export function WorkbenchTopBar() {
@@ -17,7 +18,7 @@ export function WorkbenchTopBar() {
         <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[hsl(187_100%_50%/0.25)] bg-[hsl(187_100%_50%/0.08)]">
           <div className="h-1.5 w-1.5 rounded-full bg-cyan/90" />
         </div>
-        <span className="text-[14px] font-medium tracking-tight">MindLab</span>
+        <span className="text-[14px] font-medium tracking-tight">{PRODUCT_NAME}</span>
       </div>
 
       <span className="mx-0.5 hidden h-5 w-px bg-white/10 sm:block" aria-hidden />

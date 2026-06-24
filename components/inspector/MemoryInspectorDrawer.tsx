@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { ORVEK_COPY } from "@/lib/trust-language";
 import { PanelBar } from "@/components/ui/PanelBar";
 import { useInspector } from "./InspectorContext";
 import { InspectorPanelRouter } from "./InspectorPanelRouter";
@@ -42,9 +43,9 @@ export function useInspectorContextFromPathname(): {
 }
 
 const INSPECTOR_TABS = [
-  { id: "evidence" as const, label: "Evidence / Context" },
-  { id: "movement" as const, label: "Model Movement" },
-];
+  { id: "evidence" as const, label: `Evidence / ${ORVEK_COPY.mindContext}` },
+  { id: "movement" as const, label: ORVEK_COPY.mindModelMovementTab },
+] as const;
 
 function InspectorTabContent() {
   return <InspectorPanelRouter />;

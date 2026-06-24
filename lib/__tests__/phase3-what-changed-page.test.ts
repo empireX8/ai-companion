@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { WHAT_CHANGED_EMPTY_PRIMARY } from "../what-changed-surface";
 
 vi.mock("server-only", () => ({}));
 
@@ -73,7 +74,7 @@ describe("Phase 3 What Changed page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("Nothing has changed in your model yet.");
+    expect(html).toContain(WHAT_CHANGED_EMPTY_PRIMARY);
     expect(prismaMock.modelUpdate.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {

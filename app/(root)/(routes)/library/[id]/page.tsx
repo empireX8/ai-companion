@@ -10,6 +10,7 @@ import {
   toLibraryDateTimeLabel,
   type LibraryDetailView,
 } from "@/lib/library-surface";
+import { PRODUCT_NAME } from "@/lib/trust-language";
 import {
   ArrowLeft,
   BookText,
@@ -292,7 +293,7 @@ function ReceiptView({ detail }: { detail: Extract<LibraryDetailView, { kind: "r
         </div>
 
         <div className="label-meta text-meta mb-4">
-          This is the context MindLab used.
+          This is the context {PRODUCT_NAME} used.
         </div>
       </div>
 

@@ -7,6 +7,8 @@
  * Legacy/support routes remain reachable but are not primary IA.
  */
 
+import { PRODUCT_NAME } from "./trust-language";
+
 export type V1NavRoute = {
   href: string;
   label: string;
@@ -141,7 +143,7 @@ export function resolveV1SectionLabel(pathname: string): string {
     }
   }
 
-  return "MindLab";
+  return PRODUCT_NAME;
 }
 
 /** Global rail primary nav — icons assigned in GlobalRail. */

@@ -7,6 +7,7 @@
 
 import { describe, it, expect } from "vitest";
 import {
+  ORVEK_COPY,
   PRODUCT_NAME,
   SURFACE_NAMES,
   PATTERN_STATUS_LABELS,
@@ -65,8 +66,23 @@ import {
 // ── P4-01: Terminology registry ───────────────────────────────────────────────
 
 describe("P4-01: PRODUCT_NAME", () => {
-  it("is MindLab", () => {
-    expect(PRODUCT_NAME).toBe("MindLab");
+  it("is Orvek", () => {
+    expect(PRODUCT_NAME).toBe("Orvek");
+  });
+});
+
+describe("P4-01: ORVEK_COPY", () => {
+  it("defines governed Mind Model terminology", () => {
+    expect(ORVEK_COPY.mindModel).toBe("Mind Model");
+    expect(ORVEK_COPY.mindContext).toBe("Mind Context");
+    expect(ORVEK_COPY.mindModelMovement).toBe("Mind Model movement");
+    expect(ORVEK_COPY.orveksRead).toBe("Orvek's read");
+  });
+
+  it("Orvek copy strings are trust-safe", () => {
+    for (const value of Object.values(ORVEK_COPY)) {
+      expect(isTrustSafe(value)).toBe(true);
+    }
   });
 });
 

@@ -31,6 +31,7 @@ import { TopBarSlot } from "@/components/layout/TopBarSlot";
 import { useDomainListPanel } from "@/components/layout/DomainListContext";
 import { ChatContextDrawer } from "@/components/chat/ChatContextDrawer";
 import { createOnceGuard, resolveChatBootstrapSession } from "@/lib/chat-session-bootstrap";
+import { PRODUCT_NAME } from "@/lib/trust-language";
 import {
   buildAppSessionCreateRequestInit,
   buildAppSessionListUrl,
@@ -1235,7 +1236,7 @@ export function ChatSurface({
           href="/"
           className="font-display text-xs font-semibold uppercase tracking-wider text-foreground transition-opacity hover:opacity-80"
         >
-          MindLab
+          {PRODUCT_NAME}
         </Link>
 
         <div className="flex items-center gap-2">

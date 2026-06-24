@@ -4,6 +4,7 @@ import type { ActiveQuestionItem } from "./active-questions";
 import type { WatchForItem } from "./watch-for";
 import { getWindowStartDate, resolveTimelineWindow, type TimelineWindow } from "./timeline-aggregation";
 import type { TimelineEntry } from "./timeline-surface";
+import { ORVEK_COPY } from "./trust-language";
 
 export type TimelineSemanticLane =
   | "model_movement"
@@ -38,7 +39,7 @@ export const TIMELINE_SEMANTIC_FILTERS: {
   label: string;
 }[] = [
   { id: "all", label: "All" },
-  { id: "model_movement", label: "Model movement" },
+  { id: "model_movement", label: ORVEK_COPY.mindModelMovement },
   { id: "evidence_receipts", label: "Evidence / receipts" },
   { id: "decisions_actions", label: "Actions / decisions" },
   { id: "fieldwork", label: "Fieldwork / watch-for" },
@@ -47,7 +48,7 @@ export const TIMELINE_SEMANTIC_FILTERS: {
 ];
 
 export const TIMELINE_LANE_LABELS: Record<TimelineSemanticLane, string> = {
-  model_movement: "Model movement",
+  model_movement: ORVEK_COPY.mindModelMovement,
   decisions_actions: "Decisions",
   fieldwork: "Fieldwork",
   reports: "Reports",
