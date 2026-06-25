@@ -189,14 +189,16 @@ describe("/api/explore/sessions/[id]/review-items", () => {
 describe("explore conversation review UI separation", () => {
   it("keeps published movement and conversation review separate in Explore UI", () => {
     const explorePage = readSource("app/(root)/(routes)/explore/page.tsx");
+    const orvekExplore = readSource("components/orvek-workbench/OrvekExplorePage.tsx");
     const movementStrip = readSource("components/explore/ExploreModelMovementStrip.tsx");
     const reviewStrip = readSource("components/explore/ExploreConversationReviewStrip.tsx");
     const movementPanel = readSource("components/inspector/panels/ModelMovementInspectorPanel.tsx");
     const chatPanel = readSource("components/inspector/panels/ChatInspectorPanel.tsx");
 
-    expect(explorePage).toContain("ExploreModelMovementStrip");
-    expect(explorePage).toContain("ExploreConversationReviewStrip");
-    expect(explorePage).toContain("onConversationUpdated");
+    expect(explorePage).toContain("OrvekExplorePage");
+    expect(orvekExplore).toContain("ExploreModelMovementStrip");
+    expect(orvekExplore).toContain("ExploreConversationReviewStrip");
+    expect(orvekExplore).toContain("onConversationUpdated");
 
     expect(movementStrip).toContain("ExploreInspectorAction");
     expect(movementStrip).toContain("EXPLORE_MOVEMENT_PUBLISHED_BADGE");
@@ -216,6 +218,7 @@ describe("explore conversation review UI separation", () => {
   it("does not expose internal review routes in Explore surfaces", () => {
     const sources = [
       readSource("app/(root)/(routes)/explore/page.tsx"),
+      readSource("components/orvek-workbench/OrvekExplorePage.tsx"),
       readSource("components/explore/ExploreConversationReviewStrip.tsx"),
       readSource("lib/explore-session-review-items-server.ts"),
     ].join("\n");

@@ -1,14 +1,14 @@
 import React, { Suspense } from "react";
 import { auth } from "@clerk/nextjs/server";
 
-import { YourMapWorkbench } from "@/components/your-map/YourMapWorkbench";
+import { OrvekMapPage } from "@/components/orvek-workbench/OrvekMapPage";
 
 export const dynamic = "force-dynamic";
 
-function YourMapWorkbenchFallback() {
+function YourMapFallback() {
   return (
-    <div className="animate-fade-in px-4 py-6 lg:px-8 lg:py-7">
-      <div className="ml-material rounded-2xl p-5 text-[13px] text-muted-foreground">
+    <div className="px-6 pt-5 pb-4 lg:px-8">
+      <div className="o-material rounded-2xl p-5 text-[13px] text-muted-foreground">
         Loading your map…
       </div>
     </div>
@@ -22,8 +22,8 @@ export default async function YourMapPage() {
   }
 
   return (
-    <Suspense fallback={<YourMapWorkbenchFallback />}>
-      <YourMapWorkbench />
+    <Suspense fallback={<YourMapFallback />}>
+      <OrvekMapPage />
     </Suspense>
   );
 }

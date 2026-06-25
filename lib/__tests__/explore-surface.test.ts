@@ -53,17 +53,18 @@ describe("explore-surface copy", () => {
 describe("explore surface wiring", () => {
   it("renders grounding hierarchy and inspector actions without internal fields", () => {
     const pageSource = readSource("app/(root)/(routes)/explore/page.tsx");
+    const exploreSource = readSource("components/orvek-workbench/OrvekExplorePage.tsx");
     const movementSource = readSource("components/explore/ExploreModelMovementStrip.tsx");
     const reviewSource = readSource("components/explore/ExploreConversationReviewStrip.tsx");
     const inspectorSource = readSource("components/explore/ExploreInspectorAction.tsx");
 
-    expect(pageSource).toContain("EXPLORE_PAGE_INTRO");
-    expect(pageSource).toContain("EXPLORE_REENTRY_LINKS");
-    expect(pageSource).toContain("ExploreModelMovementStrip");
-    expect(pageSource).toContain("ExploreConversationReviewStrip");
-    expect(pageSource).not.toContain("Open reflection");
-    expect(pageSource).not.toContain("beforeSummary");
-    expect(pageSource).not.toContain("internal_only");
+    expect(pageSource).toContain("OrvekExplorePage");
+    expect(exploreSource).toContain("EXPLORE_PAGE_INTRO");
+    expect(exploreSource).toContain("ExploreModelMovementStrip");
+    expect(exploreSource).toContain("ExploreConversationReviewStrip");
+    expect(exploreSource).not.toContain("Open reflection");
+    expect(exploreSource).not.toContain("beforeSummary");
+    expect(exploreSource).not.toContain("internal_only");
 
     expect(movementSource).toContain("ExploreInspectorAction");
     expect(movementSource).toContain("EXPLORE_MOVEMENT_PUBLISHED_BADGE");

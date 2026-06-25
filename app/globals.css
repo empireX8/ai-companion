@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./styles/ml-workbench.css";
+@import "./styles/orvek-workbench.css";
 
-/* MindLab design system — true black + neon cyan */
+/* Orvek v0 design system — graphite atmosphere */
 
 @custom-variant dark (&:is(.dark *));
 
@@ -48,6 +49,13 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
+  --color-evidence: var(--evidence);
+  --color-evidence-foreground: var(--evidence-foreground);
+  --color-evidence-muted: var(--evidence-muted);
+  --color-action: var(--action);
+  --color-action-foreground: var(--action-foreground);
+  --color-action-muted: var(--action-muted);
+
   /* New tokens */
   --color-elevated: hsl(var(--elevated));
   --color-meta: hsl(var(--meta));
@@ -78,49 +86,50 @@
 }
 
 :root {
-  --radius: 0.875rem;
+  color-scheme: dark;
+  --radius: 0.5rem;
 
-  /* True black background */
-  --background: hsl(0 0% 0%);
-  --foreground: hsl(0 0% 100%);
+  --background: oklch(0.17 0.004 250);
+  --foreground: oklch(0.93 0.004 250);
 
-  /* Card = #080e14 */
-  --card: hsl(210 39% 6%);
-  --card-foreground: hsl(0 0% 100%);
+  --card: oklch(0.255 0.004 250);
+  --card-foreground: oklch(0.93 0.004 250);
 
-  /* Elevated = #0d1520 */
-  --elevated: 213 41% 9%;
+  --elevated: 220 8% 22%;
 
-  --popover: hsl(210 39% 6%);
-  --popover-foreground: hsl(0 0% 100%);
+  --popover: oklch(0.27 0.004 250);
+  --popover-foreground: oklch(0.93 0.004 250);
 
-  /* Neon cyan #00E5FF */
-  --primary: hsl(187 100% 50%);
-  --primary-foreground: hsl(0 0% 0%);
+  --primary: oklch(0.72 0.05 220);
+  --primary-foreground: oklch(0.16 0.01 240);
 
-  --secondary: hsl(213 41% 9%);
-  --secondary-foreground: hsl(0 0% 100%);
+  --secondary: oklch(0.31 0.004 250);
+  --secondary-foreground: oklch(0.9 0.004 250);
 
-  --muted: hsl(213 41% 9%);
-  --muted-foreground: hsl(216 11% 65%);
+  --muted: oklch(0.3 0.004 250);
+  --muted-foreground: oklch(0.66 0.006 250);
 
-  --accent: hsl(187 100% 50%);
-  --accent-foreground: hsl(0 0% 0%);
+  --accent: oklch(0.34 0.006 240);
+  --accent-foreground: oklch(0.93 0.004 250);
 
-  /* Warm pull (amber) */
-  --warm: 32 90% 60%;
+  --warm: 72 55% 62%;
 
-  --destructive: hsl(0 70% 55%);
-  --destructive-foreground: hsl(0 0% 100%);
+  --destructive: oklch(0.62 0.16 25);
+  --destructive-foreground: oklch(0.93 0.004 250);
 
-  /* Hairline white border */
-  --border: hsl(0 0% 100% / 0.08);
-  --input: hsl(213 41% 9%);
-  --ring: hsl(187 100% 50%);
+  --border: oklch(0.42 0.006 250);
+  --input: oklch(0.4 0.006 250);
+  --ring: oklch(0.72 0.05 220);
 
-  /* Metadata colors */
-  --meta: 209 18% 42%;
-  --meta-deep: 218 17% 27%;
+  --evidence: oklch(0.72 0.05 220);
+  --evidence-foreground: oklch(0.16 0.01 240);
+  --evidence-muted: oklch(0.4 0.03 220);
+  --action: oklch(0.78 0.12 72);
+  --action-foreground: oklch(0.22 0.05 60);
+  --action-muted: oklch(0.42 0.06 65);
+
+  --meta: 220 6% 52%;
+  --meta-deep: 220 8% 38%;
 
   /* Charts */
   --chart-1: hsl(187 100% 50%);
@@ -155,6 +164,7 @@
 
   --font-display: 'IBM Plex Mono', monospace;
   --font-body: 'IBM Plex Sans', sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
 
   /* Panel tokens */
   --panel-bg: hsl(0 0% 0%);
@@ -173,12 +183,12 @@
 
   html, body, :root {
     height: 100%;
-    background: hsl(0 0% 0%);
+    background: var(--background);
     color-scheme: dark;
   }
 
   body {
-    color: hsl(0 0% 100%);
+    color: var(--foreground);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -202,6 +212,7 @@
 
 @layer components {
   .font-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  .font-serif { font-family: var(--font-serif); }
 
   .label-meta {
     font-family: 'IBM Plex Mono', monospace;

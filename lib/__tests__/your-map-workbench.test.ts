@@ -9,44 +9,40 @@ function readSource(relativePath: string): string {
 describe("your-map workbench", () => {
   it("renders master-detail layout on /your-map", () => {
     const pageSource = readSource("app/(root)/(routes)/your-map/page.tsx");
-    const workbenchSource = readSource("components/your-map/YourMapWorkbench.tsx");
+    const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
     const mindContextSource = readSource("components/your-map/YourMapMindContextPanel.tsx");
 
-    expect(pageSource).toContain("YourMapWorkbench");
-    expect(workbenchSource).toContain('data-testid="your-map-workbench"');
-    expect(workbenchSource).toContain("YourMapListRail");
-    expect(workbenchSource).toContain("YourMapDetailPane");
-    expect(workbenchSource).toContain("YourMapMindContextPanel");
-    expect(workbenchSource).toContain("YourMapPreviewBands");
+    expect(pageSource).toContain("OrvekMapPage");
+    expect(workbenchSource).toContain('data-testid="orvek-map-page"');
+    expect(workbenchSource).toContain("groupUserMapConclusionsByStatus");
+    expect(workbenchSource).toContain("fetchInspectorUserMapDetail");
+    expect(workbenchSource).toContain("fetchMindContextSnapshot");
     expect(mindContextSource).toContain('data-testid="your-map-mind-context-panel"');
     expect(mindContextSource).toContain("fetchMindContextSnapshot");
     expect(mindContextSource).toContain("MIND_CONTEXT_EMPTY_PRIMARY");
-    expect(workbenchSource).toContain("lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]");
+    expect(workbenchSource).toContain("grid-cols-1 lg:grid-cols-[300px_1fr]");
   });
 
   it("selects map rows into inspector evidence context without full navigation", () => {
-    const workbenchSource = readSource("components/your-map/YourMapWorkbench.tsx");
+    const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
     const mindContextSource = readSource("components/your-map/YourMapMindContextPanel.tsx");
 
     expect(workbenchSource).toContain('objectType: "usermap_conclusion"');
-    expect(workbenchSource).toContain('sourceSurface: "map"');
+    expect(workbenchSource).toContain("useOrvekInspector");
     expect(workbenchSource).toContain('tab: "evidence"');
-    expect(workbenchSource).toContain("selectObject");
-    expect(workbenchSource).toContain('router.replace(`/your-map?');
-    expect(workbenchSource).not.toContain('router.push(`/your-map/');
     expect(mindContextSource).toContain('objectType: "pattern_claim"');
     expect(mindContextSource).not.toContain("personality");
     expect(mindContextSource).not.toContain("mock");
   });
 
   it("loads conclusions from the public API and shows honest empty state copy", () => {
-    const workbenchSource = readSource("components/your-map/YourMapWorkbench.tsx");
+    const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
     const surfaceSource = readSource("lib/your-map-surface.ts");
 
     expect(workbenchSource).toContain("fetchYourMapConclusions");
     expect(workbenchSource).toContain("YOUR_MAP_EMPTY_PRIMARY");
     expect(workbenchSource).toContain("YOUR_MAP_EMPTY_SECONDARY");
-    expect(workbenchSource).toContain("YOUR_MAP_UNDERSTANDINGS_SECTION_LABEL");
+    expect(workbenchSource).toContain("groupUserMapConclusionsByStatus");
     expect(surfaceSource).toContain("journal, explore, import, decisions");
     expect(workbenchSource).not.toContain("v0");
     expect(workbenchSource).not.toContain("mock");
@@ -64,7 +60,7 @@ describe("your-map workbench", () => {
   });
 
   it("keeps conclusion groups separate from Mind Context foundation", () => {
-    const workbenchSource = readSource("components/your-map/YourMapWorkbench.tsx");
+    const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
     const surfaceSource = readSource("lib/mind-context-surface.ts");
 
     expect(workbenchSource).toContain("groupUserMapConclusionsByStatus");

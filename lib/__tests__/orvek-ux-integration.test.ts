@@ -57,9 +57,7 @@ describe("orvek ux integration — inspector safety", () => {
   });
 
   it("routes timeline fieldwork to real pages when inspector is unsupported", () => {
-    const timelineSurface = readSource(
-      "app/(root)/(routes)/timeline/_components/TimelineSurface.tsx"
-    );
+    const timelineSurface = readSource("components/orvek-workbench/OrvekTimelinePage.tsx");
     expect(timelineSurface).toContain("parseSelectableObjectFromHref");
     expect(timelineSurface).toContain("TimelineInspectorAction");
     expect(timelineSurface).toContain('entry.href && !inspectorTarget');
@@ -96,7 +94,7 @@ describe("orvek ux integration — surface copy modules", () => {
 
 describe("orvek ux integration — today to what-changed bridge", () => {
   it("keeps Today movement preview linked to What Changed", () => {
-    const todayPage = readSource("app/(root)/page.tsx");
+    const todayPage = readSource("components/orvek-workbench/OrvekTodayPage.tsx");
     expect(todayPage).toContain("TODAY_CHANGES_VIEW_ALL_HREF");
     expect(todayPage).toContain('objectType: "model_update"');
     expect(todayPage).toContain('tab: "movement"');

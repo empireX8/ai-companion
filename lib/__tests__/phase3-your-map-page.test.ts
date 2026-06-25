@@ -24,11 +24,11 @@ vi.mock("@/components/AppShell", () => ({
   SectionLabel: ({ children }: { children: unknown }) => children,
 }));
 
-vi.mock("@/components/your-map/YourMapWorkbench", () => ({
-  YourMapWorkbench: () =>
+vi.mock("@/components/orvek-workbench/OrvekMapPage", () => ({
+  OrvekMapPage: () =>
     React.createElement(
       "div",
-      { "data-testid": "your-map-workbench" },
+      { "data-testid": "orvek-map-page" },
       "Nothing on your map yet."
     ),
 }));
@@ -74,7 +74,7 @@ describe("Phase 3 Your Map page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("your-map-workbench");
+    expect(html).toContain("orvek-map-page");
     expect(html).toContain("Nothing on your map yet.");
     expect(prismaMock.userMapConclusion.findMany).not.toHaveBeenCalled();
   });

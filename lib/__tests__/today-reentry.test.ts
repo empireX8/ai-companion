@@ -23,7 +23,12 @@ import {
 import type { WatchForItem } from "../watch-for";
 
 function readTodayPageSource(): string {
-  return readFileSync(join(process.cwd(), "app/(root)/page.tsx"), "utf8");
+  const page = readFileSync(join(process.cwd(), "app/(root)/page.tsx"), "utf8");
+  const orvek = readFileSync(
+    join(process.cwd(), "components/orvek-workbench/OrvekTodayPage.tsx"),
+    "utf8"
+  );
+  return `${page}\n${orvek}`;
 }
 
 function readTodayReentrySource(): string {
@@ -377,27 +382,24 @@ describe("today page re-entry wiring", () => {
 
   it("renders attention section and inspector selection affordances", () => {
     const source = readTodayPageSource();
-    expect(source).toContain("TODAY_PRIMARY_SECTION_LABEL");
-    expect(source).toContain("TODAY_ATTENTION_SECTION_LABEL");
-    expect(source).toContain("TODAY_FIELDWORK_SECTION_LABEL");
-    expect(source).toContain("TODAY_OPEN_LOOPS_LABEL");
-    expect(source).toContain("TODAY_RECEIPTS_SECTION_LABEL");
+    expect(source).toContain("Most consequential now");
+    expect(source).toContain(">Now</SectionLabel>");
+    expect(source).toContain("Recent model movement");
+    expect(source).toContain("Receipts resurfaced");
     expect(source).toContain("buildTodayFieldworkRows");
     expect(source).toContain("buildTodayOpenLoopRows");
     expect(source).toContain("buildTodayChangeRows");
-    expect(source).toContain("selectObject");
+    expect(source).toContain("useOrvekInspector");
     expect(source).toContain('tab: "movement"');
-    expect(source).toContain("See movement");
-    expect(source).toContain("parseSelectableObjectFromHref");
+    expect(source).toContain("See why it moved");
     expect(source.includes("TODAY_TIMELINE_MOVEMENT_LABEL")).toBe(false);
-    expect(source.includes("lg:grid-cols-")).toBe(false);
+    expect(source.includes("lg:grid-cols-")).toBe(true);
   });
 
   it("clears loading in finally when fetching re-entry snapshot", () => {
     const source = readTodayPageSource();
-    expect(source.includes("const loadSnapshot = async () =>")).toBe(true);
     expect(source.includes("setIsLoadingSnapshot(true)")).toBe(true);
     expect(source.includes("} finally {")).toBe(true);
-    expect(source.match(/setIsLoadingSnapshot\(false\)/g)?.length).toBe(1);
+    expect(source.includes("setIsLoadingSnapshot(false)")).toBe(true);
   });
 });

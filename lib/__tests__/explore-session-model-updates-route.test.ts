@@ -181,17 +181,18 @@ describe("/api/explore/sessions/[id]/model-updates", () => {
 describe("explore movement UI wiring", () => {
   it("wires Explore strip and inspector selection to published movement", () => {
     const explorePage = readSource("app/(root)/(routes)/explore/page.tsx");
+    const orvekExplore = readSource("components/orvek-workbench/OrvekExplorePage.tsx");
     const movementStripSource = readSource("components/explore/ExploreModelMovementStrip.tsx");
     const reviewStripSource = readSource("components/explore/ExploreConversationReviewStrip.tsx");
-    const shellSource = readSource("app/(root)/(routes)/chat/_components/SurfaceChatShell.tsx");
+    const chatHookSource = readSource("components/orvek-workbench/useOrvekExploreChat.ts");
 
-    expect(explorePage).toContain("ExploreModelMovementStrip");
-    expect(explorePage).toContain("ExploreConversationReviewStrip");
-    expect(explorePage).toContain("onConversationUpdated");
-    expect(explorePage).toContain("EXPLORE_PAGE_SUBTITLE");
-    expect(explorePage).toContain("refreshExploreSessionMovement");
-    expect(explorePage).not.toContain("This will update your model");
-    expect(explorePage).not.toContain("We extracted these");
+    expect(explorePage).toContain("OrvekExplorePage");
+    expect(orvekExplore).toContain("ExploreModelMovementStrip");
+    expect(orvekExplore).toContain("ExploreConversationReviewStrip");
+    expect(orvekExplore).toContain("onConversationUpdated");
+    expect(orvekExplore).toContain("refreshExploreSessionMovement");
+    expect(orvekExplore).not.toContain("This will update your model");
+    expect(orvekExplore).not.toContain("We extracted these");
 
     expect(movementStripSource).toContain("ExploreInspectorAction");
     expect(movementStripSource).toContain("EXPLORE_MOVEMENT_PUBLISHED_BADGE");
@@ -201,8 +202,8 @@ describe("explore movement UI wiring", () => {
     expect(reviewStripSource).toContain("EXPLORE_REVIEW_EMPTY_COPY");
     expect(reviewStripSource).not.toContain('objectType: "model_update"');
 
-    expect(shellSource).toContain("onConversationUpdated");
-    expect(shellSource).toContain("sessionAccessory");
+    expect(chatHookSource).toContain("onConversationUpdated");
+    expect(orvekExplore).toContain("ExploreModelMovementStrip");
   });
 });
 

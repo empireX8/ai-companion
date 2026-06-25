@@ -59,20 +59,19 @@ describe("what-changed-surface", () => {
 describe("what-changed page wiring", () => {
   it("renders report-style hierarchy without internal lifecycle fields", () => {
     const pageSource = readSource("app/(root)/(routes)/what-changed/page.tsx");
-    const heroSource = readSource("components/what-changed/WhatChangedHeroMovement.tsx");
+    const viewSource = readSource("components/orvek-workbench/OrvekWhatChangedPage.tsx");
     const inspectorSource = readSource("components/what-changed/WhatChangedInspectorButton.tsx");
 
     expect(pageSource).toContain("splitWhatChangedMovements");
-    expect(pageSource).toContain("WhatChangedHeroMovement");
-    expect(pageSource).toContain("WhatChangedMovementCard");
+    expect(pageSource).toContain("OrvekWhatChangedView");
+    expect(viewSource).toContain("WHAT_CHANGED_EVIDENCE_LABEL");
+    expect(viewSource).toContain("WHAT_CHANGED_REENTRY_LABEL");
+    expect(viewSource).toContain("WhatChangedInspectorButton");
     expect(pageSource).toContain("ModelUpdateVisibility.user_visible");
     expect(pageSource).toContain("isMeaningful: true");
     expect(pageSource).not.toContain("beforeSummary");
     expect(pageSource).not.toContain("afterSummary");
-    expect(heroSource).toContain("WHAT_CHANGED_EVIDENCE_LABEL");
-    expect(heroSource).toContain("WHAT_CHANGED_REENTRY_LABEL");
-    expect(heroSource).not.toContain("WHAT_CHANGED_EVIDENCE_EMPTY");
-    expect(heroSource).toMatch(/evidenceItems\.length > 0/);
+    expect(viewSource).toMatch(/evidenceItems\.length > 0/);
     expect(inspectorSource).toContain('objectType: "model_update"');
     expect(inspectorSource).not.toContain('objectType: "decision"');
   });

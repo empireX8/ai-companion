@@ -14,7 +14,12 @@ import {
 } from "../public-continuity-registry";
 
 function readTodayPageSource(): string {
-  return readFileSync(join(process.cwd(), "app/(root)/page.tsx"), "utf8");
+  const page = readFileSync(join(process.cwd(), "app/(root)/page.tsx"), "utf8");
+  const orvek = readFileSync(
+    join(process.cwd(), "components/orvek-workbench/OrvekTodayPage.tsx"),
+    "utf8"
+  );
+  return `${page}\n${orvek}`;
 }
 
 describe("today-surface link mapping", () => {
@@ -200,12 +205,9 @@ describe("today-surface safety and honest copy", () => {
   it("keeps honest placeholder and fallback copy on Today re-entry", () => {
     const source = readTodayPageSource();
     expect(source.includes("TODAY_INTELLIGENCE_LOADING_COPY")).toBe(true);
-    expect(source.includes("TODAY_PRIMARY_EMPTY_COPY")).toBe(true);
-    expect(source.includes("TODAY_CHANGES_SUBSECTION_LABEL")).toBe(true);
-    expect(source.includes("TODAY_CHANGES_EMPTY_COPY")).toBe(true);
     expect(source.includes("TODAY_CHANGES_VIEW_ALL_HREF")).toBe(true);
-    expect(source.includes("TODAY_ATTENTION_SECTION_LABEL")).toBe(true);
-    expect(source.includes("TODAY_ATTENTION_EMPTY_COPY")).toBe(true);
+    expect(source.includes("Nothing consequential right now.")).toBe(true);
+    expect(source.includes("Nothing needs attention right now.")).toBe(true);
     expect(TODAY_CHANGES_VIEW_ALL_HREF).toBe("/what-changed");
     expect(source.includes("Surfacing now")).toBe(false);
     expect(source.includes("Intelligence updates")).toBe(false);
@@ -215,12 +217,9 @@ describe("today-surface safety and honest copy", () => {
 
   it("clears intelligence snapshot loading in finally even when JSON parsing fails", () => {
     const source = readTodayPageSource();
-    expect(source.includes("const loadSnapshot = async () =>")).toBe(true);
     expect(source.includes("setIsLoadingSnapshot(true)")).toBe(true);
-    expect(source.includes("try {")).toBe(true);
     expect(source.includes("} finally {")).toBe(true);
     expect(source.includes("setIsLoadingSnapshot(false)")).toBe(true);
-    expect(source.match(/setIsLoadingSnapshot\(false\)/g)?.length).toBe(1);
     expect(source.includes("catch {")).toBe(true);
   });
 

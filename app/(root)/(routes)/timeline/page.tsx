@@ -1,5 +1,5 @@
-import TimelineSurface from "./_components/TimelineSurface";
+import { OrvekTimelinePage } from "@/components/orvek-workbench/OrvekTimelinePage";
 
 export default function TimelinePage() {
-  return <TimelineSurface />;
+  return <OrvekTimelinePage />;
 }

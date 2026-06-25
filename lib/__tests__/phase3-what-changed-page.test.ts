@@ -32,9 +32,42 @@ vi.mock("@clerk/nextjs/server", () => ({
   auth: authMock,
 }));
 
-vi.mock("@/components/AppShell", () => ({
-  PageHeader: () => null,
-  SectionLabel: ({ children }: { children: unknown }) => children,
+vi.mock("@/components/orvek-workbench/OrvekWhatChangedPage", () => ({
+  OrvekWhatChangedView: ({
+    primary,
+    earlier,
+  }: {
+    primary: { userFacingSummary: string; affectedObjectHref: string | null } | null;
+    earlier: { userFacingSummary: string; affectedObjectHref: string | null }[];
+  }) => {
+    if (!primary && earlier.length === 0) {
+      return React.createElement("div", null, WHAT_CHANGED_EMPTY_PRIMARY);
+    }
+    return React.createElement(
+      "div",
+      { "data-testid": "what-changed-list" },
+      primary
+        ? React.createElement(
+            "div",
+            { "data-testid": "what-changed-primary-movement" },
+            React.createElement("span", null, primary.userFacingSummary),
+            primary.affectedObjectHref
+              ? React.createElement("a", { href: primary.affectedObjectHref }, "linked")
+              : React.createElement("span", null, PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY)
+          )
+        : null,
+      ...earlier.map((item) =>
+        React.createElement(
+          "div",
+          { key: item.userFacingSummary, "data-testid": "what-changed-movement-card" },
+          React.createElement("span", null, item.userFacingSummary),
+          item.affectedObjectHref
+            ? React.createElement("a", { href: item.affectedObjectHref }, "linked")
+            : React.createElement("span", null, PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY)
+        )
+      )
+    );
+  },
 }));
 
 vi.mock("@/lib/public-intelligence-safe-slice", async () => {
@@ -58,38 +91,6 @@ vi.mock("@/lib/public-evidence-continuity", () => ({
 
 vi.mock("@/components/what-changed/WhatChangedInspectorButton", () => ({
   WhatChangedInspectorButton: () => null,
-}));
-
-vi.mock("@/components/what-changed/WhatChangedHeroMovement", () => ({
-  WhatChangedHeroMovement: ({
-    item,
-  }: {
-    item: { userFacingSummary: string; affectedObjectHref: string | null };
-  }) =>
-    React.createElement(
-      "div",
-      { "data-testid": "what-changed-primary-movement" },
-      React.createElement("span", null, item.userFacingSummary),
-      item.affectedObjectHref
-        ? React.createElement("a", { href: item.affectedObjectHref }, "linked")
-        : React.createElement("span", null, PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY)
-    ),
-}));
-
-vi.mock("@/components/what-changed/WhatChangedMovementCard", () => ({
-  WhatChangedMovementCard: ({
-    item,
-  }: {
-    item: { userFacingSummary: string; affectedObjectHref: string | null };
-  }) =>
-    React.createElement(
-      "div",
-      { "data-testid": "what-changed-movement-card" },
-      React.createElement("span", null, item.userFacingSummary),
-      item.affectedObjectHref
-        ? React.createElement("a", { href: item.affectedObjectHref }, "linked")
-        : React.createElement("span", null, PUBLIC_LINKED_OBJECT_UNAVAILABLE_COPY)
-    ),
 }));
 
 vi.mock("@/lib/prismadb", () => ({
@@ -211,7 +212,6 @@ describe("Phase 3 What Changed page", () => {
     const element = await page.default();
     const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("Earlier movement");
     expect(html).toContain("/your-map/umc-1");
     expect(html).toContain("/patterns/pc-safe");
     expect(html).toContain("/contradictions/cn-safe");

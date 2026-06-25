@@ -8,28 +8,24 @@ function readSource(relativePath: string): string {
 
 describe("inspector surface wiring", () => {
   it("wires Today movement selection to inspector model_update + movement tab", () => {
-    const source = readSource("app/(root)/page.tsx");
-    expect(source).toContain("selectObject");
+    const source = readSource("components/orvek-workbench/OrvekTodayPage.tsx");
+    expect(source).toContain("useOrvekInspector");
     expect(source).toContain('objectType: "model_update"');
     expect(source).toContain('tab: "movement"');
-    expect(source).toContain("See movement");
-    expect(source).toContain("parseSelectableObjectFromHref");
+    expect(source).toContain("See why it moved");
   });
 
   it("wires Your Map workbench list selection to usermap_conclusion inspector context", () => {
     const pageSource = readSource("app/(root)/(routes)/your-map/page.tsx");
-    const workbenchSource = readSource("components/your-map/YourMapWorkbench.tsx");
+    const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
 
-    expect(pageSource).toContain("YourMapWorkbench");
+    expect(pageSource).toContain("OrvekMapPage");
     expect(workbenchSource).toContain('objectType: "usermap_conclusion"');
-    expect(workbenchSource).toContain('sourceSurface: "map"');
-    expect(workbenchSource).toContain('data-testid="your-map-workbench"');
+    expect(workbenchSource).toContain('data-testid="orvek-map-page"');
   });
 
   it("wires Timeline model changes and linked activity hrefs to inspector", () => {
-    const source = readSource(
-      "app/(root)/(routes)/timeline/_components/TimelineSurface.tsx"
-    );
+    const source = readSource("components/orvek-workbench/OrvekTimelinePage.tsx");
     const inspectorSource = readSource("components/timeline/TimelineInspectorAction.tsx");
     expect(source).toContain("TimelineInspectorAction");
     expect(source).toContain('objectType="model_update"');
