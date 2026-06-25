@@ -78,7 +78,9 @@ describe("decisions page wiring", () => {
 
     expect(pageSource).toContain("OrvekDecisionsPage");
     expect(wiring).toContain("DECISIONS_PAGE_INTRO");
-    expect(wiring).toContain("groupDecisionsByResolution");
+    expect(adapterSource).toContain('"Active"');
+    expect(adapterSource).toContain('"Outcome due"');
+    expect(viewSource).toContain('testId="orvek-decisions-options-panel"');
     expect(viewSource).toContain('data-testid="orvek-decisions-page"');
     expect(containerSource).toContain('objectType: "pattern_claim"');
     expect(wiring).not.toContain("Recommended for you");

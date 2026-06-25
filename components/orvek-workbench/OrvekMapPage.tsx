@@ -298,7 +298,42 @@ export function OrvekMapPage() {
     <V0MapView
       data={viewData}
       handlers={{
-        onSelectItem: openItem,
+        onSelectRailItem: (item) => {
+          if (item.kind === "conclusion") {
+            openItem(item.rawId);
+            return;
+          }
+          if (item.kind === "mind_context" && item.inspectorObjectId) {
+            select({
+              objectType: "pattern_claim",
+              objectId: item.inspectorObjectId,
+              title: item.title,
+              sourceSurface: "map",
+              tab: "evidence",
+            });
+            setInspectorTab("evidence");
+            return;
+          }
+          if (item.kind === "open_question") {
+            router.push(`/active-questions/${item.rawId}`);
+            return;
+          }
+          if (item.kind === "model_update") {
+            const movement = movementById.get(item.rawId);
+            if (!movement) {
+              return;
+            }
+            select({
+              objectType: "model_update",
+              objectId: movement.id,
+              modelUpdateId: movement.id,
+              title: `${movement.updateTypeLabel} · ${movement.affectedObjectTypeLabel}`,
+              sourceSurface: "map",
+              tab: "movement",
+            });
+            setInspectorTab("movement");
+          }
+        },
         onOpenInspector: () => {
           if (!detail) {
             return;
@@ -307,16 +342,6 @@ export function OrvekMapPage() {
             objectType: "usermap_conclusion",
             objectId: detail.id,
             title: detail.title,
-            sourceSurface: "map",
-            tab: "evidence",
-          });
-          setInspectorTab("evidence");
-        },
-        onMindContextChip: (inspectorObjectId, title) => {
-          select({
-            objectType: "pattern_claim",
-            objectId: inspectorObjectId,
-            title,
             sourceSurface: "map",
             tab: "evidence",
           });

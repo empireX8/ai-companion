@@ -16,9 +16,14 @@ import {
 } from "@/lib/explore-session-bridge";
 import { EXPLORE_HANDOFF_UNAVAILABLE_COPY } from "@/lib/explore-surface";
 import {
+  mapActiveQuestionsToExploreQuestions,
   mapExploreDataToV0Props,
+  mapInvestigationRowsToExploreItems,
+  mapWatchForToExploreFieldwork,
   type V0ExploreTabId,
 } from "@/lib/orvek-adapters/explore";
+import { ACTIVE_QUESTIONS_ENDPOINT, type ActiveQuestionItem } from "@/lib/active-questions";
+import { WATCH_FOR_ENDPOINT, type WatchForItem } from "@/lib/watch-for";
 
 import { useOrvekExploreChat } from "./useOrvekExploreChat";
 import { useOrvekInspector } from "./useOrvekInspector";
@@ -38,6 +43,17 @@ export function OrvekExplorePage() {
   const [handoffContext, setHandoffContext] = useState<ExploreActionHandoffContext | null>(null);
   const [isLoadingHandoff, setIsLoadingHandoff] = useState(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
+  const [investigations, setInvestigations] = useState<
+    Array<{ id: string; title: string; status?: string; organizingQuestion?: string }>
+  >([]);
+  const [isLoadingInvestigations, setIsLoadingInvestigations] = useState(true);
+  const [activeQuestions, setActiveQuestions] = useState<ActiveQuestionItem[]>([]);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
+  const [fieldworkItems, setFieldworkItems] = useState<WatchForItem[]>([]);
+  const [isLoadingFieldwork, setIsLoadingFieldwork] = useState(true);
+  const [selectedInvestigationId, setSelectedInvestigationId] = useState<string | null>(null);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+  const [selectedFieldworkId, setSelectedFieldworkId] = useState<string | null>(null);
 
   const handleConversationUpdated = useCallback(() => {
     refreshExploreSessionMovement();
@@ -120,6 +136,78 @@ export function OrvekExplorePage() {
     };
   }, [hasActionHandoffRequest, parsedActionId]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadWorkspaceData = async () => {
+      setIsLoadingInvestigations(true);
+      setIsLoadingQuestions(true);
+      setIsLoadingFieldwork(true);
+
+      try {
+        const [investigationsResponse, questionsResponse, fieldworkResponse] = await Promise.all([
+          fetch("/api/investigations?limit=20", { method: "GET", cache: "no-store" }),
+          fetch(ACTIVE_QUESTIONS_ENDPOINT, { method: "GET", cache: "no-store" }),
+          fetch(WATCH_FOR_ENDPOINT, { method: "GET", cache: "no-store" }),
+        ]);
+
+        if (!cancelled) {
+          if (investigationsResponse.ok) {
+            const payload = (await investigationsResponse.json()) as {
+              items?: Array<{
+                id: string;
+                title: string;
+                status?: string;
+                organizingQuestion?: string;
+              }>;
+            };
+            const items = Array.isArray(payload.items) ? payload.items : [];
+            setInvestigations(items);
+            setSelectedInvestigationId(items[0]?.id ?? null);
+          } else {
+            setInvestigations([]);
+          }
+
+          if (questionsResponse.ok) {
+            const payload = (await questionsResponse.json()) as { items?: ActiveQuestionItem[] };
+            const items = Array.isArray(payload.items) ? payload.items : [];
+            setActiveQuestions(items);
+            setSelectedQuestionId(items[0]?.id ?? null);
+          } else {
+            setActiveQuestions([]);
+          }
+
+          if (fieldworkResponse.ok) {
+            const payload = (await fieldworkResponse.json()) as { items?: WatchForItem[] };
+            const items = Array.isArray(payload.items) ? payload.items : [];
+            setFieldworkItems(items);
+            setSelectedFieldworkId(items[0]?.id ?? null);
+          } else {
+            setFieldworkItems([]);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setInvestigations([]);
+          setActiveQuestions([]);
+          setFieldworkItems([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingInvestigations(false);
+          setIsLoadingQuestions(false);
+          setIsLoadingFieldwork(false);
+        }
+      }
+    };
+
+    void loadWorkspaceData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const viewData = useMemo(
     () =>
       mapExploreDataToV0Props({
@@ -133,6 +221,21 @@ export function OrvekExplorePage() {
         isBooting,
         isSending,
         errorMessage,
+        investigations: {
+          isLoading: isLoadingInvestigations,
+          items: mapInvestigationRowsToExploreItems(investigations),
+          selectedId: selectedInvestigationId,
+        },
+        questions: {
+          isLoading: isLoadingQuestions,
+          items: mapActiveQuestionsToExploreQuestions(activeQuestions),
+          selectedId: selectedQuestionId,
+        },
+        fieldwork: {
+          isLoading: isLoadingFieldwork,
+          items: mapWatchForToExploreFieldwork(fieldworkItems),
+          selectedId: selectedFieldworkId,
+        },
       }),
     [
       tab,
@@ -145,6 +248,15 @@ export function OrvekExplorePage() {
       isBooting,
       isSending,
       errorMessage,
+      isLoadingInvestigations,
+      investigations,
+      selectedInvestigationId,
+      isLoadingQuestions,
+      activeQuestions,
+      selectedQuestionId,
+      isLoadingFieldwork,
+      fieldworkItems,
+      selectedFieldworkId,
     ]
   );
 
@@ -167,6 +279,9 @@ export function OrvekExplorePage() {
         },
         onOpenInspector: openInspectorMovement,
         onComposerFocus: openInspectorMovement,
+        onInvestigationSelect: setSelectedInvestigationId,
+        onQuestionSelect: setSelectedQuestionId,
+        onFieldworkSelect: setSelectedFieldworkId,
       }}
     />
   );

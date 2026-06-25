@@ -88,6 +88,7 @@ describe("orvek adapters", () => {
     expect(props.messages).toHaveLength(2);
     expect(props.messages[1]?.isThinking).toBe(true);
     expect(props.handoff.show).toBe(false);
+    expect(props.groundingChips.length).toBeGreaterThan(0);
     expect(JSON.stringify(props)).not.toContain("model_update");
   });
 
@@ -154,10 +155,12 @@ describe("orvek adapters", () => {
       openQuestionsPreview: { isLoading: false, items: [] },
     });
 
-    expect(view.groups[0]?.items[0]?.id).toBe("c-1");
+    expect(view.ontologyGroups.some((group) => group.items.some((item) => item.rawId === "c-1"))).toBe(
+      true
+    );
     expect(view.detail?.id).toBe("c-1");
     expect(view.headerStats?.receipts).toBe(3);
-    expect(view.showPreviewBands).toBe(true);
+    expect(view.showSecondaryPanels).toBe(true);
   });
 
   it("mapDecisionsDataToV0Props preserves fieldwork and explore handoff links", () => {
@@ -227,7 +230,12 @@ describe("orvek adapters", () => {
       createErrorByActionId: {},
     });
 
-    expect(view.sidebarGroups.map((group) => group.heading)).toEqual(["Active", "Reviewed"]);
+    expect(view.sidebarGroups.map((group) => group.heading)).toEqual([
+      "Active",
+      "Chosen",
+      "Outcome due",
+      "Reviewed",
+    ]);
     expect(view.sidebarGroups[0]?.items[0]?.id).toBe("a-1");
     expect(view.sidebarGroups[0]?.items[0]?.status).toBe("not_started");
     expect(view.decision?.id).toBe("a-2");

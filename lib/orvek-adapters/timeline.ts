@@ -39,6 +39,9 @@ export type V0TimelineInspectorTarget = {
   modelUpdateId?: string | null;
 };
 
+export const V0_TIMELINE_PRIOR_READ_UNAVAILABLE_COPY =
+  "Prior read not shown in this stream.";
+
 export type V0TimelineStreamRow = {
   id: string;
   title: string;
@@ -52,6 +55,10 @@ export type V0TimelineStreamRow = {
   inspectorTarget: V0TimelineInspectorTarget | null;
   selectableObjectId: string | null;
   isModelChange: boolean;
+  showBeforeAfterBlock: boolean;
+  beforeSummary: string | null;
+  afterSummary: string | null;
+  priorReadUnavailableCopy: string;
   affectedObjectType?: TimelineModelLayerItem["affectedObjectType"];
   affectedObjectId?: string | null;
   affectedObjectHref?: string | null;
@@ -73,6 +80,7 @@ export type V0TimelineViewProps = {
   activityError: string | null;
   modelLayerError: string | null;
   emptyCopy: string;
+  emptyStreamHeading: string;
   groups: V0TimelineGroup[];
   selectedObjectId: string | null;
 };
@@ -333,6 +341,10 @@ function mapStreamItemToRow(item: TimelineStreamItem): V0TimelineStreamRow {
         ? item.item.id
         : item.entry.selectableObjectId ?? inspectorTarget?.objectId ?? null,
     isModelChange: item.kind === "model_change",
+    showBeforeAfterBlock: item.kind === "model_change",
+    beforeSummary: null,
+    afterSummary: item.kind === "model_change" ? item.item.userFacingSummary : null,
+    priorReadUnavailableCopy: V0_TIMELINE_PRIOR_READ_UNAVAILABLE_COPY,
     affectedObjectType:
       item.kind === "model_change" ? item.item.affectedObjectType : undefined,
     affectedObjectId: item.kind === "model_change" ? item.item.affectedObjectId : undefined,
@@ -407,6 +419,7 @@ export function mapTimelineDataToV0Props(input: MapTimelineDataInput): V0Timelin
     activityError,
     modelLayerError,
     emptyCopy: TIMELINE_ACTIVITY_EMPTY_COPY,
+    emptyStreamHeading: "Earlier",
     groups: grouped.map((group) => ({
       heading: group.heading,
       rows: group.items.map(mapStreamItemToRow),

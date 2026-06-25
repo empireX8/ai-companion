@@ -19,9 +19,17 @@ import { cn } from "../../../lib/utils";
 
 const STAGES = ["Active", "Chosen", "Outcome due", "Reviewed", "Model update"];
 
-function WSBlock({ label, children }: { label: string; children: React.ReactNode }) {
+function WSBlock({
+  label,
+  children,
+  testId,
+}: {
+  label: string;
+  children: React.ReactNode;
+  testId?: string;
+}) {
   return (
-    <div className="mt-5">
+    <div className="mt-5" data-testid={testId}>
       <SectionLabel>{label}</SectionLabel>
       <div className="mt-2 text-sm leading-relaxed text-foreground">{children}</div>
     </div>
@@ -191,7 +199,7 @@ export function V0DecisionsView({
         <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[260px_1fr]">
           <div className="o-sunken m-3 mt-0 min-h-0 overflow-y-auto rounded-2xl px-3 py-4 lg:mr-1.5">
             {sidebarGroups.map((group) => (
-              <div key={group.heading} className="mb-4">
+              <div key={group.heading} className="mb-4" data-testid={`orvek-decisions-rail-${group.heading.toLowerCase().replace(/\s+/g, "-")}`}>
                 <div className="flex items-center gap-1.5 px-2">
                   <SectionLabel
                     className={group.tone === "action" ? "text-action-foreground" : ""}
@@ -202,6 +210,9 @@ export function V0DecisionsView({
                     {group.items.length}
                   </span>
                 </div>
+                {group.items.length === 0 ? (
+                  <p className="mt-1.5 px-2 text-[11px] text-muted-foreground">None yet.</p>
+                ) : (
                 <div className="mt-1.5 space-y-0.5">
                   {group.items.map((item) => {
                     const active = selectedDecisionId === item.id;
@@ -228,6 +239,7 @@ export function V0DecisionsView({
                     );
                   })}
                 </div>
+                )}
               </div>
             ))}
           </div>
@@ -325,8 +337,14 @@ export function V0DecisionsView({
                   </WSBlock>
                 ) : null}
 
-                {decision.linkedClaimId ? (
-                  <WSBlock label="Relevant background / context">
+                <WSBlock label="Options" testId="orvek-decisions-options-panel">
+                  <div className="o-material rounded-[10px] p-3.5">
+                    <p className="text-[13px] text-muted-foreground">{decision.optionsEmptyCopy}</p>
+                  </div>
+                </WSBlock>
+
+                <WSBlock label="Relevant background / context" testId="orvek-decisions-context-panel">
+                  {decision.linkedClaimId ? (
                     <div className="flex flex-wrap gap-1.5">
                       <button
                         type="button"
@@ -343,8 +361,10 @@ export function V0DecisionsView({
                         </Chip>
                       </button>
                     </div>
-                  </WSBlock>
-                ) : null}
+                  ) : (
+                    <p className="text-[13px] text-muted-foreground">{decision.contextEmptyCopy}</p>
+                  )}
+                </WSBlock>
 
                 {decision.receiptHref ? (
                   <WSBlock label="Related receipts">
@@ -359,7 +379,11 @@ export function V0DecisionsView({
                   </WSBlock>
                 ) : null}
 
-                <div className="o-material mt-5 rounded-[10px] p-4">
+                <WSBlock label="Projection" testId="orvek-decisions-projection-panel">
+                  <p className="text-[13px] text-muted-foreground">{decision.projectionEmptyCopy}</p>
+                </WSBlock>
+
+                <div className="o-material mt-5 rounded-[10px] p-4" data-testid="orvek-decisions-outcome-panel">
                   <SectionLabel>Outcome &amp; what it reveals</SectionLabel>
                   <p className="mt-1.5 text-[13px] text-muted-foreground">
                     {decision.statusLabel} · Updated {decision.updatedAtLabel}
@@ -380,7 +404,11 @@ export function V0DecisionsView({
                         ? decision.fieldworkLoadingLabel
                         : decision.fieldworkLabel}
                     </button>
-                  ) : null}
+                  ) : (
+                    <p className="mt-2 text-[13px] text-muted-foreground">
+                      {decision.outcomeReviewEmptyCopy}
+                    </p>
+                  )}
                   {decision.fieldworkError ? (
                     <p className="mt-2 text-[12px] text-destructive">{decision.fieldworkError}</p>
                   ) : null}
@@ -417,7 +445,15 @@ export function V0DecisionsView({
                       <Receipt className="size-3.5 text-primary" aria-hidden />
                       Reflect on this choice
                     </Link>
-                  ) : null}
+                  ) : (
+                    <span
+                      className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-secondary/40 px-2.5 py-1.5 text-xs font-medium text-muted-foreground"
+                      data-testid="orvek-decisions-review-cta-disabled"
+                    >
+                      <Receipt className="size-3.5" aria-hidden />
+                      Decision review not ready yet
+                    </span>
+                  )}
                 </div>
               </div>
             )}

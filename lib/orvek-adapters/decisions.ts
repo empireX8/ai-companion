@@ -11,7 +11,6 @@ import {
   DECISIONS_STABILIZE_TAB_LABEL,
   formatDecisionDateTime,
   getDecisionTabIntro,
-  groupDecisionsByResolution,
   toDecisionStatusLabel,
 } from "../decisions-surface";
 import { buildExploreActionHandoffHref } from "../explore-action-handoff";
@@ -29,6 +28,12 @@ export type V0DecisionSidebarGroup = {
   tone?: "action";
   items: V0DecisionSidebarItem[];
 };
+
+export const V0_DECISIONS_OPTIONS_EMPTY_COPY = "No option set captured yet.";
+export const V0_DECISIONS_PROJECTION_EMPTY_COPY =
+  "Projection unavailable until this choice has more evidence.";
+export const V0_DECISIONS_OUTCOME_REVIEW_EMPTY_COPY = "Outcome review not ready yet.";
+export const V0_DECISIONS_CONTEXT_EMPTY_COPY = "No background context linked yet.";
 
 export type V0DecisionWorkspace = {
   id: string;
@@ -51,6 +56,11 @@ export type V0DecisionWorkspace = {
   fieldworkLabel: string;
   fieldworkLoadingLabel: string;
   fieldworkError: string | null;
+  optionsEmptyCopy: string;
+  projectionEmptyCopy: string;
+  outcomeReviewEmptyCopy: string;
+  contextEmptyCopy: string;
+  showOutcomeReviewCta: boolean;
 };
 
 export type V0DecisionsViewProps = {
@@ -116,6 +126,11 @@ function mapWorkspace(
     fieldworkLabel: DECISIONS_SEND_TO_FIELDWORK_LABEL,
     fieldworkLoadingLabel: DECISIONS_SEND_TO_FIELDWORK_LOADING_LABEL,
     fieldworkError: createErrorByActionId[decision.id] ?? null,
+    optionsEmptyCopy: V0_DECISIONS_OPTIONS_EMPTY_COPY,
+    projectionEmptyCopy: V0_DECISIONS_PROJECTION_EMPTY_COPY,
+    outcomeReviewEmptyCopy: V0_DECISIONS_OUTCOME_REVIEW_EMPTY_COPY,
+    contextEmptyCopy: V0_DECISIONS_CONTEXT_EMPTY_COPY,
+    showOutcomeReviewCta: Boolean(reflectHref || receiptHref),
   };
 }
 
@@ -144,18 +159,55 @@ export function mapDecisionsDataToV0Props(input: MapDecisionsDataInput): V0Decis
       item.status === "done" || item.status === "helped" || item.status === "didnt_help"
   ).length;
 
-  const sidebarGroups: V0DecisionSidebarGroup[] = groupDecisionsByResolution(list).map(
-    (group) => ({
-      heading: group.key === "open" ? "Active" : "Reviewed",
-      tone: group.key === "open" ? undefined : undefined,
-      items: group.items.map((item) => ({
-        id: item.id,
-        title: item.title,
-        status: item.status,
-        showActiveDot: group.key === "open",
-      })),
-    })
-  );
+  const sidebarGroups: V0DecisionSidebarGroup[] = [
+    {
+      heading: "Active",
+      items: list
+        .filter((item) => item.status === "not_started")
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          status: item.status,
+          showActiveDot: true,
+        })),
+    },
+    {
+      heading: "Chosen",
+      items: list
+        .filter((item) => item.status === "done" && Boolean(item.note))
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          status: item.status,
+          showActiveDot: false,
+        })),
+    },
+    {
+      heading: "Outcome due",
+      tone: "action",
+      items: list
+        .filter((item) => item.status === "done" && !item.note)
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          status: item.status,
+          showActiveDot: true,
+        })),
+    },
+    {
+      heading: "Reviewed",
+      items: list
+        .filter(
+          (item) => item.status === "helped" || item.status === "didnt_help"
+        )
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          status: item.status,
+          showActiveDot: false,
+        })),
+    },
+  ];
 
   const selected = list.find((item) => item.id === selectedDecisionId) ?? null;
 

@@ -79,6 +79,21 @@ function TimelineStreamRow({
             {row.summary}
           </span>
         ) : null}
+        {row.showBeforeAfterBlock ? (
+          <span
+            className="mt-2 grid gap-1.5 sm:grid-cols-2"
+            data-testid="orvek-timeline-before-after-block"
+          >
+            <span className="block rounded-[8px] bg-muted/70 px-2 py-1 text-[12px] text-foreground">
+              <span className="text-muted-foreground">Before: </span>
+              {row.beforeSummary ?? row.priorReadUnavailableCopy}
+            </span>
+            <span className="block rounded-[8px] bg-evidence-muted/70 px-2 py-1 text-[12px] text-foreground ring-1 ring-inset ring-primary/15">
+              <span className="text-primary">Updated understanding: </span>
+              {row.afterSummary ?? "No updated summary is available yet."}
+            </span>
+          </span>
+        ) : null}
         {row.isModelChange && row.affectedObjectType ? (
           <div className="mt-2">
             <PublicLinkedObjectContinuity
@@ -135,6 +150,7 @@ export function V0TimelineView({
     activityError,
     modelLayerError,
     emptyCopy,
+    emptyStreamHeading,
     groups,
     selectedObjectId,
   } = data;
@@ -250,8 +266,20 @@ export function V0TimelineView({
                     ))}
                   </div>
                 ) : !activityError && !modelLayerError ? (
-                  <div className="o-material rounded-[10px] p-4 text-[13px] text-muted-foreground">
-                    {emptyCopy}
+                  <div className="relative pl-5" data-testid="orvek-timeline-empty-stream">
+                    <div
+                      className="absolute bottom-2 left-[5px] top-2 w-px bg-border"
+                      aria-hidden
+                    />
+                    <div className="mb-6">
+                      <div className="relative mb-2.5">
+                        <span className="absolute -left-[19px] top-0.5 size-3 rounded-full border-2 border-primary bg-card shadow-[0_0_0_3px_var(--card)]" />
+                        <SectionLabel>{emptyStreamHeading}</SectionLabel>
+                      </div>
+                      <div className="o-material overflow-hidden rounded-[10px] p-4 text-[13px] text-muted-foreground">
+                        {emptyCopy}
+                      </div>
+                    </div>
                   </div>
                 ) : null}
               </>

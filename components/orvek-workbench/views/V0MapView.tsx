@@ -1,37 +1,45 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   Activity,
   AlertTriangle,
-  CheckCircle2,
   Compass,
   GitCompareArrows,
   HelpCircle,
-  History,
+  Repeat,
   Sparkles,
+  Target,
+  User,
   type LucideIcon,
 } from "lucide-react";
 
-import type { V0MapViewProps, YourMapRailGroupKey } from "@/lib/orvek-adapters/map";
+import type {
+  V0MapOntologyRailItem,
+  V0MapOntologyRailKey,
+  V0MapViewProps,
+} from "@/lib/orvek-adapters/map";
 import { cn } from "@/lib/utils";
 
 import { BeforeAfter, SectionLabel, TYPE_META } from "../OrvekPrimitives";
 
-const GROUP_ICONS: Record<YourMapRailGroupKey, LucideIcon> = {
-  established: CheckCircle2,
-  emerging: Sparkles,
-  needs_evidence: HelpCircle,
-  conflicting: AlertTriangle,
-  superseded: History,
+const ONTOLOGY_ICONS: Record<V0MapOntologyRailKey, LucideIcon> = {
+  patterns: Repeat,
+  claims: Compass,
+  conflicts: AlertTriangle,
+  goals: Target,
+  context: User,
+  questions: HelpCircle,
+  model_updates: Sparkles,
+  uncertainty: HelpCircle,
 };
 
 const MAP_OBJECT_TYPE = "map-object" as const;
 
 export type V0MapViewHandlers = {
-  onSelectItem: (id: string) => void;
+  onSelectRailItem: (item: V0MapOntologyRailItem) => void;
   onOpenInspector: () => void;
-  onMindContextChip: (inspectorObjectId: string, title: string) => void;
   onMovementRow: (id: string) => void;
   onOpenQuestionRow: (id: string) => void;
 };
@@ -108,71 +116,183 @@ function PreviewSectionShell({
   );
 }
 
-function MindContextHeader({
-  mindContext,
-  onMindContextChip,
+function CorrectionChipRow({
+  labels,
+  deferredCopy,
 }: {
-  mindContext: V0MapViewProps["mindContext"];
-  onMindContextChip: V0MapViewHandlers["onMindContextChip"];
+  labels: readonly string[];
+  deferredCopy: string;
 }) {
-  if (mindContext.isLoading) {
-    return (
-      <div className="o-material mt-3 rounded-xl px-3 py-2 text-[12px] text-muted-foreground">
-        Loading mind context…
-      </div>
-    );
-  }
-
-  if (mindContext.summaryCounts.memories === 0 && mindContext.summaryCounts.patterns === 0) {
-    return (
-      <div className="o-material mt-3 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-[12px] text-muted-foreground">
-        <Compass className="size-3.5 shrink-0 text-primary" aria-hidden />
-        <span className="font-medium text-foreground">{mindContext.sectionLabel}</span>
-        <span>·</span>
-        <span>{mindContext.emptyPrimary}</span>
-        <Link
-          href={mindContext.governanceHref}
-          className="ml-auto text-[11px] font-medium text-primary hover:underline"
-        >
-          Open Context
-        </Link>
-      </div>
-    );
-  }
+  const [activeHint, setActiveHint] = useState<string | null>(null);
 
   return (
-    <div className="o-material mt-3 rounded-xl px-3 py-2.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <Compass className="size-3.5 shrink-0 text-primary" aria-hidden />
-        <SectionLabel className="normal-case tracking-normal">{mindContext.sectionLabel}</SectionLabel>
-        <span className="text-[11px] text-muted-foreground">
-          {mindContext.memoriesLabel}
-          {mindContext.memoriesLabel && mindContext.patternsLabel ? " · " : null}
-          {mindContext.patternsLabel}
-        </span>
+    <div className="mt-6 rounded-2xl bg-secondary/40 px-4 py-4" data-testid="orvek-map-correction-chips">
+      <SectionLabel>Correct the model</SectionLabel>
+      {activeHint ? (
+        <p className="mt-2 text-[12px] text-muted-foreground">{activeHint}</p>
+      ) : null}
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {labels.map((label) => (
+          <button
+            key={label}
+            type="button"
+            disabled
+            aria-disabled
+            onClick={() => setActiveHint(deferredCopy)}
+            className={cn(
+              "o-calm rounded-full px-2.5 py-1 text-xs font-medium opacity-70",
+              label === "Not quite" || label === "Needs review"
+                ? "bg-card text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.12)]"
+                : label === "Too strong" || label === "Wrong link"
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-evidence-muted text-primary"
+            )}
+          >
+            {label}
+          </button>
+        ))}
       </div>
-      {mindContext.items.length > 0 ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {mindContext.items.map((item) => (
+      <p className="mt-2 text-[12px] text-muted-foreground">{deferredCopy}</p>
+    </div>
+  );
+}
+
+function SupportingConflictingGrid({
+  evidence,
+  isDisputed,
+}: {
+  evidence: V0MapViewProps["evidence"];
+  isDisputed: boolean;
+}) {
+  return (
+    <div
+      className="mt-5 grid gap-3 sm:grid-cols-2"
+      data-testid="orvek-map-supporting-conflicting-grid"
+    >
+      <div className="o-material rounded-[10px] p-3.5">
+        <SectionLabel className="text-primary">Supporting evidence</SectionLabel>
+        {evidence.preview.length > 0 ? (
+          <ul className="mt-2 space-y-1.5">
+            {evidence.preview.map((link) => (
+              <li key={link.key} className="flex gap-2 text-[13px] text-foreground">
+                <span className="mt-0.5 text-primary">+</span>
+                <Link href={link.href} className="hover:underline">
+                  {link.evidenceSummaryLabel} · {link.sourceTypeLabel}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-[13px] text-muted-foreground">{evidence.supportingEmptyCopy}</p>
+        )}
+      </div>
+      <div className="o-material rounded-[10px] p-3.5">
+        <SectionLabel className="text-destructive/80">Conflicting evidence</SectionLabel>
+        {isDisputed ? (
+          <p className="mt-2 text-[13px] text-muted-foreground">
+            This conclusion is marked as disputed — conflicting signals may be present in linked
+            evidence.
+          </p>
+        ) : (
+          <p className="mt-2 text-[13px] text-muted-foreground">{evidence.conflictingEmptyCopy}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SecondaryPreviewPanels({
+  data,
+  handlers,
+}: {
+  data: V0MapViewProps;
+  handlers: V0MapViewHandlers;
+}) {
+  const { movementPreview, openQuestionsPreview } = data;
+  const { onMovementRow, onOpenQuestionRow } = handlers;
+
+  return (
+    <div
+      className="mt-8 grid gap-4 border-t o-hairline pt-6 lg:grid-cols-2"
+      data-testid="orvek-map-preview-bands"
+    >
+      <PreviewSectionShell
+        label={movementPreview.sectionLabel}
+        intro={movementPreview.sectionIntro}
+        viewAllHref={movementPreview.viewAllHref}
+        isLoading={movementPreview.isLoading}
+        isEmpty={movementPreview.items.length === 0}
+        emptyCopy={movementPreview.emptyCopy}
+        icon={GitCompareArrows}
+        testId="orvek-map-movement-preview"
+      >
+        <div className="space-y-2">
+          {movementPreview.items.map((item) => (
             <button
               key={item.id}
               type="button"
-              onClick={() => {
-                if (!item.inspectorObjectId) {
-                  return;
-                }
-                onMindContextChip(item.inspectorObjectId, item.title);
-              }}
-              className="o-calm max-w-[220px] truncate rounded-full bg-secondary/70 px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-accent/60"
-              title={item.title}
+              onClick={() => onMovementRow(item.id)}
+              className="o-calm o-material w-full rounded-[10px] px-3 py-2.5 text-left hover:bg-accent/40"
             >
-              {item.title}
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+                {item.updateTypeLabel}
+              </div>
+              <p className="mt-1 text-[13px] font-medium leading-snug text-foreground line-clamp-2">
+                {item.title}
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground line-clamp-2">
+                {item.summary}
+              </p>
+              <div className="mt-1.5 text-[11px] text-muted-foreground">{item.meta}</div>
             </button>
           ))}
         </div>
-      ) : null}
+      </PreviewSectionShell>
+
+      <PreviewSectionShell
+        label={openQuestionsPreview.sectionLabel}
+        intro={openQuestionsPreview.sectionIntro}
+        viewAllHref={openQuestionsPreview.viewAllHref}
+        isLoading={openQuestionsPreview.isLoading}
+        isEmpty={openQuestionsPreview.items.length === 0}
+        emptyCopy={openQuestionsPreview.emptyCopy}
+        icon={HelpCircle}
+        testId="orvek-map-open-questions-preview"
+      >
+        <div className="space-y-2">
+          {openQuestionsPreview.items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onOpenQuestionRow(item.id)}
+              className="o-calm o-material block w-full rounded-[10px] px-3 py-2.5 text-left hover:bg-accent/40"
+            >
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-action-foreground">
+                Open question
+              </div>
+              <p className="mt-1 text-[13px] font-medium leading-snug text-foreground line-clamp-2">
+                {item.title}
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground line-clamp-2">
+                {item.organizingQuestion}
+              </p>
+              <div className="mt-1.5 text-[11px] text-muted-foreground">{item.meta}</div>
+            </button>
+          ))}
+        </div>
+      </PreviewSectionShell>
     </div>
   );
+}
+
+function isRailItemActive(item: V0MapOntologyRailItem, selectedId: string | null): boolean {
+  if (!selectedId) {
+    return false;
+  }
+  if (item.kind === "conclusion") {
+    return selectedId === item.rawId;
+  }
+  return false;
 }
 
 export function V0MapView({
@@ -187,8 +307,8 @@ export function V0MapView({
     loadError,
     emptyPrimary,
     emptySecondary,
-    showPreviewBands,
-    groups,
+    showSecondaryPanels,
+    ontologyGroups,
     selectedId,
     isDetailLoading,
     detail,
@@ -197,15 +317,16 @@ export function V0MapView({
     evidence,
     headerStats,
     openQuestionsCount,
-    mindContext,
     movementPreview,
     openQuestionsPreview,
     relatedItems,
+    relatedEmptyCopy,
+    correctionChipLabels,
     correctionDeferredCopy,
   } = data;
 
-  const { onSelectItem, onOpenInspector, onMindContextChip, onMovementRow, onOpenQuestionRow } =
-    handlers;
+  const { onSelectRailItem, onOpenInspector } = handlers;
+  const hasOntologyItems = ontologyGroups.some((group) => group.items.length > 0);
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="orvek-map-page">
@@ -227,90 +348,14 @@ export function V0MapView({
               <span className="text-muted-foreground">
                 <span className="font-medium text-foreground">{headerStats.receipts}</span> receipts
               </span>
-              {openQuestionsCount > 0 ? (
-                <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">{openQuestionsCount}</span> open
-                  question{openQuestionsCount === 1 ? "" : "s"}
-                </span>
-              ) : null}
+              <span className="text-muted-foreground">
+                <span className="font-medium text-foreground">{openQuestionsCount}</span> open
+                question{openQuestionsCount === 1 ? "" : "s"}
+              </span>
             </div>
           ) : null}
         </div>
-        <MindContextHeader mindContext={mindContext} onMindContextChip={onMindContextChip} />
       </div>
-
-      {showPreviewBands ? (
-        <div
-          className="mb-4 grid gap-4 px-6 lg:grid-cols-2 lg:px-8"
-          data-testid="orvek-map-preview-bands"
-        >
-          <PreviewSectionShell
-            label={movementPreview.sectionLabel}
-            intro={movementPreview.sectionIntro}
-            viewAllHref={movementPreview.viewAllHref}
-            isLoading={movementPreview.isLoading}
-            isEmpty={movementPreview.items.length === 0}
-            emptyCopy={movementPreview.emptyCopy}
-            icon={GitCompareArrows}
-            testId="orvek-map-movement-preview"
-          >
-            <div className="space-y-2">
-              {movementPreview.items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onMovementRow(item.id)}
-                  className="o-calm o-material w-full rounded-[10px] px-3 py-2.5 text-left hover:bg-accent/40"
-                >
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-primary">
-                    {item.updateTypeLabel}
-                  </div>
-                  <p className="mt-1 text-[13px] font-medium leading-snug text-foreground line-clamp-2">
-                    {item.title}
-                  </p>
-                  <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground line-clamp-2">
-                    {item.summary}
-                  </p>
-                  <div className="mt-1.5 text-[11px] text-muted-foreground">{item.meta}</div>
-                </button>
-              ))}
-            </div>
-          </PreviewSectionShell>
-
-          <PreviewSectionShell
-            label={openQuestionsPreview.sectionLabel}
-            intro={openQuestionsPreview.sectionIntro}
-            viewAllHref={openQuestionsPreview.viewAllHref}
-            isLoading={openQuestionsPreview.isLoading}
-            isEmpty={openQuestionsPreview.items.length === 0}
-            emptyCopy={openQuestionsPreview.emptyCopy}
-            icon={HelpCircle}
-            testId="orvek-map-open-questions-preview"
-          >
-            <div className="space-y-2">
-              {openQuestionsPreview.items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onOpenQuestionRow(item.id)}
-                  className="o-calm o-material block w-full rounded-[10px] px-3 py-2.5 text-left hover:bg-accent/40"
-                >
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-action-foreground">
-                    Open question
-                  </div>
-                  <p className="mt-1 text-[13px] font-medium leading-snug text-foreground line-clamp-2">
-                    {item.title}
-                  </p>
-                  <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground line-clamp-2">
-                    {item.organizingQuestion}
-                  </p>
-                  <div className="mt-1.5 text-[11px] text-muted-foreground">{item.meta}</div>
-                </button>
-              ))}
-            </div>
-          </PreviewSectionShell>
-        </div>
-      ) : null}
 
       {isLoading ? (
         <div className="px-6 lg:px-8">
@@ -324,19 +369,22 @@ export function V0MapView({
             {loadError}
           </div>
         </div>
-      ) : groups.length === 0 ? (
+      ) : !hasOntologyItems ? (
         <div className="px-6 lg:px-8">
           <div className="o-material space-y-1 rounded-2xl p-5 text-[13px] text-muted-foreground">
-            <SectionLabel>Current understandings</SectionLabel>
+            <SectionLabel>Model workspace</SectionLabel>
             <p className="mt-3">{emptyPrimary}</p>
             <p className="text-muted-foreground/80">{emptySecondary}</p>
           </div>
         </div>
       ) : (
         <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[300px_1fr]">
-          <div className="o-sunken m-3 mt-0 min-h-0 overflow-y-auto rounded-2xl px-3 py-4 lg:mr-1.5">
-            {groups.map((group) => {
-              const CatIcon = GROUP_ICONS[group.key];
+          <div
+            className="o-sunken m-3 mt-0 min-h-0 overflow-y-auto rounded-2xl px-3 py-4 lg:mr-1.5"
+            data-testid="orvek-map-ontology-rails"
+          >
+            {ontologyGroups.map((group) => {
+              const CatIcon = ONTOLOGY_ICONS[group.key];
               return (
                 <div key={group.key} className="mb-4">
                   <div className="flex items-center gap-1.5 px-2">
@@ -346,36 +394,43 @@ export function V0MapView({
                       {group.items.length}
                     </span>
                   </div>
-                  <ul className="mt-1.5 space-y-0.5">
-                    {group.items.map((item) => {
-                      const active = selectedId === item.id;
-                      return (
-                        <li key={item.id}>
-                          <button
-                            type="button"
-                            onClick={() => onSelectItem(item.id)}
-                            className={cn(
-                              "o-calm flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left text-[13px] leading-snug",
-                              active
-                                ? "bg-card text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.14)]"
-                                : "text-foreground hover:bg-card/60"
-                            )}
-                          >
-                            {active ? (
-                              <span className="h-3.5 w-0.5 shrink-0 rounded-full bg-primary" />
-                            ) : null}
-                            <span className="min-w-0 flex-1 truncate">{item.title}</span>
-                            {item.recentlyMoved ? (
-                              <span
-                                className="size-1.5 shrink-0 rounded-full bg-action"
-                                title="Recently moved"
-                              />
-                            ) : null}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  {group.items.length === 0 ? (
+                    <p className="mt-1.5 px-2 text-[11px] text-muted-foreground">None linked yet.</p>
+                  ) : (
+                    <ul className="mt-1.5 space-y-0.5">
+                      {group.items.map((item) => {
+                        const active = isRailItemActive(item, selectedId);
+                        return (
+                          <li key={item.id}>
+                            <button
+                              type="button"
+                              onClick={() => onSelectRailItem(item)}
+                              className={cn(
+                                "o-calm flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left text-[13px] leading-snug",
+                                active
+                                  ? "bg-card text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.14)]"
+                                  : "text-foreground hover:bg-card/60"
+                              )}
+                            >
+                              {active ? (
+                                <span className="h-3.5 w-0.5 shrink-0 rounded-full bg-primary" />
+                              ) : null}
+                              <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                              <span className="shrink-0 text-[10px] text-muted-foreground">
+                                {item.statusLabel}
+                              </span>
+                              {item.recentlyMoved ? (
+                                <span
+                                  className="size-1.5 shrink-0 rounded-full bg-action"
+                                  title="Recently moved"
+                                />
+                              ) : null}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
               );
             })}
@@ -393,7 +448,7 @@ export function V0MapView({
                 {detailUnavailableCopy}
               </div>
             ) : (
-              <div className="mx-auto max-w-2xl">
+              <div className="mx-auto max-w-2xl" data-testid="orvek-map-selected-workspace">
                 <div className="flex items-center gap-2">
                   <span
                     className={cn(
@@ -407,6 +462,9 @@ export function V0MapView({
                     })()}
                     {detail.areaLabel}
                   </span>
+                  <span className="rounded-md bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
+                    {detail.statusLabel}
+                  </span>
                   <span className="text-xs text-muted-foreground">Updated {detail.updatedAt}</span>
                 </div>
 
@@ -414,16 +472,14 @@ export function V0MapView({
                   {detail.title}
                 </h2>
 
-                {detail.summary ? (
-                  <div className="mt-4 rounded-lg border-l-2 border-primary bg-evidence-muted/40 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-                      Current understanding
-                    </p>
-                    <p className="mt-1 text-[15px] leading-relaxed text-foreground">
-                      {detail.summary}
-                    </p>
-                  </div>
-                ) : null}
+                <div className="mt-4 rounded-lg border-l-2 border-primary bg-evidence-muted/40 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+                    Current understanding
+                  </p>
+                  <p className="mt-1 text-[15px] leading-relaxed text-foreground">
+                    {detail.summary ?? "No summary is available for this object yet."}
+                  </p>
+                </div>
 
                 <DetailBlock label="Why Orvek thinks this">
                   <p className="text-muted-foreground">{evidence.breadthIntro}</p>
@@ -461,34 +517,32 @@ export function V0MapView({
                   </DetailBlock>
                 ) : null}
 
-                {detail.isDisputed ? (
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <div className="o-material rounded-[10px] p-3.5">
-                      <SectionLabel className="text-primary">Supporting evidence</SectionLabel>
-                      <p className="mt-2 text-[13px] text-muted-foreground">
-                        {evidence.preview.length > 0
-                          ? `${evidence.preview.length} linked signal${evidence.preview.length === 1 ? "" : "s"} in inspector.`
-                          : evidence.fallbackCopy}
-                      </p>
-                    </div>
-                    <div className="o-material rounded-[10px] p-3.5">
-                      <SectionLabel className="text-destructive/80">Conflicting signal</SectionLabel>
-                      <p className="mt-2 text-[13px] text-muted-foreground">
-                        This conclusion is marked as disputed — conflicting signals may be present in
-                        linked evidence.
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
+                <SupportingConflictingGrid evidence={evidence} isDisputed={detail.isDisputed} />
 
-                {relatedItems.length > 0 ? (
-                  <DetailBlock label="Related across the model">
+                <DetailBlock label="Confidence">
+                  <span className="rounded-md bg-secondary px-2 py-0.5 text-[13px] font-medium text-secondary-foreground">
+                    {detail.confidenceLabel} · {detail.statusLabel}
+                  </span>
+                </DetailBlock>
+
+                <DetailBlock label="Related across the model">
+                  {relatedItems.length > 0 ? (
                     <div className="o-material divide-y divide-border overflow-hidden rounded-[10px]">
                       {relatedItems.map((related) => (
                         <button
                           key={related.id}
                           type="button"
-                          onClick={() => onSelectItem(related.id)}
+                          onClick={() =>
+                            onSelectRailItem({
+                              id: `conclusion-${related.id}`,
+                              rawId: related.id,
+                              title: related.title,
+                              statusLabel: related.typeLabel,
+                              recentlyMoved: false,
+                              kind: "conclusion",
+                              inspectorObjectId: null,
+                            })
+                          }
                           className="o-calm group flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-accent/40"
                         >
                           <span className="flex size-6 shrink-0 items-center justify-center rounded-[6px] bg-secondary text-primary">
@@ -499,7 +553,7 @@ export function V0MapView({
                               {related.title}
                             </span>
                             <span className="block text-[11px] text-muted-foreground">
-                              {related.areaLabel}
+                              {related.areaLabel} · {related.typeLabel}
                             </span>
                           </span>
                           <span className="text-[11px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
@@ -508,39 +562,9 @@ export function V0MapView({
                         </button>
                       ))}
                     </div>
-                  </DetailBlock>
-                ) : null}
-
-                {evidence.preview.length > 0 && !detail.isDisputed ? (
-                  <DetailBlock label="Supporting evidence">
-                    <div className="o-material divide-y divide-border overflow-hidden rounded-[10px]">
-                      {evidence.preview.map((link) => (
-                        <Link
-                          key={link.key}
-                          href={link.href}
-                          className="o-calm block px-3 py-2 text-[13px] text-foreground hover:bg-accent/40"
-                        >
-                          <span className="text-[11px] text-muted-foreground">
-                            {link.evidenceSummaryLabel}
-                          </span>
-                          <span className="mt-0.5 block font-medium">{link.sourceTypeLabel}</span>
-                        </Link>
-                      ))}
-                    </div>
-                    {evidence.hasMore ? (
-                      <p className="mt-2 text-[12px] text-muted-foreground">{evidence.inspectorHint}</p>
-                    ) : null}
-                  </DetailBlock>
-                ) : (
-                  <DetailBlock label="Supporting evidence">
-                    <p className="text-[13px] text-muted-foreground">{evidence.fallbackCopy}</p>
-                  </DetailBlock>
-                )}
-
-                <DetailBlock label="Confidence">
-                  <span className="rounded-md bg-secondary px-2 py-0.5 text-[13px] font-medium text-secondary-foreground">
-                    {detail.confidenceLabel} · {detail.statusLabel}
-                  </span>
+                  ) : (
+                    <p className="text-[13px] text-muted-foreground">{relatedEmptyCopy}</p>
+                  )}
                 </DetailBlock>
 
                 <button
@@ -552,10 +576,11 @@ export function V0MapView({
                   Full receipts & movement in inspector
                 </button>
 
-                <div className="mt-6 rounded-2xl bg-secondary/40 px-4 py-4">
-                  <SectionLabel>Correct the model</SectionLabel>
-                  <p className="mt-2 text-[13px] text-muted-foreground">{correctionDeferredCopy}</p>
-                </div>
+                <CorrectionChipRow labels={correctionChipLabels} deferredCopy={correctionDeferredCopy} />
+
+                {showSecondaryPanels ? (
+                  <SecondaryPreviewPanels data={data} handlers={handlers} />
+                ) : null}
               </div>
             )}
           </div>

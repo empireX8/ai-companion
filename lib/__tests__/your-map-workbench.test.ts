@@ -18,7 +18,8 @@ describe("your-map workbench", () => {
     expect(workbenchSource).toContain("mapMapDataToV0Props");
     expect(workbenchSource).toContain("fetchInspectorUserMapDetail");
     expect(workbenchSource).toContain("fetchMindContextSnapshot");
-    expect(adapterSource).toContain("groupUserMapConclusionsByStatus");
+    expect(adapterSource).toContain("buildOntologyRailGroups");
+    expect(adapterSource).toContain("V0_MAP_ONTOLOGY_RAIL_LABELS");
     expect(viewSource).toContain('data-testid="orvek-map-page"');
     expect(viewSource).toContain("grid-cols-1 lg:grid-cols-[300px_1fr]");
     expect(mindContextSource).toContain('data-testid="your-map-mind-context-panel"');
@@ -47,7 +48,8 @@ describe("your-map workbench", () => {
     expect(workbenchSource).toContain("fetchYourMapConclusions");
     expect(adapterSource).toContain("YOUR_MAP_EMPTY_PRIMARY");
     expect(adapterSource).toContain("YOUR_MAP_EMPTY_SECONDARY");
-    expect(adapterSource).toContain("groupUserMapConclusionsByStatus");
+    expect(adapterSource).toContain("buildOntologyRailGroups");
+    expect(adapterSource).toContain("V0_MAP_ONTOLOGY_RAIL_LABELS");
     expect(surfaceSource).toContain("journal, explore, import, decisions");
     expect(workbenchSource).not.toContain("mock");
     expect(viewSource).not.toContain("mock");
@@ -69,8 +71,10 @@ describe("your-map workbench", () => {
     const viewSource = readSource("components/orvek-workbench/views/V0MapView.tsx");
     const surfaceSource = readSource("lib/mind-context-surface.ts");
 
-    expect(adapterSource).toContain("groupUserMapConclusionsByStatus");
-    expect(viewSource).toContain("MindContextHeader");
+    expect(adapterSource).toContain("buildOntologyRailGroups");
+    expect(adapterSource).toContain("V0_MAP_ONTOLOGY_RAIL_LABELS");
+    expect(viewSource).toContain('data-testid="orvek-map-ontology-rails"');
+    expect(viewSource).toContain('data-testid="orvek-map-correction-chips"');
     expect(surfaceSource).toContain("MIND_CONTEXT_SECTION_LABEL");
     expect(surfaceSource).not.toContain("ProfileArtifact");
     expect(surfaceSource).not.toContain("/api/internal/");
