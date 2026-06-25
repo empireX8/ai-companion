@@ -9,8 +9,6 @@ import { OrvekV0PageShell } from "@/components/orvek-v0/production/OrvekV0PageSh
 import { VoiceWaveform } from "@/components/VoiceWaveform";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { EMPTY_ORVEK_DATA_API } from "@/lib/orvek-v0/empty-api";
-import { OrvekDataProvider } from "@/lib/orvek-v0/data-provider";
-import { OrvekPageHandlersProvider } from "@/lib/orvek-v0/page-handlers";
 import { mapTodayDataToV0Props } from "@/lib/orvek-adapters/today";
 import {
   buildTodayAttentionRows,
@@ -209,12 +207,8 @@ export function OrvekTodayPage() {
   );
 
   return (
-    <OrvekV0PageShell>
-      <OrvekDataProvider value={dataApi}>
-        <OrvekPageHandlersProvider value={pageHandlers}>
-          <TodayPage />
-        </OrvekPageHandlersProvider>
-      </OrvekDataProvider>
+    <OrvekV0PageShell data={dataApi} handlers={pageHandlers}>
+      <TodayPage />
     </OrvekV0PageShell>
   );
 }

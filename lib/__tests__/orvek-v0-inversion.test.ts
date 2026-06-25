@@ -61,10 +61,12 @@ describe("orvek v0 UI inversion", () => {
   });
 
   it("production Orvek*Page containers render v0 page components", () => {
+    const shellSource = readSource("components/orvek-v0/production/OrvekV0PageShell.tsx");
+
     for (const file of ORVEK_PAGE_CONTAINERS) {
       const source = readSource(file);
       expect(source).toContain("OrvekV0PageShell");
-      expect(source).toContain("OrvekDataProvider");
+      expect(source).toMatch(/<OrvekV0PageShell[^>]*\sdata=/);
       expect(source).toMatch(/TodayPage|MapPage|ExplorePage|DecisionsPage|TimelinePage|WhatChangedPage/);
     }
 
@@ -74,6 +76,22 @@ describe("orvek v0 UI inversion", () => {
       );
       expect(used).toBe(true);
     }
+
+    expect(shellSource).toContain("OrvekDataProvider");
+    expect(shellSource).toContain("ProductionInspectorBridge");
+  });
+
+  it("renders ProductionInspectorBridge inside OrvekDataProvider in OrvekV0PageShell", () => {
+    const shell = readSource("components/orvek-v0/production/OrvekV0PageShell.tsx");
+    const dataProviderOpen = shell.indexOf("<OrvekDataProvider");
+    const bridgeOpen = shell.indexOf("<ProductionInspectorBridge");
+    const bridgeClose = shell.indexOf("</ProductionInspectorBridge>");
+    const dataProviderClose = shell.indexOf("</OrvekDataProvider>");
+
+    expect(dataProviderOpen).toBeGreaterThan(-1);
+    expect(bridgeOpen).toBeGreaterThan(dataProviderOpen);
+    expect(bridgeClose).toBeGreaterThan(bridgeOpen);
+    expect(dataProviderClose).toBeGreaterThan(bridgeClose);
   });
 
   it("production route entrypoints do not import old visible page bodies", () => {

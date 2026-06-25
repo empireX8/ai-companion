@@ -25,8 +25,6 @@ import {
   type V0ExploreTabId,
 } from "@/lib/orvek-adapters/explore";
 import { EMPTY_ORVEK_DATA_API } from "@/lib/orvek-v0/empty-api";
-import { OrvekDataProvider } from "@/lib/orvek-v0/data-provider";
-import { OrvekPageHandlersProvider } from "@/lib/orvek-v0/page-handlers";
 import { ACTIVE_QUESTIONS_ENDPOINT, type ActiveQuestionItem } from "@/lib/active-questions";
 import { WATCH_FOR_ENDPOINT, type WatchForItem } from "@/lib/watch-for";
 
@@ -285,12 +283,8 @@ export function OrvekExplorePage() {
   );
 
   return (
-    <OrvekV0PageShell>
-      <OrvekDataProvider value={dataApi}>
-        <OrvekPageHandlersProvider value={pageHandlers}>
-          <ExplorePage />
-        </OrvekPageHandlersProvider>
-      </OrvekDataProvider>
+    <OrvekV0PageShell data={dataApi} handlers={pageHandlers}>
+      <ExplorePage />
     </OrvekV0PageShell>
   );
 }

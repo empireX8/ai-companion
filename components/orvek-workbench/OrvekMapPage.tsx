@@ -16,8 +16,6 @@ import {
   fetchMindContextSnapshot,
   type MindContextDisplayItem,
 } from "@/lib/mind-context-surface";
-import { OrvekDataProvider } from "@/lib/orvek-v0/data-provider";
-import { OrvekPageHandlersProvider } from "@/lib/orvek-v0/page-handlers";
 import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
 import type {
   UserMapConclusionPublicApiDetailItem,
@@ -288,12 +286,8 @@ export function OrvekMapPage() {
   );
 
   return (
-    <OrvekV0PageShell>
-      <OrvekDataProvider value={dataApi}>
-        <OrvekPageHandlersProvider value={pageHandlers}>
-          <MapPage />
-        </OrvekPageHandlersProvider>
-      </OrvekDataProvider>
+    <OrvekV0PageShell data={dataApi} handlers={pageHandlers}>
+      <MapPage />
     </OrvekV0PageShell>
   );
 }

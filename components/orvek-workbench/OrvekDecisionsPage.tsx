@@ -18,8 +18,6 @@ import {
 } from "@/lib/decisions-surface";
 import { mapDecisionsDataToV0Props } from "@/lib/orvek-adapters/decisions";
 import { EMPTY_ORVEK_DATA_API } from "@/lib/orvek-v0/empty-api";
-import { OrvekDataProvider } from "@/lib/orvek-v0/data-provider";
-import { OrvekPageHandlersProvider } from "@/lib/orvek-v0/page-handlers";
 
 import { useOrvekInspector } from "./useOrvekInspector";
 
@@ -199,12 +197,8 @@ export function OrvekDecisionsPage() {
   );
 
   return (
-    <OrvekV0PageShell>
-      <OrvekDataProvider value={dataApi}>
-        <OrvekPageHandlersProvider value={pageHandlers}>
-          <DecisionsPage />
-        </OrvekPageHandlersProvider>
-      </OrvekDataProvider>
+    <OrvekV0PageShell data={dataApi} handlers={pageHandlers}>
+      <DecisionsPage />
     </OrvekV0PageShell>
   );
 }
