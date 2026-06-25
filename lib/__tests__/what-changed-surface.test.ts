@@ -60,12 +60,14 @@ describe("what-changed page wiring", () => {
   it("renders report-style hierarchy without internal lifecycle fields", () => {
     const pageSource = readSource("app/(root)/(routes)/what-changed/page.tsx");
     const viewSource = readSource("components/orvek-workbench/OrvekWhatChangedPage.tsx");
+    const adapterSource = readSource("lib/orvek-adapters/what-changed.ts");
     const inspectorSource = readSource("components/what-changed/WhatChangedInspectorButton.tsx");
 
     expect(pageSource).toContain("splitWhatChangedMovements");
     expect(pageSource).toContain("OrvekWhatChangedView");
-    expect(viewSource).toContain("WHAT_CHANGED_EVIDENCE_LABEL");
-    expect(viewSource).toContain("WHAT_CHANGED_REENTRY_LABEL");
+    expect(viewSource).toContain("mapWhatChangedDataToV0Props");
+    expect(`${viewSource}\n${adapterSource}`).toContain("WHAT_CHANGED_EVIDENCE_LABEL");
+    expect(`${viewSource}\n${adapterSource}`).toContain("WHAT_CHANGED_REENTRY_LABEL");
     expect(viewSource).toContain("WhatChangedInspectorButton");
     expect(pageSource).toContain("ModelUpdateVisibility.user_visible");
     expect(pageSource).toContain("isMeaningful: true");

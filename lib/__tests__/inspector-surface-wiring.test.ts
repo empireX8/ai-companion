@@ -8,7 +8,9 @@ function readSource(relativePath: string): string {
 
 describe("inspector surface wiring", () => {
   it("wires Today movement selection to inspector model_update + movement tab", () => {
-    const source = readSource("components/orvek-workbench/OrvekTodayPage.tsx");
+    const container = readSource("components/orvek-workbench/OrvekTodayPage.tsx");
+    const view = readSource("components/orvek-workbench/views/V0TodayView.tsx");
+    const source = `${container}\n${view}`;
     expect(source).toContain("useOrvekInspector");
     expect(source).toContain('objectType: "model_update"');
     expect(source).toContain('tab: "movement"');

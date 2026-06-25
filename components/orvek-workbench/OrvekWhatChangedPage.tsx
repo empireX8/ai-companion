@@ -1,32 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { GitCompareArrows } from "lucide-react";
 
 import { WhatChangedInspectorButton } from "@/components/what-changed/WhatChangedInspectorButton";
+import { mapWhatChangedDataToV0Props } from "@/lib/orvek-adapters/what-changed";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import type { PublicEvidenceContinuityItem } from "@/lib/public-evidence-continuity";
 import type { WhatChangedListItem } from "@/lib/public-intelligence-safe-slice";
-import {
-  formatWhatChangedDateTime,
-  toWhatChangedMovementTitle,
-  WHAT_CHANGED_EARLIER_SECTION_INTRO,
-  WHAT_CHANGED_EARLIER_SECTION_LABEL,
-  WHAT_CHANGED_EMPTY_PRIMARY,
-  WHAT_CHANGED_EMPTY_SECONDARY,
-  WHAT_CHANGED_EVIDENCE_INTRO,
-  WHAT_CHANGED_EVIDENCE_LABEL,
-  WHAT_CHANGED_PAGE_INTRO,
-  WHAT_CHANGED_PAGE_META,
-  WHAT_CHANGED_PAGE_TITLE,
-  WHAT_CHANGED_PRIMARY_SECTION_INTRO,
-  WHAT_CHANGED_PRIMARY_SECTION_LABEL,
-  WHAT_CHANGED_REENTRY_INTRO,
-  WHAT_CHANGED_REENTRY_LABEL,
-  WHAT_CHANGED_REENTRY_LINKS,
-  WHAT_CHANGED_WHAT_CHANGED_LABEL,
-  WHAT_CHANGED_WHY_LABEL,
-} from "@/lib/what-changed-surface";
 
 import { BeforeAfter, SectionLabel } from "./OrvekPrimitives";
 import { useOrvekInspector } from "./useOrvekInspector";
@@ -37,9 +19,12 @@ export type OrvekWhatChangedViewProps = {
   evidenceItems: PublicEvidenceContinuityItem[];
 };
 
-function EarlierMovementCard({ item }: { item: WhatChangedListItem }) {
+function EarlierMovementCard({
+  item,
+}: {
+  item: ReturnType<typeof mapWhatChangedDataToV0Props>["earlier"][number];
+}) {
   const { select, setInspectorTab } = useOrvekInspector();
-  const title = toWhatChangedMovementTitle(item);
 
   return (
     <button
@@ -49,7 +34,7 @@ function EarlierMovementCard({ item }: { item: WhatChangedListItem }) {
           objectType: "model_update",
           objectId: item.id,
           modelUpdateId: item.id,
-          title,
+          title: item.title,
           tab: "movement",
         });
         setInspectorTab("movement");
@@ -57,12 +42,10 @@ function EarlierMovementCard({ item }: { item: WhatChangedListItem }) {
       className="o-calm block w-full rounded-[10px] bg-card p-2.5 text-left shadow-[0_1px_3px_-1px_rgba(30,41,59,0.1)] hover:bg-accent/40"
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[13px] font-medium text-foreground">{title}</span>
-        <span className="text-[11px] text-muted-foreground">
-          {formatWhatChangedDateTime(item.createdAt)}
-        </span>
+        <span className="text-[13px] font-medium text-foreground">{item.title}</span>
+        <span className="text-[11px] text-muted-foreground">{item.recordedAt}</span>
       </div>
-      <BeforeAfter after={item.userFacingSummary} compact />
+      <BeforeAfter after={item.summary} compact />
       <div className="mt-2">
         <PublicLinkedObjectContinuity
           objectType={item.affectedObjectType}
@@ -79,34 +62,46 @@ function EarlierMovementCard({ item }: { item: WhatChangedListItem }) {
 
 function PrimaryMovementSection({
   item,
+  inspectorItem,
   evidenceItems,
+  whatChangedLabel,
+  whyLabel,
+  evidenceLabel,
+  evidenceIntro,
+  reentryLabel,
+  reentryIntro,
+  reentryLinks,
 }: {
-  item: WhatChangedListItem;
-  evidenceItems: PublicEvidenceContinuityItem[];
+  item: NonNullable<ReturnType<typeof mapWhatChangedDataToV0Props>["primary"]>;
+  inspectorItem: WhatChangedListItem;
+  evidenceItems: ReturnType<typeof mapWhatChangedDataToV0Props>["evidenceItems"];
+  whatChangedLabel: string;
+  whyLabel: string;
+  evidenceLabel: string;
+  evidenceIntro: string;
+  reentryLabel: string;
+  reentryIntro: string;
+  reentryLinks: ReturnType<typeof mapWhatChangedDataToV0Props>["reentryLinks"];
 }) {
+  const headerParts = item.title.split(" · ");
+
   return (
     <section className="o-float overflow-hidden rounded-2xl">
       <div className="bg-action-muted/40 px-5 py-3 ring-1 ring-inset ring-action/15">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-action-foreground">
-          {item.updateTypeLabel} · {item.affectedObjectTypeLabel}
+          {headerParts.join(" · ")}
         </span>
       </div>
       <div className="space-y-5 p-5">
         <section>
-          <SectionLabel>{WHAT_CHANGED_WHAT_CHANGED_LABEL}</SectionLabel>
-          <p className="mt-2 text-[15px] font-medium leading-snug text-foreground">
-            {toWhatChangedMovementTitle(item)}
-          </p>
-          <div className="mt-2 text-xs text-muted-foreground">
-            Recorded {formatWhatChangedDateTime(item.createdAt)}
-          </div>
+          <SectionLabel>{whatChangedLabel}</SectionLabel>
+          <p className="mt-2 text-[15px] font-medium leading-snug text-foreground">{item.title}</p>
+          <div className="mt-2 text-xs text-muted-foreground">Recorded {item.recordedAt}</div>
         </section>
 
         <section>
-          <SectionLabel>{WHAT_CHANGED_WHY_LABEL}</SectionLabel>
-          <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-            {item.userFacingSummary}
-          </p>
+          <SectionLabel>{whyLabel}</SectionLabel>
+          <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">{item.summary}</p>
         </section>
 
         <section>
@@ -118,21 +113,21 @@ function PrimaryMovementSection({
             linkClassName="text-[13px] font-medium text-primary hover:underline"
             containerClassName="text-[13px] text-muted-foreground"
           />
-          <WhatChangedInspectorButton item={item} />
+          <WhatChangedInspectorButton item={inspectorItem} />
         </section>
 
         {evidenceItems.length > 0 ? (
           <section>
-            <SectionLabel>{WHAT_CHANGED_EVIDENCE_LABEL}</SectionLabel>
-            <p className="mb-3 text-[12px] text-muted-foreground">{WHAT_CHANGED_EVIDENCE_INTRO}</p>
+            <SectionLabel>{evidenceLabel}</SectionLabel>
+            <p className="mb-3 text-[12px] text-muted-foreground">{evidenceIntro}</p>
             <div className="space-y-2">
               {evidenceItems.map((evidence) => (
                 <article
-                  key={`${evidence.id}-${evidence.createdAt}`}
+                  key={`${evidence.id}-${evidence.linkedAt}`}
                   className="o-sunken rounded-[10px] p-3.5 text-[13px]"
                 >
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-                    {evidence.evidenceSummaryLabel}
+                    {evidence.label}
                   </div>
                   {evidence.href ? (
                     <Link href={evidence.href} className="text-primary hover:underline">
@@ -142,7 +137,7 @@ function PrimaryMovementSection({
                     <span>{evidence.sourceTypeLabel}</span>
                   )}
                   <div className="mt-1 text-[11px] text-muted-foreground">
-                    Linked {formatWhatChangedDateTime(evidence.createdAt)}
+                    Linked {evidence.linkedAt}
                   </div>
                 </article>
               ))}
@@ -151,10 +146,10 @@ function PrimaryMovementSection({
         ) : null}
 
         <section>
-          <SectionLabel>{WHAT_CHANGED_REENTRY_LABEL}</SectionLabel>
-          <p className="mb-3 text-[12px] text-muted-foreground">{WHAT_CHANGED_REENTRY_INTRO}</p>
+          <SectionLabel>{reentryLabel}</SectionLabel>
+          <p className="mb-3 text-[12px] text-muted-foreground">{reentryIntro}</p>
           <div className="flex flex-wrap gap-2">
-            {WHAT_CHANGED_REENTRY_LINKS.map((link) => (
+            {reentryLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -175,51 +170,63 @@ export function OrvekWhatChangedView({
   earlier,
   evidenceItems,
 }: OrvekWhatChangedViewProps) {
-  const hasItems = Boolean(primary) || earlier.length > 0;
+  const view = useMemo(
+    () => mapWhatChangedDataToV0Props({ primary, earlier, evidenceItems }),
+    [primary, earlier, evidenceItems]
+  );
+
+  const hasItems = Boolean(view.primary) || view.earlier.length > 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="px-6 pt-5 pb-4 lg:px-8">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          {WHAT_CHANGED_PAGE_TITLE}
-        </h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">{WHAT_CHANGED_PAGE_META}</p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">{view.pageTitle}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{view.pageMeta}</p>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 lg:px-8">
         <div className="mx-auto max-w-3xl">
-          <p className="mb-6 max-w-2xl text-[13px] text-muted-foreground">
-            {WHAT_CHANGED_PAGE_INTRO}
-          </p>
+          <p className="mb-6 max-w-2xl text-[13px] text-muted-foreground">{view.pageIntro}</p>
 
           {!hasItems ? (
             <div className="o-material space-y-1 rounded-2xl p-5 text-[13px] text-muted-foreground">
-              <p>{WHAT_CHANGED_EMPTY_PRIMARY}</p>
-              <p className="text-muted-foreground/80">{WHAT_CHANGED_EMPTY_SECONDARY}</p>
+              <p>{view.emptyPrimary}</p>
+              <p className="text-muted-foreground/80">{view.emptySecondary}</p>
             </div>
           ) : (
             <div className="space-y-6" data-testid="what-changed-list">
-              {primary ? (
+              {view.primary && primary ? (
                 <section>
                   <div className="mb-2 flex items-center gap-1.5">
                     <GitCompareArrows className="size-3.5 text-primary" aria-hidden />
-                    <SectionLabel>{WHAT_CHANGED_PRIMARY_SECTION_LABEL}</SectionLabel>
+                    <SectionLabel>{view.primarySectionLabel}</SectionLabel>
                   </div>
                   <p className="mb-3 text-[12px] text-muted-foreground">
-                    {WHAT_CHANGED_PRIMARY_SECTION_INTRO}
+                    {view.primarySectionIntro}
                   </p>
-                  <PrimaryMovementSection item={primary} evidenceItems={evidenceItems} />
+                  <PrimaryMovementSection
+                    item={view.primary}
+                    inspectorItem={primary}
+                    evidenceItems={view.evidenceItems}
+                    whatChangedLabel={view.whatChangedLabel}
+                    whyLabel={view.whyLabel}
+                    evidenceLabel={view.evidenceLabel}
+                    evidenceIntro={view.evidenceIntro}
+                    reentryLabel={view.reentryLabel}
+                    reentryIntro={view.reentryIntro}
+                    reentryLinks={view.reentryLinks}
+                  />
                 </section>
               ) : null}
 
-              {earlier.length > 0 ? (
+              {view.earlier.length > 0 ? (
                 <section className="px-1">
-                  <SectionLabel>{WHAT_CHANGED_EARLIER_SECTION_LABEL}</SectionLabel>
+                  <SectionLabel>{view.earlierSectionLabel}</SectionLabel>
                   <p className="mt-1 mb-3 text-[12px] text-muted-foreground">
-                    {WHAT_CHANGED_EARLIER_SECTION_INTRO}
+                    {view.earlierSectionIntro}
                   </p>
                   <div className="mt-2.5 space-y-2.5">
-                    {earlier.map((item) => (
+                    {view.earlier.map((item) => (
                       <EarlierMovementCard key={item.id} item={item} />
                     ))}
                   </div>

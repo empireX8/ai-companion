@@ -95,7 +95,8 @@ describe("orvek ux integration — surface copy modules", () => {
 describe("orvek ux integration — today to what-changed bridge", () => {
   it("keeps Today movement preview linked to What Changed", () => {
     const todayPage = readSource("components/orvek-workbench/OrvekTodayPage.tsx");
-    expect(todayPage).toContain("TODAY_CHANGES_VIEW_ALL_HREF");
+    const adapter = readSource("lib/orvek-adapters/today.ts");
+    expect(`${todayPage}\n${adapter}`).toContain("TODAY_CHANGES_VIEW_ALL_HREF");
     expect(todayPage).toContain('objectType: "model_update"');
     expect(todayPage).toContain('tab: "movement"');
   });

@@ -28,7 +28,12 @@ function readTodayPageSource(): string {
     join(process.cwd(), "components/orvek-workbench/OrvekTodayPage.tsx"),
     "utf8"
   );
-  return `${page}\n${orvek}`;
+  const view = readFileSync(
+    join(process.cwd(), "components/orvek-workbench/views/V0TodayView.tsx"),
+    "utf8"
+  );
+  const adapter = readFileSync(join(process.cwd(), "lib/orvek-adapters/today.ts"), "utf8");
+  return `${page}\n${orvek}\n${view}\n${adapter}`;
 }
 
 function readTodayReentrySource(): string {

@@ -19,7 +19,12 @@ function readTodayPageSource(): string {
     join(process.cwd(), "components/orvek-workbench/OrvekTodayPage.tsx"),
     "utf8"
   );
-  return `${page}\n${orvek}`;
+  const view = readFileSync(
+    join(process.cwd(), "components/orvek-workbench/views/V0TodayView.tsx"),
+    "utf8"
+  );
+  const adapter = readFileSync(join(process.cwd(), "lib/orvek-adapters/today.ts"), "utf8");
+  return `${page}\n${orvek}\n${view}\n${adapter}`;
 }
 
 describe("today-surface link mapping", () => {
@@ -206,8 +211,8 @@ describe("today-surface safety and honest copy", () => {
     const source = readTodayPageSource();
     expect(source.includes("TODAY_INTELLIGENCE_LOADING_COPY")).toBe(true);
     expect(source.includes("TODAY_CHANGES_VIEW_ALL_HREF")).toBe(true);
-    expect(source.includes("Nothing consequential right now.")).toBe(true);
-    expect(source.includes("Nothing needs attention right now.")).toBe(true);
+    expect(source.includes("TODAY_PRIMARY_EMPTY_COPY")).toBe(true);
+    expect(source.includes("TODAY_ATTENTION_EMPTY_COPY")).toBe(true);
     expect(TODAY_CHANGES_VIEW_ALL_HREF).toBe("/what-changed");
     expect(source.includes("Surfacing now")).toBe(false);
     expect(source.includes("Intelligence updates")).toBe(false);
