@@ -35,45 +35,58 @@ function formatDateTime(value: string): string {
 export function ExploreModelMovementRow({
   item,
   compact = false,
+  surface = "default",
 }: {
   item: ExploreSessionModelUpdateItem;
   compact?: boolean;
+  surface?: "default" | "orvek";
 }) {
   const title = `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`;
+  const isOrvek = surface === "orvek";
+  const shellClass = isOrvek ? "o-material" : "ml-material";
+  const accentClass = isOrvek ? "text-primary" : "text-cyan/75";
+  const badgeClass = isOrvek
+    ? "rounded-full bg-evidence-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-primary"
+    : "rounded-full bg-cyan/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-cyan/80";
+  const bodyClass = isOrvek
+    ? "mt-1 leading-relaxed text-muted-foreground"
+    : "mt-1 leading-relaxed text-[hsl(216_11%_75%)]";
+  const hairlineClass = isOrvek ? "o-hairline" : "ml-hairline";
+  const metaClass = isOrvek ? "mt-1.5 text-[11px] text-muted-foreground" : "label-meta mt-1.5";
 
   return (
     <div
-      className={`ml-material w-full rounded-xl ${
+      className={`${shellClass} w-full rounded-xl ${
         compact ? "px-3 py-2.5" : "px-3.5 py-3"
       }`}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-cyan/75">
+        <span className={`text-[10px] font-semibold uppercase tracking-wide ${accentClass}`}>
           {item.updateTypeLabel}
         </span>
-        <span className="rounded-full bg-cyan/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-cyan/80">
-          {EXPLORE_MOVEMENT_PUBLISHED_BADGE}
-        </span>
+        <span className={badgeClass}>{EXPLORE_MOVEMENT_PUBLISHED_BADGE}</span>
       </div>
       <p
-        className={`mt-1 leading-relaxed text-[hsl(216_11%_75%)] ${
+        className={`${bodyClass} ${
           compact ? "text-[12px] line-clamp-2" : "text-[13px] line-clamp-3"
         }`}
       >
         {item.userFacingSummary}
       </p>
       {!compact ? (
-        <div className="mt-2 border-t ml-hairline pt-2">
+        <div className={`mt-2 border-t ${hairlineClass} pt-2`}>
           <PublicLinkedObjectContinuity
             objectType={item.affectedObjectType}
             objectId={item.affectedObjectId}
             href={item.affectedObjectHref}
             context="model_update"
           />
-          <div className="label-meta mt-1.5">Recorded {formatDateTime(item.createdAt)}</div>
+          <div className={metaClass}>Recorded {formatDateTime(item.createdAt)}</div>
         </div>
       ) : (
-        <div className="label-meta mt-1">{formatDateTime(item.createdAt)}</div>
+        <div className={isOrvek ? "mt-1 text-[11px] text-muted-foreground" : "label-meta mt-1"}>
+          {formatDateTime(item.createdAt)}
+        </div>
       )}
       <ExploreInspectorAction
         objectType="model_update"
@@ -137,9 +150,12 @@ export function useExploreSessionModelUpdates(): {
   return { items, isLoading, error };
 }
 
-export function ExploreModelMovementStrip() {
+export function ExploreModelMovementStrip({ surface = "default" }: { surface?: "default" | "orvek" }) {
   const { sessionId } = useExploreSessionBridge();
   const { items, isLoading, error } = useExploreSessionModelUpdates();
+  const isOrvek = surface === "orvek";
+  const shellClass = isOrvek ? "o-material" : "ml-material";
+  const iconClass = isOrvek ? "text-primary" : "text-cyan/70";
 
   if (!sessionId) {
     return null;
@@ -147,8 +163,8 @@ export function ExploreModelMovementStrip() {
 
   if (isLoading) {
     return (
-      <div className="ml-material flex items-center gap-2 rounded-xl px-4 py-3 text-[12px] text-muted-foreground">
-        <GitCompareArrows className="size-3.5 text-cyan/70" aria-hidden />
+      <div className={`${shellClass} flex items-center gap-2 rounded-xl px-4 py-3 text-[12px] text-muted-foreground`}>
+        <GitCompareArrows className={`size-3.5 ${iconClass}`} aria-hidden />
         {EXPLORE_MOVEMENT_LOADING_COPY}
       </div>
     );
@@ -156,7 +172,7 @@ export function ExploreModelMovementStrip() {
 
   if (error) {
     return (
-      <div className="ml-material rounded-xl px-4 py-3 text-[12px] text-muted-foreground">
+      <div className={`${shellClass} rounded-xl px-4 py-3 text-[12px] text-muted-foreground`}>
         {EXPLORE_MOVEMENT_ERROR_COPY}
       </div>
     );
@@ -164,7 +180,7 @@ export function ExploreModelMovementStrip() {
 
   if (items.length === 0) {
     return (
-      <div className="ml-material rounded-xl px-4 py-3">
+      <div className={`${shellClass} rounded-xl px-4 py-3`}>
         <div className="text-[12px] font-medium text-foreground">{EXPLORE_MOVEMENT_EMPTY_COPY}</div>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
           {EXPLORE_MOVEMENT_EMPTY_SUBCOPY}
@@ -174,19 +190,21 @@ export function ExploreModelMovementStrip() {
   }
 
   return (
-    <div className="ml-material rounded-xl px-4 py-3">
+    <div className={`${shellClass} rounded-xl px-4 py-3`}>
       <div className="mb-2 flex items-start gap-2">
-        <GitCompareArrows className="mt-0.5 size-3.5 shrink-0 text-cyan/80" aria-hidden />
+        <GitCompareArrows className={`mt-0.5 size-3.5 shrink-0 ${isOrvek ? "text-primary" : "text-cyan/80"}`} aria-hidden />
         <div>
           <div className="text-[12px] font-medium text-foreground">
             {EXPLORE_MOVEMENT_HAS_UPDATES_HEADLINE}
           </div>
-          <div className="label-meta mt-0.5">{buildExploreMovementHasUpdatesMeta(items.length)}</div>
+          <div className={isOrvek ? "mt-0.5 text-[11px] text-muted-foreground" : "label-meta mt-0.5"}>
+            {buildExploreMovementHasUpdatesMeta(items.length)}
+          </div>
         </div>
       </div>
       <div className="space-y-2">
         {items.map((item) => (
-          <ExploreModelMovementRow key={item.id} item={item} compact />
+          <ExploreModelMovementRow key={item.id} item={item} compact surface={surface} />
         ))}
       </div>
     </div>

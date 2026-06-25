@@ -81,12 +81,30 @@ function useExploreSessionReviewItems(): {
 function ExploreConversationReviewCard({
   item,
   onActionComplete,
+  surface = "default",
 }: {
   item: ExploreConversationReviewItem;
   onActionComplete: () => void;
+  surface?: "default" | "orvek";
 }) {
   const [isActing, setIsActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const isOrvek = surface === "orvek";
+  const shellClass = isOrvek ? "o-material" : "ml-material";
+  const calmClass = isOrvek ? "o-calm" : "ml-calm";
+  const kindClass = isOrvek
+    ? "inline-flex rounded-md bg-evidence-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary"
+    : "inline-flex rounded-md bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan/75";
+  const draftBadgeClass = isOrvek
+    ? "rounded-full bg-action-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-action-foreground"
+    : "rounded-full bg-white/[0.05] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground";
+  const hairlineClass = isOrvek ? "o-hairline" : "ml-hairline";
+  const confirmClass = isOrvek
+    ? "o-calm rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground disabled:opacity-45"
+    : "ml-calm rounded-md bg-cyan px-2.5 py-1 text-[11px] font-medium text-black disabled:opacity-45";
+  const dismissClass = isOrvek
+    ? "o-calm o-material rounded-md px-2.5 py-1 text-[11px] font-medium disabled:opacity-45"
+    : "ml-calm ml-material rounded-md px-2.5 py-1 text-[11px] font-medium disabled:opacity-45";
 
   const handleConfirm = async () => {
     if (!item.referenceAction?.referenceId || !item.actions.canConfirm) {
@@ -125,12 +143,8 @@ function ExploreConversationReviewCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="inline-flex rounded-md bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan/75">
-              {item.kindLabel}
-            </span>
-            <span className="rounded-full bg-white/[0.05] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
-              {EXPLORE_REVIEW_DRAFT_BADGE}
-            </span>
+            <span className={kindClass}>{item.kindLabel}</span>
+            <span className={draftBadgeClass}>{EXPLORE_REVIEW_DRAFT_BADGE}</span>
             <span className="text-[10px] font-medium uppercase tracking-wide text-meta">
               {item.statusLabel}
             </span>
@@ -159,7 +173,7 @@ function ExploreConversationReviewCard({
         </div>
       </div>
       {(item.actions.canConfirm || item.actions.canReject) && (
-        <div className="mt-2.5 flex flex-wrap gap-2 border-t ml-hairline pt-2.5">
+        <div className={`mt-2.5 flex flex-wrap gap-2 border-t ${hairlineClass} pt-2.5`}>
           {item.actions.canConfirm ? (
             <button
               type="button"
@@ -167,7 +181,7 @@ function ExploreConversationReviewCard({
               onClick={() => {
                 void handleConfirm();
               }}
-              className="ml-calm rounded-md bg-cyan px-2.5 py-1 text-[11px] font-medium text-black disabled:opacity-45"
+              className={confirmClass}
             >
               Confirm
             </button>
@@ -179,7 +193,7 @@ function ExploreConversationReviewCard({
               onClick={() => {
                 void handleReject();
               }}
-              className="ml-calm ml-material rounded-md px-2.5 py-1 text-[11px] font-medium disabled:opacity-45"
+              className={dismissClass}
             >
               Dismiss
             </button>
@@ -196,19 +210,26 @@ function ExploreConversationReviewCard({
     return (
       <Link
         href={item.linkedObjectHref}
-        className="ml-material ml-calm block rounded-xl px-3.5 py-3 hover:bg-white/[0.02]"
+        className={`${shellClass} ${calmClass} block rounded-xl px-3.5 py-3 hover:bg-accent/40`}
       >
         {body}
       </Link>
     );
   }
 
-  return <div className="ml-material ml-calm rounded-xl px-3.5 py-3">{body}</div>;
+  return <div className={`${shellClass} ${calmClass} rounded-xl px-3.5 py-3`}>{body}</div>;
 }
 
-export function ExploreConversationReviewStrip() {
+export function ExploreConversationReviewStrip({
+  surface = "default",
+}: {
+  surface?: "default" | "orvek";
+}) {
   const { sessionId } = useExploreSessionBridge();
   const { items, isLoading, error, refresh } = useExploreSessionReviewItems();
+  const isOrvek = surface === "orvek";
+  const shellClass = isOrvek ? "o-material" : "ml-material";
+  const iconClass = isOrvek ? "text-primary" : "text-cyan/70";
 
   if (!sessionId) {
     return null;
@@ -216,8 +237,8 @@ export function ExploreConversationReviewStrip() {
 
   if (isLoading) {
     return (
-      <div className="ml-material flex items-center gap-2 rounded-xl px-4 py-3 text-[12px] text-muted-foreground">
-        <ClipboardList className="size-3.5 text-cyan/70" aria-hidden />
+      <div className={`${shellClass} flex items-center gap-2 rounded-xl px-4 py-3 text-[12px] text-muted-foreground`}>
+        <ClipboardList className={`size-3.5 ${iconClass}`} aria-hidden />
         {EXPLORE_REVIEW_LOADING_COPY}
       </div>
     );
@@ -225,7 +246,7 @@ export function ExploreConversationReviewStrip() {
 
   if (error) {
     return (
-      <div className="ml-material rounded-xl px-4 py-3 text-[12px] text-muted-foreground">
+      <div className={`${shellClass} rounded-xl px-4 py-3 text-[12px] text-muted-foreground`}>
         {EXPLORE_REVIEW_ERROR_COPY}
       </div>
     );
@@ -233,7 +254,7 @@ export function ExploreConversationReviewStrip() {
 
   if (items.length === 0) {
     return (
-      <div className="ml-material rounded-xl px-4 py-3">
+      <div className={`${shellClass} rounded-xl px-4 py-3`}>
         <div className="text-[12px] font-medium text-foreground">{EXPLORE_REVIEW_EMPTY_COPY}</div>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
           {EXPLORE_REVIEW_EMPTY_SUBCOPY}
@@ -243,14 +264,16 @@ export function ExploreConversationReviewStrip() {
   }
 
   return (
-    <div className="ml-material rounded-xl px-4 py-3">
+    <div className={`${shellClass} rounded-xl px-4 py-3`}>
       <div className="mb-2 flex items-start gap-2">
-        <ClipboardList className="mt-0.5 size-3.5 shrink-0 text-cyan/80" aria-hidden />
+        <ClipboardList className={`mt-0.5 size-3.5 shrink-0 ${isOrvek ? "text-primary" : "text-cyan/80"}`} aria-hidden />
         <div>
           <div className="text-[12px] font-medium text-foreground">
             {EXPLORE_REVIEW_HAS_ITEMS_HEADLINE}
           </div>
-          <div className="label-meta mt-0.5">{buildExploreReviewItemsMeta(items.length)}</div>
+          <div className={isOrvek ? "mt-0.5 text-[11px] text-muted-foreground" : "label-meta mt-0.5"}>
+            {buildExploreReviewItemsMeta(items.length)}
+          </div>
           <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
             {EXPLORE_REVIEW_HAS_ITEMS_SUBCOPY}
           </p>
@@ -258,7 +281,12 @@ export function ExploreConversationReviewStrip() {
       </div>
       <div className="space-y-2">
         {items.slice(0, 5).map((item) => (
-          <ExploreConversationReviewCard key={item.id} item={item} onActionComplete={refresh} />
+          <ExploreConversationReviewCard
+            key={item.id}
+            item={item}
+            onActionComplete={refresh}
+            surface={surface}
+          />
         ))}
       </div>
     </div>

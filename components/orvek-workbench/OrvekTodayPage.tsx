@@ -41,7 +41,7 @@ import {
 } from "@/lib/today-reentry";
 import { cn } from "@/lib/utils";
 
-import { SectionLabel } from "./OrvekPrimitives";
+import { SectionLabel, MovementTransition } from "./OrvekPrimitives";
 import { useOrvekInspector } from "./useOrvekInspector";
 
 const EMPTY_SNAPSHOT: TodayReentrySnapshot = {
@@ -270,7 +270,7 @@ export function OrvekTodayPage() {
                     </div>
                     <div>
                       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                        Linked signal
+                        Linked receipts
                       </dt>
                       <dd className="mt-0.5 text-[13px] font-medium text-foreground">
                         {hero.meta ?? "—"}
@@ -420,19 +420,12 @@ export function OrvekTodayPage() {
               <div className="space-y-2.5">
                 {movements.map((m) => (
                   <div key={m.id} className="o-material rounded-[10px] p-4">
-                    <div className="rounded-[10px] bg-evidence-muted/70 px-3 py-2 ring-1 ring-inset ring-primary/15">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">
-                        Updated understanding
-                      </p>
-                      <p className="mt-0.5 text-[13px] leading-relaxed text-foreground">
-                        {m.userFacingSummary}
-                      </p>
-                    </div>
-                    <div className="mt-2.5 flex items-center justify-between gap-3">
-                      <p className="flex items-start gap-1.5 text-[12px] text-muted-foreground">
-                        <ScrollText className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
-                        {m.updateTypeLabel} · {m.affectedObjectTypeLabel}
-                      </p>
+                    <MovementTransition
+                      shiftLabel={m.updateTypeLabel}
+                      updated={m.userFacingSummary}
+                      evidenceLine={`${m.updateTypeLabel} · ${m.affectedObjectTypeLabel}`}
+                    />
+                    <div className="mt-2.5 flex items-center justify-end gap-3">
                       <button
                         type="button"
                         onClick={() => seeWhyMovement(m)}
@@ -447,7 +440,62 @@ export function OrvekTodayPage() {
               </div>
             )}
 
-            <SectionLabel className="mb-2 mt-8">Capture</SectionLabel>
+          </div>
+
+          <aside className="min-w-0 lg:sticky lg:top-2 lg:self-start">
+            {hasReportReady ? (
+              <Link
+                href={TODAY_CHANGES_VIEW_ALL_HREF}
+                className="o-calm flex w-full items-center gap-3 rounded-2xl bg-evidence-muted/60 px-4 py-3 text-left ring-1 ring-inset ring-primary/15 hover:bg-evidence-muted"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary">
+                  <FileText className="size-4" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-semibold text-foreground">
+                    What Changed report
+                  </span>
+                  <span className="block text-[12px] text-muted-foreground">
+                    Ready · {snapshot.intelligenceUpdates.length} movement
+                    {snapshot.intelligenceUpdates.length === 1 ? "" : "s"}
+                  </span>
+                </span>
+                <ArrowRight className="size-4 shrink-0 text-primary" aria-hidden />
+              </Link>
+            ) : null}
+
+            {receiptCards.length > 0 ? (
+              <>
+                <div className="mb-2 mt-7 flex items-center gap-1.5">
+                  <ScrollText className="size-3.5 text-primary" aria-hidden />
+                  <SectionLabel>Receipts resurfaced</SectionLabel>
+                </div>
+                <div className="o-material space-y-px overflow-hidden rounded-[10px]">
+                  {receiptCards.map((card) => (
+                    <Link
+                      key={card.title}
+                      href={card.receiptHref ?? card.detailHref ?? "#"}
+                      className="o-calm flex w-full items-start gap-3 border-l-2 border-primary/50 px-4 py-2.5 text-left hover:bg-accent/40"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13px] italic leading-relaxed text-foreground">
+                          “{card.body}”
+                        </span>
+                        <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                          {card.kind} · {card.meta ?? "Receipt"}
+                        </span>
+                      </span>
+                      <ArrowRight
+                        className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+                        aria-hidden
+                      />
+                    </Link>
+                  ))}
+                </div>
+              </>
+            ) : null}
+
+            <SectionLabel className="mb-2 mt-7">Capture</SectionLabel>
             <div className="o-material rounded-2xl p-4">
               <textarea
                 ref={captureTextareaRef}
@@ -513,60 +561,6 @@ export function OrvekTodayPage() {
                 </Link>
               ))}
             </div>
-          </div>
-
-          <aside className="min-w-0 lg:sticky lg:top-2 lg:self-start">
-            {hasReportReady ? (
-              <Link
-                href={TODAY_CHANGES_VIEW_ALL_HREF}
-                className="o-calm flex w-full items-center gap-3 rounded-2xl bg-evidence-muted/60 px-4 py-3 text-left ring-1 ring-inset ring-primary/15 hover:bg-evidence-muted"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary">
-                  <FileText className="size-4" aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold text-foreground">
-                    What Changed report
-                  </span>
-                  <span className="block text-[12px] text-muted-foreground">
-                    Ready · {snapshot.intelligenceUpdates.length} movement
-                    {snapshot.intelligenceUpdates.length === 1 ? "" : "s"}
-                  </span>
-                </span>
-                <ArrowRight className="size-4 shrink-0 text-primary" aria-hidden />
-              </Link>
-            ) : null}
-
-            {receiptCards.length > 0 ? (
-              <>
-                <div className="mb-2 mt-7 flex items-center gap-1.5">
-                  <ScrollText className="size-3.5 text-primary" aria-hidden />
-                  <SectionLabel>Receipts resurfaced</SectionLabel>
-                </div>
-                <div className="o-material space-y-px overflow-hidden rounded-[10px]">
-                  {receiptCards.map((card) => (
-                    <Link
-                      key={card.title}
-                      href={card.receiptHref ?? card.detailHref ?? "#"}
-                      className="o-calm flex w-full items-start gap-3 border-l-2 border-primary/50 px-4 py-2.5 text-left hover:bg-accent/40"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[13px] italic leading-relaxed text-foreground">
-                          “{card.body}”
-                        </span>
-                        <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                          {card.kind} · {card.meta ?? "Receipt"}
-                        </span>
-                      </span>
-                      <ArrowRight
-                        className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
-                        aria-hidden
-                      />
-                    </Link>
-                  ))}
-                </div>
-              </>
-            ) : null}
           </aside>
         </div>
       </div>

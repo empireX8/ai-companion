@@ -50,8 +50,10 @@ import {
   YOUR_MAP_EVIDENCE_BREADTH_INTRO,
   type YourMapRailGroupKey,
 } from "@/lib/your-map-surface";
+import { fetchMapOpenQuestionsPreview } from "@/lib/your-map-preview-surface";
 
 import { BeforeAfter, SectionLabel, TYPE_META } from "./OrvekPrimitives";
+import { OrvekMapPreviewBands } from "./OrvekMapPreviewBands";
 import { useOrvekInspector } from "./useOrvekInspector";
 
 const GROUP_ICONS: Record<YourMapRailGroupKey, LucideIcon> = {
@@ -201,6 +203,7 @@ export function OrvekMapPage() {
   const [detail, setDetail] = useState<UserMapConclusionPublicApiDetailItem | null>(null);
   const [evidence, setEvidence] = useState<InspectorEvidenceLinkItem[]>([]);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [openQuestionsCount, setOpenQuestionsCount] = useState(0);
 
   const groups = useMemo(() => groupUserMapConclusionsByStatus(items), [items]);
   const preferredSelectionId =
@@ -295,6 +298,27 @@ export function OrvekMapPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const questions = await fetchMapOpenQuestionsPreview();
+        if (!cancelled) {
+          setOpenQuestionsCount(questions.length);
+        }
+      } catch {
+        if (!cancelled) {
+          setOpenQuestionsCount(0);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (items.length === 0) {
       setSelectedId(null);
       return;
@@ -338,6 +362,18 @@ export function OrvekMapPage() {
   }, [selectedId]);
 
   const selectedListItem = items.find((entry) => entry.id === selectedId);
+  const relatedItems = useMemo(() => {
+    if (!selectedListItem) {
+      return [];
+    }
+    return items
+      .filter(
+        (item) =>
+          item.id !== selectedListItem.id &&
+          (item.area === selectedListItem.area || item.status === selectedListItem.status)
+      )
+      .slice(0, 4);
+  }, [items, selectedListItem]);
   const { preview: evidencePreview, hasMore: hasMoreEvidence } =
     summarizeCentreEvidence(evidence);
 
@@ -361,15 +397,19 @@ export function OrvekMapPage() {
               <span className="text-muted-foreground">
                 <span className="font-medium text-foreground">{headerStats.receipts}</span> receipts
               </span>
-              <span className="text-muted-foreground">
-                <span className="font-medium text-foreground">{headerStats.conclusions}</span>{" "}
-                conclusion{headerStats.conclusions === 1 ? "" : "s"}
-              </span>
+              {openQuestionsCount > 0 ? (
+                <span className="text-muted-foreground">
+                  <span className="font-medium text-foreground">{openQuestionsCount}</span> open
+                  question{openQuestionsCount === 1 ? "" : "s"}
+                </span>
+              ) : null}
             </div>
           ) : null}
         </div>
         <OrvekMindContextHeader />
       </div>
+
+      {!isLoading && !loadError && items.length > 0 ? <OrvekMapPreviewBands /> : null}
 
       {isLoading ? (
         <div className="px-6 lg:px-8">
@@ -532,6 +572,14 @@ export function OrvekMapPage() {
                 {detail.status === "disputed" ? (
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
                     <div className="o-material rounded-[10px] p-3.5">
+                      <SectionLabel className="text-primary">Supporting evidence</SectionLabel>
+                      <p className="mt-2 text-[13px] text-muted-foreground">
+                        {evidencePreview.length > 0
+                          ? `${evidencePreview.length} linked signal${evidencePreview.length === 1 ? "" : "s"} in inspector.`
+                          : PUBLIC_EVIDENCE_FALLBACK_COPY}
+                      </p>
+                    </div>
+                    <div className="o-material rounded-[10px] p-3.5">
                       <SectionLabel className="text-destructive/80">Conflicting signal</SectionLabel>
                       <p className="mt-2 text-[13px] text-muted-foreground">
                         This conclusion is marked as disputed — conflicting signals may be present in
@@ -541,7 +589,37 @@ export function OrvekMapPage() {
                   </div>
                 ) : null}
 
-                {evidencePreview.length > 0 ? (
+                {relatedItems.length > 0 ? (
+                  <DetailBlock label="Related across the model">
+                    <div className="o-material divide-y divide-border overflow-hidden rounded-[10px]">
+                      {relatedItems.map((related) => (
+                        <button
+                          key={related.id}
+                          type="button"
+                          onClick={() => openItem(related.id)}
+                          className="o-calm group flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-accent/40"
+                        >
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-[6px] bg-secondary text-primary">
+                            <Compass className="size-3.5" aria-hidden />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[13px] font-medium text-foreground">
+                              {related.title}
+                            </span>
+                            <span className="block text-[11px] text-muted-foreground">
+                              {formatUserMapArea(related.area)}
+                            </span>
+                          </span>
+                          <span className="text-[11px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                            Open
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </DetailBlock>
+                ) : null}
+
+                {evidencePreview.length > 0 && detail.status !== "disputed" ? (
                   <DetailBlock label="Supporting evidence">
                     <div className="o-material divide-y divide-border overflow-hidden rounded-[10px]">
                       {evidencePreview.map((link) => (

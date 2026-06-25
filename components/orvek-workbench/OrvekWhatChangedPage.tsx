@@ -85,7 +85,7 @@ function PrimaryMovementSection({
   evidenceItems: PublicEvidenceContinuityItem[];
 }) {
   return (
-    <section className="o-material overflow-hidden rounded-2xl">
+    <section className="o-float overflow-hidden rounded-2xl">
       <div className="bg-action-muted/40 px-5 py-3 ring-1 ring-inset ring-action/15">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-action-foreground">
           {item.updateTypeLabel} · {item.affectedObjectTypeLabel}

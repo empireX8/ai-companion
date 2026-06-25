@@ -1,6 +1,7 @@
 "use client";
 
-import { PanelRight, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { PanelRight, ScrollText, X } from "lucide-react";
 
 import {
   InspectorPanelBody,
@@ -16,9 +17,24 @@ const INSPECTOR_TABS = [
   { id: "movement" as const, label: ORVEK_COPY.mindModelMovementTab },
 ] as const;
 
+function InspectorEmptyState() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
+      <ScrollText className="size-6 text-muted-foreground" aria-hidden />
+      <p className="text-sm font-medium text-foreground">Nothing selected</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Select any object to inspect its evidence, supporting and conflicting signals, related
+        objects, and what would change Orvek&apos;s read.
+      </p>
+    </div>
+  );
+}
+
 export function OrvekEvidencePanel() {
+  const pathname = usePathname();
   const { isOpen, close, tab, setTab, selection } = useInspector();
   const { label } = useInspectorContextFromPathname();
+  const isExploreLive = pathname === "/explore" || pathname.startsWith("/explore/");
 
   if (!isOpen) {
     return null;
@@ -34,7 +50,12 @@ export function OrvekEvidencePanel() {
           <header className="flex items-center gap-2 px-5 pt-4">
             <PanelRight className="size-4 text-primary" aria-hidden />
             <h2 className="text-sm font-semibold leading-tight text-foreground">Inspector</h2>
-            {selection?.selectedTitle ? (
+            {isExploreLive ? (
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-action-muted px-2 py-0.5 text-[11px] font-semibold text-action-foreground">
+                <span className="o-breathe size-1.5 rounded-full bg-action" />
+                Live
+              </span>
+            ) : selection?.selectedTitle ? (
               <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-primary">
                 <span className="size-1.5 rounded-full bg-primary" />
                 Synced
@@ -82,7 +103,11 @@ export function OrvekEvidencePanel() {
             key={`${tab}-${selection?.selectedObjectId ?? "none"}`}
             className="o-inspector-body min-h-0 flex-1 overflow-y-auto"
           >
-            <InspectorPanelBody />
+            {selection?.selectedObjectId || tab === "movement" ? (
+              <InspectorPanelBody />
+            ) : (
+              <InspectorEmptyState />
+            )}
           </div>
         </div>
       </aside>

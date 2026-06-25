@@ -9,6 +9,7 @@ import {
   ScrollText,
   Sparkles,
   Telescope,
+  ArrowRight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -178,5 +179,44 @@ export function BeforeAfter({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** v0 Today movement row — shift type → updated understanding (no fabricated prior read). */
+export function MovementTransition({
+  shiftLabel,
+  updated,
+  evidenceLine,
+}: {
+  shiftLabel: string;
+  updated: string;
+  evidenceLine?: string;
+}) {
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
+        <div className="rounded-[10px] bg-muted/70 px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Shift
+          </p>
+          <p className="mt-0.5 text-[13px] leading-relaxed text-foreground">{shiftLabel}</p>
+        </div>
+        <div className="hidden items-center justify-center sm:flex">
+          <ArrowRight className="size-4 text-primary" aria-hidden />
+        </div>
+        <div className="rounded-[10px] bg-evidence-muted/70 px-3 py-2 ring-1 ring-inset ring-primary/15">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+            Updated understanding
+          </p>
+          <p className="mt-0.5 text-[13px] leading-relaxed text-foreground">{updated}</p>
+        </div>
+      </div>
+      {evidenceLine ? (
+        <p className="mt-2.5 flex items-start gap-1.5 text-[12px] text-muted-foreground">
+          <ScrollText className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+          {evidenceLine}
+        </p>
+      ) : null}
+    </>
   );
 }

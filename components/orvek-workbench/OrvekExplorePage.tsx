@@ -209,16 +209,16 @@ function FreeExplore({
         )}
       </div>
 
-      <div className="mt-4">
-        <SectionLabel>{EXPLORE_GROUNDING_SECTION_LABEL}</SectionLabel>
+      <div className="mt-3">
+        <SectionLabel>Grounded in</SectionLabel>
         <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
           {EXPLORE_GROUNDING_SECTION_INTRO}
         </p>
       </div>
 
       <div className="mt-3 space-y-2">
-        <ExploreConversationReviewStrip />
-        <ExploreModelMovementStrip />
+        <ExploreConversationReviewStrip surface="orvek" />
+        <ExploreModelMovementStrip surface="orvek" />
       </div>
 
       <button
