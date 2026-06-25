@@ -4,8 +4,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Mic } from "lucide-react";
 
+import { TodayPage } from "@/components/orvek-v0/pages/today";
+import { OrvekV0PageShell } from "@/components/orvek-v0/production/OrvekV0PageShell";
 import { VoiceWaveform } from "@/components/VoiceWaveform";
 import { useVoiceInput } from "@/hooks/use-voice-input";
+import { EMPTY_ORVEK_DATA_API } from "@/lib/orvek-v0/empty-api";
+import { OrvekDataProvider } from "@/lib/orvek-v0/data-provider";
+import { OrvekPageHandlersProvider } from "@/lib/orvek-v0/page-handlers";
 import { mapTodayDataToV0Props } from "@/lib/orvek-adapters/today";
 import {
   buildTodayAttentionRows,
@@ -19,7 +24,6 @@ import {
 import type { TodayIntelligenceUpdateItem } from "@/lib/today-intelligence-updates";
 
 import { useOrvekInspector } from "./useOrvekInspector";
-import { V0TodayView } from "./views/V0TodayView";
 
 const EMPTY_SNAPSHOT: TodayReentrySnapshot = {
   surfacingCards: [],
@@ -82,7 +86,7 @@ export function OrvekTodayPage() {
     };
   }, []);
 
-  const viewData = useMemo(
+  const today = useMemo(
     () =>
       mapTodayDataToV0Props({
         snapshot,
@@ -94,6 +98,14 @@ export function OrvekTodayPage() {
 
   const hero = useMemo(() => pickTodayHeroItem(snapshot), [snapshot]);
   const trimmedCaptureText = captureText.trim();
+
+  const dataApi = useMemo(
+    () => ({
+      ...EMPTY_ORVEK_DATA_API,
+      today,
+    }),
+    [today]
+  );
 
   function seeWhyMovement(item: TodayIntelligenceUpdateItem) {
     select({
@@ -125,10 +137,9 @@ export function OrvekTodayPage() {
     return all.find((row) => row.id === rowId)?.selection ?? null;
   }
 
-  return (
-    <V0TodayView
-      data={viewData}
-      handlers={{
+  const pageHandlers = useMemo(
+    () => ({
+      today: {
         onHeroInspect: () => {
           if (hero?.selection) {
             applySelection(select, setInspectorTab, hero.selection);
@@ -145,45 +156,65 @@ export function OrvekTodayPage() {
             seeWhyMovement(hero.movement);
           }
         },
-        onNowRowSelect: (rowId) => {
+        onNowRowSelect: (rowId: string) => {
           const selection = resolveNowRowSelection(rowId);
           if (selection) {
             applySelection(select, setInspectorTab, selection);
           }
         },
-        onMovementSeeWhy: (movementId) => {
+        onMovementSeeWhy: (movementId: string) => {
           const item = snapshot.intelligenceUpdates.find((entry) => entry.id === movementId);
           if (item) {
             seeWhyMovement(item);
           }
         },
-      }}
-      capture={{
-        captureText,
-        displayText:
-          voice.state === "recording" && voice.interimTranscript
-            ? captureText
-              ? `${captureText}\n${voice.interimTranscript}`
-              : voice.interimTranscript
-            : captureText,
-        isRecording: voice.state === "recording",
-        canContinue: Boolean(trimmedCaptureText),
-        onCaptureChange: setCaptureText,
-        onVoiceToggle: () => void voice.toggle(),
-        onContinue: handleSaveCapture,
-        voiceSlot:
-          voice.state === "recording" ? (
-            <>
-              <VoiceWaveform active />
-              <span className="ml-1">Recording…</span>
-            </>
-          ) : (
-            <>
-              <Mic className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Voice
-            </>
-          ),
-      }}
-    />
+        capture: {
+          captureText,
+          displayText:
+            voice.state === "recording" && voice.interimTranscript
+              ? captureText
+                ? `${captureText}\n${voice.interimTranscript}`
+                : voice.interimTranscript
+              : captureText,
+          isRecording: voice.state === "recording",
+          canContinue: Boolean(trimmedCaptureText),
+          onCaptureChange: setCaptureText,
+          onVoiceToggle: () => void voice.toggle(),
+          onContinue: handleSaveCapture,
+          voiceSlot:
+            voice.state === "recording" ? (
+              <>
+                <VoiceWaveform active />
+                <span className="ml-1">Recording…</span>
+              </>
+            ) : (
+              <>
+                <Mic className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Voice
+              </>
+            ),
+        },
+      },
+    }),
+    [
+      captureText,
+      hero,
+      router,
+      select,
+      setInspectorTab,
+      snapshot.intelligenceUpdates,
+      trimmedCaptureText,
+      voice,
+    ]
+  );
+
+  return (
+    <OrvekV0PageShell>
+      <OrvekDataProvider value={dataApi}>
+        <OrvekPageHandlersProvider value={pageHandlers}>
+          <TodayPage />
+        </OrvekPageHandlersProvider>
+      </OrvekDataProvider>
+    </OrvekV0PageShell>
   );
 }

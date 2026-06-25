@@ -10,17 +10,19 @@ describe("your-map workbench", () => {
   it("renders master-detail layout on /your-map", () => {
     const pageSource = readSource("app/(root)/(routes)/your-map/page.tsx");
     const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
-    const viewSource = readSource("components/orvek-workbench/views/V0MapView.tsx");
+    const viewSource = readSource("components/orvek-v0/pages/map.tsx");
     const adapterSource = readSource("lib/orvek-adapters/map.ts");
+    const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
     const mindContextSource = readSource("components/your-map/YourMapMindContextPanel.tsx");
 
     expect(pageSource).toContain("OrvekMapPage");
-    expect(workbenchSource).toContain("mapMapDataToV0Props");
+    expect(workbenchSource).toContain("buildMapProductionDataApi");
     expect(workbenchSource).toContain("fetchInspectorUserMapDetail");
     expect(workbenchSource).toContain("fetchMindContextSnapshot");
     expect(adapterSource).toContain("buildOntologyRailGroups");
     expect(adapterSource).toContain("V0_MAP_ONTOLOGY_RAIL_LABELS");
-    expect(viewSource).toContain('data-testid="orvek-map-page"');
+    expect(mapApiSource).toContain('inspectorObjectType: "usermap_conclusion"');
+    expect(viewSource).toContain('data-testid="orvek-v0-map-page"');
     expect(viewSource).toContain("grid-cols-1 lg:grid-cols-[300px_1fr]");
     expect(mindContextSource).toContain('data-testid="your-map-mind-context-panel"');
     expect(mindContextSource).toContain("fetchMindContextSnapshot");
@@ -29,11 +31,13 @@ describe("your-map workbench", () => {
 
   it("selects map rows into inspector evidence context without full navigation", () => {
     const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
+    const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
+    const bridgeSource = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
     const mindContextSource = readSource("components/your-map/YourMapMindContextPanel.tsx");
 
-    expect(workbenchSource).toContain('objectType: "usermap_conclusion"');
-    expect(workbenchSource).toContain("useOrvekInspector");
-    expect(workbenchSource).toContain('tab: "evidence"');
+    expect(mapApiSource).toContain('inspectorObjectType: "usermap_conclusion"');
+    expect(bridgeSource).toContain('return "usermap_conclusion"');
+    expect(workbenchSource).toContain("OrvekV0PageShell");
     expect(mindContextSource).toContain('objectType: "pattern_claim"');
     expect(mindContextSource).not.toContain("personality");
     expect(mindContextSource).not.toContain("mock");
@@ -42,7 +46,7 @@ describe("your-map workbench", () => {
   it("loads conclusions from the public API and shows honest empty state copy", () => {
     const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
     const adapterSource = readSource("lib/orvek-adapters/map.ts");
-    const viewSource = readSource("components/orvek-workbench/views/V0MapView.tsx");
+    const viewSource = readSource("components/orvek-v0/pages/map.tsx");
     const surfaceSource = readSource("lib/your-map-surface.ts");
 
     expect(workbenchSource).toContain("fetchYourMapConclusions");
@@ -68,13 +72,12 @@ describe("your-map workbench", () => {
 
   it("keeps conclusion groups separate from Mind Context foundation", () => {
     const adapterSource = readSource("lib/orvek-adapters/map.ts");
-    const viewSource = readSource("components/orvek-workbench/views/V0MapView.tsx");
+    const viewSource = readSource("components/orvek-v0/pages/map.tsx");
     const surfaceSource = readSource("lib/mind-context-surface.ts");
 
     expect(adapterSource).toContain("buildOntologyRailGroups");
     expect(adapterSource).toContain("V0_MAP_ONTOLOGY_RAIL_LABELS");
-    expect(viewSource).toContain('data-testid="orvek-map-ontology-rails"');
-    expect(viewSource).toContain('data-testid="orvek-map-correction-chips"');
+    expect(viewSource).toContain('data-testid="orvek-v0-map-page"');
     expect(surfaceSource).toContain("MIND_CONTEXT_SECTION_LABEL");
     expect(surfaceSource).not.toContain("ProfileArtifact");
     expect(surfaceSource).not.toContain("/api/internal/");

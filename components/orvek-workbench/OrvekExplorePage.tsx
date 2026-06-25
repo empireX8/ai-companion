@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { ExplorePage } from "@/components/orvek-v0/pages/explore";
+import { OrvekV0PageShell } from "@/components/orvek-v0/production/OrvekV0PageShell";
 import { fetchActionsPageData } from "@/lib/actions-api";
 import {
   EXPLORE_ACTION_ID_PARAM,
@@ -22,12 +24,14 @@ import {
   mapWatchForToExploreFieldwork,
   type V0ExploreTabId,
 } from "@/lib/orvek-adapters/explore";
+import { EMPTY_ORVEK_DATA_API } from "@/lib/orvek-v0/empty-api";
+import { OrvekDataProvider } from "@/lib/orvek-v0/data-provider";
+import { OrvekPageHandlersProvider } from "@/lib/orvek-v0/page-handlers";
 import { ACTIVE_QUESTIONS_ENDPOINT, type ActiveQuestionItem } from "@/lib/active-questions";
 import { WATCH_FOR_ENDPOINT, type WatchForItem } from "@/lib/watch-for";
 
 import { useOrvekExploreChat } from "./useOrvekExploreChat";
 import { useOrvekInspector } from "./useOrvekInspector";
-import { V0ExploreView } from "./views/V0ExploreView";
 
 export function OrvekExplorePage() {
   const searchParams = useSearchParams();
@@ -99,23 +103,18 @@ export function OrvekExplorePage() {
       return;
     }
 
-    const load = async () => {
+    void (async () => {
       setIsLoadingHandoff(true);
       setHandoffError(null);
-
       try {
         const data = await fetchActionsPageData();
-        if (cancelled) {
-          return;
-        }
-
+        if (cancelled) return;
         const context = resolveExploreActionHandoffContext(data, parsedActionId);
         if (!context) {
           setHandoffContext(null);
           setHandoffError(EXPLORE_HANDOFF_UNAVAILABLE_COPY);
           return;
         }
-
         setHandoffContext(context);
       } catch {
         if (!cancelled) {
@@ -123,13 +122,9 @@ export function OrvekExplorePage() {
           setHandoffError(EXPLORE_HANDOFF_UNAVAILABLE_COPY);
         }
       } finally {
-        if (!cancelled) {
-          setIsLoadingHandoff(false);
-        }
+        if (!cancelled) setIsLoadingHandoff(false);
       }
-    };
-
-    void load();
+    })();
 
     return () => {
       cancelled = true;
@@ -138,12 +133,10 @@ export function OrvekExplorePage() {
 
   useEffect(() => {
     let cancelled = false;
-
-    const loadWorkspaceData = async () => {
+    void (async () => {
       setIsLoadingInvestigations(true);
       setIsLoadingQuestions(true);
       setIsLoadingFieldwork(true);
-
       try {
         const [investigationsResponse, questionsResponse, fieldworkResponse] = await Promise.all([
           fetch("/api/investigations?limit=20", { method: "GET", cache: "no-store" }),
@@ -199,16 +192,13 @@ export function OrvekExplorePage() {
           setIsLoadingFieldwork(false);
         }
       }
-    };
-
-    void loadWorkspaceData();
-
+    })();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const viewData = useMemo(
+  const explore = useMemo(
     () =>
       mapExploreDataToV0Props({
         activeTab: tab,
@@ -260,20 +250,27 @@ export function OrvekExplorePage() {
     ]
   );
 
+  const dataApi = useMemo(
+    () => ({
+      ...EMPTY_ORVEK_DATA_API,
+      explore,
+    }),
+    [explore]
+  );
+
   const openInspectorMovement = useCallback(() => {
     setInspectorTab("movement");
   }, [setInspectorTab]);
 
-  return (
-    <V0ExploreView
-      data={viewData}
-      handlers={{
+  const pageHandlers = useMemo(
+    () => ({
+      explore: {
         onTabChange: setTab,
         onDraftChange: setDraft,
         onSend: () => {
           void sendMessage();
         },
-        onQuickPrompt: (prompt) => {
+        onQuickPrompt: (prompt: string) => {
           setDraft(prompt);
           openInspectorMovement();
         },
@@ -282,7 +279,18 @@ export function OrvekExplorePage() {
         onInvestigationSelect: setSelectedInvestigationId,
         onQuestionSelect: setSelectedQuestionId,
         onFieldworkSelect: setSelectedFieldworkId,
-      }}
-    />
+      },
+    }),
+    [openInspectorMovement, sendMessage, setDraft]
+  );
+
+  return (
+    <OrvekV0PageShell>
+      <OrvekDataProvider value={dataApi}>
+        <OrvekPageHandlersProvider value={pageHandlers}>
+          <ExplorePage />
+        </OrvekPageHandlersProvider>
+      </OrvekDataProvider>
+    </OrvekV0PageShell>
   );
 }

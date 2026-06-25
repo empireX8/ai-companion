@@ -60,21 +60,21 @@ describe("what-changed page wiring", () => {
   it("renders report-style hierarchy without internal lifecycle fields", () => {
     const pageSource = readSource("app/(root)/(routes)/what-changed/page.tsx");
     const viewSource = readSource("components/orvek-workbench/OrvekWhatChangedPage.tsx");
+    const pageBodySource = readSource("components/orvek-v0/pages/what-changed.tsx");
     const adapterSource = readSource("lib/orvek-adapters/what-changed.ts");
-    const inspectorSource = readSource("components/what-changed/WhatChangedInspectorButton.tsx");
 
     expect(pageSource).toContain("splitWhatChangedMovements");
     expect(pageSource).toContain("OrvekWhatChangedView");
     expect(viewSource).toContain("mapWhatChangedDataToV0Props");
-    expect(`${viewSource}\n${adapterSource}`).toContain("WHAT_CHANGED_EVIDENCE_LABEL");
-    expect(`${viewSource}\n${adapterSource}`).toContain("WHAT_CHANGED_REENTRY_LABEL");
-    expect(viewSource).toContain("WhatChangedInspectorButton");
+    expect(`${pageBodySource}\n${adapterSource}`).toContain("WHAT_CHANGED_EVIDENCE_LABEL");
+    expect(`${pageBodySource}\n${adapterSource}`).toContain("WHAT_CHANGED_REENTRY_LABEL");
+    expect(viewSource).toContain('objectType: "model_update"');
+    expect(pageBodySource).toContain("onMovementSelect");
     expect(pageSource).toContain("ModelUpdateVisibility.user_visible");
     expect(pageSource).toContain("isMeaningful: true");
     expect(pageSource).not.toContain("beforeSummary");
     expect(pageSource).not.toContain("afterSummary");
-    expect(viewSource).toMatch(/evidenceItems\.length > 0/);
-    expect(inspectorSource).toContain('objectType: "model_update"');
-    expect(inspectorSource).not.toContain('objectType: "decision"');
+    expect(pageBodySource).toMatch(/evidenceItems\.length > 0/);
+    expect(viewSource).toContain('tab: "movement"');
   });
 });

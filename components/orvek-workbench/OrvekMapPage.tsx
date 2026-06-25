@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { MapPage } from "@/components/orvek-v0/pages/map";
+import { OrvekV0PageShell } from "@/components/orvek-v0/production/OrvekV0PageShell";
 import {
   fetchInspectorEvidenceLinks,
   fetchInspectorUserMapDetail,
@@ -14,7 +16,9 @@ import {
   fetchMindContextSnapshot,
   type MindContextDisplayItem,
 } from "@/lib/mind-context-surface";
-import { mapMapDataToV0Props } from "@/lib/orvek-adapters/map";
+import { OrvekDataProvider } from "@/lib/orvek-v0/data-provider";
+import { OrvekPageHandlersProvider } from "@/lib/orvek-v0/page-handlers";
+import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
 import type {
   UserMapConclusionPublicApiDetailItem,
   UserMapConclusionPublicApiListItem,
@@ -30,13 +34,9 @@ import {
   pickInitialYourMapSelectionId,
 } from "@/lib/your-map-surface";
 
-import { useOrvekInspector } from "./useOrvekInspector";
-import { V0MapView } from "./views/V0MapView";
-
 export function OrvekMapPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { select, setInspectorTab } = useOrvekInspector();
 
   const [items, setItems] = useState<UserMapConclusionPublicApiListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,14 +46,12 @@ export function OrvekMapPage() {
   const [evidence, setEvidence] = useState<InspectorEvidenceLinkItem[]>([]);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [openQuestionsCount, setOpenQuestionsCount] = useState(0);
-
   const [mindContextItems, setMindContextItems] = useState<MindContextDisplayItem[]>([]);
   const [mindContextSummaryCounts, setMindContextSummaryCounts] = useState({
     memories: 0,
     patterns: 0,
   });
   const [isMindContextLoading, setIsMindContextLoading] = useState(true);
-
   const [movementItems, setMovementItems] = useState<MapMovementPreviewItem[]>([]);
   const [isMovementLoading, setIsMovementLoading] = useState(true);
   const [openQuestionItems, setOpenQuestionItems] = useState<MapOpenQuestionPreviewItem[]>([]);
@@ -62,62 +60,33 @@ export function OrvekMapPage() {
   const preferredSelectionId =
     searchParams.get("selected") ?? searchParams.get("id");
 
-  const syncSelectionToInspector = useCallback(
-    (item: UserMapConclusionPublicApiListItem | undefined) => {
-      if (!item) {
-        return;
-      }
-      select({
-        objectType: "usermap_conclusion",
-        objectId: item.id,
-        title: item.title,
-        sourceSurface: "map",
-        tab: "evidence",
-      });
-    },
-    [select]
-  );
-
   const openItem = useCallback(
     (id: string) => {
       setSelectedId(id);
-      const item = items.find((entry) => entry.id === id);
-      syncSelectionToInspector(item);
-
       const params = new URLSearchParams(searchParams.toString());
       params.set("selected", id);
       router.replace(`/your-map?${params.toString()}`, { scroll: false });
     },
-    [items, router, searchParams, syncSelectionToInspector]
+    [router, searchParams]
   );
 
   useEffect(() => {
     let cancelled = false;
-
-    const load = async () => {
+    void (async () => {
       setIsLoading(true);
       setLoadError(null);
-
       try {
         const nextItems = await fetchYourMapConclusions();
-        if (cancelled) {
-          return;
-        }
-        setItems(nextItems);
+        if (!cancelled) setItems(nextItems);
       } catch {
         if (!cancelled) {
           setItems([]);
           setLoadError("Could not load your map.");
         }
       } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+        if (!cancelled) setIsLoading(false);
       }
-    };
-
-    void load();
-
+    })();
     return () => {
       cancelled = true;
     };
@@ -125,28 +94,21 @@ export function OrvekMapPage() {
 
   useEffect(() => {
     let cancelled = false;
-
-    const load = async () => {
+    void (async () => {
       setIsMindContextLoading(true);
       try {
         const snapshot = await fetchMindContextSnapshot();
-        if (cancelled) {
-          return;
-        }
-        setMindContextItems(buildMindContextDisplayItems(snapshot, 3));
-        setMindContextSummaryCounts({
-          memories: snapshot.memories.length,
-          patterns: snapshot.activePatterns.length,
-        });
-      } finally {
         if (!cancelled) {
-          setIsMindContextLoading(false);
+          setMindContextItems(buildMindContextDisplayItems(snapshot, 3));
+          setMindContextSummaryCounts({
+            memories: snapshot.memories.length,
+            patterns: snapshot.activePatterns.length,
+          });
         }
+      } finally {
+        if (!cancelled) setIsMindContextLoading(false);
       }
-    };
-
-    void load();
-
+    })();
     return () => {
       cancelled = true;
     };
@@ -154,21 +116,15 @@ export function OrvekMapPage() {
 
   useEffect(() => {
     let cancelled = false;
-
     void (async () => {
       setIsMovementLoading(true);
       try {
         const nextItems = await fetchMapMovementPreview();
-        if (!cancelled) {
-          setMovementItems(nextItems);
-        }
+        if (!cancelled) setMovementItems(nextItems);
       } finally {
-        if (!cancelled) {
-          setIsMovementLoading(false);
-        }
+        if (!cancelled) setIsMovementLoading(false);
       }
     })();
-
     return () => {
       cancelled = true;
     };
@@ -176,7 +132,6 @@ export function OrvekMapPage() {
 
   useEffect(() => {
     let cancelled = false;
-
     void (async () => {
       setIsQuestionsLoading(true);
       try {
@@ -191,12 +146,9 @@ export function OrvekMapPage() {
           setOpenQuestionsCount(0);
         }
       } finally {
-        if (!cancelled) {
-          setIsQuestionsLoading(false);
-        }
+        if (!cancelled) setIsQuestionsLoading(false);
       }
     })();
-
     return () => {
       cancelled = true;
     };
@@ -207,12 +159,8 @@ export function OrvekMapPage() {
       setSelectedId(null);
       return;
     }
-
-    const initialId = pickInitialYourMapSelectionId(items, preferredSelectionId);
-    setSelectedId(initialId);
-    const initialItem = items.find((entry) => entry.id === initialId);
-    syncSelectionToInspector(initialItem);
-  }, [items, preferredSelectionId, syncSelectionToInspector]);
+    setSelectedId(pickInitialYourMapSelectionId(items, preferredSelectionId));
+  }, [items, preferredSelectionId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -224,30 +172,25 @@ export function OrvekMapPage() {
 
     let cancelled = false;
     setIsDetailLoading(true);
-
     void (async () => {
       const [nextDetail, nextEvidence] = await Promise.all([
         fetchInspectorUserMapDetail(selectedId),
         fetchInspectorEvidenceLinks(INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT(selectedId)),
       ]);
-
-      if (cancelled) {
-        return;
+      if (!cancelled) {
+        setDetail(nextDetail);
+        setEvidence(nextEvidence);
+        setIsDetailLoading(false);
       }
-
-      setDetail(nextDetail);
-      setEvidence(nextEvidence);
-      setIsDetailLoading(false);
     })();
-
     return () => {
       cancelled = true;
     };
   }, [selectedId]);
 
-  const viewData = useMemo(
+  const dataApi = useMemo(
     () =>
-      mapMapDataToV0Props({
+      buildMapProductionDataApi({
         items,
         isLoading,
         loadError,
@@ -289,83 +232,68 @@ export function OrvekMapPage() {
     ]
   );
 
-  const movementById = useMemo(
-    () => new Map(movementItems.map((item) => [item.id, item])),
-    [movementItems]
+  const pageHandlers = useMemo(
+    () => ({
+      map: {
+        onOpenItem: (railId: string) => {
+          const api = buildMapProductionDataApi({
+            items,
+            isLoading,
+            loadError,
+            selectedId,
+            detail,
+            isDetailLoading,
+            evidence,
+            openQuestionsCount,
+            mindContext: {
+              isLoading: isMindContextLoading,
+              items: mindContextItems,
+              summaryCounts: mindContextSummaryCounts,
+            },
+            movementPreview: {
+              isLoading: isMovementLoading,
+              items: movementItems,
+            },
+            openQuestionsPreview: {
+              isLoading: isQuestionsLoading,
+              items: openQuestionItems,
+            },
+          });
+          const obj = api.getObject(railId);
+          const conclusionId = obj?.inspectorObjectId ?? railId.replace(/^conclusion-/, "");
+          if (conclusionId && items.some((item) => item.id === conclusionId)) {
+            openItem(conclusionId);
+          }
+        },
+      },
+    }),
+    [
+      detail,
+      evidence,
+      isDetailLoading,
+      isLoading,
+      isMindContextLoading,
+      isMovementLoading,
+      isQuestionsLoading,
+      items,
+      loadError,
+      mindContextItems,
+      mindContextSummaryCounts,
+      movementItems,
+      openItem,
+      openQuestionItems,
+      openQuestionsCount,
+      selectedId,
+    ]
   );
 
   return (
-    <V0MapView
-      data={viewData}
-      handlers={{
-        onSelectRailItem: (item) => {
-          if (item.kind === "conclusion") {
-            openItem(item.rawId);
-            return;
-          }
-          if (item.kind === "mind_context" && item.inspectorObjectId) {
-            select({
-              objectType: "pattern_claim",
-              objectId: item.inspectorObjectId,
-              title: item.title,
-              sourceSurface: "map",
-              tab: "evidence",
-            });
-            setInspectorTab("evidence");
-            return;
-          }
-          if (item.kind === "open_question") {
-            router.push(`/active-questions/${item.rawId}`);
-            return;
-          }
-          if (item.kind === "model_update") {
-            const movement = movementById.get(item.rawId);
-            if (!movement) {
-              return;
-            }
-            select({
-              objectType: "model_update",
-              objectId: movement.id,
-              modelUpdateId: movement.id,
-              title: `${movement.updateTypeLabel} · ${movement.affectedObjectTypeLabel}`,
-              sourceSurface: "map",
-              tab: "movement",
-            });
-            setInspectorTab("movement");
-          }
-        },
-        onOpenInspector: () => {
-          if (!detail) {
-            return;
-          }
-          select({
-            objectType: "usermap_conclusion",
-            objectId: detail.id,
-            title: detail.title,
-            sourceSurface: "map",
-            tab: "evidence",
-          });
-          setInspectorTab("evidence");
-        },
-        onMovementRow: (id) => {
-          const item = movementById.get(id);
-          if (!item) {
-            return;
-          }
-          select({
-            objectType: "model_update",
-            objectId: item.id,
-            modelUpdateId: item.id,
-            title: `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`,
-            sourceSurface: "map",
-            tab: "movement",
-          });
-          setInspectorTab("movement");
-        },
-        onOpenQuestionRow: (id) => {
-          router.push(`/active-questions/${id}`);
-        },
-      }}
-    />
+    <OrvekV0PageShell>
+      <OrvekDataProvider value={dataApi}>
+        <OrvekPageHandlersProvider value={pageHandlers}>
+          <MapPage />
+        </OrvekPageHandlersProvider>
+      </OrvekDataProvider>
+    </OrvekV0PageShell>
   );
 }

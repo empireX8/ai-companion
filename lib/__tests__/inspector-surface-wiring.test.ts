@@ -20,16 +20,18 @@ describe("inspector surface wiring", () => {
   it("wires Your Map workbench list selection to usermap_conclusion inspector context", () => {
     const pageSource = readSource("app/(root)/(routes)/your-map/page.tsx");
     const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
-    const viewSource = readSource("components/orvek-workbench/views/V0MapView.tsx");
+    const viewSource = readSource("components/orvek-v0/pages/map.tsx");
+    const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
 
     expect(pageSource).toContain("OrvekMapPage");
-    expect(workbenchSource).toContain('objectType: "usermap_conclusion"');
-    expect(viewSource).toContain('data-testid="orvek-map-page"');
+    expect(mapApiSource).toContain('inspectorObjectType: "usermap_conclusion"');
+    expect(workbenchSource).toContain("OrvekV0PageShell");
+    expect(viewSource).toContain('data-testid="orvek-v0-map-page"');
   });
 
   it("wires Timeline model changes and linked activity hrefs to inspector", () => {
     const container = readSource("components/orvek-workbench/OrvekTimelinePage.tsx");
-    const view = readSource("components/orvek-workbench/views/V0TimelineView.tsx");
+    const view = readSource("components/orvek-v0/pages/timeline.tsx");
     const adapter = readSource("lib/orvek-adapters/timeline.ts");
     const source = `${container}\n${view}\n${adapter}`;
     const inspectorSource = readSource("components/timeline/TimelineInspectorAction.tsx");
