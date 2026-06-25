@@ -190,14 +190,15 @@ describe("explore conversation review UI separation", () => {
   it("keeps published movement and conversation review separate in Explore UI", () => {
     const explorePage = readSource("app/(root)/(routes)/explore/page.tsx");
     const orvekExplore = readSource("components/orvek-workbench/OrvekExplorePage.tsx");
+    const exploreView = readSource("components/orvek-workbench/views/V0ExploreView.tsx");
     const movementStrip = readSource("components/explore/ExploreModelMovementStrip.tsx");
     const reviewStrip = readSource("components/explore/ExploreConversationReviewStrip.tsx");
     const movementPanel = readSource("components/inspector/panels/ModelMovementInspectorPanel.tsx");
     const chatPanel = readSource("components/inspector/panels/ChatInspectorPanel.tsx");
 
     expect(explorePage).toContain("OrvekExplorePage");
-    expect(orvekExplore).toContain("ExploreModelMovementStrip");
-    expect(orvekExplore).toContain("ExploreConversationReviewStrip");
+    expect(exploreView).toContain("ExploreModelMovementStrip");
+    expect(exploreView).toContain("ExploreConversationReviewStrip");
     expect(orvekExplore).toContain("onConversationUpdated");
 
     expect(movementStrip).toContain("ExploreInspectorAction");
@@ -219,6 +220,7 @@ describe("explore conversation review UI separation", () => {
     const sources = [
       readSource("app/(root)/(routes)/explore/page.tsx"),
       readSource("components/orvek-workbench/OrvekExplorePage.tsx"),
+      readSource("components/orvek-workbench/views/V0ExploreView.tsx"),
       readSource("components/explore/ExploreConversationReviewStrip.tsx"),
       readSource("lib/explore-session-review-items-server.ts"),
     ].join("\n");

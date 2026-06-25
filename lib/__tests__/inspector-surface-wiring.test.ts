@@ -20,18 +20,22 @@ describe("inspector surface wiring", () => {
   it("wires Your Map workbench list selection to usermap_conclusion inspector context", () => {
     const pageSource = readSource("app/(root)/(routes)/your-map/page.tsx");
     const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
+    const viewSource = readSource("components/orvek-workbench/views/V0MapView.tsx");
 
     expect(pageSource).toContain("OrvekMapPage");
     expect(workbenchSource).toContain('objectType: "usermap_conclusion"');
-    expect(workbenchSource).toContain('data-testid="orvek-map-page"');
+    expect(viewSource).toContain('data-testid="orvek-map-page"');
   });
 
   it("wires Timeline model changes and linked activity hrefs to inspector", () => {
-    const source = readSource("components/orvek-workbench/OrvekTimelinePage.tsx");
+    const container = readSource("components/orvek-workbench/OrvekTimelinePage.tsx");
+    const view = readSource("components/orvek-workbench/views/V0TimelineView.tsx");
+    const adapter = readSource("lib/orvek-adapters/timeline.ts");
+    const source = `${container}\n${view}\n${adapter}`;
     const inspectorSource = readSource("components/timeline/TimelineInspectorAction.tsx");
     expect(source).toContain("TimelineInspectorAction");
-    expect(source).toContain('objectType="model_update"');
-    expect(source).toContain('tab="movement"');
+    expect(source).toContain('objectType: "model_update"');
+    expect(source).toContain('tab: "movement"');
     expect(inspectorSource).toContain('objectType === "model_update"');
     expect(inspectorSource).toContain('sourceSurface: "timeline"');
     expect(source).toContain("TIMELINE_SEMANTIC_FILTERS");

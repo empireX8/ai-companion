@@ -71,14 +71,17 @@ describe("decisions-surface", () => {
 describe("decisions page wiring", () => {
   it("renders governed decisions surface on /actions", () => {
     const pageSource = readSource("app/(root)/(routes)/actions/page.tsx");
-    const decisionsSource = readSource("components/orvek-workbench/OrvekDecisionsPage.tsx");
+    const containerSource = readSource("components/orvek-workbench/OrvekDecisionsPage.tsx");
+    const adapterSource = readSource("lib/orvek-adapters/decisions.ts");
+    const viewSource = readSource("components/orvek-workbench/views/V0DecisionsView.tsx");
+    const wiring = `${containerSource}\n${adapterSource}\n${viewSource}`;
 
     expect(pageSource).toContain("OrvekDecisionsPage");
-    expect(decisionsSource).toContain("DECISIONS_PAGE_INTRO");
-    expect(decisionsSource).toContain("groupDecisionsByResolution");
-    expect(decisionsSource).toContain('data-testid="orvek-decisions-page"');
-    expect(decisionsSource).toContain('objectType: "pattern_claim"');
-    expect(decisionsSource).not.toContain("Recommended for you");
-    expect(decisionsSource).not.toContain("Loading actions");
+    expect(wiring).toContain("DECISIONS_PAGE_INTRO");
+    expect(wiring).toContain("groupDecisionsByResolution");
+    expect(viewSource).toContain('data-testid="orvek-decisions-page"');
+    expect(containerSource).toContain('objectType: "pattern_claim"');
+    expect(wiring).not.toContain("Recommended for you");
+    expect(wiring).not.toContain("Loading actions");
   });
 });

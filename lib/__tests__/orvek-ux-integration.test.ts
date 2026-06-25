@@ -57,10 +57,13 @@ describe("orvek ux integration — inspector safety", () => {
   });
 
   it("routes timeline fieldwork to real pages when inspector is unsupported", () => {
-    const timelineSurface = readSource("components/orvek-workbench/OrvekTimelinePage.tsx");
+    const container = readSource("components/orvek-workbench/OrvekTimelinePage.tsx");
+    const view = readSource("components/orvek-workbench/views/V0TimelineView.tsx");
+    const adapter = readSource("lib/orvek-adapters/timeline.ts");
+    const timelineSurface = `${container}\n${view}\n${adapter}`;
     expect(timelineSurface).toContain("parseSelectableObjectFromHref");
     expect(timelineSurface).toContain("TimelineInspectorAction");
-    expect(timelineSurface).toContain('entry.href && !inspectorTarget');
+    expect(timelineSurface).toContain("row.href");
   });
 });
 
