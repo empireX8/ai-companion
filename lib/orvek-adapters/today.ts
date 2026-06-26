@@ -106,6 +106,43 @@ function mapNowRow(row: TodayAttentionRow): V0TodayNowRow {
   };
 }
 
+export function filterDefined<T>(items: (T | null | undefined)[]): T[] {
+  return items.filter((item): item is T => item != null);
+}
+
+function normalizeReceiptRow(row: V0TodayReceiptRow): V0TodayReceiptRow {
+  const quote = row.quote?.trim() || "Receipt";
+  const meta = row.meta?.trim() || "Receipt";
+  return {
+    id: row.id || `receipt-${quote.slice(0, 24)}`,
+    quote,
+    meta,
+    href: row.href || "#",
+  };
+}
+
+export function normalizeV0TodayViewProps(props: V0TodayViewProps): V0TodayViewProps {
+  return {
+    ...props,
+    primaryActions: filterDefined(props.primaryActions),
+    nowRows: filterDefined(props.nowRows).filter((row) => Boolean(row.id && row.title)),
+    movements: filterDefined(props.movements).filter((row) => Boolean(row.id && row.updated)),
+    receipts: filterDefined(props.receipts).map(normalizeReceiptRow),
+    checkIns: filterDefined(props.checkIns),
+  };
+}
+
+/** Flatten v0 Today array slots for adapter regression checks. */
+export function listV0TodayArrayEntries(props: V0TodayViewProps): unknown[] {
+  return [
+    ...props.primaryActions,
+    ...props.nowRows,
+    ...props.movements,
+    ...props.receipts,
+    ...props.checkIns,
+  ];
+}
+
 export type MapTodayDataInput = {
   snapshot: TodayReentrySnapshot;
   isLoading: boolean;
@@ -120,16 +157,18 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
   const openLoopRows = buildTodayOpenLoopRows(snapshot);
   const changeRows = buildTodayChangeRows(snapshot, hero);
   const receiptCards = buildTodayReceiptCards(snapshot);
-  const nowRows = [...attentionRows, ...fieldworkRows, ...openLoopRows]
-    .slice(0, 6)
-    .map(mapNowRow);
+  const nowRows = filterDefined(
+    [...attentionRows, ...fieldworkRows, ...openLoopRows].slice(0, 6).map(mapNowRow)
+  );
   const movementSource = hero?.movement ? [hero.movement, ...changeRows] : changeRows;
-  const movements: V0TodayMovementRow[] = movementSource.slice(0, 3).map((m) => ({
-    id: m.id,
-    previous: null,
-    updated: m.userFacingSummary,
-    evidence: `${m.updateTypeLabel} · ${m.affectedObjectTypeLabel}`,
-  }));
+  const movements: V0TodayMovementRow[] = filterDefined(
+    movementSource.slice(0, 3).map((m) => ({
+      id: m.id,
+      previous: null,
+      updated: m.userFacingSummary,
+      evidence: `${m.updateTypeLabel} · ${m.affectedObjectTypeLabel}`,
+    }))
+  );
 
   let report: V0TodayReportSlot | null = null;
   if (snapshot.intelligenceUpdates.length > 0) {
@@ -141,14 +180,14 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
     };
   }
 
-  const receipts: V0TodayReceiptRow[] = receiptCards.map((card, index) => ({
-    id: `receipt-${index}-${card.title}`,
-    quote: card.body,
-    meta: `${card.kind} · ${card.meta ?? "Receipt"}`,
+  const receipts: V0TodayReceiptRow[] = filterDefined(receiptCards).map((card, index) => ({
+    id: `receipt-${index}-${card.title?.trim() || "item"}`,
+    quote: card.body?.trim() || card.title?.trim() || "Receipt",
+    meta: `${card.kind ?? "Receipt"} · ${card.meta?.trim() || "Receipt"}`,
     href: card.receiptHref ?? card.detailHref ?? "#",
   }));
 
-  return {
+  return normalizeV0TodayViewProps({
     briefingDate,
     briefingTitle: isLoading ? TODAY_INTELLIGENCE_LOADING_COPY : buildTodayBriefingTitle(snapshot),
     briefingMeta: buildTodayBriefingMeta(snapshot, isLoading),
@@ -165,5 +204,5 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
     receipts,
     checkIns: CHECK_INS,
     priorReadEmptyCopy: PRIOR_READ_EMPTY,
-  };
+  });
 }

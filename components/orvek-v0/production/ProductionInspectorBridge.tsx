@@ -11,7 +11,7 @@ import { useWorkbench } from "../store";
 
 function resolveInspectorType(obj: OrvekObject): InspectorSelectableObjectType | null {
   if (obj.inspectorObjectType) {
-    return obj.inspectorObjectType;
+    return obj.inspectorObjectType as InspectorSelectableObjectType;
   }
   if (obj.type === "map-object") {
     return "usermap_conclusion";

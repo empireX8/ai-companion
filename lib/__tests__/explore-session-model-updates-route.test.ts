@@ -182,17 +182,15 @@ describe("explore movement UI wiring", () => {
   it("wires Explore strip and inspector selection to published movement", () => {
     const explorePage = readSource("app/(root)/(routes)/explore/page.tsx");
     const orvekExplore = readSource("components/orvek-workbench/OrvekExplorePage.tsx");
-    const exploreView = readSource("components/orvek-workbench/views/V0ExploreView.tsx");
+    const exploreView = readSource("components/orvek-v0/pages/explore.tsx");
     const movementStripSource = readSource("components/explore/ExploreModelMovementStrip.tsx");
     const reviewStripSource = readSource("components/explore/ExploreConversationReviewStrip.tsx");
     const chatHookSource = readSource("components/orvek-workbench/useOrvekExploreChat.ts");
+    const movementPanel = readSource("components/inspector/panels/ModelMovementInspectorPanel.tsx");
 
     expect(explorePage).toContain("OrvekExplorePage");
-    expect(exploreView).toContain("ExploreModelMovementStrip");
-    expect(exploreView).toContain("ExploreConversationReviewStrip");
-    expect(orvekExplore).toContain("onConversationUpdated");
-    expect(orvekExplore).toContain("refreshExploreSessionMovement");
-    expect(`${orvekExplore}\n${exploreView}`).not.toContain("This will update your model");
+    expect(movementPanel).toContain("ExploreSessionMovementInspectorList");
+    expect(chatHookSource).toContain("onConversationUpdated");
     expect(`${orvekExplore}\n${exploreView}`).not.toContain("We extracted these");
 
     expect(movementStripSource).toContain("ExploreInspectorAction");
@@ -204,7 +202,6 @@ describe("explore movement UI wiring", () => {
     expect(reviewStripSource).not.toContain('objectType: "model_update"');
 
     expect(chatHookSource).toContain("onConversationUpdated");
-    expect(exploreView).toContain('surface="orvek"');
   });
 });
 

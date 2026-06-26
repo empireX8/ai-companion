@@ -1,128 +1,534 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
-import {
-  ArrowRight,
-  Compass,
-  Loader2,
-  PanelRight,
-  Send,
-  Sparkles,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react"
+import { cn } from "@/lib/utils"
+import { EXPLORE_GROUNDING } from "@/lib/orvek-v0/orvek-data"
+import { useOrvekData } from "@/lib/orvek-v0/data-provider"
+import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
+import { useWorkbench } from "@/components/orvek-v0/store"
+import { Chip, SectionLabel } from "@/components/orvek-v0/primitives"
+import { ArrowRight, PanelRight, Send, Sparkles } from "lucide-react"
 
-import type {
-  V0ExploreGroundingChip,
-  V0ExploreTabId,
-  V0ExploreViewProps,
-} from "@/lib/orvek-adapters/explore";
-import { cn } from "@/lib/utils";
+type Tab = "free" | "investigations" | "questions" | "fieldwork"
 
-import { useOrvekData } from "@/lib/orvek-v0/data-provider";
-import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "free", label: "Free Explore" },
+  { id: "investigations", label: "Investigations" },
+  { id: "questions", label: "Active Questions" },
+  { id: "fieldwork", label: "Fieldwork Bridge" },
+]
 
-import { Chip, SectionLabel } from "@/components/orvek-v0/primitives";
+export function ExplorePage() {
+  const { select, setExploreActive } = useWorkbench()
+  const [tab, setTab] = useState<Tab>("free")
 
-export type V0ExploreViewHandlers = {
-  onTabChange: (tab: V0ExploreTabId) => void;
-  onDraftChange: (value: string) => void;
-  onSend: () => void;
-  onQuickPrompt: (prompt: string) => void;
-  onOpenInspector: () => void;
-  onComposerFocus: () => void;
-  onGroundingChip?: (chip: V0ExploreGroundingChip) => void;
-  onInvestigationSelect?: (id: string) => void;
-  onQuestionSelect?: (id: string) => void;
-  onFieldworkSelect?: (id: string) => void;
-};
+  // Explore is "live": the inspector surfaces possible movement only while here.
+  useEffect(() => {
+    setExploreActive(true)
+    return () => setExploreActive(false)
+  }, [setExploreActive])
 
-function ExploreBubble({
-  role,
-  children,
-}: {
-  role: "user" | "orvek";
-  children: React.ReactNode;
-}) {
-  const isUser = role === "user";
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="px-6 pt-5 pb-4 lg:px-8">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Explore</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          Ask, investigate, and turn conversation into model movement. Possible updates appear in
+          the inspector.
+        </p>
+        {/* segmented control */}
+        <div className="o-sunken mt-3 inline-flex flex-wrap gap-0.5 rounded-[9px] p-1">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "o-calm rounded-[6px] px-3 py-1.5 text-[13px] font-medium",
+                tab === t.id
+                  ? "bg-card text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.16)]"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 lg:px-8">
+        <div className="mx-auto max-w-3xl">
+          {tab === "free" && <FreeExplore />}
+          {tab === "investigations" && <Investigations />}
+          {tab === "questions" && <Questions />}
+          {tab === "fieldwork" && <FieldworkBridge onSelect={select} />}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FreeExplore() {
+  const { select, setInspectorTab } = useWorkbench()
+  const data = useOrvekData()
+  const { getObjects, exploreGrounding, exploreMessages, exploreLiveDetectionCopy, emptyCopyBySlot } =
+    data
+  const isProduction = isProductionDisplay(data)
+  const isReference = !isProduction
+  const groundingIds =
+    exploreGrounding.length > 0
+      ? exploreGrounding
+      : isReference
+        ? EXPLORE_GROUNDING
+        : []
+  const grounding = getObjects(groundingIds)
+  const messages = isProduction
+    ? (exploreMessages ?? [])
+    : (exploreMessages ?? [
+      {
+        id: "ref-user",
+        role: "user" as const,
+        content:
+          "Why do I feel like we need to see the architecture visually before locking design?",
+      },
+      {
+        id: "ref-orvek",
+        role: "orvek" as const,
+        content:
+          "You seem to trust decisions more once the system can express itself visually. This connects to a broader pattern: you reject abstract strategy when it feels untested, but you also resist shallow visual polish. The useful move may be an architecture prototype, not a design prototype.",
+      },
+    ])
+
+  return (
+    <div>
+      <div className="space-y-3">
+        {messages.length === 0 && isProduction ? (
+          <div className="o-material rounded-[14px] p-4 text-[13px] leading-relaxed text-muted-foreground">
+            {emptyCopyBySlot?.exploreChatEmpty ?? "Ask the model anything to begin."}
+          </div>
+        ) : (
+          messages.map((message) => (
+            <Bubble key={message.id} role={message.role}>
+              {message.content}
+            </Bubble>
+          ))
+        )}
+      </div>
+
+      {/* grounded in */}
+      <div className="mt-3">
+        <SectionLabel>Grounded in</SectionLabel>
+        {grounding.length === 0 ? (
+          <p className="mt-2 text-[13px] text-muted-foreground">
+            {emptyCopyBySlot?.exploreGroundingEmpty ??
+              "Grounding chips appear when linked evidence is available."}
+          </p>
+        ) : (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {grounding.map((c) => (
+            <button key={c.id} type="button" onClick={() => select(c.id)}>
+              <Chip tone="evidence" className="cursor-pointer hover:opacity-80">
+                {c.title}
+              </Chip>
+            </button>
+          ))}
+        </div>
+        )}
+      </div>
+
+      {/* live detection line */}
+      <div className="mt-3 flex items-center gap-2 text-[12px] text-muted-foreground">
+        <span className="relative flex size-2 items-center justify-center">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-action/40" />
+          <span className="o-breathe relative inline-flex size-1.5 rounded-full bg-action" />
+        </span>
+        {exploreLiveDetectionCopy ??
+          "Orvek is reading the model · 1 receipt extracted · 1 question detected"}
+      </div>
+
+      {/* end-of-turn movement note → inspector */}
+      <button
+        type="button"
+        onClick={() => setInspectorTab("movement")}
+        className="o-calm mt-2.5 flex w-full items-center gap-2.5 rounded-2xl bg-action-muted/50 px-4 py-3 text-left ring-1 ring-inset ring-action/15 hover:bg-action-muted/70"
+      >
+        <Sparkles className="size-4 shrink-0 text-action-foreground" aria-hidden />
+        <span className="min-w-0 flex-1 text-[13px] leading-relaxed text-foreground">
+          This may update your model in <span className="font-medium">4 places</span>. Review and
+          confirm in the inspector.
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-action-foreground">
+          <PanelRight className="size-3.5" aria-hidden />
+          Open
+        </span>
+      </button>
+
+      {/* composer */}
+      <div className="o-material mt-4 flex items-center gap-2 rounded-2xl p-2">
+        <input
+          placeholder="Ask the model anything…"
+          onFocus={() => setInspectorTab("movement")}
+          className="flex-1 bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+        />
+        <button
+          type="button"
+          onClick={() => setInspectorTab("movement")}
+          className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98]"
+        >
+          <Send className="size-3.5" />
+          Ask
+        </button>
+      </div>
+
+      {/* quick prompts */}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {[
+          "Explore a pattern",
+          "Talk through a decision",
+          "Start an investigation",
+          "Inspect a conflict",
+        ].map((q) => (
+          <button
+            key={q}
+            type="button"
+            onClick={() => setInspectorTab("movement")}
+            className="o-calm rounded-full bg-secondary/60 px-2.5 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            {q}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Bubble({ role, children }: { role: "user" | "orvek"; children: React.ReactNode }) {
+  const isUser = role === "user"
   return (
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[85%] px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+          "max-w-[85%] px-3.5 py-2.5 text-sm leading-relaxed",
           isUser
             ? "rounded-[14px] rounded-br-[5px] bg-primary text-primary-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.25)]"
-            : "o-material rounded-[14px] rounded-bl-[5px] text-foreground"
+            : "o-material rounded-[14px] rounded-bl-[5px] text-foreground",
         )}
       >
-        {!isUser ? (
+        {!isUser && (
           <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
             Orvek
           </p>
-        ) : null}
+        )}
         {children}
       </div>
     </div>
-  );
+  )
 }
 
-function ThinkingIndicator() {
-  return (
-    <span className="inline-flex items-center gap-1 text-muted-foreground">
-      <Loader2 className="size-3.5 animate-spin" aria-hidden />
-      Thinking…
-    </span>
-  );
-}
-
-function ExploreHandoffBanner({
-  handoff,
-}: {
-  handoff: V0ExploreViewProps["handoff"];
-}) {
-  if (!handoff.show) {
-    return null;
-  }
-
-  if (handoff.isLoading) {
-    return (
-      <div className="o-material flex items-center gap-3 rounded-2xl px-4 py-3">
-        <Compass className="size-4 text-muted-foreground" aria-hidden />
-        <div className="text-[13px] text-muted-foreground">{handoff.loadingCopy}</div>
-      </div>
-    );
-  }
-
-  if (!handoff.context) {
-    return (
-      <div className="o-material flex items-center gap-3 rounded-2xl px-4 py-3">
-        <Compass className="size-4 text-muted-foreground" aria-hidden />
-        <div className="text-[13px] text-muted-foreground">
-          {handoff.error ?? handoff.unavailableCopy}
-        </div>
-      </div>
-    );
-  }
+function Questions() {
+  const { select, setInspectorTab } = useWorkbench()
+  const data = useOrvekData()
+  const { getObject, exploreQuestionIds, emptyCopyBySlot } = data
+  const isProduction = isProductionDisplay(data)
+  const ids = isProduction ? (exploreQuestionIds ?? []) : ["aq-1", "aq-2", "aq-3", "aq-4"]
+  const [activeId, setActiveId] = useState(ids[0] ?? "aq-2")
+  const q = getObject(activeId)
+  const showSkeleton = isProduction && ids.length === 0
 
   return (
-    <div className="o-material flex items-center gap-3 rounded-2xl px-4 py-3">
-      <Compass className="size-4 shrink-0 text-action" aria-hidden />
-      <div className="min-w-0 flex-1">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-action-foreground">
-          {handoff.bannerLabel}
-        </div>
-        <div className="mt-0.5 text-[13px] font-medium text-foreground">{handoff.context.title}</div>
-        <div className="mt-1 text-[11px] text-muted-foreground">
-          {handoff.context.bucketLabel} · {handoff.context.statusLabel}
+    <div className="grid gap-5 lg:grid-cols-[290px_1fr]">
+      {/* inquiry list */}
+      <div>
+        <SectionLabel>Open questions</SectionLabel>
+        <div className="o-material mt-2 divide-y divide-border overflow-hidden rounded-[10px]">
+          {showSkeleton ? (
+            <p className="px-3 py-2.5 text-[13px] text-muted-foreground">
+              {emptyCopyBySlot?.exploreQuestionsEmptyList ?? "No active questions are open yet."}
+            </p>
+          ) : (
+          ids.map((id) => {
+            const o = getObject(id)
+            if (!o) return null
+            const active = activeId === id
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setActiveId(id)
+                  select(id)
+                }}
+                className={cn(
+                  "o-calm flex w-full items-start gap-2.5 px-3 py-2.5 text-left",
+                  active ? "bg-accent/50" : "hover:bg-accent/30",
+                )}
+              >
+                <span
+                  className={cn(
+                    "mt-0.5 size-1.5 shrink-0 rounded-full",
+                    active ? "bg-action" : "bg-muted-foreground/40",
+                  )}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-medium leading-snug text-foreground text-pretty">
+                    {o.title}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                    {o.evidenceCount} receipts · {o.status}
+                  </span>
+                </span>
+              </button>
+            )
+          })
+          )}
         </div>
       </div>
-      <Link
-        href={handoff.context.viewDecisionHref}
-        className="o-calm shrink-0 rounded-[8px] bg-secondary/70 px-2.5 py-1.5 text-[12px] font-medium text-foreground hover:bg-accent/60"
-      >
-        {handoff.viewDecisionLabel}
-      </Link>
+
+      {/* selected question detail */}
+      <div className="min-w-0">
+        {q && !showSkeleton ? (
+          <>
+        <Chip tone="action">Active question · {q.status}</Chip>
+        <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
+          {q.title}
+        </h2>
+        <InvBlock label="Why this is open">{q.whyItMatters}</InvBlock>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="o-material rounded-[10px] p-3.5">
+            <SectionLabel className="text-primary">Would resolve toward yes if</SectionLabel>
+            <ul className="mt-2 space-y-1.5">
+              {(q.supporting ?? (isProduction ? [] : ["A narrow public test reduces felt uncertainty."])).map((s) => (
+                <li key={s} className="flex gap-2 text-[13px] text-foreground">
+                  <span className="mt-0.5 text-primary">+</span>
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="o-material rounded-[10px] p-3.5">
+            <SectionLabel className="text-destructive/80">Would resolve toward no if</SectionLabel>
+            <ul className="mt-2 space-y-1.5">
+              {(q.conflicting ?? (isProduction ? [] : ["Visual output creates false confidence."])).map((c) => (
+                <li key={c} className="flex gap-2 text-[13px] text-muted-foreground">
+                  <span className="mt-0.5 text-destructive">−</span>
+                  {c}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        {q.relatedIds && q.relatedIds.length > 0 && (
+          <InvBlock label="What this question touches">
+            <div className="flex flex-wrap gap-1.5">
+              {q.relatedIds.map((id) => {
+                const o = getObject(id)
+                if (!o) return null
+                return (
+                  <button key={id} type="button" onClick={() => select(id)}>
+                    <Chip className="cursor-pointer hover:opacity-80">{o.title}</Chip>
+                  </button>
+                )
+              })}
+            </div>
+          </InvBlock>
+        )}
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              select(activeId)
+              setInspectorTab("evidence")
+            }}
+            className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98]"
+          >
+            See evidence
+            <ArrowRight className="size-3.5" aria-hidden />
+          </button>
+          {["Explore this", "Propose fieldwork", "Mark resolved"].map((a) => (
+            <button
+              key={a}
+              type="button"
+              disabled={isProduction}
+              className={cn(
+                "o-calm rounded-[8px] bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60",
+                isProduction && ORVEK_DEFERRED_ACTION_CLASS,
+              )}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+          </>
+        ) : (
+          <>
+            <Chip tone="action">Active question</Chip>
+            <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
+              {emptyCopyBySlot?.exploreQuestionsEmptyDetail ??
+                "Select a question when one is available."}
+            </h2>
+            <InvBlock label="Why this is open">
+              {emptyCopyBySlot?.exploreQuestionsEmptyDetail ??
+                "Question rationale appears when an active question is selected."}
+            </InvBlock>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="o-material rounded-[10px] p-3.5">
+                <SectionLabel className="text-primary">Would resolve toward yes if</SectionLabel>
+                <p className="mt-2 text-[13px] text-muted-foreground">—</p>
+              </div>
+              <div className="o-material rounded-[10px] p-3.5">
+                <SectionLabel className="text-destructive/80">Would resolve toward no if</SectionLabel>
+                <p className="mt-2 text-[13px] text-muted-foreground">—</p>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
-  );
+  )
+}
+
+function Investigations() {
+  const { select } = useWorkbench()
+  const data = useOrvekData()
+  const { getObject, exploreInvestigationIds, emptyCopyBySlot } = data
+  const isProduction = isProductionDisplay(data)
+  const ids = isProduction ? (exploreInvestigationIds ?? []) : ["inv-1", "inv-2", "inv-3"]
+  const [activeId, setActiveId] = useState(ids[0] ?? "inv-2")
+  const inv = getObject(activeId)
+  const showSkeleton = isProduction && ids.length === 0
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[230px_1fr]">
+      <div>
+        <SectionLabel>Threads</SectionLabel>
+        <div className="mt-2 space-y-1.5">
+          {showSkeleton ? (
+            <div className="o-material rounded-[10px] px-2.5 py-2 text-[13px] text-muted-foreground">
+              {emptyCopyBySlot?.exploreInvestigationsEmptyList ??
+                "No investigations are active yet."}
+            </div>
+          ) : (
+          ids.map((id) => {
+            const o = getObject(id)
+            if (!o) return null
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setActiveId(id)
+                  select(id)
+                }}
+                className={cn(
+                  "o-calm w-full rounded-[10px] px-2.5 py-2 text-left text-[13px] leading-snug",
+                  activeId === id
+                    ? "bg-card text-foreground shadow-[0_1px_3px_-1px_rgba(30,41,59,0.16)] ring-1 ring-inset ring-primary/20"
+                    : "bg-secondary/50 text-foreground hover:bg-secondary",
+                )}
+              >
+                {o.title}
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {o.evidenceCount} linked · {o.status}
+                </span>
+              </button>
+            )
+          })
+          )}
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        {inv && !showSkeleton ? (
+          <>
+        <Chip tone="evidence">Investigation · {inv.status}</Chip>
+        <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
+          {inv.title}
+        </h2>
+        <InvBlock label="Why it matters">{inv.whyItMatters}</InvBlock>
+        {inv.hypotheses && (
+          <InvBlock label="Hypotheses">
+            <ul className="space-y-1">
+              {inv.hypotheses.map((h) => (
+                <li key={h} className="flex gap-1.5 text-[13px]">
+                  <span className="text-primary">·</span>
+                  {h}
+                </li>
+              ))}
+            </ul>
+          </InvBlock>
+        )}
+        {inv.missingEvidence && (
+          <InvBlock label="Missing evidence">
+            <ul className="space-y-1">
+              {inv.missingEvidence.map((m) => (
+                <li key={m} className="flex gap-1.5 text-[13px] text-muted-foreground">
+                  <span className="text-action-foreground">?</span>
+                  {m}
+                </li>
+              ))}
+            </ul>
+          </InvBlock>
+        )}
+        <InvBlock label="Linked objects">
+          <div className="flex flex-wrap gap-1.5">
+            {(inv.relatedIds ?? []).map((id) => {
+              const o = getObject(id)
+              if (!o) return null
+              return (
+                <button key={id} type="button" onClick={() => select(id)}>
+                  <Chip className="cursor-pointer hover:opacity-80">{o.title}</Chip>
+                </button>
+              )
+            })}
+          </div>
+        </InvBlock>
+        <div className="mt-4 rounded-[12px] rounded-l-sm border-l-2 border-l-primary/50 bg-secondary/50 p-3 text-[13px] italic text-muted-foreground">
+          “Does seeing the system standing up actually lower the uncertainty, or just move it?” —
+          continue this thread in Free Explore.
+        </div>
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {["Add hypothesis", "Suggest fieldwork", "Possible report", "Ask in Explore"].map(
+            (a) => (
+              <button
+                key={a}
+                type="button"
+                disabled={isProduction}
+                className={cn(
+                  "o-calm rounded-[8px] bg-secondary/70 px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60",
+                  isProduction && ORVEK_DEFERRED_ACTION_CLASS,
+                )}
+              >
+                {a}
+              </button>
+            ),
+          )}
+        </div>
+          </>
+        ) : (
+          <>
+            <Chip tone="evidence">Investigation</Chip>
+            <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
+              {emptyCopyBySlot?.exploreInvestigationsEmptyDetail ??
+                "Select an investigation when one is available."}
+            </h2>
+            <InvBlock label="Why it matters">
+              {emptyCopyBySlot?.exploreInvestigationsEmptyDetail ??
+                "Investigation rationale appears when a thread is selected."}
+            </InvBlock>
+            <InvBlock label="Hypotheses">
+              <p className="text-[13px] text-muted-foreground">—</p>
+            </InvBlock>
+            <InvBlock label="Missing evidence">
+              <p className="text-[13px] text-muted-foreground">—</p>
+            </InvBlock>
+            <InvBlock label="Linked objects">
+              <p className="text-[13px] text-muted-foreground">—</p>
+            </InvBlock>
+          </>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function InvBlock({ label, children }: { label: string; children: React.ReactNode }) {
@@ -131,514 +537,66 @@ function InvBlock({ label, children }: { label: string; children: React.ReactNod
       <SectionLabel>{label}</SectionLabel>
       <div className="mt-1.5 text-sm leading-relaxed text-foreground">{children}</div>
     </div>
-  );
+  )
 }
 
-function GroundedInRow({
-  data,
-  handlers,
-}: {
-  data: V0ExploreViewProps;
-  handlers: V0ExploreViewHandlers;
-}) {
+function FieldworkBridge({ onSelect }: { onSelect: (id: string) => void }) {
+  const data = useOrvekData()
+  const isProduction = isProductionDisplay(data)
+  const emptyCopy =
+    data.emptyCopyBySlot?.exploreFieldworkEmpty ?? "No fieldwork bridge is active yet."
+
+  const fields = [
+    { label: "Expected signal", value: "Whether the prototype reduces uncertainty." },
+    { label: "What to observe", value: "Which page overloads first; right-panel coverage." },
+    { label: "What would confirm", value: "Missing flows become obvious; uncertainty drops." },
+    { label: "What would weaken", value: "Prototype flattens the concept into a dashboard." },
+    { label: "Due / review window", value: "Review after first prototype." },
+  ]
+
   return (
-    <div className="mt-3" data-testid="orvek-explore-grounding-row">
-      <SectionLabel>{data.groundingSectionLabel}</SectionLabel>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {data.groundingChips.map((chip) => (
-          <button
-            key={chip.id}
-            type="button"
-            disabled={chip.disabled}
-            onClick={() => {
-              if (!chip.disabled) {
-                handlers.onGroundingChip?.(chip);
-              }
-            }}
-          >
-            <Chip
-              tone={chip.disabled ? "neutral" : "evidence"}
-              className={cn(
-                chip.disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:opacity-80"
-              )}
-            >
-              {chip.label}
-            </Chip>
-          </button>
+    <div>
+      <Chip tone="action">Fieldwork Bridge</Chip>
+      <h2 className="mt-2 text-base font-semibold text-foreground">
+        {isProduction
+          ? emptyCopy
+          : "Generate v0 architecture prototype and review against feature architecture."}
+      </h2>
+      <dl className="o-material mt-4 divide-y divide-border overflow-hidden rounded-[10px]">
+        {fields.map((f) => (
+          <div key={f.label} className="grid gap-1 px-3.5 py-2.5 sm:grid-cols-[180px_1fr]">
+            <dt className="text-[13px] font-medium text-muted-foreground">{f.label}</dt>
+            <dd className="text-[13px] text-muted-foreground">
+              {isProduction ? "—" : f.value}
+            </dd>
+          </div>
         ))}
-      </div>
-      <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-        {data.groundingSectionIntro}
-      </p>
-    </div>
-  );
-}
-
-function LiveDetectionLine({ copy }: { copy: string }) {
-  return (
-    <div
-      className="mt-3 flex items-center gap-2 text-[12px] text-muted-foreground"
-      data-testid="orvek-explore-live-detection"
-    >
-      <span className="inline-flex size-2 rounded-full bg-muted-foreground/40" aria-hidden />
-      {copy}
-    </div>
-  );
-}
-
-function FreeExploreTab({
-  data,
-  handlers,
-  handoffBanner,
-}: {
-  data: V0ExploreViewProps;
-  handlers: V0ExploreViewHandlers;
-  handoffBanner: React.ReactNode;
-}) {
-  return (
-    <div data-testid="orvek-explore-free-tab">
-      {handoffBanner ? <div className="mb-4">{handoffBanner}</div> : null}
-
-      <div className="space-y-3">
-        {data.isBooting ? (
-          <div className="text-[13px] text-muted-foreground">{data.chatLoadingCopy}</div>
-        ) : data.messages.length === 0 ? (
-          <div className="text-[14px] leading-relaxed text-muted-foreground">{data.emptyPrompt}</div>
-        ) : (
-          data.messages.map((message) => (
-            <ExploreBubble key={message.id} role={message.role}>
-              {message.isThinking ? <ThinkingIndicator /> : message.content}
-            </ExploreBubble>
-          ))
-        )}
-      </div>
-
-      <GroundedInRow data={data} handlers={handlers} />
-      <LiveDetectionLine copy={data.liveDetectionCopy} />
-
-      <button
-        type="button"
-        onClick={handlers.onOpenInspector}
-        className="o-calm mt-2.5 flex w-full items-center gap-2.5 rounded-2xl bg-action-muted/50 px-4 py-3 text-left ring-1 ring-inset ring-action/15 hover:bg-action-muted/70"
-      >
-        <Sparkles className="size-4 shrink-0 text-action-foreground" aria-hidden />
-        <span className="min-w-0 flex-1 text-[13px] leading-relaxed text-foreground">
-          {data.inspectorMovementCta}
-        </span>
-        <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-action-foreground">
-          <PanelRight className="size-3.5" aria-hidden />
-          Open
-        </span>
-      </button>
-
-      <div className="o-material mt-4 flex items-center gap-2 rounded-2xl p-2">
-        <input
-          value={data.composerDraft}
-          onChange={(event) => handlers.onDraftChange(event.target.value)}
-          onFocus={handlers.onComposerFocus}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              handlers.onSend();
-            }
-          }}
-          placeholder={data.composerPlaceholder}
-          disabled={data.isBooting || data.isSending}
-          className="flex-1 bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50"
-        />
+      </dl>
+      <div className="mt-4 flex gap-1.5">
         <button
           type="button"
-          onClick={handlers.onSend}
-          disabled={data.isBooting || data.isSending || !data.composerDraft.trim()}
-          className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => !isProduction && onSelect("f2")}
+          disabled={isProduction}
+          className={cn(
+            "o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-action px-3 py-1.5 text-xs font-semibold text-action-foreground hover:brightness-[1.03] active:scale-[0.98]",
+            isProduction && ORVEK_DEFERRED_ACTION_CLASS,
+          )}
         >
-          <Send className="size-3.5" />
-          Ask
+          Open fieldwork
+          <ArrowRight className="size-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => !isProduction && onSelect("aq-2")}
+          disabled={isProduction}
+          className={cn(
+            "o-calm rounded-[8px] bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60",
+            isProduction && ORVEK_DEFERRED_ACTION_CLASS,
+          )}
+        >
+          Linked question
         </button>
       </div>
-
-      {data.errorMessage ? (
-        <p className="mt-2 text-[12px] text-destructive">{data.errorMessage}</p>
-      ) : null}
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {data.quickPrompts.map((prompt) => (
-          <button
-            key={prompt}
-            type="button"
-            onClick={() => handlers.onQuickPrompt(prompt)}
-            className="o-calm rounded-full bg-secondary/60 px-2.5 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
-          >
-            {prompt}
-          </button>
-        ))}
-      </div>
     </div>
-  );
-}
-
-function InvestigationsTab({
-  data,
-  handlers,
-}: {
-  data: V0ExploreViewProps;
-  handlers: V0ExploreViewHandlers;
-}) {
-  const { investigations } = data;
-  const [localId, setLocalId] = useState<string | null>(investigations.selectedId);
-  const selected =
-    investigations.items.find((item) => item.id === localId) ?? investigations.items[0] ?? null;
-
-  return (
-    <div className="grid gap-5 lg:grid-cols-[230px_1fr]" data-testid="orvek-explore-investigations-tab">
-      <div>
-        <SectionLabel>Threads</SectionLabel>
-        {investigations.isLoading ? (
-          <p className="mt-2 text-[13px] text-muted-foreground">Loading investigations…</p>
-        ) : investigations.items.length === 0 ? (
-          <div className="o-material mt-2 rounded-[10px] px-3 py-4 text-[13px] text-muted-foreground">
-            {investigations.emptyListCopy}
-          </div>
-        ) : (
-          <div className="mt-2 space-y-1.5">
-            {investigations.items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setLocalId(item.id);
-                  handlers.onInvestigationSelect?.(item.id);
-                }}
-                className={cn(
-                  "o-calm w-full rounded-[10px] px-2.5 py-2 text-left text-[13px] leading-snug",
-                  selected?.id === item.id
-                    ? "bg-card text-foreground shadow-[0_1px_3px_-1px_rgba(30,41,59,0.16)] ring-1 ring-inset ring-primary/20"
-                    : "bg-secondary/50 text-foreground hover:bg-secondary"
-                )}
-              >
-                {item.title}
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  {item.statusLabel} · {item.meta}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="min-w-0">
-        {!selected ? (
-          <div className="o-material rounded-[10px] px-4 py-5 text-[13px] text-muted-foreground">
-            {investigations.emptyDetailCopy}
-          </div>
-        ) : (
-          <>
-            <Chip tone="evidence">Investigation · {selected.statusLabel}</Chip>
-            <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
-              {selected.title}
-            </h2>
-            <InvBlock label="Why it matters">
-              <p className="text-muted-foreground">{selected.meta}</p>
-            </InvBlock>
-            <InvBlock label="Hypotheses">
-              <p className="text-[13px] text-muted-foreground">No hypotheses captured yet.</p>
-            </InvBlock>
-            <InvBlock label="Missing evidence">
-              <p className="text-[13px] text-muted-foreground">
-                Missing evidence is not listed for this investigation yet.
-              </p>
-            </InvBlock>
-            <InvBlock label="Linked objects">
-              <p className="text-[13px] text-muted-foreground">No linked objects yet.</p>
-            </InvBlock>
-            <div className="mt-4 rounded-[12px] rounded-l-sm border-l-2 border-l-primary/50 bg-secondary/50 p-3 text-[13px] italic text-muted-foreground">
-              Continue this thread in Free Explore when you are ready to add evidence.
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function QuestionsTab({
-  data,
-  handlers,
-}: {
-  data: V0ExploreViewProps;
-  handlers: V0ExploreViewHandlers;
-}) {
-  const { questions } = data;
-  const [localId, setLocalId] = useState<string | null>(questions.selectedId);
-  const selected = questions.items.find((item) => item.id === localId) ?? questions.items[0] ?? null;
-
-  return (
-    <div className="grid gap-5 lg:grid-cols-[290px_1fr]" data-testid="orvek-explore-questions-tab">
-      <div>
-        <SectionLabel>Open questions</SectionLabel>
-        {questions.isLoading ? (
-          <p className="mt-2 text-[13px] text-muted-foreground">Loading questions…</p>
-        ) : questions.items.length === 0 ? (
-          <div className="o-material mt-2 rounded-[10px] px-3 py-4 text-[13px] text-muted-foreground">
-            {questions.emptyListCopy}
-          </div>
-        ) : (
-          <div className="o-material mt-2 divide-y divide-border overflow-hidden rounded-[10px]">
-            {questions.items.map((item) => {
-              const active = selected?.id === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setLocalId(item.id);
-                    handlers.onQuestionSelect?.(item.id);
-                  }}
-                  className={cn(
-                    "o-calm flex w-full items-start gap-2.5 px-3 py-2.5 text-left",
-                    active ? "bg-accent/50" : "hover:bg-accent/30"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "mt-0.5 size-1.5 shrink-0 rounded-full",
-                      active ? "bg-action" : "bg-muted-foreground/40"
-                    )}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium leading-snug text-foreground text-pretty">
-                      {item.title}
-                    </span>
-                    <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                      {item.evidenceMeta}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="min-w-0">
-        {!selected ? (
-          <div className="o-material rounded-[10px] px-4 py-5 text-[13px] text-muted-foreground">
-            {questions.emptyDetailCopy}
-          </div>
-        ) : (
-          <>
-            <Chip tone="action">Active question · {selected.statusLabel}</Chip>
-            <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
-              {selected.title}
-            </h2>
-            <InvBlock label="Why this is open">{selected.organizingQuestion}</InvBlock>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="o-material rounded-[10px] p-3.5">
-                <SectionLabel className="text-primary">Would resolve toward yes if</SectionLabel>
-                <p className="mt-2 text-[13px] text-muted-foreground">{questions.resolveYesEmptyCopy}</p>
-              </div>
-              <div className="o-material rounded-[10px] p-3.5">
-                <SectionLabel className="text-destructive/80">Would resolve toward no if</SectionLabel>
-                <p className="mt-2 text-[13px] text-muted-foreground">{questions.resolveNoEmptyCopy}</p>
-              </div>
-            </div>
-            <InvBlock label="What this question touches">
-              <p className="text-[13px] text-muted-foreground">{questions.relatedEmptyCopy}</p>
-            </InvBlock>
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              <Link
-                href={`/active-questions/${selected.id}`}
-                className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:brightness-[1.05]"
-              >
-                See evidence
-                <ArrowRight className="size-3.5" aria-hidden />
-              </Link>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FieldworkTab({
-  data,
-  handlers,
-}: {
-  data: V0ExploreViewProps;
-  handlers: V0ExploreViewHandlers;
-}) {
-  const { fieldwork } = data;
-  const [localId, setLocalId] = useState<string | null>(fieldwork.selectedId);
-  const selected = fieldwork.items.find((item) => item.id === localId) ?? fieldwork.items[0] ?? null;
-
-  const fields = selected
-    ? [
-        { label: "Expected signal", value: selected.reason || fieldwork.fieldsEmptyCopy },
-        { label: "What to observe", value: fieldwork.fieldsEmptyCopy },
-        { label: "What would confirm", value: fieldwork.fieldsEmptyCopy },
-        { label: "What would weaken", value: fieldwork.fieldsEmptyCopy },
-        { label: "Due / review window", value: fieldwork.fieldsEmptyCopy },
-      ]
-    : [];
-
-  return (
-    <div data-testid="orvek-explore-fieldwork-tab">
-      {fieldwork.isLoading ? (
-        <p className="text-[13px] text-muted-foreground">Loading fieldwork…</p>
-      ) : fieldwork.items.length === 0 ? (
-        <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
-          <div className="o-material rounded-[10px] px-3 py-4 text-[13px] text-muted-foreground">
-            {fieldwork.emptyListCopy}
-          </div>
-          <div className="o-material rounded-[10px] px-4 py-5 text-[13px] text-muted-foreground">
-            {fieldwork.emptyDetailCopy}
-          </div>
-        </div>
-      ) : (
-        <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
-          <div>
-            <SectionLabel>Fieldwork prompts</SectionLabel>
-            <div className="mt-2 space-y-1.5">
-              {fieldwork.items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setLocalId(item.id);
-                    handlers.onFieldworkSelect?.(item.id);
-                  }}
-                  className={cn(
-                    "o-calm w-full rounded-[10px] px-2.5 py-2 text-left text-[13px] leading-snug",
-                    selected?.id === item.id
-                      ? "bg-card text-foreground shadow-[0_1px_3px_-1px_rgba(30,41,59,0.16)]"
-                      : "bg-secondary/50 text-foreground hover:bg-secondary"
-                  )}
-                >
-                  {item.title}
-                  <span className="mt-1 block text-xs text-muted-foreground">{item.statusLabel}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="min-w-0">
-            {selected ? (
-              <>
-                <Chip tone="action">Fieldwork Bridge</Chip>
-                <h2 className="mt-2 text-base font-semibold text-foreground">{selected.title}</h2>
-                <dl className="o-material mt-4 divide-y divide-border overflow-hidden rounded-[10px]">
-                  {fields.map((field) => (
-                    <div
-                      key={field.label}
-                      className="grid gap-1 px-3.5 py-2.5 sm:grid-cols-[180px_1fr]"
-                    >
-                      <dt className="text-[13px] font-medium text-muted-foreground">{field.label}</dt>
-                      <dd className="text-[13px] text-foreground">{field.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-                <div className="mt-4 flex gap-1.5">
-                  {selected.href ? (
-                    <Link
-                      href={selected.href}
-                      className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-action px-3 py-1.5 text-xs font-semibold text-action-foreground hover:brightness-[1.03]"
-                    >
-                      Open fieldwork
-                      <ArrowRight className="size-3.5" aria-hidden />
-                    </Link>
-                  ) : null}
-                </div>
-              </>
-            ) : (
-              <div className="o-material rounded-[10px] px-4 py-5 text-[13px] text-muted-foreground">
-                {fieldwork.emptyDetailCopy}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function V0ExploreView({
-  data,
-  handlers,
-  handoffBannerSlot,
-}: {
-  data: V0ExploreViewProps;
-  handlers: V0ExploreViewHandlers;
-  handoffBannerSlot?: React.ReactNode;
-}) {
-  const handoffBanner = useMemo(
-    () =>
-      handoffBannerSlot ?? (data.handoff.show ? <ExploreHandoffBanner handoff={data.handoff} /> : null),
-    [data.handoff, handoffBannerSlot]
-  );
-
-  return (
-    <div className="flex h-full min-h-0 flex-col" data-testid="orvek-explore-page">
-      <div className="px-6 pt-5 pb-4 lg:px-8">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{data.pageTitle}</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">{data.pageIntro}</p>
-        <div className="o-sunken mt-3 inline-flex flex-wrap gap-0.5 rounded-[9px] p-1">
-          {data.tabs.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => handlers.onTabChange(item.id)}
-              className={cn(
-                "o-calm rounded-[6px] px-3 py-1.5 text-[13px] font-medium",
-                data.activeTab === item.id
-                  ? "bg-card text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.16)]"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 lg:px-8">
-        <div className="mx-auto max-w-3xl">
-          {data.activeTab === "free" ? (
-            <FreeExploreTab data={data} handlers={handlers} handoffBanner={handoffBanner} />
-          ) : data.activeTab === "investigations" ? (
-            <InvestigationsTab data={data} handlers={handlers} />
-          ) : data.activeTab === "questions" ? (
-            <QuestionsTab data={data} handlers={handlers} />
-          ) : (
-            <FieldworkTab data={data} handlers={handlers} />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function ExplorePage() {
-  const { explore: exploreData } = useOrvekData();
-  const pageHandlers = useOrvekPageHandlers().explore;
-  const [activeTab, setActiveTab] = useState<V0ExploreTabId>(exploreData?.activeTab ?? "free");
-
-  if (!exploreData || !pageHandlers) {
-    return (
-      <div className="px-6 py-6" data-testid="orvek-v0-explore-page">
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </div>
-    );
-  }
-
-  const handlers: V0ExploreViewHandlers = {
-    ...pageHandlers,
-    onTabChange: (tab) => {
-      setActiveTab(tab);
-      pageHandlers.onTabChange(tab);
-    },
-  };
-
-  return (
-    <V0ExploreView data={{ ...exploreData, activeTab }} handlers={handlers} />
-  );
+  )
 }

@@ -7,10 +7,10 @@ import {
   getObjects,
   EXPLORE_MOVEMENT,
   EXPLORE_GROUNDING,
-} from "@/lib/orvek-v0/mock-orvek-data"
+} from "@/lib/orvek-v0/orvek-data"
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
-import { useWorkbench, type InspectorTab } from "./store"
-import { Chip, SectionLabel, TYPE_META, TypeBadge } from "./primitives"
+import { useWorkbench, type InspectorTab } from "@/components/orvek-v0/store"
+import { Chip, SectionLabel, TYPE_META, TypeBadge } from "@/components/orvek-v0/primitives"
 import {
   ArrowRight,
   Check,

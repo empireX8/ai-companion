@@ -14,7 +14,19 @@ import type { V0TimelineViewProps } from "@/lib/orvek-adapters/timeline";
 import type { V0TodayViewProps } from "@/lib/orvek-adapters/types";
 
 import type { OrvekObject } from "./orvek-types";
-import type { ExploreMovement } from "./mock-orvek-data";
+import type { ExploreMovement } from "./orvek-data";
+import type { OrvekDisplayContract } from "./display-contract";
+
+export type OrvekDecisionsHeaderStats = {
+  outcomesDue: number;
+  reviewed: number;
+};
+
+export type OrvekTodayCopy = {
+  briefingLine?: string;
+  briefingTitle?: string;
+  briefingMeta?: string;
+};
 
 export type OrvekMapCategory = {
   id: string;
@@ -67,6 +79,23 @@ export type OrvekDataApi = {
   whatChanged?: V0WhatChangedViewProps;
   mapHeader?: OrvekMapHeader | null;
   mapSelectedId?: string | null;
+  /** Production map fetch / ontology presence — omit on reference mock. */
+  mapIsLoading?: boolean;
+  mapLoadError?: string | null;
+  mapHasContent?: boolean;
+  todayIsLoading?: boolean;
+  timelineIsLoading?: boolean;
+  todayCopy?: OrvekTodayCopy;
+  /** Production resurfaced receipt ids; omit on reference mock to use zip defaults. */
+  todayResurfacedIds?: string[];
+  /** When set, v0 pages use production data only — no zip mock fallbacks. */
+  displayContract?: OrvekDisplayContract;
+  exploreQuestionIds?: string[];
+  exploreInvestigationIds?: string[];
+  exploreIsLoading?: boolean;
+  decisionsHeaderStats?: OrvekDecisionsHeaderStats;
+  decisionsSelectedId?: string | null;
+  decisionsIsLoading?: boolean;
 };
 
 const OrvekDataContext = createContext<OrvekDataApi | null>(null);

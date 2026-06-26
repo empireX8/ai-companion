@@ -2,24 +2,38 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 
-import type { V0DecisionsViewHandlers } from "@/components/orvek-v0/pages/decisions";
-import type { V0ExploreViewHandlers } from "@/components/orvek-v0/pages/explore";
-import type { V0TimelineViewHandlers } from "@/components/orvek-v0/pages/timeline";
-import type {
-  V0TodayCaptureProps,
-  V0TodayViewHandlers,
-} from "@/components/orvek-v0/pages/today";
-import type { V0WhatChangedViewHandlers } from "@/components/orvek-v0/pages/what-changed";
-
 export type OrvekPageHandlers = {
-  today?: V0TodayViewHandlers & { capture: V0TodayCaptureProps };
-  explore?: V0ExploreViewHandlers;
-  decisions?: V0DecisionsViewHandlers & {
-    draft: string;
-    fieldworkActionId: string | null;
+  today?: {
+    onHeroInspect?: () => void;
+    onHeroSeeWhy?: () => void;
+    onNowRowSelect?: (rowId: string) => void;
+    onMovementSeeWhy?: (movementId: string) => void;
+    capture?: Record<string, unknown>;
   };
-  timeline?: V0TimelineViewHandlers;
-  whatChanged?: V0WhatChangedViewHandlers;
+  explore?: {
+    onTabChange?: (tab: string) => void;
+    onDraftChange?: (value: string) => void;
+    onSend?: () => void;
+    onQuickPrompt?: (prompt: string) => void;
+    onOpenInspector?: () => void;
+    onComposerFocus?: () => void;
+  };
+  decisions?: {
+    draft?: string;
+    fieldworkActionId?: string | null;
+    onTabChange?: (tab: string) => void;
+    onDraftChange?: (value: string) => void;
+    onSend?: () => void;
+    onDecisionSelect?: (id: string) => void;
+  };
+  timeline?: {
+    onFilterChange?: (filter: string) => void;
+    onQueryChange?: (query: string) => void;
+    onRowSelect?: (id: string) => void;
+  };
+  whatChanged?: {
+    onMovementSelect?: (id: string, title: string) => void;
+  };
   map?: {
     onOpenItem: (id: string) => void;
   };

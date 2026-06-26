@@ -29,11 +29,15 @@ function readTodayPageSource(): string {
     "utf8"
   );
   const view = readFileSync(
-    join(process.cwd(), "components/orvek-workbench/views/V0TodayView.tsx"),
+    join(process.cwd(), "components/orvek-v0/pages/today.tsx"),
+    "utf8"
+  );
+  const bridge = readFileSync(
+    join(process.cwd(), "components/orvek-v0/production/ProductionInspectorBridge.tsx"),
     "utf8"
   );
   const adapter = readFileSync(join(process.cwd(), "lib/orvek-adapters/today.ts"), "utf8");
-  return `${page}\n${orvek}\n${view}\n${adapter}`;
+  return `${page}\n${orvek}\n${view}\n${bridge}\n${adapter}`;
 }
 
 function readTodayReentrySource(): string {
@@ -394,8 +398,8 @@ describe("today page re-entry wiring", () => {
     expect(source).toContain("buildTodayFieldworkRows");
     expect(source).toContain("buildTodayOpenLoopRows");
     expect(source).toContain("buildTodayChangeRows");
-    expect(source).toContain("useOrvekInspector");
-    expect(source).toContain('tab: "movement"');
+    expect(source).toContain("setInspectorTab");
+    expect(source).toContain('setInspectorTab("movement")');
     expect(source).toContain("See why it moved");
     expect(source.includes("TODAY_TIMELINE_MOVEMENT_LABEL")).toBe(false);
     expect(source.includes("lg:grid-cols-")).toBe(true);

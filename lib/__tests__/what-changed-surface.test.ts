@@ -65,11 +65,16 @@ describe("what-changed page wiring", () => {
 
     expect(pageSource).toContain("splitWhatChangedMovements");
     expect(pageSource).toContain("OrvekWhatChangedView");
-    expect(viewSource).toContain("mapWhatChangedDataToV0Props");
+    expect(viewSource).toContain("buildWhatChangedProductionDataApi");
+    expect(readSource("lib/orvek-v0/production/what-changed-api.ts")).toContain(
+      "mapWhatChangedDataToV0Props"
+    );
     expect(`${pageBodySource}\n${adapterSource}`).toContain("WHAT_CHANGED_EVIDENCE_LABEL");
     expect(`${pageBodySource}\n${adapterSource}`).toContain("WHAT_CHANGED_REENTRY_LABEL");
     expect(viewSource).toContain('objectType: "model_update"');
     expect(pageBodySource).toContain("onMovementSelect");
+    expect(pageBodySource).toContain("what-changed-empty-shell");
+    expect(pageBodySource).toContain("isProductionDisplay");
     expect(pageSource).toContain("ModelUpdateVisibility.user_visible");
     expect(pageSource).toContain("isMeaningful: true");
     expect(pageSource).not.toContain("beforeSummary");

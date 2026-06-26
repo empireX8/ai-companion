@@ -1,14 +1,17 @@
-"use client"
+"use client";
 
-import { useWorkbench } from "@/components/orvek-v0/store"
-import { Plus, Search, Download, Activity, Clock } from "lucide-react"
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Activity, Clock, Download, Plus, Search } from "lucide-react";
 
-export function TopBar() {
-  const { setOverlay, setPage, select, setInspectorTab } = useWorkbench()
+import { useCommandPalette } from "@/components/command/CommandPaletteContext";
+
+export function RouteTopBar() {
+  const router = useRouter();
+  const { open: openSearch } = useCommandPalette();
 
   return (
     <header className="flex h-[60px] shrink-0 items-center gap-3 px-4 sm:px-5">
-      {/* wordmark */}
       <div className="flex shrink-0 items-center gap-2 pr-1">
         <span className="font-serif text-[22px] italic leading-none tracking-tight text-foreground">
           Orvek
@@ -17,18 +20,17 @@ export function TopBar() {
 
       <span className="mx-1 hidden h-6 w-px bg-white/10 sm:block" aria-hidden />
 
-      <button
-        type="button"
-        onClick={() => setOverlay("capture")}
+      <Link
+        href="/journal-chat"
         className="o-calm inline-flex items-center gap-1.5 rounded-full bg-action px-3.5 py-1.5 text-sm font-semibold text-action-foreground shadow-[0_2px_8px_-2px_rgba(0,0,0,0.4)] hover:brightness-[1.05] active:scale-[0.98]"
       >
         <Plus className="size-4" aria-hidden />
         Capture
-      </button>
+      </Link>
 
       <button
         type="button"
-        onClick={() => setOverlay("search")}
+        onClick={openSearch}
         className="o-calm group flex min-w-0 flex-1 items-center gap-2 rounded-full bg-white/[0.05] px-3.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-white/[0.08]"
       >
         <Search className="size-4 shrink-0" aria-hidden />
@@ -38,20 +40,17 @@ export function TopBar() {
         </kbd>
       </button>
 
-      <button
-        type="button"
-        onClick={() => setOverlay("import")}
+      <Link
+        href="/import"
         className="o-calm inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-sm font-medium text-foreground hover:bg-white/[0.08]"
       >
         <Download className="size-4 text-primary" aria-hidden />
         <span className="hidden sm:inline">Import</span>
-      </button>
+      </Link>
 
-      {/* living model status cluster */}
       <div className="hidden items-stretch gap-1.5 lg:flex">
-        <button
-          type="button"
-          onClick={() => setPage("map")}
+        <Link
+          href="/your-map"
           className="o-calm flex items-center gap-2 rounded-[10px] bg-action-muted/70 px-2.5 py-1.5 text-left ring-1 ring-inset ring-action/15 hover:bg-action-muted"
         >
           <span className="relative flex size-2.5 items-center justify-center">
@@ -60,36 +59,31 @@ export function TopBar() {
           </span>
           <span className="leading-tight">
             <span className="block text-[11px] font-semibold text-action-foreground">
-              Model moved · 4 places
+              Model movement
             </span>
-            <span className="block text-[10px] text-muted-foreground">7 questions · 3 reviews open</span>
+            <span className="block text-[10px] text-muted-foreground">Open your map</span>
           </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setPage("timeline")
-            select("t1")
-            setInspectorTab("movement")
-          }}
+        </Link>
+        <Link
+          href="/timeline"
           className="o-calm flex items-center gap-1.5 rounded-[10px] bg-secondary/60 px-2.5 py-1.5 text-left hover:bg-secondary"
         >
           <Clock className="size-3.5 text-muted-foreground" aria-hidden />
           <span className="leading-tight">
-            <span className="block text-[11px] font-medium text-foreground">Synced 2h ago</span>
-            <span className="block text-[10px] text-muted-foreground">Context profile current</span>
+            <span className="block text-[11px] font-medium text-foreground">Timeline</span>
+            <span className="block text-[10px] text-muted-foreground">How the model evolved</span>
           </span>
-        </button>
+        </Link>
       </div>
 
-      {/* compact status for small screens */}
       <button
         type="button"
-        onClick={() => setPage("map")}
+        onClick={() => router.push("/your-map")}
         className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-action-muted px-2.5 py-1 text-xs font-medium text-action-foreground ring-1 ring-inset ring-action/15 lg:hidden"
       >
-        <Activity className="size-3.5" aria-hidden />4 moved
+        <Activity className="size-3.5" aria-hidden />
+        Map
       </button>
     </header>
-  )
+  );
 }

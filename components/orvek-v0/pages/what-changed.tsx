@@ -6,6 +6,7 @@ import { GitCompareArrows } from "lucide-react";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import type { V0WhatChangedViewProps } from "@/lib/orvek-adapters/what-changed";
 import { useOrvekData } from "@/lib/orvek-v0/data-provider";
+import { isProductionDisplay } from "@/lib/orvek-v0/display-contract";
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers";
 
 import { SectionLabel } from "@/components/orvek-v0/primitives";
@@ -77,14 +78,85 @@ function EarlierMovementCard({
   );
 }
 
+function WhatChangedEmptyShell({
+  view,
+}: {
+  view: V0WhatChangedViewProps;
+}) {
+  return (
+    <div className="space-y-6" data-testid="what-changed-empty-shell">
+      <section>
+        <div className="mb-2 flex items-center gap-1.5">
+          <GitCompareArrows className="size-3.5 text-primary" aria-hidden />
+          <SectionLabel>{view.primarySectionLabel}</SectionLabel>
+        </div>
+        <p className="mb-3 text-[12px] text-muted-foreground">{view.primarySectionIntro}</p>
+        <section className="o-float overflow-hidden rounded-2xl">
+          <div className="bg-action-muted/40 px-5 py-3 ring-1 ring-inset ring-action/15">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-action-foreground">
+              {view.emptyPrimary}
+            </span>
+          </div>
+          <div className="space-y-5 p-5">
+            <section>
+              <SectionLabel>{view.whatChangedLabel}</SectionLabel>
+              <p className="mt-2 text-[15px] font-medium leading-snug text-muted-foreground">—</p>
+            </section>
+            <section>
+              <SectionLabel>{view.whyLabel}</SectionLabel>
+              <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+                {view.emptySecondary}
+              </p>
+            </section>
+            <section>
+              <p className="text-[13px] text-muted-foreground">—</p>
+            </section>
+            <section>
+              <SectionLabel>{view.evidenceLabel}</SectionLabel>
+              <p className="mb-3 text-[12px] text-muted-foreground">{view.evidenceIntro}</p>
+              <div className="o-sunken rounded-[10px] p-3.5 text-[13px] text-muted-foreground">
+                —
+              </div>
+            </section>
+            <section>
+              <SectionLabel>{view.reentryLabel}</SectionLabel>
+              <p className="mb-3 text-[12px] text-muted-foreground">{view.reentryIntro}</p>
+              <div className="flex flex-wrap gap-2">
+                {view.reentryLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="o-calm o-material rounded-lg px-3 py-2 text-[12px] font-medium hover:bg-accent/40"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </section>
+          </div>
+        </section>
+      </section>
+
+      <section className="px-1">
+        <SectionLabel>{view.earlierSectionLabel}</SectionLabel>
+        <p className="mt-1 mb-3 text-[12px] text-muted-foreground">{view.earlierSectionIntro}</p>
+        <div className="o-material rounded-[10px] p-3.5 text-[13px] text-muted-foreground">—</div>
+      </section>
+    </div>
+  );
+}
+
 function WhatChangedBody({
   view,
   onMovementSelect,
+  isProduction,
 }: {
   view: V0WhatChangedViewProps;
   onMovementSelect: V0WhatChangedViewHandlers["onMovementSelect"];
+  isProduction: boolean;
 }) {
   const hasItems = Boolean(view.primary) || view.earlier.length > 0;
+  const showEmptyShell = isProduction && !hasItems;
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="orvek-v0-what-changed-page">
@@ -97,7 +169,9 @@ function WhatChangedBody({
         <div className="mx-auto max-w-3xl">
           <p className="mb-6 max-w-2xl text-[13px] text-muted-foreground">{view.pageIntro}</p>
 
-          {!hasItems ? (
+          {showEmptyShell ? (
+            <WhatChangedEmptyShell view={view} />
+          ) : !hasItems ? (
             <div className="o-material space-y-1 rounded-2xl p-5 text-[13px] text-muted-foreground">
               <p>{view.emptyPrimary}</p>
               <p className="text-muted-foreground/80">{view.emptySecondary}</p>
@@ -228,18 +302,25 @@ function WhatChangedBody({
 }
 
 export function WhatChangedPage() {
-  const { whatChanged } = useOrvekData();
+  const data = useOrvekData();
+  const { whatChanged } = data;
   const pageHandlers = useOrvekPageHandlers().whatChanged;
+  const isProduction = isProductionDisplay(data);
 
   if (!whatChanged || !pageHandlers) {
     return (
-      <div className="px-6 py-6" data-testid="orvek-v0-what-changed-page">
-        <p className="text-sm text-muted-foreground">Loading…</p>
+      <div className="flex h-full min-h-0 flex-col px-6 py-6" data-testid="orvek-v0-what-changed-page">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">What changed</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Loading…</p>
       </div>
     );
   }
 
   return (
-    <WhatChangedBody view={whatChanged} onMovementSelect={pageHandlers.onMovementSelect} />
+    <WhatChangedBody
+      view={whatChanged}
+      onMovementSelect={pageHandlers.onMovementSelect ?? (() => {})}
+      isProduction={isProduction}
+    />
   );
 }

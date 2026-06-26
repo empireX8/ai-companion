@@ -126,7 +126,7 @@ export async function fetchYourMapConclusions(): Promise<
   });
 
   if (!response.ok) {
-    return [];
+    throw new Error(`Failed to load map conclusions (${response.status})`);
   }
 
   const payload = (await response.json()) as {

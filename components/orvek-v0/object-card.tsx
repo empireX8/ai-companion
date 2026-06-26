@@ -1,9 +1,9 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { getObject } from "@/lib/orvek-v0/mock-orvek-data"
-import { useWorkbench } from "./store"
-import { Chip, EvidenceMeta, TypeBadge } from "./primitives"
+import { getObject } from "@/lib/orvek-v0/orvek-data"
+import { useWorkbench } from "@/components/orvek-v0/store"
+import { Chip, EvidenceMeta, TypeBadge } from "@/components/orvek-v0/primitives"
 
 /**
  * Renders a clickable card for an object id. Clicking selects the object,

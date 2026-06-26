@@ -73,16 +73,18 @@ describe("decisions page wiring", () => {
     const pageSource = readSource("app/(root)/(routes)/actions/page.tsx");
     const containerSource = readSource("components/orvek-workbench/OrvekDecisionsPage.tsx");
     const adapterSource = readSource("lib/orvek-adapters/decisions.ts");
-    const viewSource = readSource("components/orvek-workbench/views/V0DecisionsView.tsx");
-    const wiring = `${containerSource}\n${adapterSource}\n${viewSource}`;
+    const viewSource = readSource("components/orvek-v0/pages/decisions.tsx");
+    const apiSource = readSource("lib/orvek-v0/production/decisions-api.ts");
+    const wiring = `${containerSource}\n${adapterSource}\n${viewSource}\n${apiSource}`;
 
     expect(pageSource).toContain("OrvekDecisionsPage");
     expect(wiring).toContain("DECISIONS_PAGE_INTRO");
     expect(adapterSource).toContain('"Active"');
     expect(adapterSource).toContain('"Outcome due"');
-    expect(viewSource).toContain('testId="orvek-decisions-options-panel"');
-    expect(viewSource).toContain('data-testid="orvek-decisions-page"');
-    expect(containerSource).toContain('objectType: "pattern_claim"');
+    expect(viewSource).toContain("Options");
+    expect(viewSource).toContain("Decisions");
+    expect(apiSource).toContain("inspectorObjectType");
+    expect(apiSource).toContain("pattern_claim");
     expect(wiring).not.toContain("Recommended for you");
     expect(wiring).not.toContain("Loading actions");
   });

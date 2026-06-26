@@ -9,11 +9,12 @@ function readSource(relativePath: string): string {
 describe("inspector surface wiring", () => {
   it("wires Today movement selection to inspector model_update + movement tab", () => {
     const container = readSource("components/orvek-workbench/OrvekTodayPage.tsx");
-    const view = readSource("components/orvek-workbench/views/V0TodayView.tsx");
-    const source = `${container}\n${view}`;
-    expect(source).toContain("useOrvekInspector");
-    expect(source).toContain('objectType: "model_update"');
-    expect(source).toContain('tab: "movement"');
+    const view = readSource("components/orvek-v0/pages/today.tsx");
+    const bridge = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
+    const source = `${container}\n${view}\n${bridge}`;
+    expect(source).toContain("ProductionInspectorBridge");
+    expect(bridge).toContain('return "model_update"');
+    expect(source).toContain('setInspectorTab("movement")');
     expect(source).toContain("See why it moved");
   });
 
@@ -33,16 +34,18 @@ describe("inspector surface wiring", () => {
     const container = readSource("components/orvek-workbench/OrvekTimelinePage.tsx");
     const view = readSource("components/orvek-v0/pages/timeline.tsx");
     const adapter = readSource("lib/orvek-adapters/timeline.ts");
-    const source = `${container}\n${view}\n${adapter}`;
+    const timelineApi = readSource("lib/orvek-v0/production/timeline-api.ts");
+    const bridge = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
+    const source = `${container}\n${view}\n${adapter}\n${timelineApi}\n${bridge}`;
     const inspectorSource = readSource("components/timeline/TimelineInspectorAction.tsx");
-    expect(source).toContain("TimelineInspectorAction");
-    expect(source).toContain('objectType: "model_update"');
-    expect(source).toContain('tab: "movement"');
+    expect(timelineApi).toContain("inspectorObjectType");
+    expect(bridge).toContain('return "model_update"');
+    expect(adapter).toContain('objectType: "model_update"');
     expect(inspectorSource).toContain('objectType === "model_update"');
     expect(inspectorSource).toContain('sourceSurface: "timeline"');
     expect(source).toContain("TIMELINE_SEMANTIC_FILTERS");
     expect(source).toContain("fetchTimelineSemanticEntries");
-    expect(source).toContain("parseSelectableObjectFromHref");
+    expect(adapter).toContain("parseSelectableObjectFromHref");
   });
 
   it("keeps inspector context lightweight and tab defaults explicit", () => {

@@ -6,6 +6,9 @@ const authMock = vi.fn();
 const notFoundMock = vi.fn(() => {
   throw new Error("NEXT_NOT_FOUND");
 });
+const redirectMock = vi.fn((url: string) => {
+  throw new Error(`NEXT_REDIRECT:${url}`);
+});
 const listYourMapPublicEvidenceContinuityMock = vi.fn();
 
 const prismaMock = {
@@ -58,6 +61,7 @@ vi.mock("../prismadb", () => ({
 
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
+  redirect: redirectMock,
 }));
 
 describe("Phase 3 Your Map page", () => {
@@ -133,92 +137,18 @@ describe("Phase 3 Your Map page", () => {
     );
   });
 
-  it("renders read-only detail with honest linked-evidence fallback and no promotion/write controls", async () => {
+  it("redirects valid permalinks into the v0 map workbench with selection", async () => {
     prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({
       id: "umc-1",
-      title: "Recovery depends on earlier decompression",
-      summary: "Short decompression windows reduce late-day escalation patterns.",
-      area: "recovery_architecture",
-      status: "supported",
-      confidenceLevel: "medium",
-      evidenceCount: 2,
-      sourceDiversity: 2,
-      timeSpreadDays: 7,
-      createdAt: new Date("2026-05-10T09:00:00.000Z"),
-      updatedAt: new Date("2026-05-17T10:00:00.000Z"),
     });
 
     const page = await import("../../app/(root)/(routes)/your-map/[id]/page");
-    const element = await page.default({
-      params: Promise.resolve({ id: "umc-1" }),
-    });
-    const html = renderToStaticMarkup(element);
 
-    expect(html).toContain("Short decompression windows reduce late-day escalation patterns.");
-    expect(html).toContain("No linked public evidence yet.");
-    expect(listYourMapPublicEvidenceContinuityMock).toHaveBeenCalledWith({
-      userId: "user-1",
-      targetId: "umc-1",
-    });
-    expect(html).not.toContain("<form");
-    expect(html).not.toContain("Promote");
-    expect(html).not.toContain("Publish");
-    expect(html).not.toContain("Edit");
-    expect(html).not.toContain("Delete");
-  });
+    await expect(
+      page.default({ params: Promise.resolve({ id: "umc-1" }) })
+    ).rejects.toThrow("NEXT_REDIRECT:/your-map?selected=umc-1");
 
-  it("renders linked evidence list from verified pattern/contradiction sources only", async () => {
-    prismaMock.userMapConclusion.findFirst.mockResolvedValueOnce({
-      id: "umc-1",
-      title: "Recovery depends on earlier decompression",
-      summary: "Short decompression windows reduce late-day escalation patterns.",
-      area: "recovery_architecture",
-      status: "supported",
-      confidenceLevel: "medium",
-      evidenceCount: 2,
-      sourceDiversity: 2,
-      timeSpreadDays: 7,
-      createdAt: new Date("2026-05-10T09:00:00.000Z"),
-      updatedAt: new Date("2026-05-17T10:00:00.000Z"),
-    });
-    listYourMapPublicEvidenceContinuityMock.mockResolvedValueOnce([
-      {
-        id: "link-pattern-1",
-        sourceType: "pattern_claim",
-        sourceTypeLabel: "Related pattern",
-        sourceId: "pc-1",
-        href: "/patterns/pc-1",
-        createdAt: "2026-05-18T10:00:00.000Z",
-      },
-      {
-        id: "link-contradiction-1",
-        sourceType: "contradiction_node",
-        sourceTypeLabel: "Related signal",
-        sourceId: "cn-1",
-        href: "/contradictions/cn-1",
-        createdAt: "2026-05-18T09:00:00.000Z",
-      },
-    ]);
-
-    const page = await import("../../app/(root)/(routes)/your-map/[id]/page");
-    const element = await page.default({
-      params: Promise.resolve({ id: "umc-1" }),
-    });
-    const html = renderToStaticMarkup(element);
-
-    expect(html).toContain("Supporting evidence");
-    expect(html).toContain("Related pattern");
-    expect(html).toContain("Related signal");
-    expect(html).toContain("/patterns/pc-1");
-    expect(html).toContain("/contradictions/cn-1");
-    expect(html).not.toContain("No linked public evidence yet.");
-    expect(html).not.toMatch(/>pc-1</);
-    expect(html).not.toMatch(/>cn-1</);
-    expect(html).not.toContain("/active-questions/");
-    expect(html).not.toContain("/watch-for/");
-    expect(html).not.toContain("receipt-user-map-");
-    expect(html).not.toContain("receipt-action-");
-    expect(html).not.toContain("internalNotes");
-    expect(html).not.toContain("quote");
+    expect(redirectMock).toHaveBeenCalledWith("/your-map?selected=umc-1");
+    expect(listYourMapPublicEvidenceContinuityMock).not.toHaveBeenCalled();
   });
 });

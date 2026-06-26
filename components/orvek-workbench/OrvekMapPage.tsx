@@ -190,7 +190,11 @@ export function OrvekMapPage() {
     () =>
       buildMapProductionDataApi({
         items,
-        isLoading,
+        isLoading:
+          isLoading ||
+          isMindContextLoading ||
+          isMovementLoading ||
+          isQuestionsLoading,
         loadError,
         selectedId,
         detail,
@@ -214,6 +218,9 @@ export function OrvekMapPage() {
     [
       items,
       isLoading,
+      isMindContextLoading,
+      isMovementLoading,
+      isQuestionsLoading,
       loadError,
       selectedId,
       detail,

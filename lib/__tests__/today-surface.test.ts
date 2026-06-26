@@ -20,7 +20,7 @@ function readTodayPageSource(): string {
     "utf8"
   );
   const view = readFileSync(
-    join(process.cwd(), "components/orvek-workbench/views/V0TodayView.tsx"),
+    join(process.cwd(), "components/orvek-v0/pages/today.tsx"),
     "utf8"
   );
   const adapter = readFileSync(join(process.cwd(), "lib/orvek-adapters/today.ts"), "utf8");

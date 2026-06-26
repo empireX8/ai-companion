@@ -31,15 +31,10 @@ export interface LabeledValue {
   value: string
 }
 
-import type { InspectorSelectableObjectType } from "@/lib/inspector-selection"
-
 export interface OrvekObject {
   id: string
   type: OrvekObjectType
   title: string
-  /** Production inspector bridge — maps workbench select to real inspector. */
-  inspectorObjectType?: InspectorSelectableObjectType
-  inspectorObjectId?: string
   subtype?: MapSubtype | string
   summary?: string
   whyItMatters?: string
@@ -97,4 +92,8 @@ export interface OrvekObject {
   hypotheses?: string[]
   missingEvidence?: string[]
   status?: string
+
+  /** Production inspector bridge — maps selection to stored evidence object. */
+  inspectorObjectType?: string
+  inspectorObjectId?: string
 }

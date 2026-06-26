@@ -1,10 +1,10 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { getObject, OBJECTS } from "@/lib/orvek-v0/mock-orvek-data"
+import { getObject, OBJECTS } from "@/lib/orvek-v0/orvek-data"
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
-import { useWorkbench } from "./store"
-import { Chip, SectionLabel, TypeBadge, TYPE_META } from "./primitives"
+import { useWorkbench } from "@/components/orvek-v0/store"
+import { Chip, SectionLabel, TypeBadge, TYPE_META } from "@/components/orvek-v0/primitives"
 import {
   ArrowRight,
   Camera,

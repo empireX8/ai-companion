@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import type { V0ExploreTabId } from "@/lib/orvek-adapters/explore";
-import { OrvekPageHandlersProvider } from "@/lib/orvek-v0/page-handlers";
+import { OrvekPageHandlersProvider, type OrvekPageHandlers } from "@/lib/orvek-v0/page-handlers";
 
 import { useWorkbench } from "../store";
 
@@ -93,5 +93,9 @@ export function ReferencePageHandlersProvider({ children }: { children: ReactNod
     [router, select, setInspectorTab]
   );
 
-  return <OrvekPageHandlersProvider value={handlers}>{children}</OrvekPageHandlersProvider>;
+  return (
+    <OrvekPageHandlersProvider value={handlers as OrvekPageHandlers}>
+      {children}
+    </OrvekPageHandlersProvider>
+  );
 }

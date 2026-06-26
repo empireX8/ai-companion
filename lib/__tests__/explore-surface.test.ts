@@ -54,18 +54,18 @@ describe("explore surface wiring", () => {
   it("renders grounding hierarchy and inspector actions without internal fields", () => {
     const pageSource = readSource("app/(root)/(routes)/explore/page.tsx");
     const exploreSource = readSource("components/orvek-workbench/OrvekExplorePage.tsx");
-    const exploreViewSource = readSource("components/orvek-workbench/views/V0ExploreView.tsx");
+    const exploreViewSource = readSource("components/orvek-v0/pages/explore.tsx");
     const exploreAdapterSource = readSource("lib/orvek-adapters/explore.ts");
     const movementSource = readSource("components/explore/ExploreModelMovementStrip.tsx");
     const reviewSource = readSource("components/explore/ExploreConversationReviewStrip.tsx");
     const inspectorSource = readSource("components/explore/ExploreInspectorAction.tsx");
+    const movementPanel = readSource("components/inspector/panels/ModelMovementInspectorPanel.tsx");
     const exploreWiring = `${exploreSource}\n${exploreViewSource}\n${exploreAdapterSource}`;
 
     expect(pageSource).toContain("OrvekExplorePage");
-    expect(exploreSource).toContain("mapExploreDataToV0Props");
+    expect(exploreSource).toContain("ExplorePage");
     expect(exploreAdapterSource).toContain("EXPLORE_PAGE_INTRO");
-    expect(exploreViewSource).toContain("ExploreModelMovementStrip");
-    expect(exploreViewSource).toContain("ExploreConversationReviewStrip");
+    expect(movementPanel).toContain("ExploreSessionMovementInspectorList");
     expect(exploreWiring).not.toContain("Open reflection");
     expect(exploreWiring).not.toContain("beforeSummary");
     expect(exploreWiring).not.toContain("internal_only");
@@ -82,5 +82,11 @@ describe("explore surface wiring", () => {
     expect(inspectorSource).toContain('objectType === "model_update"');
     expect(inspectorSource).toContain('sourceSurface: "explore"');
     expect(inspectorSource).not.toContain('objectType: "fieldwork"');
+
+    expect(exploreViewSource).toContain("showSkeleton");
+    expect(exploreViewSource).toContain("Fieldwork Bridge");
+    expect(exploreViewSource).not.toMatch(
+      /if \(isProduction\)\s*\{\s*return\s*\(\s*<p className="text-sm text-muted-foreground">/
+    );
   });
 });

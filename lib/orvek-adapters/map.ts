@@ -357,27 +357,46 @@ function buildHeaderStats(items: UserMapConclusionPublicApiListItem[]): V0MapHea
   };
 }
 
-function buildRelatedItems(
-  items: UserMapConclusionPublicApiListItem[],
-  selectedListItem: UserMapConclusionPublicApiListItem | undefined
-): V0MapRelatedItem[] {
+function buildRelatedItems(input: MapMapDataInput): V0MapRelatedItem[] {
+  const selectedListItem = input.items.find((entry) => entry.id === input.selectedId);
   if (!selectedListItem) {
     return [];
   }
 
-  return items
-    .filter(
-      (item) =>
-        item.id !== selectedListItem.id &&
-        (item.area === selectedListItem.area || item.status === selectedListItem.status)
-    )
-    .slice(0, 4)
-    .map((item) => ({
-      id: item.id,
+  const related: V0MapRelatedItem[] = [];
+
+  for (const item of input.items.filter(
+    (entry) =>
+      entry.id !== selectedListItem.id &&
+      (entry.area === selectedListItem.area || entry.status === selectedListItem.status)
+  )) {
+    related.push({
+      id: `conclusion-${item.id}`,
       title: item.title,
       areaLabel: formatUserMapArea(item.area),
       typeLabel: formatUserMapStatus(item.status),
-    }));
+    });
+  }
+
+  for (const item of input.openQuestionsPreview.items.slice(0, 2)) {
+    related.push({
+      id: `question-${item.id}`,
+      title: item.title,
+      areaLabel: "Active question",
+      typeLabel: item.statusLabel,
+    });
+  }
+
+  for (const item of input.mindContext.items.slice(0, 1)) {
+    related.push({
+      id: `context-${item.id}`,
+      title: item.title,
+      areaLabel: MIND_CONTEXT_SECTION_LABEL,
+      typeLabel: "Context",
+    });
+  }
+
+  return related.slice(0, 4);
 }
 
 function mapDetailSlot(
@@ -408,7 +427,11 @@ export function mapMapDataToV0Props(input: MapMapDataInput): V0MapViewProps {
   const ontologyGroups = buildOntologyRailGroups(input);
   const selectedListItem = items.find((entry) => entry.id === selectedId);
   const { preview, hasMore } = summarizeCentreEvidence(evidence);
-  const hasItems = items.length > 0;
+  const ontologyItemCount = ontologyGroups.reduce(
+    (count, group) => count + group.items.length,
+    0
+  );
+  const hasItems = ontologyItemCount > 0;
   const showMainContent = !input.isLoading && !input.loadError && hasItems;
 
   return {
@@ -438,7 +461,10 @@ export function mapMapDataToV0Props(input: MapMapDataInput): V0MapViewProps {
       supportingEmptyCopy: PUBLIC_EVIDENCE_FALLBACK_COPY,
       conflictingEmptyCopy: V0_MAP_CONFLICTING_EMPTY_COPY,
     },
-    headerStats: showMainContent ? buildHeaderStats(items) : null,
+    headerStats:
+      !input.isLoading && !input.loadError && items.length > 0
+        ? buildHeaderStats(items)
+        : null,
     openQuestionsCount: input.openQuestionsCount,
     movementPreview: {
       isLoading: input.movementPreview.isLoading,
@@ -467,7 +493,7 @@ export function mapMapDataToV0Props(input: MapMapDataInput): V0MapViewProps {
       viewAllHref: MAP_OPEN_QUESTIONS_VIEW_ALL_HREF,
       emptyCopy: MAP_OPEN_QUESTIONS_EMPTY_COPY,
     },
-    relatedItems: buildRelatedItems(items, selectedListItem),
+    relatedItems: buildRelatedItems(input),
     relatedEmptyCopy: V0_MAP_RELATED_EMPTY_COPY,
     correctionChipLabels: V0_MAP_CORRECTION_CHIP_LABELS,
     correctionDeferredCopy: YOUR_MAP_CORRECTION_DEFERRED_COPY,
