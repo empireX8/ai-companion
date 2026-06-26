@@ -168,6 +168,11 @@ describe("map production data bridge", () => {
     expect(api.mapSelectedId).toBe("context-pattern-pc-1");
     expect(api.getObject("context-pattern-pc-1")).toBeDefined();
     expect(api.mapCategories?.some((category) => category.id === "context")).toBe(true);
+    expect(api.mapHeader).toEqual({
+      confidenceLabel: "—",
+      receiptsLabel: "0",
+      openQuestionsLabel: "0",
+    });
   });
 
   it("reports an empty map only when every production source is empty", () => {

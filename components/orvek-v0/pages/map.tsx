@@ -9,10 +9,11 @@ import {
   V0_MAP_ONTOLOGY_RAIL_LABELS,
   V0_MAP_ONTOLOGY_RAIL_ORDER,
 } from "@/lib/orvek-adapters/map"
-import { useWorkbench } from "@/components/orvek-v0/store"
+import { ProductionMapHeader } from "@/components/orvek-workbench/ProductionMapHeader"
+import { MapPageHeaderStats } from "@/components/orvek-v0/MapPageHeaderStats"
 import { SectionLabel, TYPE_META } from "@/components/orvek-v0/primitives"
+import { useWorkbench } from "@/components/orvek-v0/store"
 import {
-  Activity,
   AlertTriangle,
   Compass,
   GitCompareArrows,
@@ -214,52 +215,33 @@ export function MapPage() {
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="orvek-v0-map-page">
       {/* header */}
-      <div className="px-6 pt-5 pb-4 lg:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">Map</h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              What Orvek currently understands — evidence-backed and correctable.
-            </p>
-          </div>
-          <div className="flex items-center gap-4 text-sm">
-            {(mapHeader || isProduction) && (
-              <>
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Activity className="size-3.5 text-primary" aria-hidden />
-                  Confidence{" "}
-                  <span className="font-medium text-foreground">
-                    {mapHeader?.confidenceLabel ?? "—"}
-                  </span>
-                </span>
-                <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">
-                    {mapHeader?.receiptsLabel ?? "0"}
-                  </span>{" "}
-                  receipts
-                </span>
-                <span className="text-muted-foreground">
-                  <span className="font-medium text-foreground">
-                    {mapHeader?.openQuestionsLabel ?? "0"}
-                  </span>{" "}
-                  open questions
-                </span>
-              </>
-            )}
+      {isProduction ? (
+        <ProductionMapHeader
+          confidenceLabel={mapHeader?.confidenceLabel ?? "—"}
+          receiptsLabel={mapHeader?.receiptsLabel ?? "0"}
+          openQuestionsLabel={mapHeader?.openQuestionsLabel ?? "0"}
+          isLoading={mapIsLoading}
+          loadError={mapLoadError}
+          showEmptyCopy={!mapIsLoading && !mapHasContent}
+          emptyCopy={emptyCopyBySlot?.mapEmpty ?? "Nothing on your map yet."}
+        />
+      ) : (
+        <div className="px-6 pt-5 pb-4 lg:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Map</h1>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                What Orvek currently understands — evidence-backed and correctable.
+              </p>
+            </div>
+            <MapPageHeaderStats
+              confidenceLabel={mapHeader?.confidenceLabel ?? "mixed / evolving"}
+              receiptsLabel={mapHeader?.receiptsLabel ?? "243"}
+              openQuestionsLabel={mapHeader?.openQuestionsLabel ?? "7"}
+            />
           </div>
         </div>
-        {isProduction && mapIsLoading && (
-          <p className="mt-2 text-[13px] text-muted-foreground">Loading your map…</p>
-        )}
-        {isProduction && mapLoadError && (
-          <p className="mt-2 text-[13px] text-destructive">{mapLoadError}</p>
-        )}
-        {isProduction && !mapIsLoading && !mapHasContent && (
-          <p className="mt-2 text-[13px] text-muted-foreground">
-            {emptyCopyBySlot?.mapEmpty ?? "Nothing on your map yet."}
-          </p>
-        )}
-      </div>
+      )}
 
       {/* master-detail */}
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[300px_1fr]">

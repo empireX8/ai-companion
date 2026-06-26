@@ -26,10 +26,41 @@ describe("your-map workbench", () => {
     expect(mapApiSource).toContain("mapHasContent");
     expect(mapApiSource).toContain("resolveMapSelectedId");
     expect(workbenchSource).toContain("isMindContextLoading");
+    expect(readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx")).toContain(
+      "OrvekShellLayout"
+    );
+    expect(readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx")).toContain(
+      "<ProductionInspectorAside />"
+    );
+    expect(readSource("components/orvek-workbench/ProductionMapHeader.tsx")).toContain(
+      "flex flex-wrap items-end justify-between gap-3"
+    );
+    expect(readSource("components/orvek-workbench/ProductionMapHeader.tsx")).toContain(
+      "flex items-baseline justify-end gap-6 whitespace-nowrap"
+    );
+    expect(readSource("components/orvek-workbench/ProductionMapHeader.tsx")).toContain(
+      "font-medium tabular-nums text-foreground"
+    );
+    expect(viewSource).toContain("ProductionMapHeader");
+    expect(viewSource).toContain("flex flex-wrap items-end justify-between gap-3");
     expect(viewSource).toContain("grid-cols-1 lg:grid-cols-[300px_1fr]");
     expect(mindContextSource).toContain('data-testid="your-map-mind-context-panel"');
     expect(mindContextSource).toContain("fetchMindContextSnapshot");
     expect(mindContextSource).toContain("MIND_CONTEXT_EMPTY_PRIMARY");
+  });
+
+  it("keeps map page header layout aligned with the v0 reference zip", () => {
+    const viewSource = readSource("components/orvek-v0/pages/map.tsx");
+    const referenceSource = readSource(
+      ".reference/v0-orvek-workbench/components/orvek/pages/map.tsx"
+    );
+
+    expect(viewSource).toContain("flex flex-wrap items-end justify-between gap-3");
+    expect(referenceSource).toContain("flex flex-wrap items-end justify-between gap-3");
+    expect(viewSource).toContain("ProductionMapHeader");
+    expect(viewSource).not.toContain('isProduction ? "flex-nowrap"');
+    expect(viewSource).not.toContain("grid-cols-[minmax(0,1fr)_auto]");
+    expect(viewSource).not.toContain("row-span-2");
   });
 
   it("selects map rows into inspector evidence context without full navigation", () => {
