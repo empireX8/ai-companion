@@ -107,7 +107,7 @@ function InspectorAsideChrome() {
 /** Desktop inspector rail — mounted like reference `EvidencePanel` (direct flex sibling of main). */
 export function ProductionInspectorAside() {
   return (
-    <aside className="flex h-full w-[392px] shrink-0 flex-col max-lg:hidden">
+    <aside className="flex h-full w-[392px] shrink-0 flex-col max-lg:hidden pr-5 pb-5">
       <InspectorAsideChrome />
     </aside>
   );
