@@ -21,8 +21,11 @@ describe("your-map workbench", () => {
     expect(workbenchSource).toContain("fetchMindContextSnapshot");
     expect(adapterSource).toContain("buildOntologyRailGroups");
     expect(adapterSource).toContain("V0_MAP_ONTOLOGY_RAIL_LABELS");
-    expect(mapApiSource).toContain('inspectorObjectType: "usermap_conclusion"');
-    expect(viewSource).toContain('data-testid="orvek-v0-map-page"');
+    expect(viewSource).toContain("mapHasContent");
+    expect(viewSource).toContain("mapIsLoading");
+    expect(mapApiSource).toContain("mapHasContent");
+    expect(mapApiSource).toContain("resolveMapSelectedId");
+    expect(workbenchSource).toContain("isMindContextLoading");
     expect(viewSource).toContain("grid-cols-1 lg:grid-cols-[300px_1fr]");
     expect(mindContextSource).toContain('data-testid="your-map-mind-context-panel"');
     expect(mindContextSource).toContain("fetchMindContextSnapshot");
@@ -94,12 +97,27 @@ describe("your-map workbench", () => {
     expect(detailSource).not.toContain("candidate");
   });
 
-  it("preserves /your-map/[id] permalink route for backwards compatibility", () => {
+  it("preserves /your-map/[id] permalink route by redirecting into the v0 workbench", () => {
     const detailPageSource = readSource("app/(root)/(routes)/your-map/[id]/page.tsx");
 
-    expect(detailPageSource).toContain("MapDetailInspectorSync");
-    expect(detailPageSource).toContain("listYourMapPublicEvidenceContinuity");
-    expect(detailPageSource).toContain('href="/your-map"');
+    expect(detailPageSource).toContain('redirect(`/your-map?selected=');
+    expect(detailPageSource).not.toContain("ml-material");
+    expect(detailPageSource).not.toContain("ml-raised");
     expect(detailPageSource).not.toContain("<form");
+  });
+
+  it("renders production conclusion detail skeleton sections with honest empty copy", () => {
+    const viewSource = readSource("components/orvek-v0/pages/map.tsx");
+    const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
+
+    expect(viewSource).toContain("V0_MAP_ONTOLOGY_RAIL_ORDER");
+    expect(viewSource).toContain("showProductionDetailSkeleton");
+    expect(viewSource).not.toContain("if (isProduction && !mapHasContent)");
+    expect(viewSource).toContain("mapWhyEmpty");
+    expect(viewSource).toContain("mapSupportingEmpty");
+    expect(viewSource).toContain("mapConflictingEmpty");
+    expect(viewSource).toContain("mapRelatedEmpty");
+    expect(mapApiSource).toContain("mapCurrentUnderstandingEmpty");
+    expect(mapApiSource).toContain("YOUR_MAP_EVIDENCE_BREADTH_INTRO");
   });
 });
