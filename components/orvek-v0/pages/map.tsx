@@ -376,8 +376,8 @@ export function MapPage() {
                     <SectionLabel className="text-primary">Supporting evidence</SectionLabel>
                     {obj?.supporting && obj.supporting.length > 0 ? (
                       <ul className="mt-2 space-y-1.5">
-                        {obj.supporting.map((s) => (
-                          <li key={s} className="flex gap-2 text-[13px] text-foreground">
+                        {obj.supporting.map((s, index) => (
+                          <li key={`supporting-${index}-${s}`} className="flex gap-2 text-[13px] text-foreground">
                             <span className="mt-0.5 text-primary">+</span>
                             {s}
                           </li>
@@ -395,8 +395,8 @@ export function MapPage() {
                     <SectionLabel className="text-destructive/80">Conflicting evidence</SectionLabel>
                     {obj?.conflicting && obj.conflicting.length > 0 ? (
                       <ul className="mt-2 space-y-1.5">
-                        {obj.conflicting.map((c) => (
-                          <li key={c} className="flex gap-2 text-[13px] text-muted-foreground">
+                        {obj.conflicting.map((c, index) => (
+                          <li key={`conflicting-${index}-${c}`} className="flex gap-2 text-[13px] text-muted-foreground">
                             <span className="mt-0.5 text-destructive">−</span>
                             {c}
                           </li>
