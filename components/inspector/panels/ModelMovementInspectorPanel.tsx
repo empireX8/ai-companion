@@ -8,13 +8,13 @@ import { GitCompareArrows, ScrollText } from "lucide-react";
 import { ExploreSessionMovementInspectorList } from "@/components/explore/ExploreModelMovementStrip";
 
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
-import {
-  fetchInspectorEvidenceLinks,
-  fetchInspectorModelUpdateDetail,
-  INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT,
-  type InspectorEvidenceLinkItem,
-} from "@/lib/inspector-object-api";
+import { fetchInspectorModelUpdateDetail } from "@/lib/inspector-object-api";
 import { resolveActiveModelUpdateId } from "@/lib/inspector-selection";
+import type {
+  RealityTrackingClaimSection,
+  RealityTrackingEvidenceRef,
+  RealityTrackingModelMovementSection,
+} from "@/lib/reality-tracking-output-contract";
 import {
   TODAY_INTELLIGENCE_UPDATES_ENDPOINT,
   type TodayIntelligenceUpdateItem,
@@ -35,9 +35,163 @@ function formatDateTime(value: string): string {
   }).format(date);
 }
 
+function formatEvidenceStatus(value: string): string {
+  return value.replace(/_/g, " ");
+}
+
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+      {children}
+    </div>
+  );
+}
+
+function FactGrid({
+  items,
+}: {
+  items: Array<{ label: string; value: string }>;
+}) {
+  return (
+    <dl className="grid grid-cols-2 gap-2 text-[12px] text-muted-foreground">
+      {items.map((item) => (
+        <div key={item.label}>
+          <dt className="uppercase tracking-wide text-[10px]">{item.label}</dt>
+          <dd className="mt-0.5 font-medium text-foreground">{item.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function EvidenceRefs({ refs }: { refs: RealityTrackingEvidenceRef[] }) {
+  if (refs.length === 0) {
+    return (
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        No linked receipt references were attached to this item.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="mt-2 space-y-1.5">
+      {refs.map((ref) => (
+        <li key={ref.id} className="text-[11px] leading-relaxed text-muted-foreground">
+          {ref.href ? (
+            <Link href={ref.href} className="hover:text-foreground">
+              <span className="font-medium text-cyan/80">{ref.sourceTypeLabel}</span>
+              <span> · {ref.label}</span>
+            </Link>
+          ) : (
+            <>
+              <span className="font-medium text-cyan/80">{ref.sourceTypeLabel}</span>
+              <span> · {ref.label}</span>
+            </>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ClaimSection({
+  label,
+  section,
+}: {
+  label: string;
+  section: RealityTrackingClaimSection;
+}) {
+  return (
+    <section>
+      <SectionLabel>{label}</SectionLabel>
+      {section.items.length === 0 ? (
+        <p className="text-[12px] leading-relaxed text-muted-foreground">
+          {section.emptyState ?? "No detail available."}
+        </p>
+      ) : (
+        <div className="space-y-2.5">
+          {section.items.map((item, index) => (
+            <article key={`${label}-${index}-${item.text}`} className="ml-material rounded-xl px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] font-medium uppercase tracking-wide text-cyan/75">
+                  {formatEvidenceStatus(item.evidenceStatus)}
+                </div>
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {formatEvidenceStatus(item.classification)}
+                </div>
+              </div>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+                {item.text}
+              </p>
+              <EvidenceRefs refs={item.evidenceRefs} />
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MovementSection({
+  section,
+}: {
+  section: RealityTrackingModelMovementSection;
+}) {
+  return (
+    <section>
+      <SectionLabel>Model Movement</SectionLabel>
+      <div className="space-y-2.5">
+        {section.before ? (
+          <div className="rounded-xl bg-muted/70 px-3 py-2.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Before
+            </div>
+            <p className="mt-1 text-[13px] leading-relaxed text-foreground">{section.before}</p>
+          </div>
+        ) : null}
+        {section.after ? (
+          <div className="rounded-xl bg-evidence-muted/70 px-3 py-2.5 ring-1 ring-inset ring-primary/15">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+              After
+            </div>
+            <p className="mt-1 text-[13px] leading-relaxed text-foreground">{section.after}</p>
+          </div>
+        ) : null}
+        {section.confidenceShift !== null ? (
+          <p className="text-[12px] text-muted-foreground">
+            Confidence shift:{" "}
+            <span className="font-medium text-foreground">
+              {section.confidenceShift >= 0 ? "+" : ""}
+              {section.confidenceShift.toFixed(2)}
+            </span>
+          </p>
+        ) : null}
+        {section.items.length === 0 ? (
+          <p className="text-[12px] leading-relaxed text-muted-foreground">
+            {section.emptyState ?? "No additional movement detail available."}
+          </p>
+        ) : (
+          <div className="space-y-2.5">
+            {section.items.map((item, index) => (
+              <article key={`movement-${index}-${item.text}`} className="ml-material rounded-xl px-3 py-2.5">
+                <div className="text-[11px] font-medium uppercase tracking-wide text-cyan/75">
+                  {formatEvidenceStatus(item.evidenceStatus)}
+                </div>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+                  {item.text}
+                </p>
+                <EvidenceRefs refs={item.evidenceRefs} />
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string }) {
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof fetchInspectorModelUpdateDetail>>>(null);
-  const [evidence, setEvidence] = useState<InspectorEvidenceLinkItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -47,17 +201,13 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
     setNotFound(false);
 
     void (async () => {
-      const [nextDetail, nextEvidence] = await Promise.all([
-        fetchInspectorModelUpdateDetail(modelUpdateId),
-        fetchInspectorEvidenceLinks(INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT(modelUpdateId)),
-      ]);
+      const nextDetail = await fetchInspectorModelUpdateDetail(modelUpdateId);
 
       if (cancelled) {
         return;
       }
 
       setDetail(nextDetail);
-      setEvidence(nextEvidence);
       setNotFound(!nextDetail);
       setIsLoading(false);
     })();
@@ -92,45 +242,98 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
           {ORVEK_COPY.mindModelMovement}
         </div>
         <h3 className="mt-1 text-[15px] font-semibold leading-snug">
-          {detail.updateTypeLabel} · {detail.affectedObjectTypeLabel}
+          {detail.item.updateTypeLabel} · {detail.item.affectedObjectTypeLabel}
         </h3>
         <p className="mt-2 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
-          {detail.userFacingSummary}
+          {detail.item.userFacingSummary}
         </p>
         <div className="mt-3">
           <PublicLinkedObjectContinuity
-            objectType={detail.affectedObjectType}
-            objectId={detail.affectedObjectId}
-            href={detail.affectedObjectHref}
+            objectType={detail.item.affectedObjectType}
+            objectId={detail.item.affectedObjectId}
+            href={detail.item.affectedObjectHref}
             context="model_update"
           />
-          <div className="label-meta mt-1.5">Recorded {formatDateTime(detail.createdAt)}</div>
+          <div className="label-meta mt-1.5">Recorded {formatDateTime(detail.item.createdAt)}</div>
         </div>
       </header>
 
-      {/* beforeSummary/afterSummary need a dedicated public-safe movement projection. */}
       <section>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-          Linked evidence
-        </div>
-        {evidence.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground">No linked public evidence yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {evidence.map((item) => (
-              <li key={`${item.sourceObjectHref}-${item.createdAt}`}>
-                <Link
-                  href={item.sourceObjectHref}
-                  className="ml-material block rounded-xl px-3 py-2.5 text-[12px]"
-                >
-                  <div className="font-medium text-cyan/80">{item.sourceTypeLabel}</div>
-                  <div className="mt-0.5 text-muted-foreground">{item.evidenceSummaryLabel}</div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+        <SectionLabel>Evidence Packet Summary</SectionLabel>
+        <FactGrid
+          items={[
+            {
+              label: "Date range",
+              value: detail.report.evidencePacketSummary.dateRangeLabel ?? "Unavailable",
+            },
+            {
+              label: "Receipts",
+              value: String(detail.report.evidencePacketSummary.receiptCount),
+            },
+            {
+              label: "Source types",
+              value: String(detail.report.evidencePacketSummary.sourceTypeCount),
+            },
+            {
+              label: "Linked objects",
+              value: String(detail.report.evidencePacketSummary.linkedObjectCount),
+            },
+            {
+              label: "Decisions",
+              value: String(detail.report.evidencePacketSummary.linkedDecisionCount),
+            },
+            {
+              label: "Fieldwork",
+              value: String(detail.report.evidencePacketSummary.fieldworkCount),
+            },
+            {
+              label: "Corrections",
+              value: String(detail.report.evidencePacketSummary.correctionCount),
+            },
+            {
+              label: "Recent movement",
+              value: String(detail.report.evidencePacketSummary.recentMovementCount),
+            },
+          ]}
+        />
+        <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+          Target:{" "}
+          <span className="font-medium text-foreground">
+            {detail.report.evidencePacketSummary.targetLabel}
+          </span>{" "}
+          · {detail.report.evidencePacketSummary.targetObjectTypeLabel}
+        </p>
       </section>
+
+      <ClaimSection label="Facts" section={detail.report.facts} />
+      <ClaimSection
+        label="Strongly Supported Claims"
+        section={detail.report.stronglySupportedClaims}
+      />
+      <ClaimSection label="Inferences" section={detail.report.inferences} />
+      <ClaimSection
+        label="Speculations / Uncertainties"
+        section={detail.report.speculations}
+      />
+      <ClaimSection
+        label="Overreach Guardrails"
+        section={detail.report.overreachGuardrails}
+      />
+      <ClaimSection
+        label="Loop / Pattern Detection"
+        section={detail.report.loopPatternDetection}
+      />
+      <MovementSection section={detail.report.modelMovement} />
+      <ClaimSection label="Reality Gate" section={detail.report.realityGate} />
+      <ClaimSection
+        label="Fieldwork / Watch For"
+        section={detail.report.fieldworkWatchFor}
+      />
+      <ClaimSection label="Re-entry Action" section={detail.report.reentryAction} />
+      <ClaimSection
+        label="What Would Change This Conclusion"
+        section={detail.report.whatWouldChangeThisConclusion}
+      />
     </div>
   );
 }

@@ -816,18 +816,18 @@ function ModelUpdateEvidencePanel({
     <>
       <ObjectHeader
         typeLabel={ORVEK_COPY.mindModelMovement}
-        title={selection.selectedTitle ?? detail.updateTypeLabel}
-        meta={detail.affectedObjectTypeLabel}
+        title={selection.selectedTitle ?? detail.item.updateTypeLabel}
+        meta={detail.item.affectedObjectTypeLabel}
       />
       <section className="px-4 pb-4">
         <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
-          {detail.userFacingSummary}
+          {detail.item.userFacingSummary}
         </p>
         <div className="mt-3">
           <PublicLinkedObjectContinuity
-            objectType={detail.affectedObjectType}
-            objectId={detail.affectedObjectId}
-            href={detail.affectedObjectHref}
+            objectType={detail.item.affectedObjectType}
+            objectId={detail.item.affectedObjectId}
+            href={detail.item.affectedObjectHref}
             context="model_update"
           />
         </div>

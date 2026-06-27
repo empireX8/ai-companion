@@ -106,7 +106,9 @@ describe("inspector surface wiring", () => {
     expect(routerSource).toContain("ModelMovementInspectorPanel");
     expect(panelSource).toContain("resolveActiveModelUpdateId");
     expect(panelSource).toContain("TODAY_INTELLIGENCE_UPDATES_ENDPOINT");
-    expect(panelSource).toContain("beforeSummary/afterSummary need");
+    expect(panelSource).toContain("Evidence Packet Summary");
+    expect(panelSource).toContain("Overreach Guardrails");
+    expect(panelSource).toContain("What Would Change This Conclusion");
     expect(panelSource).toContain("ExploreSessionMovementInspectorList");
 
     const exploreMovementSource = readSource("components/explore/ExploreModelMovementStrip.tsx");

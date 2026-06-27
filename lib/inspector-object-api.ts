@@ -3,6 +3,7 @@ import type {
   UserMapConclusionPublicApiDetailItem,
   WhatChangedListItem,
 } from "./public-intelligence-safe-slice";
+import type { RealityTrackingModelMovementReport } from "./reality-tracking-output-contract";
 
 export const INSPECTOR_USER_MAP_DETAIL_ENDPOINT = (id: string) =>
   `/api/user-map/conclusions/${encodeURIComponent(id)}`;
@@ -41,6 +42,11 @@ export type InspectorContradictionProjection = {
   lastTouchedAt: string;
 };
 
+export type InspectorModelUpdateDetail = {
+  item: WhatChangedListItem;
+  report: RealityTrackingModelMovementReport;
+};
+
 export async function fetchInspectorUserMapDetail(
   id: string
 ): Promise<UserMapConclusionPublicApiDetailItem | null> {
@@ -68,7 +74,7 @@ export async function fetchInspectorEvidenceLinks(
 
 export async function fetchInspectorModelUpdateDetail(
   id: string
-): Promise<WhatChangedListItem | null> {
+): Promise<InspectorModelUpdateDetail | null> {
   const response = await fetch(INSPECTOR_MODEL_UPDATE_DETAIL_ENDPOINT(id), {
     method: "GET",
     cache: "no-store",
@@ -76,8 +82,10 @@ export async function fetchInspectorModelUpdateDetail(
   if (!response.ok) {
     return null;
   }
-  const payload = (await response.json()) as { item?: WhatChangedListItem };
-  return payload.item ?? null;
+  const payload = (await response.json()) as Partial<InspectorModelUpdateDetail>;
+  return payload.item && payload.report
+    ? ({ item: payload.item, report: payload.report } as InspectorModelUpdateDetail)
+    : null;
 }
 
 export async function fetchInspectorPatternClaim(id: string): Promise<PatternClaimView | null> {
