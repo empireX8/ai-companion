@@ -210,7 +210,8 @@ describe("today-surface safety and honest copy", () => {
   it("keeps honest placeholder and fallback copy on Today re-entry", () => {
     const source = readTodayPageSource();
     expect(source.includes("TODAY_INTELLIGENCE_LOADING_COPY")).toBe(true);
-    expect(source.includes("TODAY_CHANGES_VIEW_ALL_HREF")).toBe(true);
+    expect(source.includes("data-testid=\"today-what-changed-output\"")).toBe(true);
+    expect(source.includes("data-testid=\"today-full-report-deferred\"")).toBe(true);
     expect(source.includes("TODAY_PRIMARY_EMPTY_COPY")).toBe(true);
     expect(source.includes("TODAY_ATTENTION_EMPTY_COPY")).toBe(true);
     expect(TODAY_CHANGES_VIEW_ALL_HREF).toBe("/what-changed");

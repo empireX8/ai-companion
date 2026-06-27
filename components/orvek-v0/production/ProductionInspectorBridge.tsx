@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 import { useInspector } from "@/components/inspector/InspectorContext";
-import type { InspectorSelectableObjectType } from "@/lib/inspector-selection";
+import {
+  resolveInspectorSourceSurfaceFromPathname,
+  type InspectorSelectableObjectType,
+} from "@/lib/inspector-selection";
 import { useOrvekData } from "@/lib/orvek-v0/data-provider";
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types";
 
@@ -23,6 +27,7 @@ function resolveInspectorType(obj: OrvekObject): InspectorSelectableObjectType |
 }
 
 export function ProductionInspectorBridge({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { selectedId, inspectorTab } = useWorkbench();
   const { getObject } = useOrvekData();
   const { selectObject, setTab, openInspector } = useInspector();
@@ -45,10 +50,11 @@ export function ProductionInspectorBridge({ children }: { children: React.ReactN
       title: obj.title,
       modelUpdateId: objectType === "model_update" ? obj.inspectorObjectId ?? obj.id : undefined,
       tab: inspectorTab,
+      sourceSurface: resolveInspectorSourceSurfaceFromPathname(pathname),
     });
     setTab(inspectorTab);
     openInspector(inspectorTab);
-  }, [getObject, inspectorTab, openInspector, selectObject, selectedId, setTab]);
+  }, [getObject, inspectorTab, openInspector, pathname, selectObject, selectedId, setTab]);
 
   return children;
 }

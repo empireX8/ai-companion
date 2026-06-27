@@ -1,4 +1,10 @@
-import { TODAY_CHANGES_VIEW_ALL_HREF } from "../today-intelligence-updates";
+import {
+  TODAY_CHANGES_VIEW_ALL_HREF,
+  TODAY_REPORT_FULL_DEFERRED_COPY,
+  TODAY_REPORT_FULL_LABEL,
+  TODAY_REPORT_OUTPUT_TITLE,
+} from "../today-intelligence-updates";
+import { isIntegratedOrvekWorkbenchHref } from "../orvek-v0/today-workbench-routes";
 import {
   buildTodayAttentionRows,
   buildTodayBriefingMeta,
@@ -39,6 +45,21 @@ const PRIMARY_ACTIONS: V0PrimaryAction[] = [
   { label: "Capture new signal", href: "/journal-chat" },
 ];
 
+function applyPrimaryActionRouting(
+  actions: V0PrimaryAction[],
+  hasReportOutput: boolean
+): V0PrimaryAction[] {
+  return actions.map((action) => {
+    if (!isIntegratedOrvekWorkbenchHref(action.href)) {
+      return { ...action, disabled: true };
+    }
+    if (hasReportOutput && action.href === TODAY_CHANGES_VIEW_ALL_HREF) {
+      return { ...action, disabled: true };
+    }
+    return action;
+  });
+}
+
 const CHECK_INS: V0CheckInOption[] = [
   { id: "calm", label: "Calm", color: "oklch(0.72 0.05 220)", href: "/check-ins?state=stable" },
   { id: "anxious", label: "Anxious", color: "oklch(0.78 0.12 72)", href: "/check-ins?state=stressed" },
@@ -76,11 +97,17 @@ function rowIcon(row: TodayAttentionRow): V0NowRowIcon {
 function mapHero(hero: TodayHeroItem): V0TodayViewProps["hero"] {
   let primaryAction: V0TodayHeroSlot["primaryAction"] = null;
 
-  if (hero.href) {
+  if (hero.href && isIntegratedOrvekWorkbenchHref(hero.href)) {
     primaryAction = { kind: "link", href: hero.href, label: "Open" };
   } else if (hero.selection) {
     primaryAction = { kind: "inspect" };
   }
+
+  const inspectSelectId = hero.selection
+    ? hero.movement
+      ? hero.movement.id
+      : hero.id
+    : null;
 
   return {
     kicker: hero.laneLabel,
@@ -91,6 +118,8 @@ function mapHero(hero: TodayHeroItem): V0TodayViewProps["hero"] {
     lastEvidence: formatRelativeTime(hero.occurredAt),
     primaryAction,
     showSeeWhyMoved: Boolean(hero.movement),
+    inspectSelectId,
+    movementId: hero.movement?.id ?? null,
   };
 }
 
@@ -103,6 +132,7 @@ function mapNowRow(row: TodayAttentionRow): V0TodayNowRow {
     status: row.meta ?? row.typeLabel,
     href: row.href,
     hasSelection: Boolean(row.selection),
+    inspectorTab: row.selection?.tab ?? null,
   };
 }
 
@@ -172,13 +202,25 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
 
   let report: V0TodayReportSlot | null = null;
   if (snapshot.intelligenceUpdates.length > 0) {
+    const latest = snapshot.intelligenceUpdates[0]!;
     const count = snapshot.intelligenceUpdates.length;
     report = {
-      title: "What Changed report",
-      meta: `Ready · ${count} movement${count === 1 ? "" : "s"}`,
+      title: TODAY_REPORT_OUTPUT_TITLE,
+      meta: `${count} published movement${count === 1 ? "" : "s"} in this window`,
       href: TODAY_CHANGES_VIEW_ALL_HREF,
+      fullReportLabel: TODAY_REPORT_FULL_LABEL,
+      fullReportAvailable: isIntegratedOrvekWorkbenchHref(TODAY_CHANGES_VIEW_ALL_HREF),
+      fullReportDeferredCopy: TODAY_REPORT_FULL_DEFERRED_COPY,
+      primaryMovement: {
+        id: latest.id,
+        inspectSelectId: latest.id,
+        summary: latest.userFacingSummary,
+        evidence: `${latest.updateTypeLabel} · ${latest.affectedObjectTypeLabel}`,
+      },
     };
   }
+
+  const hasReportOutput = report !== null;
 
   const receipts: V0TodayReceiptRow[] = filterDefined(receiptCards).map((card, index) => ({
     id: `receipt-${index}-${card.title?.trim() || "item"}`,
@@ -195,7 +237,7 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
     loadingCopy: TODAY_INTELLIGENCE_LOADING_COPY,
     heroEmptyCopy: TODAY_PRIMARY_EMPTY_COPY,
     hero: hero ? mapHero(hero) : null,
-    primaryActions: PRIMARY_ACTIONS,
+    primaryActions: applyPrimaryActionRouting(PRIMARY_ACTIONS, hasReportOutput),
     nowRows,
     nowEmptyCopy: TODAY_ATTENTION_EMPTY_COPY,
     movements,

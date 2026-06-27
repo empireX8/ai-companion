@@ -2,6 +2,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import {
+  buildInspectorSelection,
+  resolveInspectorSourceSurfaceFromPathname,
+  shouldClearInspectorSelectionOnNavigation,
+} from "../inspector-selection";
+
 function readSource(relativePath: string): string {
   return readFileSync(join(process.cwd(), relativePath), "utf8");
 }
@@ -14,8 +20,42 @@ describe("inspector surface wiring", () => {
     const source = `${container}\n${view}\n${bridge}`;
     expect(source).toContain("ProductionInspectorBridge");
     expect(bridge).toContain('return "model_update"');
-    expect(source).toContain('setInspectorTab("movement")');
+    expect(bridge).toContain("resolveInspectorSourceSurfaceFromPathname");
+    expect(bridge).toContain("sourceSurface:");
+    expect(source).toContain("openInspectorSelection");
+    expect(source).toContain('"movement"');
     expect(source).toContain("See why it moved");
+  });
+
+  it("tags Today bridge selections with the today surface so navigation sync does not clear them", () => {
+    const bridge = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
+    expect(bridge).toContain("sourceSurface: resolveInspectorSourceSurfaceFromPathname(pathname)");
+
+    const bridged = buildInspectorSelection({
+      objectType: "model_update",
+      objectId: "mu-1",
+      sourceSurface: resolveInspectorSourceSurfaceFromPathname("/"),
+    });
+
+    expect(
+      shouldClearInspectorSelectionOnNavigation({
+        pathname: "/",
+        selection: bridged,
+      })
+    ).toBe(false);
+
+    const stale = buildInspectorSelection({
+      objectType: "model_update",
+      objectId: "mu-1",
+    });
+
+    expect(stale?.sourceSurface).toBe("unknown");
+    expect(
+      shouldClearInspectorSelectionOnNavigation({
+        pathname: "/",
+        selection: stale,
+      })
+    ).toBe(true);
   });
 
   it("wires Your Map workbench list selection to usermap_conclusion inspector context", () => {
@@ -72,6 +112,20 @@ describe("inspector surface wiring", () => {
     const exploreMovementSource = readSource("components/explore/ExploreModelMovementStrip.tsx");
     expect(exploreMovementSource).toContain("ORVEK_COPY.mindModelMovement");
     expect(exploreMovementSource).toContain("from this conversation");
+  });
+
+  it("keeps the shared inspector read-only while rendering richer object sections", () => {
+    const panelSource = readSource(
+      "components/inspector/panels/SelectedObjectEvidencePanel.tsx"
+    );
+
+    expect(panelSource).toContain("Supporting & conflicting");
+    expect(panelSource).toContain("Relevant background / context");
+    expect(panelSource).toContain("What would change this");
+    expect(panelSource).toContain("Next step");
+    expect(panelSource).toContain("getActionGateReason");
+    expect(panelSource).not.toContain("suggestClaimAction");
+    expect(panelSource).not.toContain("updateClaimAction");
   });
 
   it("clears cross-surface inspector selection on navigation", () => {

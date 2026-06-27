@@ -86,6 +86,64 @@ describe("today production data bridge", () => {
     expect(api.getObjects(api.todayResurfacedIds)).toEqual([]);
     expect(() => renderResurfacedQuotes(api.getObjects, api.todayResurfacedIds ?? [])).not.toThrow();
   });
+
+  it("registers intelligence updates for Inspector selection on the report card", () => {
+    const api = buildTodayProductionDataApi({
+      snapshot: {
+        ...EMPTY_SNAPSHOT,
+        intelligenceUpdates: [
+          {
+            id: "mu-1",
+            updateTypeLabel: "Pattern shift",
+            affectedObjectTypeLabel: "Pattern",
+            userFacingSummary: "Updated summary",
+            createdAt: "2026-06-24T10:00:00.000Z",
+            affectedObjectType: "pattern_claim",
+            affectedObjectId: "p-1",
+            affectedObjectHref: "/patterns/p-1",
+          },
+        ],
+      },
+      isLoading: false,
+      briefingDate: "Tuesday · 24 June",
+    });
+
+    const obj = api.getObject("mu-1");
+    expect(obj).toMatchObject({
+      id: "mu-1",
+      inspectorObjectType: "model_update",
+      inspectorObjectId: "mu-1",
+    });
+    expect(api.today?.report?.primaryMovement?.inspectSelectId).toBe("mu-1");
+  });
+
+  it("registers receipt inspector targets when href maps to a selectable object", () => {
+    const api = buildTodayProductionDataApi({
+      snapshot: {
+        ...EMPTY_SNAPSHOT,
+        surfacingCards: [
+          {
+            kind: "Recent Pattern",
+            title: "Evening stress",
+            body: "Grounded capture.",
+            meta: "recently",
+            detailHref: "/patterns/pattern-1",
+            receiptHref: "/patterns/pattern-1",
+          },
+        ],
+      },
+      isLoading: false,
+      briefingDate: "Tuesday · 24 June",
+    });
+
+    const receiptId = api.todayResurfacedIds?.[0];
+    expect(receiptId).toBeTruthy();
+    const receipt = api.getObject(receiptId!);
+    expect(receipt).toMatchObject({
+      inspectorObjectType: "pattern_claim",
+      inspectorObjectId: "pattern-1",
+    });
+  });
 });
 
 describe("v0 today adapter normalization", () => {
@@ -108,6 +166,7 @@ describe("v0 today adapter normalization", () => {
           status: "Active",
           href: null,
           hasSelection: false,
+          inspectorTab: null,
         },
         undefined as never,
       ],

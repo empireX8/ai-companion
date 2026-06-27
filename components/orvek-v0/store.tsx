@@ -17,8 +17,8 @@ interface WorkbenchValue {
   page: OrvekPage
   setPage: (p: OrvekPage) => void
   selectedId: string | null
-  /** select an object; switches inspector back to evidence by default */
-  select: (id: string | null) => void
+  /** select an object; optional tab defaults to evidence */
+  select: (id: string | null, tab?: InspectorTab) => void
   inspectorTab: InspectorTab
   setInspectorTab: (t: InspectorTab) => void
   overlay: OrvekOverlay
@@ -47,9 +47,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [extractions, setExtractions] = useState<Record<string, string>>({})
   const [exploreActive, setExploreActive] = useState(false)
 
-  const select = useCallback((id: string | null) => {
+  const select = useCallback((id: string | null, tab?: InspectorTab) => {
     setSelectedId(id)
-    setInspectorTab("evidence")
+    setInspectorTab(tab ?? "evidence")
   }, [])
   const setPage = useCallback((p: OrvekPage) => setPageState(p), [])
   const openReport = useCallback((id: string | null) => setReportId(id), [])

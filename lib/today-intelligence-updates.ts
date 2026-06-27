@@ -25,6 +25,12 @@ export const TODAY_CHANGES_SUBSECTION_LABEL = "Recent changes";
 export const TODAY_CHANGES_EMPTY_COPY =
   "No meaningful changes in the recent window yet.";
 export const TODAY_CHANGES_VIEW_ALL_HREF = "/what-changed";
+export const TODAY_REPORT_OUTPUT_TITLE = "What Changed";
+export const TODAY_REPORT_FULL_LABEL = "Open full What Changed";
+export const TODAY_REPORT_FULL_DEFERRED_COPY =
+  "Full report view not available in this workbench yet.";
+export const TODAY_REPORT_EMPTY_COPY =
+  "No published movement to show yet. Meaningful changes appear here when your model moves.";
 
 export function toTodayIntelligenceUpdateItem(
   row: TodayIntelligenceUpdateRecord

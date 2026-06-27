@@ -6,6 +6,8 @@ export type V0PrimaryAction = {
   label: string;
   href: string;
   primary?: boolean;
+  /** When true, action is shown but not routed (legacy/deferred surface). */
+  disabled?: boolean;
 };
 
 export type V0TodayHeroSlot = {
@@ -20,6 +22,10 @@ export type V0TodayHeroSlot = {
     | { kind: "inspect" }
     | null;
   showSeeWhyMoved: boolean;
+  /** Registered workbench object id for inspect selection (hero card). */
+  inspectSelectId: string | null;
+  /** Model update id for movement inspector tab when hero is movement-driven. */
+  movementId: string | null;
 };
 
 export type V0TodayNowRow = {
@@ -30,6 +36,7 @@ export type V0TodayNowRow = {
   status: string;
   href: string | null;
   hasSelection: boolean;
+  inspectorTab: "evidence" | "movement" | null;
 };
 
 export type V0TodayMovementRow = {
@@ -40,10 +47,23 @@ export type V0TodayMovementRow = {
   evidence: string;
 };
 
+export type V0TodayReportMovementPreview = {
+  id: string;
+  /** Registered workbench object id for Inspector selection (model_update id). */
+  inspectSelectId: string;
+  summary: string;
+  evidence: string;
+};
+
 export type V0TodayReportSlot = {
   title: string;
   meta: string;
   href: string;
+  fullReportLabel: string;
+  /** When false, Today must not link to the full report route. */
+  fullReportAvailable: boolean;
+  fullReportDeferredCopy: string;
+  primaryMovement: V0TodayReportMovementPreview | null;
 };
 
 export type V0TodayReceiptRow = {

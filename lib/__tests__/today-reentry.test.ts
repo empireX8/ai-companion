@@ -398,8 +398,8 @@ describe("today page re-entry wiring", () => {
     expect(source).toContain("buildTodayFieldworkRows");
     expect(source).toContain("buildTodayOpenLoopRows");
     expect(source).toContain("buildTodayChangeRows");
-    expect(source).toContain("setInspectorTab");
-    expect(source).toContain('setInspectorTab("movement")');
+    expect(source).toContain("openInspectorSelection");
+    expect(source).toContain('"movement"');
     expect(source).toContain("See why it moved");
     expect(source.includes("TODAY_TIMELINE_MOVEMENT_LABEL")).toBe(false);
     expect(source.includes("lg:grid-cols-")).toBe(true);

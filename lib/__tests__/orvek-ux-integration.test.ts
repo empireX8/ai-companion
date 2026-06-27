@@ -95,14 +95,16 @@ describe("orvek ux integration — surface copy modules", () => {
   });
 });
 
-describe("orvek ux integration — today to what-changed bridge", () => {
-  it("keeps Today movement preview linked to What Changed", () => {
+describe("orvek ux integration — today what-changed output", () => {
+  it("keeps compact What Changed on Today with Inspector handoff and deferred full report", () => {
     const todayPage = readSource("components/orvek-workbench/OrvekTodayPage.tsx");
     const todayView = readSource("components/orvek-v0/pages/today.tsx");
     const adapter = readSource("lib/orvek-adapters/today.ts");
     expect(`${todayPage}\n${adapter}`).toContain("TODAY_CHANGES_VIEW_ALL_HREF");
-    expect(`${todayView}\n${adapter}`).toContain("TODAY_CHANGES_VIEW_ALL_HREF");
-    expect(todayView).toContain('setInspectorTab("movement")');
+    expect(todayView).toContain('data-testid="today-what-changed-output"');
+    expect(todayView).toContain("openInspectorSelection");
+    expect(todayView).toContain('data-testid="today-full-report-deferred"');
+    expect(todayView).toContain("fullReportAvailable");
   });
 
   it("keeps Map movement preview linked to What Changed", () => {

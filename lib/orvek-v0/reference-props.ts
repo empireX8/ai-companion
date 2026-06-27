@@ -63,6 +63,8 @@ export function buildReferenceTodayProps(): V0TodayViewProps {
       lastEvidence: "2 hours ago",
       primaryAction: { kind: "inspect" },
       showSeeWhyMoved: true,
+      inspectSelectId: lead.id,
+      movementId: "mu-1",
     },
     primaryActions: [
       { label: "Continue from what changed", href: "/what-changed", primary: true },
@@ -80,6 +82,7 @@ export function buildReferenceTodayProps(): V0TodayViewProps {
         status: "Active",
         href: null,
         hasSelection: true,
+        inspectorTab: "evidence",
       },
       {
         id: "f1",
@@ -89,6 +92,7 @@ export function buildReferenceTodayProps(): V0TodayViewProps {
         status: "Due today",
         href: null,
         hasSelection: true,
+        inspectorTab: "evidence",
       },
       {
         id: "d1",
@@ -98,6 +102,7 @@ export function buildReferenceTodayProps(): V0TodayViewProps {
         status: "Review due",
         href: null,
         hasSelection: true,
+        inspectorTab: "evidence",
       },
       {
         id: "aq-3",
@@ -107,6 +112,7 @@ export function buildReferenceTodayProps(): V0TodayViewProps {
         status: "Needs input",
         href: null,
         hasSelection: true,
+        inspectorTab: "evidence",
       },
     ],
     nowEmptyCopy: "Nothing is active in this window.",
@@ -132,9 +138,19 @@ export function buildReferenceTodayProps(): V0TodayViewProps {
     ],
     movementEmptyCopy: "No recent movement in this window.",
     report: {
-      title: "Weekly Model Movement report",
-      meta: "Ready · 3 loops, 2 decisions, 1 context update",
+      title: "What Changed",
+      meta: "Ready · 3 published movements in this window",
       href: "/what-changed",
+      fullReportLabel: "Open full What Changed",
+      fullReportAvailable: true,
+      fullReportDeferredCopy: "Full report view not available in this workbench yet.",
+      primaryMovement: {
+        id: "mu-1",
+        inspectSelectId: "mu-1",
+        summary:
+          "Pressure is now modeled as an output of the scope-reopening loop.",
+        evidence: "Pattern shift · Pattern",
+      },
     },
     receipts: getObjects(["r6", "r5", "r2"]).map((r) => ({
       id: r.id,
