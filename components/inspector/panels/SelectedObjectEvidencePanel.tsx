@@ -17,19 +17,33 @@ import {
   fetchInspectorUserMapDetail,
   INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT,
   INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT,
+  type InspectorContradictionProjection,
   type InspectorEvidenceLinkItem,
+  type InspectorModelUpdateDetail,
 } from "@/lib/inspector-object-api";
 import type { InspectorSelection } from "@/lib/inspector-selection";
 import { getActionGateReason } from "@/lib/pattern-claim-action";
 import { PATTERN_FAMILY_SECTIONS, STRENGTH_LABELS, type PatternClaimView } from "@/lib/patterns-api";
-import { ORVEK_COPY } from "@/lib/trust-language";
-import { PATTERN_STATUS_LABELS } from "@/lib/trust-language";
+import type {
+  RealityTrackingEvidenceRef,
+  RealityTrackingModelMovementReport,
+} from "@/lib/reality-tracking-output-contract";
 import {
   formatUserMapArea,
   formatUserMapConfidenceLevel,
   formatUserMapStatus,
+  type UserMapConclusionPublicApiDetailItem,
+  type WhatChangedListItem,
 } from "@/lib/public-intelligence-safe-slice";
 import { resolveInspectorSourceObject } from "@/lib/inspector-source-object";
+import {
+  dedupeInspectorEvidenceLinks,
+  filterResolvableEvidenceRefs,
+  formatEvidenceRefDisplay,
+  projectInspectorEvidenceCard,
+} from "@/lib/inspector-evidence-presentation";
+import { ORVEK_COPY } from "@/lib/trust-language";
+import { PATTERN_STATUS_LABELS } from "@/lib/trust-language";
 import { YOUR_MAP_CORRECTION_DEFERRED_COPY } from "@/lib/your-map-surface";
 
 function formatDateTime(value: string): string {
@@ -463,7 +477,11 @@ function SourceObjectSections({
 }
 
 function EvidenceLinksSection({ items }: { items: InspectorEvidenceLinkItem[] }) {
-  if (items.length === 0) {
+  const cards = dedupeInspectorEvidenceLinks(items).map((item) =>
+    projectInspectorEvidenceCard(item)
+  );
+
+  if (cards.length === 0) {
     return (
       <p className="px-4 pb-4 text-[12px] leading-relaxed text-muted-foreground">
         {PUBLIC_EVIDENCE_FALLBACK_COPY}
@@ -473,19 +491,282 @@ function EvidenceLinksSection({ items }: { items: InspectorEvidenceLinkItem[] })
 
   return (
     <ul className="space-y-2 px-4 pb-4">
-      {items.map((item) => (
-        <li key={`${item.sourceObjectHref}-${item.createdAt}`}>
+      {cards.map((card) => (
+        <li key={card.dedupeKey}>
           <Link
-            href={item.sourceObjectHref}
+            href={card.href}
             className="ml-material block rounded-xl px-3 py-2.5 text-[12px] hover:bg-white/[0.02]"
           >
-            <div className="font-medium text-cyan/80">{item.sourceTypeLabel}</div>
-            <div className="mt-0.5 text-muted-foreground">{item.evidenceSummaryLabel}</div>
-            <div className="label-meta mt-1">Linked {formatDateTime(item.createdAt)}</div>
+            <div className="font-medium text-foreground">{card.title}</div>
+            <div className="mt-0.5 text-[11px] font-medium text-cyan/80">{card.sourceKind}</div>
+            {card.linkRoleLabel ? (
+              <div className="mt-0.5 text-muted-foreground capitalize">{card.linkRoleLabel}</div>
+            ) : null}
+            <div className="label-meta mt-1">Linked {formatDateTime(card.createdAt)}</div>
           </Link>
         </li>
       ))}
     </ul>
+  );
+}
+
+function mergeInspectorEvidenceLinks(
+  ...lists: InspectorEvidenceLinkItem[][]
+): InspectorEvidenceLinkItem[] {
+  return dedupeInspectorEvidenceLinks(lists.flat());
+}
+
+function collectMovementReportReceiptRefs(
+  report: RealityTrackingModelMovementReport
+): RealityTrackingEvidenceRef[] {
+  const seen = new Set<string>();
+  const refs: RealityTrackingEvidenceRef[] = [];
+  const sections = [
+    report.facts,
+    report.stronglySupportedClaims,
+    report.inferences,
+    report.speculations,
+    report.overreachGuardrails,
+    report.loopPatternDetection,
+    report.modelMovement,
+    report.realityGate,
+    report.fieldworkWatchFor,
+    report.reentryAction,
+    report.whatWouldChangeThisConclusion,
+  ];
+
+  for (const section of sections) {
+    for (const item of section.items) {
+      for (const ref of item.evidenceRefs) {
+        if (seen.has(ref.id)) {
+          continue;
+        }
+        seen.add(ref.id);
+        refs.push(ref);
+      }
+    }
+  }
+
+  return filterResolvableEvidenceRefs(refs);
+}
+
+function resolveAffectedObjectEvidenceEndpoint(
+  affectedObjectType: WhatChangedListItem["affectedObjectType"],
+  affectedObjectId: string | null
+): string | null {
+  if (!affectedObjectId) {
+    return null;
+  }
+
+  switch (affectedObjectType) {
+    case "usermap_conclusion":
+      return INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT(affectedObjectId);
+    case "investigation":
+      return `/api/active-questions/${encodeURIComponent(affectedObjectId)}/evidence`;
+    case "fieldwork_assignment":
+      return `/api/watch-for/${encodeURIComponent(affectedObjectId)}/evidence`;
+    default:
+      return null;
+  }
+}
+
+type AffectedObjectContext = {
+  userMap: UserMapConclusionPublicApiDetailItem | null;
+  pattern: PatternClaimView | null;
+  contradiction: InspectorContradictionProjection | null;
+  affectedEvidence: InspectorEvidenceLinkItem[];
+};
+
+async function loadAffectedObjectContext(
+  item: WhatChangedListItem
+): Promise<AffectedObjectContext> {
+  const empty: AffectedObjectContext = {
+    userMap: null,
+    pattern: null,
+    contradiction: null,
+    affectedEvidence: [],
+  };
+
+  const affectedObjectId = item.affectedObjectId;
+  if (!affectedObjectId) {
+    return empty;
+  }
+
+  const evidenceEndpoint = resolveAffectedObjectEvidenceEndpoint(
+    item.affectedObjectType,
+    affectedObjectId
+  );
+  const evidencePromise = evidenceEndpoint
+    ? fetchInspectorEvidenceLinks(evidenceEndpoint)
+    : Promise.resolve([]);
+
+  switch (item.affectedObjectType) {
+    case "usermap_conclusion": {
+      const [userMap, affectedEvidence] = await Promise.all([
+        fetchInspectorUserMapDetail(affectedObjectId),
+        evidencePromise,
+      ]);
+      return { ...empty, userMap, affectedEvidence };
+    }
+    case "pattern_claim": {
+      const [pattern, affectedEvidence] = await Promise.all([
+        fetchInspectorPatternClaim(affectedObjectId),
+        evidencePromise,
+      ]);
+      return { ...empty, pattern, affectedEvidence };
+    }
+    case "contradiction_node": {
+      const [contradiction, affectedEvidence] = await Promise.all([
+        fetchInspectorContradiction(affectedObjectId),
+        evidencePromise,
+      ]);
+      return { ...empty, contradiction, affectedEvidence };
+    }
+    case "investigation":
+    case "fieldwork_assignment": {
+      const affectedEvidence = await evidencePromise;
+      return { ...empty, affectedEvidence };
+    }
+    default:
+      return empty;
+  }
+}
+
+function RelatedMapConclusionSection({
+  detail,
+  href,
+}: {
+  detail: UserMapConclusionPublicApiDetailItem;
+  href: string | null;
+}) {
+  return (
+    <SectionBlock label="Related map conclusion">
+      {href ? (
+        <Link href={href} className="text-[14px] font-semibold text-foreground hover:text-cyan">
+          {detail.title}
+        </Link>
+      ) : (
+        <p className="text-[14px] font-semibold text-foreground">{detail.title}</p>
+      )}
+      <p className="mt-2 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{detail.summary}</p>
+      <FactGrid
+        items={[
+          { label: "Area", value: formatUserMapArea(detail.area) },
+          { label: "Status", value: formatUserMapStatus(detail.status) },
+          { label: "Confidence", value: formatUserMapConfidenceLevel(detail.confidenceLevel) },
+          { label: "Evidence sources", value: String(detail.evidenceCount) },
+          { label: "Source diversity", value: String(detail.sourceDiversity) },
+          { label: "Time spread", value: `${detail.timeSpreadDays} days` },
+        ]}
+      />
+      {detail.status === "disputed" ? (
+        <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+          This conclusion is marked as disputed, so linked evidence may point in conflicting
+          directions.
+        </p>
+      ) : null}
+    </SectionBlock>
+  );
+}
+
+function RelatedPatternSection({ claim }: { claim: PatternClaimView }) {
+  const familyLabel =
+    PATTERN_FAMILY_SECTIONS.find((section) => section.familyKey === claim.patternType)
+      ?.sectionLabel ?? "Pattern";
+
+  return (
+    <SectionBlock label="Related pattern">
+      <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{claim.summary}</p>
+      <FactGrid
+        items={[
+          { label: "Family", value: familyLabel },
+          { label: "Status", value: PATTERN_STATUS_LABELS[claim.status] },
+          { label: "Strength", value: STRENGTH_LABELS[claim.strengthLevel] },
+          { label: "Receipts", value: String(claim.evidenceCount) },
+        ]}
+      />
+    </SectionBlock>
+  );
+}
+
+function RelatedSignalSection({ item }: { item: InspectorContradictionProjection }) {
+  return (
+    <SectionBlock label="Related signal">
+      <FactGrid
+        items={[
+          { label: "Status", value: item.status.replace(/_/g, " ") },
+          { label: "Evidence", value: String(item.evidenceCount) },
+        ]}
+      />
+      <div className="mt-3 space-y-2">
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Side A</div>
+          <p className="mt-1 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{item.sideA}</p>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Side B</div>
+          <p className="mt-1 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{item.sideB}</p>
+        </div>
+      </div>
+    </SectionBlock>
+  );
+}
+
+function ReportReceiptLinksSection({ refs }: { refs: RealityTrackingEvidenceRef[] }) {
+  const visibleRefs = filterResolvableEvidenceRefs(refs);
+
+  if (visibleRefs.length === 0) {
+    return null;
+  }
+
+  return (
+    <ul className="space-y-2 px-4 pb-4">
+      {visibleRefs.map((ref) => (
+        <li key={ref.id} className="ml-material rounded-xl px-3 py-2.5 text-[12px]">
+          {ref.href ? (
+            <Link href={ref.href} className="block hover:text-foreground">
+              <div className="font-medium text-foreground">{formatEvidenceRefDisplay(ref)}</div>
+              <div className="label-meta mt-1">Linked {formatDateTime(ref.createdAt)}</div>
+            </Link>
+          ) : (
+            <>
+              <div className="font-medium text-foreground">{formatEvidenceRefDisplay(ref)}</div>
+              <div className="label-meta mt-1">Linked {formatDateTime(ref.createdAt)}</div>
+            </>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ModelUpdateEvidenceEmptyState({
+  report,
+  hasResolvableAffectedObject,
+}: {
+  report: RealityTrackingModelMovementReport;
+  hasResolvableAffectedObject: boolean;
+}) {
+  const nextEvidence =
+    report.fieldworkWatchFor.items[0]?.text ??
+    report.realityGate.items[0]?.text ??
+    report.whatWouldChangeThisConclusion.items[0]?.text ??
+    "Capture the next instance with trigger, behavior, aftermath, and whether it repeats in a second context.";
+
+  return (
+    <div className="space-y-2 px-4 pb-4 text-[12px] leading-relaxed text-muted-foreground">
+      <p>
+        {hasResolvableAffectedObject
+          ? "This movement is recorded, but no linked public evidence is available on the movement or related object yet."
+          : "This movement is recorded, but no linked public evidence is attached yet."}
+      </p>
+      <p>
+        <span className="font-medium text-foreground">Next evidence needed:</span> {nextEvidence}
+      </p>
+      <p className="text-[11px]">
+        Open the {ORVEK_COPY.mindModelMovementTab} tab for the epistemic report on this movement.
+      </p>
+    </div>
   );
 }
 
@@ -785,28 +1066,52 @@ function ContradictionEvidencePanel({
 
 function ModelUpdateEvidencePanel({
   selection,
+  sourceObject,
+  resolveOrvekObject,
 }: {
   selection: InspectorSelection;
+  sourceObject: OrvekObject | undefined;
+  resolveOrvekObject: (id: string) => OrvekObject | undefined;
 }) {
   const modelUpdateId = selection.selectedModelUpdateId ?? selection.selectedObjectId;
-  const [detail, setDetail] = useState<Awaited<ReturnType<typeof fetchInspectorModelUpdateDetail>>>(null);
-  const [evidence, setEvidence] = useState<InspectorEvidenceLinkItem[]>([]);
+  const [detail, setDetail] = useState<InspectorModelUpdateDetail | null>(null);
+  const [affectedContext, setAffectedContext] = useState<AffectedObjectContext | null>(null);
+  const [movementEvidence, setMovementEvidence] = useState<InspectorEvidenceLinkItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
+
     void (async () => {
-      const [nextDetail, nextEvidence] = await Promise.all([
-        fetchInspectorModelUpdateDetail(modelUpdateId),
-        fetchInspectorEvidenceLinks(INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT(modelUpdateId)),
-      ]);
-      if (!cancelled) {
-        setDetail(nextDetail);
-        setEvidence(nextEvidence);
-        setIsLoading(false);
+      const nextDetail = await fetchInspectorModelUpdateDetail(modelUpdateId);
+      if (cancelled) {
+        return;
       }
+
+      if (!nextDetail) {
+        setDetail(null);
+        setAffectedContext(null);
+        setMovementEvidence([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const [nextMovementEvidence, nextAffectedContext] = await Promise.all([
+        fetchInspectorEvidenceLinks(INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT(modelUpdateId)),
+        loadAffectedObjectContext(nextDetail.item),
+      ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      setDetail(nextDetail);
+      setMovementEvidence(nextMovementEvidence);
+      setAffectedContext(nextAffectedContext);
+      setIsLoading(false);
     })();
+
     return () => {
       cancelled = true;
     };
@@ -816,36 +1121,128 @@ function ModelUpdateEvidencePanel({
     return <PanelSkeleton />;
   }
 
-  if (!detail) {
+  if (!detail || !affectedContext) {
     return <UnavailableState objectTypeLabel={ORVEK_COPY.mindModelMovement} />;
   }
+
+  const { item, report } = detail;
+  const supportingEvidence = mergeInspectorEvidenceLinks(
+    movementEvidence,
+    affectedContext.affectedEvidence
+  );
+  const reportReceiptRefs = collectMovementReportReceiptRefs(report);
+  const hasResolvableAffectedObject = Boolean(
+    item.affectedObjectId &&
+      (affectedContext.userMap ||
+        affectedContext.pattern ||
+        affectedContext.contradiction ||
+        item.affectedObjectHref)
+  );
+  const contextObject =
+    sourceObject ??
+    (item.affectedObjectId ? resolveOrvekObject(item.affectedObjectId) : undefined);
+  const whatWouldChangeItems = [
+    ...(contextObject?.whatWouldChange ?? []),
+    ...report.whatWouldChangeThisConclusion.items.map((claim) => claim.text),
+  ].filter((value, index, list) => list.indexOf(value) === index);
+  const showDeferredCorrection =
+    item.affectedObjectType === "usermap_conclusion" &&
+    !whatWouldChangeItems.length;
+  const showSupportingEvidenceSection =
+    supportingEvidence.length > 0 || reportReceiptRefs.length > 0;
 
   return (
     <>
       <ObjectHeader
         typeLabel={ORVEK_COPY.mindModelMovement}
-        title={selection.selectedTitle ?? detail.item.updateTypeLabel}
-        meta={detail.item.affectedObjectTypeLabel}
+        title={selection.selectedTitle ?? item.updateTypeLabel}
+        meta={`${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`}
       />
-      <section className="px-4 pb-4">
-        <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
-          {detail.item.userFacingSummary}
-        </p>
+
+      <SectionBlock label="Movement summary">{item.userFacingSummary}</SectionBlock>
+
+      <section className="px-4 pb-3">
+        <FactGrid
+          items={[
+            { label: "Recorded", value: formatDateTime(item.createdAt) },
+            {
+              label: "Receipts",
+              value: String(report.evidencePacketSummary.receiptCount),
+            },
+            {
+              label: "Linked object",
+              value: report.evidencePacketSummary.targetLabel,
+            },
+          ]}
+        />
         <div className="mt-3">
           <PublicLinkedObjectContinuity
-            objectType={detail.item.affectedObjectType}
-            objectId={detail.item.affectedObjectId}
-            href={detail.item.affectedObjectHref}
+            objectType={item.affectedObjectType}
+            objectId={item.affectedObjectId}
+            href={item.affectedObjectHref}
             context="model_update"
           />
         </div>
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          Open the {ORVEK_COPY.mindModelMovementTab} tab for the epistemic report on this
-          movement.
-        </p>
       </section>
+
+      {affectedContext.userMap ? (
+        <RelatedMapConclusionSection
+          detail={affectedContext.userMap}
+          href={item.affectedObjectHref}
+        />
+      ) : null}
+
+      {affectedContext.pattern ? (
+        <RelatedPatternSection claim={affectedContext.pattern} />
+      ) : null}
+
+      {affectedContext.contradiction ? (
+        <RelatedSignalSection item={affectedContext.contradiction} />
+      ) : null}
+
+      <SourceObjectSections
+        object={contextObject}
+        hideSummary={Boolean(affectedContext.userMap?.summary)}
+        deferredCorrectionCopy={
+          item.affectedObjectType === "usermap_conclusion"
+            ? YOUR_MAP_CORRECTION_DEFERRED_COPY
+            : null
+        }
+      />
+
+      {whatWouldChangeItems.length > 0 ? (
+        <SectionBlock label="What would change this">
+          <RenderList
+            items={whatWouldChangeItems}
+            emptyCopy="No explicit change condition is recorded yet."
+          />
+        </SectionBlock>
+      ) : showDeferredCorrection ? (
+        <SectionBlock label="What would change this">
+          <p className="text-[12px] leading-relaxed text-muted-foreground">
+            {YOUR_MAP_CORRECTION_DEFERRED_COPY}
+          </p>
+        </SectionBlock>
+      ) : null}
+
       <SectionLabel>Supporting evidence</SectionLabel>
-      <EvidenceLinksSection items={evidence} />
+      {supportingEvidence.length > 0 ? (
+        <EvidenceLinksSection items={supportingEvidence} />
+      ) : reportReceiptRefs.length > 0 ? (
+        <ReportReceiptLinksSection refs={reportReceiptRefs} />
+      ) : (
+        <ModelUpdateEvidenceEmptyState
+          report={report}
+          hasResolvableAffectedObject={hasResolvableAffectedObject}
+        />
+      )}
+
+      {showSupportingEvidenceSection ? (
+        <p className="px-4 pb-4 text-[11px] text-muted-foreground">
+          Open the {ORVEK_COPY.mindModelMovementTab} tab for facts, guardrails, and the full
+          epistemic read on this movement.
+        </p>
+      ) : null}
     </>
   );
 }
@@ -871,7 +1268,13 @@ export function SelectedObjectEvidencePanel({
     case "contradiction_node":
       return <ContradictionEvidencePanel selection={selection} sourceObject={sourceObject} />;
     case "model_update":
-      return <ModelUpdateEvidencePanel selection={selection} />;
+      return (
+        <ModelUpdateEvidencePanel
+          selection={selection}
+          sourceObject={sourceObject}
+          resolveOrvekObject={(id) => orvekData?.getObject(id)}
+        />
+      );
     default:
       return <UnavailableState objectTypeLabel="Object" />;
   }

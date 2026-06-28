@@ -149,18 +149,26 @@ describe("/api/user-map/conclusions/[id]/evidence", () => {
     expect(payload).toEqual({
       items: [
         {
+          sourceType: "pattern_claim",
+          sourceId: "pc-safe",
           sourceTypeLabel: "Related pattern",
           evidenceSummaryLabel: "Linked evidence",
           sourceObjectHref: "/patterns/pc-safe",
           createdAt: "2026-05-22T10:00:00.000Z",
           hasEvidence: true,
+          objectTitle: null,
+          linkRole: null,
         },
         {
+          sourceType: "contradiction_node",
+          sourceId: "cn-safe",
           sourceTypeLabel: "Related signal",
           evidenceSummaryLabel: "Linked evidence",
           sourceObjectHref: "/contradictions/cn-safe",
           createdAt: "2026-05-22T08:00:00.000Z",
           hasEvidence: true,
+          objectTitle: null,
+          linkRole: null,
         },
       ],
     });
@@ -175,7 +183,6 @@ describe("/api/user-map/conclusions/[id]/evidence", () => {
     expect(body).not.toContain("meta");
     expect(body).not.toContain("weight");
     expect(body).not.toContain("confidenceContribution");
-    expect(body).not.toContain("sourceId");
     expect(body).not.toContain("sourceRunId");
     expect(body).not.toContain("internalNotes");
     expect(body).not.toContain("receipt-action-");

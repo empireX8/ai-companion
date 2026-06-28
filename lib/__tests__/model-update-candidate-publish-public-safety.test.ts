@@ -371,11 +371,15 @@ describe("ModelUpdate candidate publish public safety", () => {
     expect(payload).toEqual({
       items: [
         {
+          sourceType: "pattern_claim",
+          sourceId: "pc-safe",
           sourceTypeLabel: "Related pattern",
           evidenceSummaryLabel: "Linked evidence",
           sourceObjectHref: "/patterns/pc-safe",
           createdAt: "2026-05-31T10:00:00.000Z",
           hasEvidence: true,
+          objectTitle: null,
+          linkRole: null,
         },
       ],
     });
@@ -384,6 +388,5 @@ describe("ModelUpdate candidate publish public safety", () => {
     expect(body).not.toContain("snippet");
     expect(body).not.toContain("quote");
     expect(body).not.toContain("internalNotes");
-    expect(body).not.toContain("sourceId");
   });
 });

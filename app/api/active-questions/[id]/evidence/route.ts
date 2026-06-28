@@ -4,6 +4,7 @@ import { UnderstandingLinkTargetType } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
 import { buildPublicActiveInvestigationWhere } from "../../../../../lib/active-questions";
+import { enrichContinuityItemsForInspector } from "../../../../../lib/inspector-evidence-links";
 import { listPublicEvidenceContinuityForTarget } from "../../../../../lib/public-evidence-continuity";
 
 export const dynamic = "force-dynamic";
@@ -35,13 +36,10 @@ export async function GET(
       targetId: target.id,
     });
 
-    const items = continuityItems.map((item) => ({
-      sourceTypeLabel: item.sourceTypeLabel,
-      evidenceSummaryLabel: item.evidenceSummaryLabel,
-      sourceObjectHref: item.href,
-      createdAt: item.createdAt,
-      hasEvidence: true as const,
-    }));
+    const items = await enrichContinuityItemsForInspector({
+      userId,
+      items: continuityItems,
+    });
 
     return NextResponse.json({ items });
   } catch (error) {

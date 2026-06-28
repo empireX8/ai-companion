@@ -110,6 +110,7 @@ describe("inspector surface wiring", () => {
     expect(panelSource).toContain("ThinPacketNotice");
     expect(panelSource).toContain("no receipt packet is linked yet");
     expect(panelSource).toContain("What Would Change This Conclusion");
+    expect(panelSource).toContain("filterResolvableEvidenceRefs");
     expect(panelSource).toContain("ExploreSessionMovementInspectorList");
 
     const exploreMovementSource = readSource("components/explore/ExploreModelMovementStrip.tsx");
@@ -130,6 +131,11 @@ describe("inspector surface wiring", () => {
     expect(panelSource).toContain("useOptionalOrvekData");
     expect(panelSource).not.toContain("useOrvekData");
     expect(panelSource).toContain("INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT");
+    expect(panelSource).toContain("Related map conclusion");
+    expect(panelSource).toContain("Movement summary");
+    expect(panelSource).toContain("What would change this");
+    expect(panelSource).toContain("projectInspectorEvidenceCard");
+    expect(panelSource).toContain("dedupeInspectorEvidenceLinks");
     expect(panelSource).not.toContain("suggestClaimAction");
     expect(panelSource).not.toContain("updateClaimAction");
   });

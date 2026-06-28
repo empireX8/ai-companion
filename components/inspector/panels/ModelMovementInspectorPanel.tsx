@@ -7,6 +7,10 @@ import { GitCompareArrows, ScrollText } from "lucide-react";
 
 import { ExploreSessionMovementInspectorList } from "@/components/explore/ExploreModelMovementStrip";
 
+import {
+  filterResolvableEvidenceRefs,
+  formatEvidenceRefDisplay,
+} from "@/lib/inspector-evidence-presentation";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { fetchInspectorModelUpdateDetail } from "@/lib/inspector-object-api";
 import { resolveActiveModelUpdateId } from "@/lib/inspector-selection";
@@ -72,7 +76,9 @@ function EvidenceRefs({
   refs: RealityTrackingEvidenceRef[];
   showEmptyCopy?: boolean;
 }) {
-  if (refs.length === 0) {
+  const visibleRefs = filterResolvableEvidenceRefs(refs);
+
+  if (visibleRefs.length === 0) {
     return showEmptyCopy ? (
       <p className="mt-2 text-[11px] text-muted-foreground">
         No linked receipt references were attached to this item.
@@ -82,18 +88,14 @@ function EvidenceRefs({
 
   return (
     <ul className="mt-2 space-y-1.5">
-      {refs.map((ref) => (
+      {visibleRefs.map((ref) => (
         <li key={ref.id} className="text-[11px] leading-relaxed text-muted-foreground">
           {ref.href ? (
             <Link href={ref.href} className="hover:text-foreground">
-              <span className="font-medium text-cyan/80">{ref.sourceTypeLabel}</span>
-              <span> · {ref.label}</span>
+              <span className="font-medium text-cyan/80">{formatEvidenceRefDisplay(ref)}</span>
             </Link>
           ) : (
-            <>
-              <span className="font-medium text-cyan/80">{ref.sourceTypeLabel}</span>
-              <span> · {ref.label}</span>
-            </>
+            <span className="font-medium text-cyan/80">{formatEvidenceRefDisplay(ref)}</span>
           )}
         </li>
       ))}
@@ -130,7 +132,7 @@ function collectUniqueReceiptRefs(report: RealityTrackingModelMovementReport) {
     }
   }
 
-  return refs;
+  return filterResolvableEvidenceRefs(refs);
 }
 
 function ThinPacketNotice({ report }: { report: RealityTrackingModelMovementReport }) {

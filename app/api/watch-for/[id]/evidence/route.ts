@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { UnderstandingLinkTargetType } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
+import { enrichContinuityItemsForInspector } from "../../../../../lib/inspector-evidence-links";
 import { listPublicEvidenceContinuityForTarget } from "../../../../../lib/public-evidence-continuity";
 import { buildPublicWatchForWhere } from "../../../../../lib/fieldwork-public-visibility";
 
@@ -35,13 +36,10 @@ export async function GET(
       targetId: target.id,
     });
 
-    const items = continuityItems.map((item) => ({
-      sourceTypeLabel: item.sourceTypeLabel,
-      evidenceSummaryLabel: item.evidenceSummaryLabel,
-      sourceObjectHref: item.href,
-      createdAt: item.createdAt,
-      hasEvidence: true as const,
-    }));
+    const items = await enrichContinuityItemsForInspector({
+      userId,
+      items: continuityItems,
+    });
 
     return NextResponse.json({ items });
   } catch (error) {

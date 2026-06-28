@@ -29,6 +29,10 @@ export type InspectorEvidenceLinkItem = {
   sourceObjectHref: string;
   createdAt: string;
   hasEvidence: true;
+  sourceType?: string;
+  sourceId?: string;
+  objectTitle?: string | null;
+  linkRole?: string | null;
 };
 
 export type InspectorContradictionProjection = {
