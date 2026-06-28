@@ -46,6 +46,8 @@ import { ORVEK_COPY } from "@/lib/trust-language";
 import { PATTERN_STATUS_LABELS } from "@/lib/trust-language";
 import { YOUR_MAP_CORRECTION_DEFERRED_COPY } from "@/lib/your-map-surface";
 
+import { InspectorEvidenceSelectionControl } from "../InspectorEvidenceSelectionControl";
+
 function formatDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -493,9 +495,12 @@ function EvidenceLinksSection({ items }: { items: InspectorEvidenceLinkItem[] })
     <ul className="space-y-2 px-4 pb-4">
       {cards.map((card) => (
         <li key={card.dedupeKey}>
-          <Link
+          <InspectorEvidenceSelectionControl
             href={card.href}
-            className="ml-material block rounded-xl px-3 py-2.5 text-[12px] hover:bg-white/[0.02]"
+            sourceType={card.sourceType}
+            sourceId={card.sourceId}
+            title={card.title}
+            className="ml-material block w-full rounded-xl px-3 py-2.5 text-left text-[12px] hover:bg-white/[0.02]"
           >
             <div className="font-medium text-foreground">{card.title}</div>
             <div className="mt-0.5 text-[11px] font-medium text-cyan/80">{card.sourceKind}</div>
@@ -503,7 +508,7 @@ function EvidenceLinksSection({ items }: { items: InspectorEvidenceLinkItem[] })
               <div className="mt-0.5 text-muted-foreground capitalize">{card.linkRoleLabel}</div>
             ) : null}
             <div className="label-meta mt-1">Linked {formatDateTime(card.createdAt)}</div>
-          </Link>
+          </InspectorEvidenceSelectionControl>
         </li>
       ))}
     </ul>
@@ -723,17 +728,16 @@ function ReportReceiptLinksSection({ refs }: { refs: RealityTrackingEvidenceRef[
     <ul className="space-y-2 px-4 pb-4">
       {visibleRefs.map((ref) => (
         <li key={ref.id} className="ml-material rounded-xl px-3 py-2.5 text-[12px]">
-          {ref.href ? (
-            <Link href={ref.href} className="block hover:text-foreground">
-              <div className="font-medium text-foreground">{formatEvidenceRefDisplay(ref)}</div>
-              <div className="label-meta mt-1">Linked {formatDateTime(ref.createdAt)}</div>
-            </Link>
-          ) : (
-            <>
-              <div className="font-medium text-foreground">{formatEvidenceRefDisplay(ref)}</div>
-              <div className="label-meta mt-1">Linked {formatDateTime(ref.createdAt)}</div>
-            </>
-          )}
+          <InspectorEvidenceSelectionControl
+            href={ref.href}
+            sourceType={ref.sourceType}
+            sourceId={ref.sourceId}
+            title={formatEvidenceRefDisplay(ref)}
+            className="block w-full text-left hover:text-foreground"
+          >
+            <div className="font-medium text-foreground">{formatEvidenceRefDisplay(ref)}</div>
+            <div className="label-meta mt-1">Linked {formatDateTime(ref.createdAt)}</div>
+          </InspectorEvidenceSelectionControl>
         </li>
       ))}
     </ul>

@@ -1,4 +1,10 @@
 import type { InspectorEvidenceLinkItem } from "./inspector-object-api";
+import {
+  isInspectorSelectableObjectType,
+  normalizeInspectorObjectId,
+  parseSelectableObjectFromHref,
+  type InspectorSelectableObjectType,
+} from "./inspector-selection";
 import type { RealityTrackingEvidenceRef } from "./reality-tracking-output-contract";
 import {
   PUBLIC_EVIDENCE_LINKED_LABEL,
@@ -20,7 +26,36 @@ export type InspectorEvidenceCardView = {
   linkRoleLabel: string | null;
   createdAt: string;
   href: string;
+  sourceType: string | null;
+  sourceId: string | null;
 };
+
+export function isLegacyInspectorEvidenceHref(href: string | null | undefined): boolean {
+  if (!href) {
+    return false;
+  }
+
+  const path = (href.split("?")[0] ?? href).replace(/\/$/, "") || "/";
+  return (
+    path === "/patterns" ||
+    path.startsWith("/patterns/") ||
+    path === "/contradictions" ||
+    path.startsWith("/contradictions/")
+  );
+}
+
+export function resolveInspectorEvidenceSelection(input: {
+  href: string | null | undefined;
+  sourceType?: string | null;
+  sourceId?: string | null;
+}): { objectType: InspectorSelectableObjectType; objectId: string } | null {
+  const sourceId = normalizeInspectorObjectId(input.sourceId);
+  if (input.sourceType && sourceId && isInspectorSelectableObjectType(input.sourceType)) {
+    return { objectType: input.sourceType, objectId: sourceId };
+  }
+
+  return parseSelectableObjectFromHref(input.href);
+}
 
 export function isGenericInspectorEvidenceLabel(
   value: string | null | undefined
@@ -142,6 +177,7 @@ export function projectInspectorEvidenceCard(
 ): InspectorEvidenceCardView {
   const parsed = parseInspectorEvidenceSourceFromHref(item.sourceObjectHref);
   const sourceType = item.sourceType ?? parsed?.sourceType ?? null;
+  const sourceId = item.sourceId ?? parsed?.sourceId ?? null;
 
   return {
     dedupeKey: inspectorEvidenceDedupeKey(item),
@@ -150,6 +186,8 @@ export function projectInspectorEvidenceCard(
     linkRoleLabel: formatInspectorEvidenceLinkRole(item.linkRole),
     createdAt: item.createdAt,
     href: item.sourceObjectHref,
+    sourceType,
+    sourceId,
   };
 }
 

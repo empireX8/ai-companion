@@ -5,8 +5,10 @@ import { describe, expect, it } from "vitest";
 import {
   dedupeInspectorEvidenceLinks,
   filterResolvableEvidenceRefs,
+  isLegacyInspectorEvidenceHref,
   isUnresolvedEvidenceRefDisplay,
   projectInspectorEvidenceCard,
+  resolveInspectorEvidenceSelection,
   resolveInspectorEvidenceTitle,
   UNRESOLVED_DUPLICATE_EVIDENCE_REF_DISPLAY,
 } from "../inspector-evidence-presentation";
@@ -112,5 +114,41 @@ describe("inspector evidence presentation", () => {
     expect(movementPanel).toContain("filterResolvableEvidenceRefs");
     expect(movementPanel).toContain("formatEvidenceRefDisplay");
     expect(movementPanel).not.toContain(UNRESOLVED_DUPLICATE_EVIDENCE_REF_DISPLAY);
+    expect(movementPanel).not.toContain("<Link href={ref.href}");
+    expect(movementPanel).toContain("InspectorEvidenceSelectionControl");
+  });
+
+  it("maps legacy pattern and signal hrefs to inspector-selectable objects", () => {
+    expect(isLegacyInspectorEvidenceHref("/patterns/pc-1")).toBe(true);
+    expect(isLegacyInspectorEvidenceHref("/contradictions/cn-1")).toBe(true);
+    expect(isLegacyInspectorEvidenceHref("/your-map/umc-1")).toBe(false);
+
+    expect(
+      resolveInspectorEvidenceSelection({
+        href: "/patterns/pc-1",
+        sourceType: "pattern_claim",
+        sourceId: "pc-1",
+      })
+    ).toEqual({ objectType: "pattern_claim", objectId: "pc-1" });
+
+    expect(
+      resolveInspectorEvidenceSelection({
+        href: "/active-questions/inv-1",
+        sourceType: "investigation",
+        sourceId: "inv-1",
+      })
+    ).toBeNull();
+  });
+
+  it("forbids legacy pattern/contradiction Link navigation in inspector evidence panels", () => {
+    const evidencePanel = readSource(
+      "components/inspector/panels/SelectedObjectEvidencePanel.tsx"
+    );
+
+    expect(evidencePanel).toContain("InspectorEvidenceSelectionControl");
+    expect(evidencePanel).not.toContain("<Link href={card.href}");
+    expect(evidencePanel).not.toContain("<Link href={ref.href}");
+    expect(evidencePanel).not.toMatch(/<Link[^>]+href=\{[^}]*\/patterns/);
+    expect(evidencePanel).not.toMatch(/<Link[^>]+href=\{[^}]*\/contradictions/);
   });
 });

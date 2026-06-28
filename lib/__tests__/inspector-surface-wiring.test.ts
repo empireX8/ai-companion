@@ -111,6 +111,8 @@ describe("inspector surface wiring", () => {
     expect(panelSource).toContain("no receipt packet is linked yet");
     expect(panelSource).toContain("What Would Change This Conclusion");
     expect(panelSource).toContain("filterResolvableEvidenceRefs");
+    expect(panelSource).toContain("InspectorEvidenceSelectionControl");
+    expect(panelSource).not.toContain("<Link href={ref.href}");
     expect(panelSource).toContain("ExploreSessionMovementInspectorList");
 
     const exploreMovementSource = readSource("components/explore/ExploreModelMovementStrip.tsx");
@@ -136,6 +138,9 @@ describe("inspector surface wiring", () => {
     expect(panelSource).toContain("What would change this");
     expect(panelSource).toContain("projectInspectorEvidenceCard");
     expect(panelSource).toContain("dedupeInspectorEvidenceLinks");
+    expect(panelSource).toContain("InspectorEvidenceSelectionControl");
+    expect(panelSource).not.toContain("<Link href={card.href}");
+    expect(panelSource).not.toMatch(/<Link[^>]+href=\{[^}]*\/patterns/);
     expect(panelSource).not.toContain("suggestClaimAction");
     expect(panelSource).not.toContain("updateClaimAction");
   });

@@ -7,6 +7,7 @@ import { GitCompareArrows, ScrollText } from "lucide-react";
 
 import { ExploreSessionMovementInspectorList } from "@/components/explore/ExploreModelMovementStrip";
 
+import { InspectorEvidenceSelectionControl } from "@/components/inspector/InspectorEvidenceSelectionControl";
 import {
   filterResolvableEvidenceRefs,
   formatEvidenceRefDisplay,
@@ -90,13 +91,15 @@ function EvidenceRefs({
     <ul className="mt-2 space-y-1.5">
       {visibleRefs.map((ref) => (
         <li key={ref.id} className="text-[11px] leading-relaxed text-muted-foreground">
-          {ref.href ? (
-            <Link href={ref.href} className="hover:text-foreground">
-              <span className="font-medium text-cyan/80">{formatEvidenceRefDisplay(ref)}</span>
-            </Link>
-          ) : (
+          <InspectorEvidenceSelectionControl
+            href={ref.href}
+            sourceType={ref.sourceType}
+            sourceId={ref.sourceId}
+            title={formatEvidenceRefDisplay(ref)}
+            className="text-left hover:text-foreground"
+          >
             <span className="font-medium text-cyan/80">{formatEvidenceRefDisplay(ref)}</span>
-          )}
+          </InspectorEvidenceSelectionControl>
         </li>
       ))}
     </ul>
