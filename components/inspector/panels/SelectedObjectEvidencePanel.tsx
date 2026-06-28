@@ -7,7 +7,7 @@ import { Chip, TYPE_META } from "@/components/orvek-v0/primitives";
 import { useWorkbench } from "@/components/orvek-v0/store";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { PUBLIC_EVIDENCE_FALLBACK_COPY } from "@/lib/public-continuity-registry";
-import { useOrvekData } from "@/lib/orvek-v0/data-provider";
+import { useOptionalOrvekData } from "@/lib/orvek-v0/data-provider";
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types";
 import {
   fetchInspectorContradiction,
@@ -162,14 +162,14 @@ function LinkedObjectsSection({
   ids: string[] | undefined;
   emptyCopy: string;
 }) {
-  const { getObjects } = useOrvekData();
+  const orvekData = useOptionalOrvekData();
   const safeIds = (ids ?? []).filter((id): id is string => typeof id === "string" && id.trim().length > 0);
 
   if (safeIds.length === 0) {
     return null;
   }
 
-  const objects = getObjects(safeIds);
+  const objects = orvekData?.getObjects(safeIds) ?? [];
 
   return (
     <SectionBlock label={label}>
@@ -209,12 +209,13 @@ function SourceObjectSections({
   hideSummary?: boolean;
   deferredCorrectionCopy?: string | null;
 }) {
-  const { getObjects } = useOrvekData();
+  const orvekData = useOptionalOrvekData();
 
   if (!object) {
     return null;
   }
 
+  const getObjects = orvekData?.getObjects ?? (() => []);
   const receipts = getObjects(object.receiptIds ?? []);
   const relatedObjects = getObjects(object.relatedIds ?? []);
   const contextObjects = getObjects(object.contextIds ?? []);
@@ -845,11 +846,11 @@ export function SelectedObjectEvidencePanel({
   selection: InspectorSelection;
 }) {
   const { selectedId } = useWorkbench();
-  const { getObject } = useOrvekData();
+  const orvekData = useOptionalOrvekData();
   const sourceObject = resolveInspectorSourceObject({
     selection,
     selectedWorkbenchId: selectedId,
-    getObject,
+    getObject: orvekData?.getObject ?? (() => undefined),
   });
 
   switch (selection.selectedObjectType) {

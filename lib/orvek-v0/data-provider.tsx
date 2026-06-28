@@ -111,8 +111,12 @@ export function OrvekDataProvider({
   return <OrvekDataContext.Provider value={memo}>{children}</OrvekDataContext.Provider>;
 }
 
+export function useOptionalOrvekData(): OrvekDataApi | null {
+  return useContext(OrvekDataContext);
+}
+
 export function useOrvekData(): OrvekDataApi {
-  const ctx = useContext(OrvekDataContext);
+  const ctx = useOptionalOrvekData();
   if (!ctx) {
     throw new Error("useOrvekData must be used within OrvekDataProvider");
   }

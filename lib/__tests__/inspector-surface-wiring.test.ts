@@ -126,6 +126,8 @@ describe("inspector surface wiring", () => {
     expect(panelSource).toContain("What would change this");
     expect(panelSource).toContain("Next step");
     expect(panelSource).toContain("getActionGateReason");
+    expect(panelSource).toContain("useOptionalOrvekData");
+    expect(panelSource).not.toContain("useOrvekData");
     expect(panelSource).not.toContain("suggestClaimAction");
     expect(panelSource).not.toContain("updateClaimAction");
   });
