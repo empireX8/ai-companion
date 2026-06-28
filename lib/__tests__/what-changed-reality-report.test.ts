@@ -202,6 +202,32 @@ describe("what-changed reality report", () => {
     ).toBe(true);
   });
 
+  it("keeps thin movement packets honest without a zero-receipt fact card", () => {
+    const packet = makePacket([], {
+      modelUpdate: {
+        id: "mu-thin",
+        updateTypeLabel: "Conclusion Added",
+        affectedObjectType: "usermap_conclusion",
+        affectedObjectTypeLabel: "Related map item",
+        userFacingSummary: "A new conclusion was added.",
+        createdAt: "2026-06-27T09:00:00.000Z",
+        before: null,
+        after: null,
+        confidenceShift: null,
+      },
+    });
+
+    const report = buildDeterministicModelMovementRealityReport(packet);
+
+    expect(report.evidencePacketSummary.receiptCount).toBe(0);
+    expect(
+      report.facts.items.some((item) => item.text.includes("0 receipts across 0 source"))
+    ).toBe(false);
+    expect(report.facts.items.some((item) => item.text.includes("recorded as"))).toBe(true);
+    expect(report.realityGate.items.length).toBeGreaterThan(0);
+    expect(report.fieldworkWatchFor.items.length).toBeGreaterThan(0);
+  });
+
   it("keeps major claims traceable back to linked receipts", () => {
     const packet = makePacket(
       [

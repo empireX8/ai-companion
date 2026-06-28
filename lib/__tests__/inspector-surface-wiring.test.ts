@@ -107,7 +107,8 @@ describe("inspector surface wiring", () => {
     expect(panelSource).toContain("resolveActiveModelUpdateId");
     expect(panelSource).toContain("TODAY_INTELLIGENCE_UPDATES_ENDPOINT");
     expect(panelSource).toContain("Evidence Packet Summary");
-    expect(panelSource).toContain("Overreach Guardrails");
+    expect(panelSource).toContain("ThinPacketNotice");
+    expect(panelSource).toContain("no receipt packet is linked yet");
     expect(panelSource).toContain("What Would Change This Conclusion");
     expect(panelSource).toContain("ExploreSessionMovementInspectorList");
 
@@ -128,6 +129,7 @@ describe("inspector surface wiring", () => {
     expect(panelSource).toContain("getActionGateReason");
     expect(panelSource).toContain("useOptionalOrvekData");
     expect(panelSource).not.toContain("useOrvekData");
+    expect(panelSource).toContain("INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT");
     expect(panelSource).not.toContain("suggestClaimAction");
     expect(panelSource).not.toContain("updateClaimAction");
   });

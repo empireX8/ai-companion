@@ -13,6 +13,7 @@ import { resolveActiveModelUpdateId } from "@/lib/inspector-selection";
 import type {
   RealityTrackingClaimSection,
   RealityTrackingEvidenceRef,
+  RealityTrackingModelMovementReport,
   RealityTrackingModelMovementSection,
 } from "@/lib/reality-tracking-output-contract";
 import {
@@ -64,13 +65,19 @@ function FactGrid({
   );
 }
 
-function EvidenceRefs({ refs }: { refs: RealityTrackingEvidenceRef[] }) {
+function EvidenceRefs({
+  refs,
+  showEmptyCopy = true,
+}: {
+  refs: RealityTrackingEvidenceRef[];
+  showEmptyCopy?: boolean;
+}) {
   if (refs.length === 0) {
-    return (
+    return showEmptyCopy ? (
       <p className="mt-2 text-[11px] text-muted-foreground">
         No linked receipt references were attached to this item.
       </p>
-    );
+    ) : null;
   }
 
   return (
@@ -94,13 +101,90 @@ function EvidenceRefs({ refs }: { refs: RealityTrackingEvidenceRef[] }) {
   );
 }
 
+function collectUniqueReceiptRefs(report: RealityTrackingModelMovementReport) {
+  const seen = new Set<string>();
+  const refs: RealityTrackingEvidenceRef[] = [];
+  const sections = [
+    report.facts,
+    report.stronglySupportedClaims,
+    report.inferences,
+    report.speculations,
+    report.overreachGuardrails,
+    report.loopPatternDetection,
+    report.modelMovement,
+    report.realityGate,
+    report.fieldworkWatchFor,
+    report.reentryAction,
+    report.whatWouldChangeThisConclusion,
+  ];
+
+  for (const section of sections) {
+    for (const item of section.items) {
+      for (const ref of item.evidenceRefs) {
+        if (seen.has(ref.id)) {
+          continue;
+        }
+        seen.add(ref.id);
+        refs.push(ref);
+      }
+    }
+  }
+
+  return refs;
+}
+
+function ThinPacketNotice({ report }: { report: RealityTrackingModelMovementReport }) {
+  const nextEvidence =
+    report.fieldworkWatchFor.items[0]?.text ??
+    report.realityGate.items[0]?.text ??
+    report.whatWouldChangeThisConclusion.items[0]?.text ??
+    "Capture the next instance with trigger, behavior, aftermath, and whether it repeats in a second context.";
+
+  return (
+    <section className="rounded-xl border ml-hairline bg-muted/40 px-3.5 py-3">
+      <p className="text-[13px] leading-relaxed text-foreground">
+        This movement exists, but no receipt packet is linked yet.
+      </p>
+      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+        {PRODUCT_NAME} cannot strengthen this claim until receipts are attached.
+      </p>
+      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+        <span className="font-medium text-foreground">Next evidence needed:</span> {nextEvidence}
+      </p>
+    </section>
+  );
+}
+
+function PacketReceiptRollup({ refs }: { refs: RealityTrackingEvidenceRef[] }) {
+  if (refs.length === 0) {
+    return null;
+  }
+
+  return (
+    <section>
+      <SectionLabel>Linked Receipts</SectionLabel>
+      <EvidenceRefs refs={refs} showEmptyCopy={false} />
+    </section>
+  );
+}
+
 function ClaimSection({
   label,
   section,
+  compact = false,
+  collapseWhenEmpty = false,
+  showPerCardRefs = true,
 }: {
   label: string;
   section: RealityTrackingClaimSection;
+  compact?: boolean;
+  collapseWhenEmpty?: boolean;
+  showPerCardRefs?: boolean;
 }) {
+  if (collapseWhenEmpty && section.items.length === 0) {
+    return null;
+  }
+
   return (
     <section>
       <SectionLabel>{label}</SectionLabel>
@@ -111,19 +195,30 @@ function ClaimSection({
       ) : (
         <div className="space-y-2.5">
           {section.items.map((item, index) => (
-            <article key={`${label}-${index}-${item.text}`} className="ml-material rounded-xl px-3 py-2.5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-[11px] font-medium uppercase tracking-wide text-cyan/75">
-                  {formatEvidenceStatus(item.evidenceStatus)}
+            <article
+              key={`${label}-${index}-${item.text}`}
+              className={compact ? "rounded-xl px-1 py-1" : "ml-material rounded-xl px-3 py-2.5"}
+            >
+              {!compact ? (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-cyan/75">
+                    {formatEvidenceStatus(item.evidenceStatus)}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {formatEvidenceStatus(item.classification)}
+                  </div>
                 </div>
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {formatEvidenceStatus(item.classification)}
-                </div>
-              </div>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+              ) : null}
+              <p
+                className={
+                  compact
+                    ? "text-[12px] leading-relaxed text-muted-foreground"
+                    : "mt-1.5 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]"
+                }
+              >
                 {item.text}
               </p>
-              <EvidenceRefs refs={item.evidenceRefs} />
+              {showPerCardRefs ? <EvidenceRefs refs={item.evidenceRefs} showEmptyCopy={false} /> : null}
             </article>
           ))}
         </div>
@@ -134,8 +229,12 @@ function ClaimSection({
 
 function MovementSection({
   section,
+  compact = false,
+  showPerCardRefs = true,
 }: {
   section: RealityTrackingModelMovementSection;
+  compact?: boolean;
+  showPerCardRefs?: boolean;
 }) {
   return (
     <section>
@@ -173,14 +272,27 @@ function MovementSection({
         ) : (
           <div className="space-y-2.5">
             {section.items.map((item, index) => (
-              <article key={`movement-${index}-${item.text}`} className="ml-material rounded-xl px-3 py-2.5">
-                <div className="text-[11px] font-medium uppercase tracking-wide text-cyan/75">
-                  {formatEvidenceStatus(item.evidenceStatus)}
-                </div>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+              <article
+                key={`movement-${index}-${item.text}`}
+                className={compact ? "rounded-xl px-1 py-1" : "ml-material rounded-xl px-3 py-2.5"}
+              >
+                {!compact ? (
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-cyan/75">
+                    {formatEvidenceStatus(item.evidenceStatus)}
+                  </div>
+                ) : null}
+                <p
+                  className={
+                    compact
+                      ? "text-[12px] leading-relaxed text-muted-foreground"
+                      : "mt-1.5 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]"
+                  }
+                >
                   {item.text}
                 </p>
-                <EvidenceRefs refs={item.evidenceRefs} />
+                {showPerCardRefs ? (
+                  <EvidenceRefs refs={item.evidenceRefs} showEmptyCopy={false} />
+                ) : null}
               </article>
             ))}
           </div>
@@ -235,6 +347,10 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
     );
   }
 
+  const receiptCount = detail.report.evidencePacketSummary.receiptCount;
+  const isThinPacket = receiptCount === 0;
+  const packetReceiptRefs = collectUniqueReceiptRefs(detail.report);
+
   return (
     <div className="space-y-3 px-4 py-4">
       <header className="border-b ml-hairline pb-3">
@@ -257,6 +373,8 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
           <div className="label-meta mt-1.5">Recorded {formatDateTime(detail.item.createdAt)}</div>
         </div>
       </header>
+
+      {isThinPacket ? <ThinPacketNotice report={detail.report} /> : null}
 
       <section>
         <SectionLabel>Evidence Packet Summary</SectionLabel>
@@ -305,34 +423,73 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
         </p>
       </section>
 
-      <ClaimSection label="Facts" section={detail.report.facts} />
+      {!isThinPacket ? <PacketReceiptRollup refs={packetReceiptRefs} /> : null}
+
+      <ClaimSection
+        label="Facts"
+        section={detail.report.facts}
+        compact={isThinPacket}
+        showPerCardRefs={!isThinPacket}
+      />
       <ClaimSection
         label="Strongly Supported Claims"
         section={detail.report.stronglySupportedClaims}
+        collapseWhenEmpty
+        showPerCardRefs={!isThinPacket}
       />
-      <ClaimSection label="Inferences" section={detail.report.inferences} />
+      <ClaimSection
+        label="Inferences"
+        section={detail.report.inferences}
+        collapseWhenEmpty
+        showPerCardRefs={!isThinPacket}
+      />
       <ClaimSection
         label="Speculations / Uncertainties"
         section={detail.report.speculations}
+        collapseWhenEmpty
+        showPerCardRefs={!isThinPacket}
       />
       <ClaimSection
         label="Overreach Guardrails"
         section={detail.report.overreachGuardrails}
+        compact={isThinPacket}
+        collapseWhenEmpty
+        showPerCardRefs={!isThinPacket}
       />
       <ClaimSection
         label="Loop / Pattern Detection"
         section={detail.report.loopPatternDetection}
+        collapseWhenEmpty
+        showPerCardRefs={!isThinPacket}
       />
-      <MovementSection section={detail.report.modelMovement} />
-      <ClaimSection label="Reality Gate" section={detail.report.realityGate} />
+      <MovementSection
+        section={detail.report.modelMovement}
+        compact={isThinPacket}
+        showPerCardRefs={!isThinPacket}
+      />
+      <ClaimSection
+        label="Reality Gate"
+        section={detail.report.realityGate}
+        compact={isThinPacket}
+        showPerCardRefs={!isThinPacket}
+      />
       <ClaimSection
         label="Fieldwork / Watch For"
         section={detail.report.fieldworkWatchFor}
+        compact={isThinPacket}
+        showPerCardRefs={!isThinPacket}
       />
-      <ClaimSection label="Re-entry Action" section={detail.report.reentryAction} />
+      <ClaimSection
+        label="Re-entry Action"
+        section={detail.report.reentryAction}
+        collapseWhenEmpty
+        showPerCardRefs={!isThinPacket}
+      />
       <ClaimSection
         label="What Would Change This Conclusion"
         section={detail.report.whatWouldChangeThisConclusion}
+        compact={isThinPacket}
+        showPerCardRefs={!isThinPacket}
       />
     </div>
   );

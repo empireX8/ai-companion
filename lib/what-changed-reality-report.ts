@@ -387,6 +387,23 @@ function uniqueBy<T>(items: T[], keyFor: (item: T) => string): T[] {
   return next;
 }
 
+const MOVEMENT_EVIDENCE_LINK_LIMIT = 12;
+
+function mergeMovementEvidenceLinkRows(
+  movementRows: UnderstandingEvidenceLinkRow[],
+  affectedObjectRows: UnderstandingEvidenceLinkRow[]
+): UnderstandingEvidenceLinkRow[] {
+  return uniqueBy([...movementRows, ...affectedObjectRows], (row) => row.id)
+    .sort((left, right) => {
+      const byTime = right.createdAt.getTime() - left.createdAt.getTime();
+      if (byTime !== 0) {
+        return byTime;
+      }
+      return right.id.localeCompare(left.id);
+    })
+    .slice(0, MOVEMENT_EVIDENCE_LINK_LIMIT);
+}
+
 function buildEvidenceStatus(
   refs: RealityTrackingEvidenceRef[]
 ): RealityTrackingEvidenceStatus {
@@ -813,14 +830,16 @@ function buildDeterministicSections(packet: ModelMovementRealityPacket) {
     })
   );
 
-  pushUniqueClaim(
-    facts,
-    makeClaim({
-      text: `The linked packet contains ${packet.evidence.length} receipts across ${evidenceSourceTypes.size} source type${evidenceSourceTypes.size === 1 ? "" : "s"}.`,
-      classification: "fact",
-      evidence: topEvidence,
-    })
-  );
+  if (packet.evidence.length > 0) {
+    pushUniqueClaim(
+      facts,
+      makeClaim({
+        text: `The linked packet contains ${packet.evidence.length} receipts across ${evidenceSourceTypes.size} source type${evidenceSourceTypes.size === 1 ? "" : "s"}.`,
+        classification: "fact",
+        evidence: topEvidence,
+      })
+    );
+  }
 
   if (emotionalEvidence.length > 0) {
     pushUniqueClaim(
@@ -1352,27 +1371,46 @@ export async function buildWhatChangedInspectorDetail(args: {
     return null;
   }
 
-  const evidenceRows = await db.understandingEvidenceLink.findMany({
-    where: {
-      userId: args.userId,
-      targetType: "model_update",
-      targetId: row.id,
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: 12,
-    select: {
-      id: true,
-      sourceType: true,
-      sourceId: true,
-      role: true,
-      summary: true,
-      snippet: true,
-      quote: true,
-      weight: true,
-      confidenceContribution: true,
-      createdAt: true,
-    },
-  });
+  const movementEvidenceSelect = {
+    id: true,
+    sourceType: true,
+    sourceId: true,
+    role: true,
+    summary: true,
+    snippet: true,
+    quote: true,
+    weight: true,
+    confidenceContribution: true,
+    createdAt: true,
+  } as const;
+
+  const [movementEvidenceRows, affectedObjectEvidenceRows] = await Promise.all([
+    db.understandingEvidenceLink.findMany({
+      where: {
+        userId: args.userId,
+        targetType: "model_update",
+        targetId: row.id,
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: MOVEMENT_EVIDENCE_LINK_LIMIT,
+      select: movementEvidenceSelect,
+    }),
+    db.understandingEvidenceLink.findMany({
+      where: {
+        userId: args.userId,
+        targetType: row.affectedObjectType,
+        targetId: row.affectedObjectId,
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: MOVEMENT_EVIDENCE_LINK_LIMIT,
+      select: movementEvidenceSelect,
+    }),
+  ]);
+
+  const evidenceRows = mergeMovementEvidenceLinkRows(
+    movementEvidenceRows,
+    affectedObjectEvidenceRows
+  );
 
   const sourceIdsByType = new Map<UnderstandingLinkSourceType, string[]>();
   for (const link of evidenceRows) {

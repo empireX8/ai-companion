@@ -15,6 +15,7 @@ import {
   fetchInspectorModelUpdateDetail,
   fetchInspectorPatternClaim,
   fetchInspectorUserMapDetail,
+  INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT,
   INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT,
   type InspectorEvidenceLinkItem,
 } from "@/lib/inspector-object-api";
@@ -789,17 +790,23 @@ function ModelUpdateEvidencePanel({
 }) {
   const modelUpdateId = selection.selectedModelUpdateId ?? selection.selectedObjectId;
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof fetchInspectorModelUpdateDetail>>>(null);
+  const [evidence, setEvidence] = useState<InspectorEvidenceLinkItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    void fetchInspectorModelUpdateDetail(modelUpdateId).then((next) => {
+    void (async () => {
+      const [nextDetail, nextEvidence] = await Promise.all([
+        fetchInspectorModelUpdateDetail(modelUpdateId),
+        fetchInspectorEvidenceLinks(INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT(modelUpdateId)),
+      ]);
       if (!cancelled) {
-        setDetail(next);
+        setDetail(nextDetail);
+        setEvidence(nextEvidence);
         setIsLoading(false);
       }
-    });
+    })();
     return () => {
       cancelled = true;
     };
@@ -833,9 +840,12 @@ function ModelUpdateEvidencePanel({
           />
         </div>
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Open the {ORVEK_COPY.mindModelMovementTab} tab for linked evidence on this update.
+          Open the {ORVEK_COPY.mindModelMovementTab} tab for the epistemic report on this
+          movement.
         </p>
       </section>
+      <SectionLabel>Supporting evidence</SectionLabel>
+      <EvidenceLinksSection items={evidence} />
     </>
   );
 }
