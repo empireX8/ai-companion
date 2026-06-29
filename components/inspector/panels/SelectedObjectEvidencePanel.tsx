@@ -221,10 +221,12 @@ function SourceObjectSections({
   object,
   hideSummary = false,
   deferredCorrectionCopy,
+  showWhatWouldChange = true,
 }: {
   object: OrvekObject | undefined;
   hideSummary?: boolean;
   deferredCorrectionCopy?: string | null;
+  showWhatWouldChange?: boolean;
 }) {
   const orvekData = useOptionalOrvekData();
 
@@ -463,11 +465,11 @@ function SourceObjectSections({
         emptyCopy="No related objects are available in this projection yet."
       />
 
-      {object.whatWouldChange?.length ? (
+      {showWhatWouldChange && object.whatWouldChange?.length ? (
         <SectionBlock label="What would change this">
           <RenderList items={object.whatWouldChange} emptyCopy="" />
         </SectionBlock>
-      ) : hasDeferredCorrection ? (
+      ) : showWhatWouldChange && hasDeferredCorrection ? (
         <SectionBlock label="What would change this">
           <p className="text-[12px] leading-relaxed text-muted-foreground">
             {deferredCorrectionCopy}
@@ -745,27 +747,16 @@ function ReportReceiptLinksSection({ refs }: { refs: RealityTrackingEvidenceRef[
 }
 
 function ModelUpdateEvidenceEmptyState({
-  report,
   hasResolvableAffectedObject,
 }: {
-  report: RealityTrackingModelMovementReport;
   hasResolvableAffectedObject: boolean;
 }) {
-  const nextEvidence =
-    report.fieldworkWatchFor.items[0]?.text ??
-    report.realityGate.items[0]?.text ??
-    report.whatWouldChangeThisConclusion.items[0]?.text ??
-    "Capture the next instance with trigger, behavior, aftermath, and whether it repeats in a second context.";
-
   return (
     <div className="space-y-2 px-4 pb-4 text-[12px] leading-relaxed text-muted-foreground">
       <p>
         {hasResolvableAffectedObject
-          ? "This movement is recorded, but no linked public evidence is available on the movement or related object yet."
-          : "This movement is recorded, but no linked public evidence is attached yet."}
-      </p>
-      <p>
-        <span className="font-medium text-foreground">Next evidence needed:</span> {nextEvidence}
+          ? "No linked public evidence is available on the related object yet."
+          : "No linked public evidence is attached to this selection yet."}
       </p>
       <p className="text-[11px]">
         Open the {ORVEK_COPY.mindModelMovementTab} tab for the epistemic report on this movement.
@@ -1145,47 +1136,14 @@ function ModelUpdateEvidencePanel({
   const contextObject =
     sourceObject ??
     (item.affectedObjectId ? resolveOrvekObject(item.affectedObjectId) : undefined);
-  const whatWouldChangeItems = [
-    ...(contextObject?.whatWouldChange ?? []),
-    ...report.whatWouldChangeThisConclusion.items.map((claim) => claim.text),
-  ].filter((value, index, list) => list.indexOf(value) === index);
-  const showDeferredCorrection =
-    item.affectedObjectType === "usermap_conclusion" &&
-    !whatWouldChangeItems.length;
   const showSupportingEvidenceSection =
     supportingEvidence.length > 0 || reportReceiptRefs.length > 0;
 
   return (
     <>
-      <ObjectHeader
-        typeLabel={ORVEK_COPY.mindModelMovement}
-        title={selection.selectedTitle ?? item.updateTypeLabel}
-        meta={`${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`}
-      />
-
-      <SectionBlock label="Movement summary">{item.userFacingSummary}</SectionBlock>
-
-      <section className="px-4 pb-3">
-        <FactGrid
-          items={[
-            { label: "Recorded", value: formatDateTime(item.createdAt) },
-            {
-              label: "Receipts",
-              value: String(report.evidencePacketSummary.receiptCount),
-            },
-            {
-              label: "Linked object",
-              value: report.evidencePacketSummary.targetLabel,
-            },
-          ]}
-        />
-        <div className="mt-3">
-          <PublicLinkedObjectContinuity
-            objectType={item.affectedObjectType}
-            objectId={item.affectedObjectId}
-            href={item.affectedObjectHref}
-            context="model_update"
-          />
+      <section className="px-4 pt-3 pb-1">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-cyan/75">
+          {item.affectedObjectTypeLabel}
         </div>
       </section>
 
@@ -1204,6 +1162,20 @@ function ModelUpdateEvidencePanel({
         <RelatedSignalSection item={affectedContext.contradiction} />
       ) : null}
 
+      {!affectedContext.userMap &&
+      !affectedContext.pattern &&
+      !affectedContext.contradiction &&
+      item.affectedObjectId ? (
+        <section className="px-4 pb-3">
+          <PublicLinkedObjectContinuity
+            objectType={item.affectedObjectType}
+            objectId={item.affectedObjectId}
+            href={item.affectedObjectHref}
+            context="model_update"
+          />
+        </section>
+      ) : null}
+
       <SourceObjectSections
         object={contextObject}
         hideSummary={Boolean(affectedContext.userMap?.summary)}
@@ -1212,22 +1184,8 @@ function ModelUpdateEvidencePanel({
             ? YOUR_MAP_CORRECTION_DEFERRED_COPY
             : null
         }
+        showWhatWouldChange={false}
       />
-
-      {whatWouldChangeItems.length > 0 ? (
-        <SectionBlock label="What would change this">
-          <RenderList
-            items={whatWouldChangeItems}
-            emptyCopy="No explicit change condition is recorded yet."
-          />
-        </SectionBlock>
-      ) : showDeferredCorrection ? (
-        <SectionBlock label="What would change this">
-          <p className="text-[12px] leading-relaxed text-muted-foreground">
-            {YOUR_MAP_CORRECTION_DEFERRED_COPY}
-          </p>
-        </SectionBlock>
-      ) : null}
 
       <SectionLabel>Supporting evidence</SectionLabel>
       {supportingEvidence.length > 0 ? (
@@ -1235,10 +1193,7 @@ function ModelUpdateEvidencePanel({
       ) : reportReceiptRefs.length > 0 ? (
         <ReportReceiptLinksSection refs={reportReceiptRefs} />
       ) : (
-        <ModelUpdateEvidenceEmptyState
-          report={report}
-          hasResolvableAffectedObject={hasResolvableAffectedObject}
-        />
+        <ModelUpdateEvidenceEmptyState hasResolvableAffectedObject={hasResolvableAffectedObject} />
       )}
 
       {showSupportingEvidenceSection ? (

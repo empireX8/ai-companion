@@ -57,7 +57,7 @@ Additional stops:
 | **Surface** | Workbench Inspector — Evidence / Context + Mind Model Movement |
 | **Target state** | Coherent tab roles; readable evidence; no route leakage; no duplicated confusing sections |
 | **Base branch** | `staging` if exists; else Kay must create `staging` or `integration` from `main` |
-| **Status** | Ready |
+| **Status** | In Progress |
 | **Slices used** | 0 / 4 |
 | **Files touched** | 0 / 15 |
 
@@ -66,7 +66,7 @@ Additional stops:
 | Slice ID | Title | Objective | Status |
 |----------|-------|-----------|--------|
 | **SLICE-001** | Evidence presentation + route contract closeout | Meaningful evidence cards; in-inspector selection; no legacy `/patterns` leak; scorecard on golden object. DONE on staging via inspector-evidence-contract (`891394a`, `bf8dc39`) | Done |
-| **SLICE-002** | Tab boundary cleanup | Evidence = object/context; Movement = epistemic report only; remove overlap | Ready |
+| **SLICE-002** | Tab boundary cleanup | Evidence = object/context; Movement = epistemic report only; remove overlap | In Progress |
 | **SLICE-003** | Movement epistemic report clarity | Facts / inference / uncertainty readable; thin-packet honest; watch-for visible | Queued |
 | **SLICE-004** | Polish (conditional) | Reference-aligned spacing/labels only if score still &lt; 3 after SLICE-003 | Queued |
 
