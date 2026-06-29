@@ -221,10 +221,12 @@ function SourceObjectSections({
   object,
   hideSummary = false,
   deferredCorrectionCopy,
+  showWhatWouldChange = true,
 }: {
   object: OrvekObject | undefined;
   hideSummary?: boolean;
   deferredCorrectionCopy?: string | null;
+  showWhatWouldChange?: boolean;
 }) {
   const orvekData = useOptionalOrvekData();
 
@@ -463,11 +465,11 @@ function SourceObjectSections({
         emptyCopy="No related objects are available in this projection yet."
       />
 
-      {object.whatWouldChange?.length ? (
+      {showWhatWouldChange && object.whatWouldChange?.length ? (
         <SectionBlock label="What would change this">
           <RenderList items={object.whatWouldChange} emptyCopy="" />
         </SectionBlock>
-      ) : hasDeferredCorrection ? (
+      ) : showWhatWouldChange && hasDeferredCorrection ? (
         <SectionBlock label="What would change this">
           <p className="text-[12px] leading-relaxed text-muted-foreground">
             {deferredCorrectionCopy}
@@ -1145,13 +1147,6 @@ function ModelUpdateEvidencePanel({
   const contextObject =
     sourceObject ??
     (item.affectedObjectId ? resolveOrvekObject(item.affectedObjectId) : undefined);
-  const whatWouldChangeItems = [
-    ...(contextObject?.whatWouldChange ?? []),
-    ...report.whatWouldChangeThisConclusion.items.map((claim) => claim.text),
-  ].filter((value, index, list) => list.indexOf(value) === index);
-  const showDeferredCorrection =
-    item.affectedObjectType === "usermap_conclusion" &&
-    !whatWouldChangeItems.length;
   const showSupportingEvidenceSection =
     supportingEvidence.length > 0 || reportReceiptRefs.length > 0;
 
@@ -1212,22 +1207,8 @@ function ModelUpdateEvidencePanel({
             ? YOUR_MAP_CORRECTION_DEFERRED_COPY
             : null
         }
+        showWhatWouldChange={false}
       />
-
-      {whatWouldChangeItems.length > 0 ? (
-        <SectionBlock label="What would change this">
-          <RenderList
-            items={whatWouldChangeItems}
-            emptyCopy="No explicit change condition is recorded yet."
-          />
-        </SectionBlock>
-      ) : showDeferredCorrection ? (
-        <SectionBlock label="What would change this">
-          <p className="text-[12px] leading-relaxed text-muted-foreground">
-            {YOUR_MAP_CORRECTION_DEFERRED_COPY}
-          </p>
-        </SectionBlock>
-      ) : null}
 
       <SectionLabel>Supporting evidence</SectionLabel>
       {supportingEvidence.length > 0 ? (

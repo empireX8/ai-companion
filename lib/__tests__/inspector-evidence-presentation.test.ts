@@ -151,4 +151,17 @@ describe("inspector evidence presentation", () => {
     expect(evidencePanel).not.toMatch(/<Link[^>]+href=\{[^}]*\/patterns/);
     expect(evidencePanel).not.toMatch(/<Link[^>]+href=\{[^}]*\/contradictions/);
   });
+
+  it("keeps model update change conditions on the movement tab instead of the evidence tab", () => {
+    const movementPanel = readSource(
+      "components/inspector/panels/ModelMovementInspectorPanel.tsx"
+    );
+    const evidencePanel = readSource(
+      "components/inspector/panels/SelectedObjectEvidencePanel.tsx"
+    );
+
+    expect(movementPanel).toContain("What Would Change This Conclusion");
+    expect(evidencePanel).toContain("showWhatWouldChange={false}");
+    expect(evidencePanel).not.toContain("report.whatWouldChangeThisConclusion.items.map");
+  });
 });

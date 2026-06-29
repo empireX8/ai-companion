@@ -136,6 +136,8 @@ describe("inspector surface wiring", () => {
     expect(panelSource).toContain("Related map conclusion");
     expect(panelSource).toContain("Movement summary");
     expect(panelSource).toContain("What would change this");
+    expect(panelSource).toContain("showWhatWouldChange={false}");
+    expect(panelSource).not.toContain("report.whatWouldChangeThisConclusion.items.map");
     expect(panelSource).toContain("projectInspectorEvidenceCard");
     expect(panelSource).toContain("dedupeInspectorEvidenceLinks");
     expect(panelSource).toContain("InspectorEvidenceSelectionControl");
