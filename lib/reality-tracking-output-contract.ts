@@ -13,11 +13,13 @@ export const REALITY_TRACKING_OUTPUT_RULES = [
   "Do not produce fake reassurance, flattery, or motivational padding.",
   "Do not use therapy framing unless the user supplied it as evidence.",
   "Do not make unsupported identity claims or deep-cause explanations.",
+  "Reject identity labels unless repeated behavioral evidence supports them.",
   "Emotional intensity is not proof.",
   "Prefer behavioral language over character language.",
   "If evidence is insufficient, say so directly.",
   "Convert uncertainty into fieldwork or watch-for where useful.",
   "Include what would change the conclusion.",
+  "Use VERIFIED, INFERRED, or UNVERIFIED for new evidence status labels; keep MIXED only for legacy stored data.",
   "Every major behavioral claim must carry an evidence status marker.",
 ] as const;
 
@@ -46,6 +48,14 @@ export const REALITY_TRACKING_REQUIRED_SECTION_KEYS = [
   "whatWouldChangeThisConclusion",
 ] as const;
 
+export const REALITY_TRACKING_EPISTEMIC_STATUSES = [
+  "VERIFIED",
+  "INFERRED",
+  "UNVERIFIED",
+] as const;
+
+export const REALITY_TRACKING_LEGACY_EVIDENCE_STATUS = "mixed" as const;
+
 export type RealityTrackingClaimClassification =
   | "fact"
   | "supported_claim"
@@ -59,11 +69,12 @@ export type RealityTrackingClaimClassification =
   | "reentry"
   | "change_condition";
 
+export type RealityTrackingEpistemicStatus =
+  (typeof REALITY_TRACKING_EPISTEMIC_STATUSES)[number];
+
 export type RealityTrackingEvidenceStatus =
-  | "direct"
-  | "corroborated"
-  | "mixed"
-  | "insufficient";
+  | RealityTrackingEpistemicStatus
+  | typeof REALITY_TRACKING_LEGACY_EVIDENCE_STATUS;
 
 export type RealityTrackingEvidenceRef = {
   id: string;
