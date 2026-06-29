@@ -8,25 +8,21 @@
 
 ## Summary
 
-Branch created: `chapter-inspector-001-slice-002-tab-boundary`.  
-Tab boundary changed: selected `model_update` Evidence / Context no longer renders “What would change this” from movement-report content or shared object sections; Mind Model Movement remains the only tab rendering “What Would Change This Conclusion.”  
-Receipts created: `00`, `01`, `02`, `03`, `04`, `06`, and `07` under `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/`. Verification passed; PR link was not created because `gh` is not installed in this environment.
+Branch created: `chapter-inspector-001-slice-002-tab-boundary`.
+Evidence / Context boundary fix: selected `model_update` Evidence / Context no longer opens with `MIND MODEL MOVEMENT`, `Conclusion Added · Related map item`, or `MOVEMENT SUMMARY`; it now opens with the affected object label, related conclusion/context content, and supporting evidence only.
+Mind Model Movement remains unchanged and still owns movement title/summary, evidence packet summary, the epistemic report sections, and `What Would Change This Conclusion`. Verification passed.
 
 ---
 
 ## Files changed
 
-- `components/inspector/panels/SelectedObjectEvidencePanel.tsx` — enforced the selected `model_update` tab boundary
-- `lib/__tests__/inspector-surface-wiring.test.ts` — added source guard for the selected evidence boundary
-- `lib/__tests__/inspector-evidence-presentation.test.ts` — added source guard for movement-tab ownership of change conditions
-- `docs/agent-runs/chapter-queue.md` — marked chapter and slice as `In Progress`
-- `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/00-intake-receipt.md` — recorded intake and score prediction
-- `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/01-target-ui-spec.md` — recorded target tab roles
-- `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/02-wiring-matrix.md` — recorded approved wiring boundary
-- `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/03-implementation-receipt.md` — recorded bounded implementation details
-- `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/04-verification-receipt.md` — recorded verification status
-- `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/07-product-intelligence-scorecard.md` — recorded score estimate pending Kay
-- `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/06-closeout-receipt.md` — recorded slice closeout status
+- `components/inspector/panels/SelectedObjectEvidencePanel.tsx` — removed movement-owned intro copy from selected `model_update` Evidence / Context and replaced it with affected-object/context framing
+- `lib/__tests__/inspector-surface-wiring.test.ts` — added source guard against movement-owned header/summary copy in selected `model_update` Evidence / Context
+- `lib/__tests__/inspector-evidence-presentation.test.ts` — preserved movement-tab ownership of change conditions while guarding the evidence-tab intro boundary
+- `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/03-implementation-receipt.md` — recorded the follow-up boundary fix
+- `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/04-verification-receipt.md` — recorded verification status for the follow-up fix
+- `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/06-closeout-receipt.md` — recorded the follow-up closeout state
+- `docs/agent-runs/receipts/CHAPTER-INSPECTOR-001/SLICE-002/07-product-intelligence-scorecard.md` — recorded updated score/risk notes for the follow-up fix
 
 ---
 
@@ -73,15 +69,15 @@ Receipts created: `00`, `01`, `02`, `03`, `04`, `06`, and `07` under `docs/agent
 
 | Item | Status |
 |------|--------|
-| Scorecard screenshots | blocked |
-| Product acceptance (05) | blocked |
+| Scorecard screenshots | blocked — Kay still needs to confirm `RELATED MAP ITEM` then `RELATED MAP CONCLUSION` on Evidence / Context |
+| Product acceptance (05) | blocked — Kay still needs to confirm Movement remains unchanged |
 
 ---
 
 ## Regression status
 
 | Any golden gate regressed? | no |
-| Details | No known legacy route leakage remains in inspector evidence panels; targeted route-boundary tests and `check-legacy-inspector-routes` stayed green. |
+| Details | No known legacy route leakage remains in inspector evidence panels; targeted route-boundary tests stayed green for both the no-movement intro boundary and the movement-tab change-condition ownership. |
 
 > If regression **yes** — product progress was **not** claimed.
 
@@ -127,8 +123,8 @@ Receipts created: `00`, `01`, `02`, `03`, `04`, `06`, and `07` under `docs/agent
 
 ## Remaining risks
 
-- Kay screenshots still need to confirm the golden object now reads as two coherent tabs on the real surface.
-- Draft PR creation is blocked until `gh` is installed or an alternate GitHub publish path is provided.
+- Kay screenshots still need to confirm Evidence / Context now opens with affected-object/context framing on the golden object.
+- Kay screenshots still need to confirm the Evidence / Context tab does not visually read as a duplicate of Mind Model Movement.
 - Chapter acceptance cannot be claimed until manual scoring confirms the Product Intelligence estimate of `3`.
 
 ---

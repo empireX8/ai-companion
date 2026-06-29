@@ -12,8 +12,8 @@
 |-------|-------|
 | Expected Product Intelligence Score | `2 → 3` |
 | Expected Build Loop Score | `2 → 2` |
-| Why this slice should move the score | Coherent tab roles require the selected `model_update` Evidence / Context tab to stop repeating movement-report change conditions while the Movement tab remains the single epistemic report. |
-| What would prove the slice failed | The golden object still shows duplicated / confusing change-condition content across both tabs, or navigation regresses out of the workbench inspector. |
+| Why this slice should move the score | Coherent tab roles require the selected `model_update` Evidence / Context tab to stop repeating movement-owned framing while the Movement tab remains the single epistemic report. |
+| What would prove the slice failed | The golden object still opens the Evidence / Context tab with movement-owned framing, still shows duplicated / confusing movement content across both tabs, or navigation regresses out of the workbench inspector. |
 
 ---
 
@@ -32,13 +32,13 @@
 
 | Question | Answer | Evidence |
 |----------|--------|----------|
-| Can the user tell **what changed**? | partial | Movement summary remains; screenshot review pending |
+| Can the user tell **what changed**? | partial | Movement summary remains on the Movement tab only; screenshot review pending |
 | Can the user tell **why Orvek believes it**? | partial | Movement tab still owns facts / claims / inferences / uncertainties; screenshot review pending |
 | Can the user **inspect receipts**? | yes | Existing evidence cards and receipt refs remain route-safe in source tests |
 | Are **facts, inferences, uncertainties, speculations** separated? | yes | Movement tab |
 | Is there a clear **what to watch/do next**? | yes | Movement tab |
 | Is there a clear **what would change this conclusion**? | partial | Source/tests confirm single-tab ownership; screenshot confirmation pending |
-| Does the UI feel **intentional** or **dumped**? | partial | Boundary cleanup implemented; visual acceptance pending |
+| Does the UI feel **intentional** or **dumped**? | partial | Evidence / Context now opens with related-object framing instead of movement framing; visual acceptance pending |
 | Does it **preserve routes/navigation**? | yes | Click test coverage and legacy-route guard remain in place |
 
 ---
@@ -47,8 +47,8 @@
 
 | Pillar | Score (0–5) | Notes |
 |--------|-------------|-------|
-| Reference alignment | `3` | Evidence / Context now follows a cleaner direct-object formula for selected movement context |
-| Intelligence quality | `3` | Movement tab remains the explicit epistemic report instead of sharing change-condition content with Evidence / Context |
+| Reference alignment | `3` | Evidence / Context now opens with affected-object framing closer to the direct conclusion formula instead of movement framing |
+| Intelligence quality | `3` | Movement tab remains the explicit epistemic report instead of sharing change-condition or summary framing with Evidence / Context |
 | Backend truth | `5` | No fake/static insight added; existing real-data routes unchanged |
 | **Overall** | **`3`** | estimate only until Kay screenshot review |
 
@@ -75,8 +75,8 @@
 
 | Check | Status | Notes |
 |-------|--------|-------|
-| Evidence / Context tab | missing | Kay screenshot required |
-| Movement tab | missing | Kay screenshot required |
+| Evidence / Context tab | missing | Kay must confirm `RELATED MAP ITEM` then `RELATED MAP CONCLUSION`, with no movement-owned intro copy |
+| Movement tab | missing | Kay must confirm movement title/summary and epistemic sections remain unchanged |
 | Click navigation | verified | Automated source tests and legacy-route guard cover in-inspector selection behavior |
 
 ---

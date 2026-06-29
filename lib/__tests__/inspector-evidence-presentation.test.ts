@@ -162,6 +162,8 @@ describe("inspector evidence presentation", () => {
 
     expect(movementPanel).toContain("What Would Change This Conclusion");
     expect(evidencePanel).toContain("showWhatWouldChange={false}");
+    expect(evidencePanel).not.toContain('typeLabel={ORVEK_COPY.mindModelMovement}');
+    expect(evidencePanel).not.toContain('SectionBlock label="Movement summary"');
     expect(evidencePanel).not.toContain("report.whatWouldChangeThisConclusion.items.map");
   });
 });

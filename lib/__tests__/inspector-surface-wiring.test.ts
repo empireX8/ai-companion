@@ -134,7 +134,9 @@ describe("inspector surface wiring", () => {
     expect(panelSource).not.toContain("useOrvekData");
     expect(panelSource).toContain("INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT");
     expect(panelSource).toContain("Related map conclusion");
-    expect(panelSource).toContain("Movement summary");
+    expect(panelSource).toContain("item.affectedObjectTypeLabel");
+    expect(panelSource).not.toContain('typeLabel={ORVEK_COPY.mindModelMovement}');
+    expect(panelSource).not.toContain('SectionBlock label="Movement summary"');
     expect(panelSource).toContain("What would change this");
     expect(panelSource).toContain("showWhatWouldChange={false}");
     expect(panelSource).not.toContain("report.whatWouldChangeThisConclusion.items.map");
