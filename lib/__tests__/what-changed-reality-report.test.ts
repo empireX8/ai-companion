@@ -8,7 +8,10 @@ vi.mock("../public-linked-object-continuity", () => ({
   applyVerifiedAffectedObjectHrefs: vi.fn(),
 }));
 
-import { reportContainsBannedLanguage } from "../reality-tracking-output-contract";
+import {
+  REALITY_TRACKING_LEGACY_EVIDENCE_STATUS,
+  reportContainsBannedLanguage,
+} from "../reality-tracking-output-contract";
 import {
   buildDeterministicModelMovementRealityReport,
   type ModelMovementRealityPacket,
@@ -267,6 +270,77 @@ describe("what-changed reality report", () => {
       report.whatWouldChangeThisConclusion.items.some((item) =>
         item.text.includes("Repeated behavior across distinct episodes")
       )
+    ).toBe(true);
+  });
+
+  it("accepts the exact people-pleaser fixture as contract-safe output with timestamped fieldwork and legacy mixed compatibility untouched", () => {
+    const identityFixture =
+      "I notice I am definitely a people pleaser. I keep saying yes to things even when I do not want to, and I think this is just who I am.";
+    const packet = makePacket([identityFixture], {
+      modelUpdate: {
+        id: "mu-people-pleaser",
+        updateTypeLabel: "Conclusion Strengthened",
+        affectedObjectType: "usermap_conclusion",
+        affectedObjectTypeLabel: "Related map item",
+        userFacingSummary: identityFixture,
+        createdAt: "2026-06-27T09:00:00.000Z",
+        before: "Earlier model read",
+        after: identityFixture,
+        confidenceShift: null,
+      },
+      affectedObject: {
+        type: "usermap_conclusion",
+        title: "People pleaser",
+        summary: identityFixture,
+        statusLabel: "Supported",
+        confidenceLabel: "High",
+        evidenceCount: 1,
+        sourceDiversity: 1,
+        timeSpreadDays: 0,
+        correctionLabel: null,
+        detailHref: "/your-map/umc-people-pleaser",
+      },
+    });
+
+    const report = buildDeterministicModelMovementRealityReport(packet);
+    const items = allClaimItems(report);
+    const peoplePleaserItems = items.filter((item) =>
+      item.text.toLowerCase().includes("people pleaser")
+    );
+    const receiptTimestamp = packet.evidence[0]?.createdAt;
+
+    expect(
+      report.overreachGuardrails.items.some((item) =>
+        item.text.includes("IDENTITY CLAIM REJECTED")
+      )
+    ).toBe(true);
+    expect(
+      items.some(
+        (item) =>
+          item.text.toLowerCase().includes("people pleaser") &&
+          (item.classification === "fact" || item.classification === "supported_claim") &&
+          item.evidenceStatus === "VERIFIED"
+      )
+    ).toBe(false);
+    expect(items.some((item) => item.evidenceStatus === "mixed")).toBe(false);
+    expect(
+      report.realityGate.items.some((item) =>
+        item.text.startsWith("REALITY GATE: PENDING EVIDENCE")
+      )
+    ).toBe(true);
+    expect(
+      report.fieldworkWatchFor.items.some((item) =>
+        item.text.includes("timestamped") &&
+        item.text.includes("trigger") &&
+        item.text.includes("behavior") &&
+        item.text.includes("aftermath") &&
+        Boolean(receiptTimestamp) &&
+        item.evidenceRefs.some((ref) => ref.createdAt === receiptTimestamp)
+      )
+    ).toBe(true);
+    expect(REALITY_TRACKING_LEGACY_EVIDENCE_STATUS).toBe("mixed");
+    expect(
+      peoplePleaserItems.every((item) => item.evidenceStatus !== "VERIFIED")
     ).toBe(true);
   });
 
