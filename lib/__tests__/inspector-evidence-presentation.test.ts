@@ -19,6 +19,22 @@ function readSource(relativePath: string): string {
   return readFileSync(join(process.cwd(), relativePath), "utf8");
 }
 
+function extractFunctionBody(
+  source: string,
+  startMarker: string,
+  endMarker: string
+): string {
+  const start = source.indexOf(startMarker);
+  if (start === -1) {
+    throw new Error(`Missing start marker: ${startMarker}`);
+  }
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  if (end === -1) {
+    throw new Error(`Missing end marker: ${endMarker}`);
+  }
+  return source.slice(start, end);
+}
+
 function makeEvidenceItem(
   overrides: Partial<InspectorEvidenceLinkItem> = {}
 ): InspectorEvidenceLinkItem {
@@ -150,5 +166,24 @@ describe("inspector evidence presentation", () => {
     expect(evidencePanel).not.toContain("<Link href={ref.href}");
     expect(evidencePanel).not.toMatch(/<Link[^>]+href=\{[^}]*\/patterns/);
     expect(evidencePanel).not.toMatch(/<Link[^>]+href=\{[^}]*\/contradictions/);
+  });
+
+  it("keeps model_update evidence panels on affected-object context instead of movement-owned copy", () => {
+    const evidencePanel = readSource(
+      "components/inspector/panels/SelectedObjectEvidencePanel.tsx"
+    );
+    const modelUpdatePanel = extractFunctionBody(
+      evidencePanel,
+      "function ModelUpdateEvidencePanel",
+      "function SelectedObjectEvidencePanel"
+    );
+
+    expect(modelUpdatePanel).toContain('typeLabel="Related map item"');
+    expect(modelUpdatePanel).toContain("Supporting evidence");
+    expect(modelUpdatePanel).toContain("Open the {ORVEK_COPY.mindModelMovementTab} tab");
+    expect(modelUpdatePanel).not.toContain("MIND MODEL MOVEMENT");
+    expect(modelUpdatePanel).not.toContain("Movement summary");
+    expect(modelUpdatePanel).not.toContain("What Would Change This Conclusion");
+    expect(modelUpdatePanel).not.toContain("What would change this");
   });
 });

@@ -12,6 +12,22 @@ function readSource(relativePath: string): string {
   return readFileSync(join(process.cwd(), relativePath), "utf8");
 }
 
+function extractFunctionBody(
+  source: string,
+  startMarker: string,
+  endMarker: string
+): string {
+  const start = source.indexOf(startMarker);
+  if (start === -1) {
+    throw new Error(`Missing start marker: ${startMarker}`);
+  }
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  if (end === -1) {
+    throw new Error(`Missing end marker: ${endMarker}`);
+  }
+  return source.slice(start, end);
+}
+
 describe("inspector surface wiring", () => {
   it("wires Today movement selection to inspector model_update + movement tab", () => {
     const container = readSource("components/orvek-workbench/OrvekTodayPage.tsx");
@@ -120,29 +136,23 @@ describe("inspector surface wiring", () => {
     expect(exploreMovementSource).toContain("from this conversation");
   });
 
-  it("keeps the shared inspector read-only while rendering richer object sections", () => {
+  it("keeps model_update Evidence / Context on affected-object framing instead of movement copy", () => {
     const panelSource = readSource(
       "components/inspector/panels/SelectedObjectEvidencePanel.tsx"
     );
+    const modelUpdatePanel = extractFunctionBody(
+      panelSource,
+      "function ModelUpdateEvidencePanel",
+      "function SelectedObjectEvidencePanel"
+    );
 
-    expect(panelSource).toContain("Supporting & conflicting");
-    expect(panelSource).toContain("Relevant background / context");
-    expect(panelSource).toContain("What would change this");
-    expect(panelSource).toContain("Next step");
-    expect(panelSource).toContain("getActionGateReason");
-    expect(panelSource).toContain("useOptionalOrvekData");
-    expect(panelSource).not.toContain("useOrvekData");
-    expect(panelSource).toContain("INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT");
-    expect(panelSource).toContain("Related map conclusion");
-    expect(panelSource).toContain("Movement summary");
-    expect(panelSource).toContain("What would change this");
-    expect(panelSource).toContain("projectInspectorEvidenceCard");
-    expect(panelSource).toContain("dedupeInspectorEvidenceLinks");
-    expect(panelSource).toContain("InspectorEvidenceSelectionControl");
-    expect(panelSource).not.toContain("<Link href={card.href}");
-    expect(panelSource).not.toMatch(/<Link[^>]+href=\{[^}]*\/patterns/);
-    expect(panelSource).not.toContain("suggestClaimAction");
-    expect(panelSource).not.toContain("updateClaimAction");
+    expect(modelUpdatePanel).toContain('typeLabel="Related map item"');
+    expect(modelUpdatePanel).toContain("Supporting evidence");
+    expect(modelUpdatePanel).toContain("Open the {ORVEK_COPY.mindModelMovementTab} tab");
+    expect(modelUpdatePanel).not.toContain("MIND MODEL MOVEMENT");
+    expect(modelUpdatePanel).not.toContain("Movement summary");
+    expect(modelUpdatePanel).not.toContain("What Would Change This Conclusion");
+    expect(modelUpdatePanel).not.toContain("What would change this");
   });
 
   it("clears cross-surface inspector selection on navigation", () => {
