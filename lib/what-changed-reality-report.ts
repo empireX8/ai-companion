@@ -1208,7 +1208,7 @@ function buildDeterministicSections(packet: ModelMovementRealityPacket) {
     pushUniqueClaim(
       fieldwork,
       makeClaim({
-        text: "Capture the next repeatable behavior, cue, and aftermath because the packet is missing behavioral evidence for a stable identity.",
+        text: "Capture the next timestamped instance with trigger, behavior, aftermath, and whether it repeats in a second context because the packet is missing behavioral evidence for a stable identity.",
         classification: "fieldwork",
         evidence: identityClaimEvidenceRefs,
       })
