@@ -68,7 +68,7 @@ function makeReport() {
     },
     realityGate: {
       items: [],
-      emptyState: "No stronger reality gate is available beyond keeping this inspectable and corrigible.",
+      emptyState: "REALITY GATE: PENDING EVIDENCE",
     },
     fieldworkWatchFor: {
       items: [],

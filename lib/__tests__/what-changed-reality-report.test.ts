@@ -202,6 +202,74 @@ describe("what-changed reality report", () => {
     ).toBe(true);
   });
 
+  it("rejects identity labels and re-anchors them in missing behavioral evidence", () => {
+    const packet = makePacket(
+      [
+        "I notice I am definitely a people pleaser when someone seems upset with me.",
+        "I apologize immediately instead of asking what happened.",
+        "When someone is disappointed, I back off and try to smooth things over.",
+      ],
+      {
+        affectedObject: {
+          type: "usermap_conclusion",
+          title: "People pleaser",
+          summary: "I am a people pleaser.",
+          statusLabel: "Supported",
+          confidenceLabel: "High",
+          evidenceCount: 3,
+          sourceDiversity: 2,
+          timeSpreadDays: 8,
+          correctionLabel: null,
+          detailHref: "/your-map/umc-identity",
+        },
+        modelUpdate: {
+          id: "mu-identity",
+          updateTypeLabel: "Conclusion Strengthened",
+          affectedObjectType: "usermap_conclusion",
+          affectedObjectTypeLabel: "Related map item",
+          userFacingSummary: "I am a people pleaser.",
+          createdAt: "2026-06-27T09:00:00.000Z",
+          before: "Earlier model read",
+          after: "I am a people pleaser.",
+          confidenceShift: 0.3,
+        },
+      }
+    );
+
+    const report = buildDeterministicModelMovementRealityReport(packet);
+
+    expect(
+      report.overreachGuardrails.items.some((item) =>
+        item.text.includes("IDENTITY CLAIM REJECTED")
+      )
+    ).toBe(true);
+    expect(
+      report.overreachGuardrails.items.some((item) =>
+        item.text.includes("missing behavioral evidence")
+      )
+    ).toBe(true);
+    expect(
+      report.stronglySupportedClaims.items.some((item) =>
+        item.text.includes("people pleaser")
+      )
+    ).toBe(false);
+    expect(
+      report.realityGate.items.some((item) =>
+        item.text.startsWith("REALITY GATE: PENDING EVIDENCE")
+      )
+    ).toBe(true);
+    expect(
+      report.fieldworkWatchFor.items.some((item) =>
+        item.text.includes("missing behavioral evidence")
+      )
+    ).toBe(true);
+    expect(
+      report.whatWouldChangeThisConclusion.items.some((item) =>
+        item.text.includes("Repeated behavior across distinct episodes")
+      )
+    ).toBe(true);
+  });
+
   it("keeps thin movement packets honest without a zero-receipt fact card", () => {
     const packet = makePacket([], {
       modelUpdate: {
@@ -224,8 +292,15 @@ describe("what-changed reality report", () => {
       report.facts.items.some((item) => item.text.includes("0 receipts across 0 source"))
     ).toBe(false);
     expect(report.facts.items.some((item) => item.text.includes("recorded as"))).toBe(true);
-    expect(report.realityGate.items.length).toBeGreaterThan(0);
+    expect(
+      report.realityGate.items.some((item) =>
+        item.text.startsWith("REALITY GATE: PENDING EVIDENCE")
+      )
+    ).toBe(true);
     expect(report.fieldworkWatchFor.items.length).toBeGreaterThan(0);
+    expect(allClaimItems(report).every((item) => item.evidenceStatus === "UNVERIFIED")).toBe(
+      true
+    );
   });
 
   it("keeps major claims traceable back to linked receipts", () => {
@@ -250,6 +325,7 @@ describe("what-changed reality report", () => {
     const report = buildDeterministicModelMovementRealityReport(packet);
     const items = allClaimItems(report);
     const packetEvidenceIds = new Set(packet.evidence.map((item) => item.id));
+    const statuses = new Set(items.map((item) => item.evidenceStatus));
 
     expect(report.stronglySupportedClaims.items.length).toBeGreaterThan(0);
 
@@ -261,5 +337,10 @@ describe("what-changed reality report", () => {
         expect(packetEvidenceIds.has(ref.id)).toBe(true);
       }
     }
+
+    expect(statuses.has("mixed")).toBe(false);
+    expect(statuses.has("VERIFIED")).toBe(true);
+    expect(statuses.has("INFERRED")).toBe(true);
+    expect(items.every((item) => item.evidenceStatus === "VERIFIED" || item.evidenceStatus === "INFERRED")).toBe(true);
   });
 });

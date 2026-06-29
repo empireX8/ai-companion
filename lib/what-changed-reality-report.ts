@@ -405,20 +405,18 @@ function mergeMovementEvidenceLinkRows(
 }
 
 function buildEvidenceStatus(
-  refs: RealityTrackingEvidenceRef[]
+  refs: RealityTrackingEvidenceRef[],
+  classification: RealityTrackingClaimClassification
 ): RealityTrackingEvidenceStatus {
   if (refs.length === 0) {
-    return "insufficient";
+    return "UNVERIFIED";
   }
 
-  const sourceTypeCount = new Set(refs.map((ref) => ref.sourceType)).size;
-  if (refs.length >= 3 && sourceTypeCount >= 2) {
-    return "corroborated";
+  if (classification === "fact" || classification === "supported_claim") {
+    return "VERIFIED";
   }
-  if (refs.length >= 2) {
-    return "mixed";
-  }
-  return "direct";
+
+  return "INFERRED";
 }
 
 function toEvidenceRefs(
@@ -445,7 +443,7 @@ function makeClaim(args: {
   return {
     text: normalizeWhitespace(args.text),
     classification: args.classification,
-    evidenceStatus: buildEvidenceStatus(refs),
+    evidenceStatus: buildEvidenceStatus(refs, args.classification),
     evidenceRefs: refs,
   };
 }
@@ -454,6 +452,46 @@ function pushUniqueClaim(list: RealityTrackingClaim[], claim: RealityTrackingCla
   if (!list.some((item) => item.text === claim.text)) {
     list.push(claim);
   }
+}
+
+function pushRealityGateClaim(
+  list: RealityTrackingClaim[],
+  text: string,
+  evidence: ModelMovementRealityPacketEvidence[]
+) {
+  pushUniqueClaim(
+    list,
+    makeClaim({
+      text: `${REALITY_GATE_PENDING_EVIDENCE_LABEL} — ${normalizeWhitespace(text)}`,
+      classification: "reality_gate",
+      evidence,
+    })
+  );
+}
+
+function detectIdentityClaimText(value: string): boolean {
+  const normalized = normalizeWhitespace(value);
+  if (!IDENTITY_CLAIM_PREFIX_REGEX.test(normalized)) {
+    return false;
+  }
+
+  return !IDENTITY_CLAIM_TRANSIENT_REGEX.test(normalized);
+}
+
+function collectIdentityClaimText(packet: ModelMovementRealityPacket): string[] {
+  return [
+    packet.item.userFacingSummary,
+    packet.modelUpdate.userFacingSummary,
+    packet.affectedObject?.title ?? null,
+    packet.affectedObject?.summary ?? null,
+    packet.modelUpdate.before,
+    packet.modelUpdate.after,
+    ...packet.evidence.map((item) => item.analysisText),
+  ].filter((value): value is string => Boolean(value));
+}
+
+function hasIdentityClaim(packet: ModelMovementRealityPacket): boolean {
+  return collectIdentityClaimText(packet).some(detectIdentityClaimText);
 }
 
 function sourceTypeLabel(sourceType: UnderstandingLinkSourceType): string {
@@ -789,6 +827,12 @@ const VALIDATION_REGEX = /\bright\?\s*$|\bvalidation\b|\bam i actually\b/i;
 const STOP_WEED_REGEX = /\bstop(?:ped|ping)?\s+weed\b/i;
 const BUY_WEED_REGEX = /\b(?:buy|bought|buying)\s+weed\b/i;
 const USE_WEED_REGEX = /\b(?:smoke|smoked|smoking)\b(?:\s+weed)?\b/i;
+const IDENTITY_CLAIM_PREFIX_REGEX =
+  /\b(?:i\s+(?:am|'m)|i\s+notice\s+i\s+am|i\s+realize\s+i\s+am|i\s+think\s+i\s+am|i\s+feel\s+like\s+i\s+am)\b/i;
+const IDENTITY_CLAIM_TRANSIENT_REGEX =
+  /\b(?:doing|working|trying|learning|getting|feeling|being|becoming|going|starting|stopping|recovering|stabiliz\w*|coping|dealing|handling|moving|thinking|talking|apologiz\w*|reflecting|navigating|improving|progressing|tired|sleepy|hungry|thirsty|sick|ill|sad|angry|mad|upset|anxious|nervous|worried|afraid|scared|panicked|overwhelmed|stressed|confused|frustrated|excited|happy|fine|okay|busy|late|in\s+(?:a\s+)?panic|depressed|lonely)\b/i;
+const REALITY_GATE_PENDING_EVIDENCE_LABEL = "REALITY GATE: PENDING EVIDENCE";
+const IDENTITY_CLAIM_REJECTED_LABEL = "IDENTITY CLAIM REJECTED";
 
 function collectTopEvidence(packet: ModelMovementRealityPacket, limit = 3) {
   return packet.evidence.slice(0, limit);
@@ -820,6 +864,12 @@ function buildDeterministicSections(packet: ModelMovementRealityPacket) {
   const useEvidence = matchEvidence(packet, (value) => USE_WEED_REGEX.test(value));
   const hasWeedLoop =
     stopEvidence.length > 0 && buyEvidence.length > 0 && useEvidence.length > 0;
+  const identityClaimDetected = hasIdentityClaim(packet);
+  const identityClaimEvidence = matchEvidence(packet, (value) =>
+    detectIdentityClaimText(value)
+  );
+  const identityClaimEvidenceRefs =
+    identityClaimEvidence.length > 0 ? identityClaimEvidence : topEvidence;
 
   pushUniqueClaim(
     facts,
@@ -837,6 +887,17 @@ function buildDeterministicSections(packet: ModelMovementRealityPacket) {
         text: `The linked packet contains ${packet.evidence.length} receipts across ${evidenceSourceTypes.size} source type${evidenceSourceTypes.size === 1 ? "" : "s"}.`,
         classification: "fact",
         evidence: topEvidence,
+      })
+    );
+  }
+
+  if (identityClaimDetected) {
+    pushUniqueClaim(
+      facts,
+      makeClaim({
+        text: "The packet contains identity-label language, but it does not yet show repeated behavioral evidence across distinct episodes.",
+        classification: "fact",
+        evidence: identityClaimEvidenceRefs,
       })
     );
   }
@@ -887,7 +948,7 @@ function buildDeterministicSections(packet: ModelMovementRealityPacket) {
 
   const enoughSupport =
     packet.evidence.length >= 3 && evidenceSourceTypes.size >= 2;
-  if (packet.affectedObject && enoughSupport) {
+  if (packet.affectedObject && enoughSupport && !identityClaimDetected) {
     pushUniqueClaim(
       supported,
       makeClaim({
@@ -981,14 +1042,25 @@ function buildDeterministicSections(packet: ModelMovementRealityPacket) {
     );
   }
 
-  pushUniqueClaim(
-    guardrails,
-    makeClaim({
-      text: "Do not turn this packet into an identity claim.",
-      classification: "guardrail",
-      evidence: topEvidence,
-    })
-  );
+  if (identityClaimDetected) {
+    pushUniqueClaim(
+      guardrails,
+      makeClaim({
+        text: `${IDENTITY_CLAIM_REJECTED_LABEL}: missing behavioral evidence for a stable identity label; this packet does not yet show repeated behavioral evidence across distinct episodes.`,
+        classification: "guardrail",
+        evidence: identityClaimEvidenceRefs,
+      })
+    );
+  } else {
+    pushUniqueClaim(
+      guardrails,
+      makeClaim({
+        text: "Do not turn this packet into an identity claim.",
+        classification: "guardrail",
+        evidence: topEvidence,
+      })
+    );
+  }
 
   pushUniqueClaim(
     guardrails,
@@ -1081,47 +1153,43 @@ function buildDeterministicSections(packet: ModelMovementRealityPacket) {
     );
   }
 
-  if (packet.evidence.length < 3) {
-    pushUniqueClaim(
+  if (identityClaimDetected) {
+    pushRealityGateClaim(
       gate,
-      makeClaim({
-        text: "Do not treat this as stable until there are at least three linked receipts.",
-        classification: "reality_gate",
-        evidence: topEvidence,
-      })
+      "capture repeated behavior across separate episodes before naming a stable identity.",
+      identityClaimEvidenceRefs
+    );
+  }
+
+  if (packet.evidence.length < 3) {
+    pushRealityGateClaim(
+      gate,
+      "do not treat this as stable until there are at least three linked receipts.",
+      topEvidence
     );
   }
 
   if (evidenceSourceTypes.size < 2) {
-    pushUniqueClaim(
+    pushRealityGateClaim(
       gate,
-      makeClaim({
-        text: "Look for the same signal in a second source family or episode before strengthening the claim.",
-        classification: "reality_gate",
-        evidence: topEvidence,
-      })
+      "look for the same signal in a second source family or episode before strengthening the claim.",
+      topEvidence
     );
   }
 
   if (flatteryEvidence.length > 0 || validationEvidence.length > 0) {
-    pushUniqueClaim(
+    pushRealityGateClaim(
       gate,
-      makeClaim({
-        text: "Competence claims require shipped work, repeated performance, or outside outcomes, not a single validation request.",
-        classification: "reality_gate",
-        evidence: [...flatteryEvidence, ...validationEvidence],
-      })
+      "competence claims require shipped work, repeated performance, or outside outcomes, not a single validation request.",
+      [...flatteryEvidence, ...validationEvidence]
     );
   }
 
   if (diagnosisEvidence.length > 0) {
-    pushUniqueClaim(
+    pushRealityGateClaim(
       gate,
-      makeClaim({
-        text: "Causal explanations require repeated before/after context, not a single why-question.",
-        classification: "reality_gate",
-        evidence: diagnosisEvidence,
-      })
+      "causal explanations require repeated before/after context, not a single why-question.",
+      diagnosisEvidence
     );
   }
 
@@ -1132,6 +1200,17 @@ function buildDeterministicSections(packet: ModelMovementRealityPacket) {
         text: `${item.prompt} ${item.reason ? `(${item.reason})` : ""}`.trim(),
         classification: "fieldwork",
         evidence: topEvidence,
+      })
+    );
+  }
+
+  if (fieldwork.length === 0 && identityClaimDetected) {
+    pushUniqueClaim(
+      fieldwork,
+      makeClaim({
+        text: "Capture the next repeatable behavior, cue, and aftermath because the packet is missing behavioral evidence for a stable identity.",
+        classification: "fieldwork",
+        evidence: identityClaimEvidenceRefs,
       })
     );
   }
@@ -1196,6 +1275,15 @@ function buildDeterministicSections(packet: ModelMovementRealityPacket) {
         evidence: [...flatteryEvidence, ...validationEvidence],
       })
     );
+  } else if (identityClaimDetected) {
+    pushUniqueClaim(
+      reentry,
+      makeClaim({
+        text: "Read the repeated behavior receipts first; the packet is still missing behavioral evidence for an identity conclusion.",
+        classification: "reentry",
+        evidence: identityClaimEvidenceRefs,
+      })
+    );
   } else {
     pushUniqueClaim(
       reentry,
@@ -1236,6 +1324,17 @@ function buildDeterministicSections(packet: ModelMovementRealityPacket) {
         text: "Repeated before/after context showing the same cue-to-state chain would strengthen a causal explanation.",
         classification: "change_condition",
         evidence: diagnosisEvidence,
+      })
+    );
+  }
+
+  if (identityClaimDetected) {
+    pushUniqueClaim(
+      changes,
+      makeClaim({
+        text: "Repeated behavior across distinct episodes, rather than a single self-label, would change this conclusion.",
+        classification: "change_condition",
+        evidence: identityClaimEvidenceRefs,
       })
     );
   }
@@ -1309,7 +1408,7 @@ export function buildDeterministicModelMovementRealityReport(
     },
     realityGate: {
       items: sections.gate,
-      emptyState: "No stronger reality gate is available beyond keeping this inspectable and corrigible.",
+      emptyState: REALITY_GATE_PENDING_EVIDENCE_LABEL,
     },
     fieldworkWatchFor: {
       items: sections.fieldwork,
