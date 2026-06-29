@@ -5,7 +5,7 @@
 - Added a narrow legacy-public route block in [`middleware.ts`](/Users/user/ai-companion/middleware.ts).
 - Preserved internal/dev routes so they are no longer caught by the exorcism boundary.
 - Left old component files intact for hidden imports.
-- Added a Playwright smoke harness at [`scripts/v0-route-smoke.spec.ts`](/Users/user/ai-companion/scripts/v0-route-smoke.spec.ts).
+- Added a Playwright smoke harness at [`scripts/v0-route-smoke.playwright.ts`](/Users/user/ai-companion/scripts/v0-route-smoke.playwright.ts).
 - Added Playwright config at [`playwright.config.ts`](/Users/user/ai-companion/playwright.config.ts).
 - Added `@playwright/test` to [`package.json`](/Users/user/ai-companion/package.json) and the lockfile so the smoke test can run locally.
 
@@ -92,7 +92,7 @@ Retained v0 support routes:
 
 - `git diff --check` - PASS
 - `npx tsc --noEmit` - PASS
-- `npx playwright test scripts/v0-route-smoke.spec.ts` - PASS
+- `npx playwright test scripts/v0-route-smoke.playwright.ts` - PASS
 - `npm run build` - PASS
 
 ## Smoke expectations
@@ -103,4 +103,4 @@ Retained v0 support routes:
 
 ## Command to inspect
 
-- `npx playwright test scripts/v0-route-smoke.spec.ts`
+- `npx playwright test scripts/v0-route-smoke.playwright.ts`

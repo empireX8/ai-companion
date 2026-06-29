@@ -1,0 +1,44 @@
+# Button Output Matrix
+
+- [Shell] RouteSidebar primary nav -> `/`, `/your-map`, `/actions`, `/timeline`, `/explore`: WIRED | Evidence: `components/orvek-v0/production/RouteSidebar.tsx` | Suggested repair slice: `none`
+- [Shell] RouteTopBar capture/search/model-movement/timeline actions -> `/journal-chat`, command palette, `/your-map`, `/timeline`: WIRED | Evidence: `components/orvek-v0/production/RouteTopBar.tsx` | Suggested repair slice: `none`
+- [Shell] RouteTopBar import button -> `/import`: BROKEN_ROUTE | Evidence: `components/orvek-v0/production/RouteTopBar.tsx` + `middleware.ts` | Suggested repair slice: `shell-legacy-route-cleanup`
+- [Shell] Command palette primary routes -> `/`, `/your-map`, `/actions`, `/timeline`, `/explore`: WIRED | Evidence: `components/command/CommandPalette.tsx` + `lib/v1-nav.ts` | Suggested repair slice: `none`
+- [Shell] Command palette layer routes -> `/what-changed`, `/watch-for`: WIRED | Evidence: `components/command/CommandPalette.tsx` + `lib/v1-nav.ts` | Suggested repair slice: `none`
+- [Shell] Command palette utility routes -> `/import`, `/context`, `/memories`: BROKEN_ROUTE | Evidence: `components/command/CommandPalette.tsx` + `middleware.ts` | Suggested repair slice: `shell-legacy-route-cleanup`
+- [Shell] Command palette legacy routes -> `/chat`, `/patterns`, `/history`, `/contradictions`, `/check-ins`, `/active-questions`, `/library`, `/settings`, `/account`: BROKEN_ROUTE | Evidence: `components/command/CommandPalette.tsx` + `middleware.ts` | Suggested repair slice: `shell-legacy-route-cleanup`
+- [Journal Chat] Session controls -> create session, select session, send message, voice input, stop stream, drawer toggle: WIRED | Evidence: `app/(root)/(routes)/chat/_components/SurfaceChatShell.tsx` | Suggested repair slice: `none`
+- [Journal Chat] Open patterns link -> `/patterns`: BROKEN_ROUTE | Evidence: `app/(root)/(routes)/journal-chat/page.tsx` + `middleware.ts` | Suggested repair slice: `journal-chat-legacy-link-cleanup`
+- [Today] Hero open / see-why-moved actions -> Inspector evidence/movement: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` + `lib/orvek-adapters/today.ts` | Suggested repair slice: `none`
+- [Today] Primary re-entry action -> `/actions`: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` + `lib/orvek-adapters/today.ts` | Suggested repair slice: `none`
+- [Today] Primary re-entry actions -> `/what-changed`, `/journal-chat`, `/watch-for`: DISABLED_HONESTLY | Evidence: `components/orvek-v0/pages/today.tsx` + `lib/orvek-adapters/today.ts` + `lib/orvek-v0/today-workbench-routes.ts` | Suggested repair slice: `today-reentry-allowlist-reconcile`
+- [Today] Now rows -> route push or inspector selection depending on row data: PARTIALLY_WIRED | Evidence: `components/orvek-v0/pages/today.tsx` | Suggested repair slice: `today-now-row-routing`
+- [Today] Report primary movement card -> Inspector movement tab: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` | Suggested repair slice: `none`
+- [Today] Full report CTA -> deferred text when report view is not integrated: DEAD_END | Evidence: `components/orvek-v0/pages/today.tsx` + `lib/orvek-adapters/today.ts` | Suggested repair slice: `today-report-link-reentry`
+- [Today] Movement rows "See why" -> Inspector movement tab: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` | Suggested repair slice: `none`
+- [Today] Resurfaced receipts -> Inspector evidence tab: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` | Suggested repair slice: `none`
+- [What Changed] Primary movement card / earlier movement cards / evidence links / re-entry links -> Inspector movement, source detail, and v0 re-entry: WIRED | Evidence: `components/orvek-v0/pages/what-changed.tsx` + `components/orvek-workbench/OrvekWhatChangedPage.tsx` | Suggested repair slice: `none`
+- [Explore] Tabs, grounded-in chips, movement note -> local tab state + Inspector movement tab + inspector selection: WIRED | Evidence: `components/orvek-v0/pages/explore.tsx` | Suggested repair slice: `none`
+- [Explore] Ask button + quick prompt chips -> Inspector movement tab instead of chat send: WRONG_TARGET | Evidence: `components/orvek-v0/pages/explore.tsx` + `components/orvek-workbench/OrvekExplorePage.tsx` | Suggested repair slice: `explore-composer-wireup`
+- [Explore] Questions list / See evidence -> Question selection + Inspector evidence tab: WIRED | Evidence: `components/orvek-v0/pages/explore.tsx` | Suggested repair slice: `none`
+- [Explore] Questions deferred actions -> `Explore this` / `Propose fieldwork` / `Mark resolved`: DISABLED_HONESTLY | Evidence: `components/orvek-v0/pages/explore.tsx` | Suggested repair slice: `explore-honest-cta-copy`
+- [Explore] Investigations list / linked chips -> selection and context drill-in: WIRED | Evidence: `components/orvek-v0/pages/explore.tsx` | Suggested repair slice: `none`
+- [Explore] Fieldwork bridge actions -> `Open fieldwork` / `Linked question`: DISABLED_HONESTLY | Evidence: `components/orvek-v0/pages/explore.tsx` | Suggested repair slice: `explore-fieldwork-cta-copy`
+- [Map] Conclusion rail / related object buttons / full inspector button / correction chips -> Map detail + Inspector evidence + correction action: WIRED | Evidence: `components/orvek-v0/pages/map.tsx` | Suggested repair slice: `none`
+- [Map] Movement preview View all -> `/what-changed`: WIRED | Evidence: `components/your-map/YourMapPreviewBands.tsx` + `lib/your-map-preview-surface.ts` | Suggested repair slice: `none`
+- [Map] Open questions preview View all -> `/active-questions`: BROKEN_ROUTE | Evidence: `components/your-map/YourMapPreviewBands.tsx` + `lib/your-map-preview-surface.ts` + `middleware.ts` | Suggested repair slice: `map-open-questions-link-cleanup`
+- [Your Map] Detail permalink and evidence source links -> `/your-map/[id]` and source details: WIRED | Evidence: `components/your-map/YourMapDetailPane.tsx` | Suggested repair slice: `none`
+- [Your Map] Mind-context pattern row -> Inspector evidence tab: WIRED | Evidence: `components/your-map/YourMapMindContextPanel.tsx` | Suggested repair slice: `none`
+- [Your Map] Mind-context memory link / Open Context / Manage Memories -> `/references/[id]`, `/context`, `/memories`: BROKEN_ROUTE | Evidence: `components/your-map/YourMapMindContextPanel.tsx` + `lib/mind-context-surface.ts` + `middleware.ts` | Suggested repair slice: `your-map-legacy-link-cleanup`
+- [Your Map] Footer Active Questions link -> `/active-questions`: BROKEN_ROUTE | Evidence: `components/your-map/YourMapWorkbench.tsx` + `middleware.ts` | Suggested repair slice: `your-map-footer-legacy-cleanup`
+- [Your Map] Footer Watch For link -> `/watch-for`: WIRED | Evidence: `components/your-map/YourMapWorkbench.tsx` | Suggested repair slice: `none`
+- [Timeline] Filters / search / event rows -> local filtering + inspector selection / movement tab: WIRED | Evidence: `components/orvek-v0/pages/timeline.tsx` | Suggested repair slice: `none`
+- [Decisions] Talk through / Compare / Review due -> `/explore` or deferred branch navigation: DISABLED_HONESTLY | Evidence: `components/orvek-v0/pages/decisions.tsx` | Suggested repair slice: `decisions-entry-cta-copy`
+- [Decisions] Add outcome -> looks active but returns early in production: DISABLED_MISLEADING | Evidence: `components/orvek-v0/pages/decisions.tsx` | Suggested repair slice: `decisions-outcome-honesty`
+- [Decisions] Rail / context / receipt links -> selection and inspector drill-in: WIRED | Evidence: `components/orvek-v0/pages/decisions.tsx` | Suggested repair slice: `none`
+- [Watch For] Item cards / continuity / back / inspector / evidence links -> detail, inspector, and source drill-in: WIRED | Evidence: `components/watch-for/WatchForItemCard.tsx`, `components/watch-for/WatchForInspectorAction.tsx`, `app/(root)/(routes)/watch-for/[id]/page.tsx` | Suggested repair slice: `none`
+- [Watch For] Footer Active Questions link -> `/active-questions`: BROKEN_ROUTE | Evidence: `app/(root)/(routes)/watch-for/page.tsx` + `middleware.ts` | Suggested repair slice: `watch-for-footer-legacy-cleanup`
+- [Watch For] Footer `/your-map` and `/` links -> wired v0 re-entry: WIRED | Evidence: `app/(root)/(routes)/watch-for/page.tsx` | Suggested repair slice: `none`
+- [Inspector] model_update Evidence / Context boundary -> affected object, context, receipts, supporting evidence: WIRED | Evidence: `components/inspector/panels/SelectedObjectEvidencePanel.tsx` + `lib/__tests__/inspector-surface-wiring.test.ts` | Suggested repair slice: `none`
+- [Inspector] model_update Mind Model Movement boundary -> facts, claims, uncertainty, guardrails, reality gate, fieldwork, re-entry, what would change: WIRED | Evidence: `components/inspector/panels/ModelMovementInspectorPanel.tsx` + `lib/__tests__/inspector-surface-wiring.test.ts` | Suggested repair slice: `none`
+
