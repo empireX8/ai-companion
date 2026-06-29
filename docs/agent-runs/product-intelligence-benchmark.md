@@ -57,6 +57,8 @@ Every product slice is scored against:
 
 Fill `07-product-intelligence-scorecard.md` **before** claiming product progress. Link golden object ids from `golden-objects.md`.
 
+**Chapters (LOOP-003):** A full score step (e.g. 2 → 3) is a **chapter** in `chapter-queue.md`, composed of ≤ 4 slices. Score the golden object at chapter closeout, not only per-slice optimism.
+
 ---
 
 ## Regression rule (hard)
@@ -100,7 +102,9 @@ Record in `00-intake-receipt.md` and `07-product-intelligence-scorecard.md`.
 
 ## Related files
 
+- `chapter-queue.md` — chapter = one score level on one golden object
 - `golden-objects.md` — fixed test cases
 - `templates/07-product-intelligence-scorecard.md` — per-slice scorecard
 - `prompts/orvek-visual-acceptance.md` — Kay checklist (feeds scorecard)
+- `prompts/cursor-automation-orvek-chapter-slice.md` — Cursor Automation prompt
 - `scripts/check-agent-closeout.ts` — closeout heading enforcement

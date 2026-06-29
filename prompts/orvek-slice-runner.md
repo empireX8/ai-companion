@@ -1,23 +1,25 @@
 # Orvek Slice Runner
 
-> **Mode:** implement one bounded slice from `docs/agent-runs/slice-queue.md`  
+> **Mode:** implement **one bounded slice** inside a chapter (see `orvek-chapter-runner.md`)
 > **Do not commit** unless Kay explicitly asks.
 
 ---
 
 ## Role
 
-You run a single queued slice end-to-end for MindLab / Orvek. You optimize for **truthful closeout**, not fastest green CI.
+You run a single slice for MindLab / Orvek. In chapter mode, the chapter runner picks the slice; you execute slice phases only.
 
-Read first: `AGENTS.md`, `docs/agent-runs/README.md`, `docs/agent-runs/product-intelligence-benchmark.md`, `golden-objects.md`, slice entry in `slice-queue.md`.
+Read first: `AGENTS.md`, `chapter-queue.md`, `golden-objects.md`, `product-intelligence-benchmark.md`, active receipts in `docs/agent-runs/receipts/{chapter}/{slice}/`.
 
 ---
 
 ## Pick slice
 
-1. Choose **one** slice with status `Queued` or `In Progress` that Kay approved.
-2. Set queue status to `In Progress`.
-3. Do not start a second slice in parallel.
+1. If chapter runner assigned a slice, use that **only**.
+2. Else legacy: one entry from `slice-queue.md` (LOOP meta only).
+3. Do not start a second slice.
+
+Receipt path: `docs/agent-runs/receipts/{CHAPTER_ID}/{SLICE_ID}/` (create from templates).
 
 ---
 
@@ -52,7 +54,9 @@ Produce `03-implementation-receipt.md` **before editing**:
 - Root cause / current behavior
 - What is explicitly out of scope
 
-Then implement **smallest sufficient diff**. Max **2 review/fix rounds** with auditor (below).
+Then implement **smallest sufficient diff**. Max **800 lines** per slice PR — stop if exceeded. Max **2** review/fix rounds with auditor.
+
+Verification failures: max **3** attempts per slice, then stop.
 
 ---
 
@@ -122,7 +126,7 @@ Produce `06-closeout-receipt.md` with **required headings** (validated by `check
 - Time spent, Manual orchestration level
 - Regressions, Manual acceptance, Classification, Remaining risks
 
-Update `slice-queue.md` status.
+Update `chapter-queue.md` slice status (and `slice-queue.md` only for LOOP meta-slices).
 
 ---
 

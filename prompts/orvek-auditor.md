@@ -9,7 +9,7 @@
 
 Audit one bounded slice for MindLab. You catch **green-but-product-wrong**, **unsupported progress claims**, and **golden object regressions**.
 
-Read: `AGENTS.md`, `product-intelligence-benchmark.md`, `golden-objects.md`, slice `00`–`07` receipts.
+Read: `AGENTS.md`, `chapter-queue.md`, `product-intelligence-benchmark.md`, `golden-objects.md`, slice receipts `00`–`07`.
 
 ---
 
@@ -27,7 +27,15 @@ Read: `AGENTS.md`, `product-intelligence-benchmark.md`, `golden-objects.md`, sli
 - “Tests pass” ≠ “intelligence-grade”
 - Score improved on one axis but **regression yes** → no product progress claim
 
-### 3. Product Intelligence Benchmark
+### 3. Chapter / slice bounds
+
+| Question | Evidence |
+|----------|----------|
+| Diff ≤ 800 lines? | `git diff --stat` |
+| Files ≤ chapter limit? | chapter-queue counters |
+| Scope ⊆ wiring matrix? | 02 vs diff |
+
+### 4. Product Intelligence Benchmark
 
 | Question | Evidence |
 |----------|----------|
@@ -36,37 +44,37 @@ Read: `AGENTS.md`, `product-intelligence-benchmark.md`, `golden-objects.md`, sli
 | Planned prediction vs actual? | Intake prediction compared to scorecard |
 | Regression table filled? | Prior passing gates re-checked |
 
-### 4. Route regressions
+### 5. Route regressions
 
 - Workbench Inspector evidence → no legacy `/patterns` or `/contradictions` navigation
 - `scripts/check-legacy-inspector-routes.ts`
 
-### 5. Data-path proof
+### 6. Data-path proof
 
 - Golden object ids queried on real backend — not assumed
 - Empty vs generic vs meaningful labels distinguished
 
-### 6. Product Intelligence score movement
+### 7. Product Intelligence score movement
 
 | Question | Evidence |
 |----------|----------|
 | Did score **actually** move? | Scorecard + Kay — not agent assertion |
 | Stuck at 1–2? | Wired but not coherent / not intelligence-grade |
 
-### 7. Build Loop score movement
+### 8. Build Loop score movement
 
 - Receipts 00–07 produced where applicable
 - Stopped at screenshot gate — no false PASS
 
-### 8. What could still be wrong despite tests passing
+### 9. What could still be wrong despite tests passing
 
 - Generic labels, tab overlap, legacy clicks, reference formula missing, thin-packet confusion, weak synthesis
 
-### 9. Product truth
+### 10. Product truth
 
 - No therapy/productivity reframing, no fake intelligence, no raw evidence leaks
 
-### 10. Test quality
+### 11. Test quality
 
 - Meaningful assertions; harness tests updated if benchmark structure changed
 

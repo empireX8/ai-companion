@@ -1,7 +1,9 @@
 # Orvek Visual Acceptance
 
 > **Mode:** human-led product gate (Kay); agent prepares scorecard inputs
-> **Input:** running app + golden object from `golden-objects.md` + `07-product-intelligence-scorecard.md`
+> **Input:** golden object + `07-product-intelligence-scorecard.md` + chapter slice receipts
+
+After slice PR: Kay runs screenshots before merge. Automation **never** claims PASS.
 
 ---
 

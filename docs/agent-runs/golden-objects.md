@@ -18,7 +18,8 @@
 | **Reference surface** | Local v0 direct map conclusion inspector (`UserMapEvidencePanel` section formula) |
 | **Intelligence target** | Reality-Tracking / Z.ai-style epistemic report on Movement tab |
 | **Baseline Product Intelligence Score** | 2 (Inspectable — after data-path fix; presentation/route issues observed) |
-| **Target score (INSPECTOR-001)** | 3 (Coherent) |
+| **Chapter** | `CHAPTER-INSPECTOR-001` (target 2 → 3) |
+| **Target score** | 3 (Coherent) |
 
 ### Known prior issues (history)
 

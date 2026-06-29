@@ -1,80 +1,94 @@
 # Orvek AI Build Loop — Agent Runs
 
-> **v0.1 harness** + **Product Intelligence Benchmark (LOOP-002)**
+> **Harness v0.1** · **Product Intelligence Benchmark (LOOP-002)** · **Chapter queue (LOOP-003)**
 
 ---
 
 ## Purpose
 
-MindLab slices fail in two different ways:
+MindLab product work runs as **chapters** — one golden object, one score level, bounded slices — not random one-off fixes.
 
-1. **Product wrong** — tests pass, screenshots fail (generic labels, legacy routes, confusing tabs).
-2. **Loop wrong** — Kay re-explains intake, spec, wiring, verification, and acceptance every time.
-
-This folder holds:
-
-- **Loop structure** — queue, receipts, prompts, mechanical checks
-- **Product Intelligence Benchmark** — golden objects + scorecards so progress is measured on fixed anchors, not agent optimism
+| Failure | Harness response |
+|---------|------------------|
+| Product wrong (tests green, UI bad) | Golden object + scorecard |
+| Loop wrong (Kay re-orchestrates everything) | Receipts + chapter automation |
+| Fake progress | Regression rule + Kay acceptance |
 
 ---
 
-## Two scores (do not conflate)
+## Two scores
 
 ### Product Intelligence Score (0–5)
 
-> Same rubric as **Product Surface Score**. Use when scoring golden objects.
-
 | Score | Meaning |
 |-------|---------|
-| **0** | Broken — crashes, missing data, bad routes |
-| **1** | Technically wired — data/tests pass, human value poor |
-| **2** | Inspectable — evidence links, routes, object details work |
-| **3** | Coherent — tabs have clear roles; no duplicate/confusing sections |
-| **4** | Reference-aligned — matches local v0 visual formula |
-| **5** | Intelligence-grade — sharp, evidence-backed, human-readable (Z.ai / Reality-Tracking bar) |
+| **0** | Broken |
+| **1** | Technically wired |
+| **2** | Inspectable |
+| **3** | Coherent |
+| **4** | Reference-aligned |
+| **5** | Intelligence-grade (Z.ai / Reality-Tracking bar) |
 
-Full benchmark: `product-intelligence-benchmark.md` · Fixed anchors: `golden-objects.md`
+`product-intelligence-benchmark.md` · `golden-objects.md`
 
 ### Build Loop Score (0–5)
 
 | Score | Meaning |
 |-------|---------|
-| **0** | Kay manually orchestrates every step |
-| **1** | Receipt templates exist; Kay still drives every phase transition |
-| **2** | Agent produces intake/spec/wiring automatically; **stops at screenshot gate** |
-| **3** | Agent review/fix loop (1–2 rounds) before human stop |
-| **4** | Agent runs queued slice end-to-end; stops only for screenshots + commit |
-| **5** | Agent batches multiple queued slices; Kay does batch screenshot review |
+| **0** | Kay orchestrates everything |
+| **1** | Templates exist |
+| **2** | Agent produces receipts; stops at screenshot gate |
+| **3** | 1–2 audit/fix rounds before human |
+| **4** | Queued slice end-to-end; stops for screenshots + commit |
+| **5** | Batch screenshot review |
 
 ---
 
-## Hard rules
+## Chapter model (LOOP-003)
 
-- **No PASS without product acceptance** — scorecard + Kay sign-off (or explicit `BLOCKED`).
-- **Tests are necessary, not sufficient** — green CI ≠ intelligence-grade.
-- **No product progress if golden object regressed** — see regression rule in benchmark doc.
-- **Every slice leaves receipts** — templates in `templates/`; runs optional under `docs/agent-runs/runs/`.
-- **Bounded scope** — one slice from `slice-queue.md` at a time.
+> **A chapter** = one golden object moved **one** Product Intelligence Score level.
+
+Example: `CHAPTER-INSPECTOR-001` moves `GOLDEN-INSPECTOR-001` from **2 → 3**.
+
+**Primary queue:** `chapter-queue.md`
+**Cursor Automation:** `prompts/cursor-automation-orvek-chapter-slice.md` (manual trigger, pre-PR only)
 
 ---
 
-## Workflow
+## Responsibility split
+
+| Actor | Owns |
+|-------|------|
+| **Cursor Automation** | Intake, spec, wiring, bounded implementation, verification, local audit, push branch, open PR |
+| **Graptile / Grep Loop** | PR review, review/fix/review cycle, edge/security review |
+| **Kay** | Queue order, spec/wiring approval, screenshot acceptance, product score, merge, chapter closeout |
+| **ChatGPT / Z.ai** | Adversarial benchmark review, automation design critique, target spec critique |
+
+---
+
+## Automation levels
+
+| Level | Scope | When |
+|-------|-------|------|
+| **1** | One chapter-slice pre-PR | **Target now** |
+| **2** | Full chapter across bounded slices | After Level 1 completes 3 real slices |
+| **3** | External review-loop integration | After Level 2 completes one full chapter |
+
+---
+
+## Workflow (one slice)
 
 ```
-Pick slice from slice-queue.md
-  → 00 intake (+ planned score prediction)
-  → 01 target UI/spec
-  → 02 wiring matrix
-  → 03 implementation receipt
-  → 04 verification receipt
-  → audit (orvek-auditor.md)
-  → 07 product intelligence scorecard  ← benchmark (golden object)
-  → 05 product acceptance (Kay)
-  → 06 closeout receipt
-  → update slice-queue status
+chapter-queue.md → pick chapter + slice
+  → receipts/00–02 (stop for Kay spec approval)
+  → implement → 03–04
+  → audit + 07 scorecard
+  → push + PR (stop — no merge)
+  → Kay screenshots + 05 acceptance
+  → 06 closeout → update chapter-queue
 ```
 
-**Prompts:** `prompts/orvek-slice-runner.md`, `prompts/orvek-auditor.md`, `prompts/orvek-visual-acceptance.md`
+**Prompts:** `orvek-chapter-runner.md`, `orvek-slice-runner.md`, `orvek-auditor.md`, `orvek-visual-acceptance.md`
 
 **Mechanical checks:**
 
@@ -85,10 +99,19 @@ npx ts-node --transpile-only --compiler-options '{"module":"CommonJS","moduleRes
 
 ---
 
+## Hard rules
+
+- No PASS without Kay product acceptance + scorecard
+- Tests necessary, not sufficient
+- No product progress if golden object regressed
+- Max 800 lines / slice PR; max 4 slices / chapter; max 3 verify failures / slice
+- **Never merge from automation**
+
+---
+
 ## Related docs
 
-- `product-intelligence-benchmark.md` — pillars, regression rule, anti-fake-progress
-- `golden-objects.md` — GOLDEN-INSPECTOR-001 and future anchors
-- `slice-queue.md` — active queue
-- `AGENTS.md` — hard rules
-- `docs/agent-workflow.md` — implement → audit → verify → closeout
+- `chapter-queue.md` — **primary product queue**
+- `slice-queue.md` — legacy / LOOP meta-slices only
+- `golden-objects.md` · `product-intelligence-benchmark.md`
+- `AGENTS.md` · `docs/agent-workflow.md`
