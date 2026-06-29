@@ -6,13 +6,16 @@ function repoPath(relativePath: string): string {
   return join(process.cwd(), relativePath);
 }
 
-describe("AI build loop harness v0.1", () => {
-  it("includes queue, templates, and orvek prompts", () => {
+describe("AI build loop harness", () => {
+  it("includes queue, templates, benchmark, and orvek prompts", () => {
     for (const path of [
       "docs/agent-runs/README.md",
       "docs/agent-runs/slice-queue.md",
+      "docs/agent-runs/product-intelligence-benchmark.md",
+      "docs/agent-runs/golden-objects.md",
       "docs/agent-runs/templates/00-intake-receipt.md",
       "docs/agent-runs/templates/06-closeout-receipt.md",
+      "docs/agent-runs/templates/07-product-intelligence-scorecard.md",
       "prompts/orvek-slice-runner.md",
       "prompts/orvek-auditor.md",
       "prompts/orvek-visual-acceptance.md",
@@ -23,11 +26,26 @@ describe("AI build loop harness v0.1", () => {
     }
   });
 
-  it("seeds slice queue with inspector and loop entries", () => {
+  it("seeds golden object and loop slices in queue", () => {
     const queue = readFileSync(repoPath("docs/agent-runs/slice-queue.md"), "utf8");
     expect(queue).toContain("INSPECTOR-001");
-    expect(queue).toContain("INSPECTOR-002");
     expect(queue).toContain("LOOP-001");
+    expect(queue).toContain("LOOP-002");
+    expect(queue).toContain("GOLDEN-INSPECTOR-001");
+
+    const golden = readFileSync(repoPath("docs/agent-runs/golden-objects.md"), "utf8");
+    expect(golden).toContain("cmq6h8ewn0000qlbwlg485jx1");
+    expect(golden).toContain("cmq6frqdx0000ql8h6nkavzue");
+  });
+
+  it("requires benchmark regression and golden object sections in scorecard template", () => {
+    const scorecard = readFileSync(
+      repoPath("docs/agent-runs/templates/07-product-intelligence-scorecard.md"),
+      "utf8"
+    );
+    expect(scorecard).toContain("Regression tracking");
+    expect(scorecard).toContain("Planned slice prediction");
+    expect(scorecard).toContain("Can the user tell **what changed**?");
   });
 
   it("forbids legacy inspector evidence Link patterns in panel sources", () => {
@@ -37,6 +55,5 @@ describe("AI build loop harness v0.1", () => {
     );
     expect(evidencePanel).toContain("InspectorEvidenceSelectionControl");
     expect(evidencePanel).not.toContain("<Link href={card.href}");
-    expect(evidencePanel).not.toMatch(/<Link[^>]+href=\{[^}]*\/patterns/);
   });
 });

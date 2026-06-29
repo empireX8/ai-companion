@@ -2,13 +2,13 @@
 
 **Date:** {YYYY-MM-DD}  
 **Branch:** {branch}  
-**Commits:** {none | sha list — do not commit unless Kay asks}
+**Commits:** {none | sha — do not commit unless Kay asks}
 
 ---
 
 ## Summary
 
-{2–3 sentences — truthful outcome, not aspirational.}
+{2–3 sentences — truthful outcome.}
 
 ---
 
@@ -26,7 +26,7 @@
 
 ---
 
-## Product Surface Score
+## Product Intelligence Score
 
 | Before | After |
 |--------|-------|
@@ -42,6 +42,50 @@
 
 ---
 
+## Golden object tested
+
+| Field | Value |
+|-------|-------|
+| Golden ID | {GOLDEN-INSPECTOR-001 or N/A} |
+| Scorecard (07) | {complete | missing} |
+
+---
+
+## Screenshot proof status
+
+| Item | Status |
+|------|--------|
+| Scorecard screenshots | {captured / blocked / N/A} |
+| Product acceptance (05) | {complete | blocked} |
+
+---
+
+## Regression status
+
+| Any golden gate regressed? | {yes | no} |
+| Details | {gate ids or none} |
+
+> If regression **yes** — product progress was **not** claimed.
+
+---
+
+## Time spent
+
+| Metric | Value |
+|--------|-------|
+| Slice wall time | {hours} |
+| Kay manual minutes | {n} |
+
+---
+
+## Manual orchestration level
+
+| Level (0–5) | {n} |
+|-------------|-----|
+| Notes | {what Kay still had to drive manually} |
+
+---
+
 ## Regressions
 
 - {none | list}
@@ -52,7 +96,8 @@
 
 | Gate | Status |
 |------|--------|
-| Product acceptance receipt (05) | {complete | blocked | skipped — reason} |
+| Product intelligence scorecard (07) | {complete | blocked} |
+| Product acceptance (05) | {complete | blocked} |
 
 ---
 

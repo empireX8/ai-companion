@@ -9,7 +9,7 @@
 
 You run a single queued slice end-to-end for MindLab / Orvek. You optimize for **truthful closeout**, not fastest green CI.
 
-Read first: `AGENTS.md`, `docs/agent-runs/README.md`, the slice entry in `slice-queue.md`.
+Read first: `AGENTS.md`, `docs/agent-runs/README.md`, `docs/agent-runs/product-intelligence-benchmark.md`, `golden-objects.md`, slice entry in `slice-queue.md`.
 
 ---
 
@@ -26,8 +26,9 @@ Read first: `AGENTS.md`, `docs/agent-runs/README.md`, the slice entry in `slice-
 Produce `00-intake-receipt.md` from template:
 
 - Allowed / forbidden scope (exact files)
-- Acceptance anchor (record id, route)
-- Product Surface + Build Loop scores **before**
+- Acceptance anchor + **golden object id** (from `golden-objects.md`)
+- Product Intelligence + Build Loop scores **before**
+- **Planned slice prediction** (expected score movement, failure criteria)
 - Stop if scope is ambiguous — ask Kay for bounds
 
 ---
@@ -86,14 +87,25 @@ Run `prompts/orvek-auditor.md` against `git diff`.
 
 ---
 
+## Phase 5b — Product intelligence scorecard (before Kay acceptance)
+
+Produce `07-product-intelligence-scorecard.md` for each **golden object** touched:
+
+- Answer intelligence questions (what changed, why Orvek believes it, receipts, epistemic separation)
+- Record regression table vs previously passing gates
+- Screenshot proof status (captured / blocked)
+- **If any regression: yes** — do not claim product progress
+
+---
+
 ## Phase 6 — Stop for human (mandatory)
 
 **Do not claim PASS.**
 
-Hand off `05-product-acceptance.md` template to Kay with:
+Hand off `05-product-acceptance.md` + `07-product-intelligence-scorecard.md` to Kay with:
 
 - Screenshot / click checklist (IDs)
-- What to compare against reference
+- Golden object comparison vs reference + Reality-Tracking bar
 - Known “green but product-wrong” risks
 
 Agent may assist screenshot capture but **Kay classifies** product acceptance.
@@ -104,14 +116,11 @@ Agent may assist screenshot capture but **Kay classifies** product acceptance.
 
 Produce `06-closeout-receipt.md` with **required headings** (validated by `check-agent-closeout.ts`):
 
-- Files changed
-- Verification results
-- Product Surface Score
-- Build Loop Score
-- Regressions
-- Manual acceptance
-- Classification
-- Remaining risks
+- Files changed, Verification results
+- Product Intelligence Score, Build Loop Score
+- Golden object tested, Screenshot proof status, Regression status
+- Time spent, Manual orchestration level
+- Regressions, Manual acceptance, Classification, Remaining risks
 
 Update `slice-queue.md` status.
 
@@ -133,8 +142,10 @@ Update `slice-queue.md` status.
 SLICE: {ID}
 PHASE: {intake|spec|implement|verify|audit|acceptance|closeout}
 STATUS: {in progress|blocked|partial|done}
-PRODUCT SURFACE: {before} → {after or unverified}
+PRODUCT INTELLIGENCE: {before} → {after or unverified}
 BUILD LOOP: {before} → {after}
+GOLDEN OBJECT: {id}
+REGRESSION: {yes|no}
 BLOCKED ON: {Kay screenshots | scope | verification}
 NEXT: {exact action}
 ```

@@ -12,14 +12,15 @@
 |-------|-------|
 | **Slice ID** | INSPECTOR-001 |
 | **Title** | Inspector Evidence/Context acceptance closeout |
-| **Objective** | Confirm Slice A (presentation) + Slice B (route contract) are product-acceptable on acceptance record `cmq6h8ewn0000qlbwlg485jx1` |
-| **Product Surface Target** | 3 (Coherent) |
-| **Build Loop Target** | 2 (Agent stops at screenshot gate with full receipts) |
-| **Acceptance object/route** | Workbench Inspector → model_update `cmq6h8ewn0000qlbwlg485jx1` → Evidence/Context + Mind Model Movement tabs |
-| **Reference surface** | Direct map conclusion inspector (`UserMapEvidencePanel` formula) + Reality-Tracking Movement report |
-| **Out of scope** | Schema, new pages, Explore/Timeline, provider wrap, full reference_item hydration |
-| **Required checks** | `verify-mindlab.sh`, `check-legacy-inspector-routes.ts`, Kay screenshots S1–S4 + B1–B5 |
-| **Status** | Blocked — awaiting Kay product acceptance on branch `inspector-evidence-contract` |
+| **Objective** | Confirm Slice A (presentation) + Slice B (route contract) are product-acceptable on golden object **GOLDEN-INSPECTOR-001** |
+| **Product Intelligence Target** | 3 (Coherent) |
+| **Build Loop Target** | 2 |
+| **Golden object** | GOLDEN-INSPECTOR-001 |
+| **Acceptance object/route** | `cmq6h8ewn0000qlbwlg485jx1` → Evidence/Context + Mind Model Movement |
+| **Reference surface** | `UserMapEvidencePanel` formula + Reality-Tracking Movement report |
+| **Out of scope** | Schema, new pages, Explore/Timeline, provider wrap |
+| **Required checks** | `verify-mindlab.sh`, `check-legacy-inspector-routes.ts`, `07-product-intelligence-scorecard.md`, Kay B1–B5 |
+| **Status** | Blocked — awaiting Kay scorecard + acceptance on `inspector-evidence-contract` |
 
 ---
 
@@ -29,13 +30,13 @@
 |-------|-------|
 | **Slice ID** | INSPECTOR-002 |
 | **Title** | Inspector back button / object history |
-| **Objective** | After opening linked evidence in Inspector, user can return to prior selection without losing workbench context |
-| **Product Surface Target** | 3 (Coherent) |
+| **Objective** | After drill-down from GOLDEN-INSPECTOR-001 evidence, user returns to prior selection |
+| **Product Intelligence Target** | 3 |
 | **Build Loop Target** | 2 |
-| **Acceptance object/route** | Workbench Inspector — pattern/signal drill-down from movement evidence |
-| **Reference surface** | v0 inspector navigation patterns (if any); otherwise spec-first |
-| **Out of scope** | Global nav redesign, browser history replacement, schema |
-| **Required checks** | `verify-mindlab.sh`, manual click path B2 + back |
+| **Golden object** | GOLDEN-INSPECTOR-001 |
+| **Acceptance object/route** | Workbench Inspector pattern/signal drill-down |
+| **Out of scope** | Global nav redesign, schema |
+| **Required checks** | Scorecard regression row G4 + back navigation |
 | **Status** | Queued |
 
 ---
@@ -46,17 +47,29 @@
 |-------|-------|
 | **Slice ID** | LOOP-001 |
 | **Title** | AI Build Loop Harness v0.1 |
-| **Objective** | Add queue, receipt templates, prompts, and mechanical checks; move Build Loop toward score 2 |
-| **Product Surface Target** | N/A (meta slice) |
+| **Objective** | Queue, templates, prompts, mechanical checks |
+| **Product Intelligence Target** | N/A |
 | **Build Loop Target** | 2 |
-| **Acceptance object/route** | `docs/agent-runs/`, `prompts/orvek-*.md`, `scripts/check-*.ts` |
-| **Reference surface** | Inspector workflow experiment receipts |
-| **Out of scope** | Product UI, schema, runtime behavior changes |
-| **Required checks** | `verify-mindlab.sh`, closeout script sanity, legacy inspector route check |
+| **Status** | Done |
+
+---
+
+## LOOP-002 — Product Intelligence Benchmark
+
+| Field | Value |
+|-------|-------|
+| **Slice ID** | LOOP-002 |
+| **Title** | Product Intelligence Benchmark layer |
+| **Objective** | Golden objects, scorecard template, benchmark docs, closeout regression enforcement |
+| **Product Intelligence Target** | N/A |
+| **Build Loop Target** | 2 → 2.5 (objective product measurement) |
+| **Golden object** | Seeds GOLDEN-INSPECTOR-001 |
+| **Out of scope** | Product UI, schema, runtime changes |
+| **Required checks** | `verify-mindlab.sh`, harness tests, `check-agent-closeout.ts` on updated template |
 | **Status** | In Progress |
 
 ---
 
 ## Adding a slice
 
-Copy a block above. Minimum fields: Slice ID, Title, Objective, Product Surface Target, Build Loop Target, Acceptance object/route, Out of scope, Required checks, Status.
+Minimum fields: Slice ID, Title, Objective, Product Intelligence Target, Build Loop Target, Golden object (if product), Acceptance route, Out of scope, Required checks, Status.

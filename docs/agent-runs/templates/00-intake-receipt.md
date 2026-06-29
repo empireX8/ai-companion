@@ -48,8 +48,28 @@
 
 | Metric | Before |
 |--------|--------|
-| Product Surface | {0–5 or N/A} |
+| Product Intelligence | {0–5 or N/A} |
 | Build Loop | {0–5} |
+
+---
+
+## Planned slice prediction
+
+| Field | Value |
+|-------|-------|
+| Expected Product Intelligence Score | {before} → {after} |
+| Expected Build Loop Score | {before} → {after} |
+| Why this slice should move the score | {one paragraph} |
+| What would prove the slice failed | {observable failures} |
+
+---
+
+## Golden object (if product slice)
+
+| Field | Value |
+|-------|-------|
+| Golden ID | {from golden-objects.md} |
+| Record ids | {movement / conclusion ids} |
 
 ---
 

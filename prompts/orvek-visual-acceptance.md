@@ -1,15 +1,15 @@
 # Orvek Visual Acceptance
 
-> **Mode:** human-led product gate (Kay); agent may prepare checklist and capture notes  
-> **Input:** running app + `01-target-ui-spec.md` + acceptance anchor from queue
+> **Mode:** human-led product gate (Kay); agent prepares scorecard inputs
+> **Input:** running app + golden object from `golden-objects.md` + `07-product-intelligence-scorecard.md`
 
 ---
 
 ## Purpose
 
-Decide whether a slice is **product-acceptable**. This is separate from CI green.
+Decide whether a slice is **product-acceptable** on a **golden object**. Feeds Product Intelligence Benchmark — separate from CI.
 
-**No PASS without completing this checklist** (or explicit `BLOCKED` with reason).
+**No PASS without scorecard + this checklist** (or explicit `BLOCKED`).
 
 ---
 
@@ -18,60 +18,64 @@ Decide whether a slice is **product-acceptable**. This is separate from CI green
 | Field | Value |
 |-------|-------|
 | Slice ID | {SLICE_ID} |
+| Golden ID | {GOLDEN-INSPECTOR-001} |
 | Branch | {branch} |
-| Acceptance route / object | {path or id} |
-| Reference surface | {v0 component or doc path} |
-| Intelligence bar | Reality-Tracking output contract / Z.ai movement report |
+| Record ids | {movement, affected object} |
+| Reference surface | v0 inspector formula (`UserMapEvidencePanel`) |
+| Intelligence bar | Reality-Tracking / Z.ai movement report |
 
 ---
 
-## Compare — structure (reference)
+## Intelligence questions (golden object)
+
+- [ ] User can tell **what changed**
+- [ ] User can tell **why Orvek believes it**
+- [ ] User can **inspect receipts**
+- [ ] **Facts / inferences / uncertainties / speculations** separated (Movement tab)
+- [ ] Clear **what to watch/do next**
+- [ ] Clear **what would change this conclusion**
+- [ ] UI feels **intentional**, not dumped
+- [ ] **Routes/navigation** preserved (no legacy Patterns page)
+
+---
+
+## Compare — reference (pillar 1)
 
 - [ ] Section order matches target UI spec
-- [ ] Visual language matches direct map / pattern inspector (spacing, labels, cards)
-- [ ] Tab roles clear (evidence vs movement not duplicated)
+- [ ] Visual language matches v0 direct map inspector
+- [ ] Tab roles clear (Evidence vs Movement)
 
 ---
 
-## Compare — intelligence quality
+## Compare — intelligence (pillar 2)
 
-- [ ] Claims read as evidence-backed, not motivational or therapeutic
-- [ ] Thin packet states honest uncertainty
-- [ ] No placeholder labels in production UI (`Reference item · Reference item`, `Related pattern` × N)
-- [ ] Receipt / movement summary useful to a human
-
----
-
-## Compare — interaction
-
-- [ ] Evidence card click stays in workbench inspector (no legacy Patterns/Tensions page)
-- [ ] Unsupported links non-clickable (no dead navigation)
-- [ ] Back / selection behavior acceptable (or filed as follow-up slice)
+- [ ] Evidence-backed tone; no therapy/motivational fog
+- [ ] Thin packet = honest uncertainty
+- [ ] No placeholder labels in production UI
+- [ ] Movement read useful to a human (Z.ai bar)
 
 ---
 
-## Score Product Surface (0–5)
+## Regression check (required)
 
-| Score | Select if |
-|-------|-----------|
-| 0 | Broken |
-| 1 | Wired but poor |
-| 2 | Inspectable |
-| 3 | Coherent |
-| 4 | Reference-aligned |
-| 5 | Intelligence-grade |
+| Gate ID | Previously PASS | Now | Regression? |
+|---------|-----------------|-----|-------------|
+| {from golden-objects.md} | | | |
+
+**Any regression:** {yes | no} → if yes, **no product progress claim**
+
+---
+
+## Product Intelligence Score (0–5)
 
 **Before:** {n} → **After:** {n}
 
-**Rationale:** {short paragraph}
+| Score | Select if |
+|-------|-----------|
+| 0–2 | See `product-intelligence-benchmark.md` |
+| 3+ | Coherent or better on golden object |
 
----
-
-## Regressions
-
-| ID | Description | Severity |
-|----|-------------|----------|
-| R1 | {none} | — |
+**Rationale:** {paragraph}
 
 ---
 
@@ -80,8 +84,11 @@ Decide whether a slice is **product-acceptable**. This is separate from CI green
 | Activity | Minutes |
 |----------|---------|
 | Screenshots / clicks | |
-| Review vs reference | |
-| Total | |
+| Reference + intelligence review | |
+| Manual orchestration (re-explaining to agent) | |
+| **Total** | |
+
+**Manual orchestration level (0–5):** {n}
 
 ---
 
@@ -89,15 +96,10 @@ Decide whether a slice is **product-acceptable**. This is separate from CI green
 
 **{PASS | PARTIAL | FAIL | BLOCKED}**
 
-| Class | Meaning |
-|-------|---------|
-| PASS | Checklist green; shippable for slice scope |
-| PARTIAL | Improved; known gaps documented with next slice |
-| FAIL | Generic labels, legacy routes, or crash still present |
-| BLOCKED | Could not run app / missing data / need Kay only |
-
 ---
 
 ## Output
 
-Save as `docs/agent-runs/runs/{SLICE_ID}/05-product-acceptance.md` (optional path) and link from `06-closeout-receipt.md`.
+- Update `07-product-intelligence-scorecard.md`
+- Save optional copy as `docs/agent-runs/runs/{SLICE_ID}/05-product-acceptance.md`
+- Link from `06-closeout-receipt.md`

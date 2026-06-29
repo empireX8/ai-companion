@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 /**
- * check-agent-closeout.ts — lightweight closeout markdown validator (v0.1)
+ * check-agent-closeout.ts — closeout markdown validator (v0.2 — LOOP-002)
  *
  * Usage:
- *   npx ts-node --transpile-only --compiler-options '{"module":"CommonJS"}' scripts/check-agent-closeout.ts path/to/06-closeout-receipt.md
- *
- * Exit 0 when required headings are present; 1 otherwise.
+ *   npx ts-node --transpile-only --compiler-options '{"module":"CommonJS","moduleResolution":"node"}' scripts/check-agent-closeout.ts path/to/06-closeout-receipt.md
  */
 
 import { readFileSync } from "fs";
@@ -14,8 +12,13 @@ import { resolve } from "path";
 const REQUIRED_HEADINGS = [
   "Files changed",
   "Verification results",
-  "Product Surface Score",
+  "Product Intelligence Score",
   "Build Loop Score",
+  "Golden object tested",
+  "Screenshot proof status",
+  "Regression status",
+  "Time spent",
+  "Manual orchestration level",
   "Regressions",
   "Manual acceptance",
   "Classification",

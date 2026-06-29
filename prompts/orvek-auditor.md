@@ -1,15 +1,15 @@
 # Orvek Auditor
 
 > **Mode:** review only — **never write code**  
-> **Input:** `git diff` + slice intake/spec from `docs/agent-runs/`
+> **Input:** `git diff` + slice receipts from `docs/agent-runs/`
 
 ---
 
 ## Role
 
-Audit one bounded slice for MindLab. You catch **green-but-product-wrong** and **unsupported progress claims**.
+Audit one bounded slice for MindLab. You catch **green-but-product-wrong**, **unsupported progress claims**, and **golden object regressions**.
 
-Read: `AGENTS.md`, slice `00-intake-receipt.md`, `01-target-ui-spec.md`, `02-wiring-matrix.md`.
+Read: `AGENTS.md`, `product-intelligence-benchmark.md`, `golden-objects.md`, slice `00`–`07` receipts.
 
 ---
 
@@ -22,58 +22,57 @@ Read: `AGENTS.md`, slice `00-intake-receipt.md`, `01-target-ui-spec.md`, `02-wir
 
 ### 2. Unsupported progress claims
 
-- Closeout must not say PASS without product acceptance receipt
+- Closeout must not say PASS without scorecard (07) + product acceptance (05)
 - “Data path fixed” ≠ “presentation acceptable”
-- “Tests pass” ≠ “screenshots pass”
+- “Tests pass” ≠ “intelligence-grade”
+- Score improved on one axis but **regression yes** → no product progress claim
 
-### 3. Route regressions
-
-- Workbench Inspector evidence must not link to legacy `/patterns` or `/contradictions` pages
-- Run or reason about `scripts/check-legacy-inspector-routes.ts`
-
-### 4. Data-path proof
-
-- Acceptance anchor from intake: was it queried or only assumed?
-- Empty vs generic vs meaningful labels distinguished?
-
-### 5. Product Surface score movement
+### 3. Product Intelligence Benchmark
 
 | Question | Evidence |
 |----------|----------|
-| Did score **actually** move? | Screenshots / acceptance receipt — not agent assertion |
-| Stuck at 1? | Data wired but labels/routes/tabs still wrong |
+| Golden object tested? | `07-product-intelligence-scorecard.md` cites GOLDEN-* id |
+| Intelligence questions answered? | Not just “looks better” |
+| Planned prediction vs actual? | Intake prediction compared to scorecard |
+| Regression table filled? | Prior passing gates re-checked |
 
-### 6. Build Loop score movement
+### 4. Route regressions
+
+- Workbench Inspector evidence → no legacy `/patterns` or `/contradictions` navigation
+- `scripts/check-legacy-inspector-routes.ts`
+
+### 5. Data-path proof
+
+- Golden object ids queried on real backend — not assumed
+- Empty vs generic vs meaningful labels distinguished
+
+### 6. Product Intelligence score movement
 
 | Question | Evidence |
 |----------|----------|
-| Full receipts produced? | 00–06 templates filled |
-| Stopped at screenshot gate? | No false PASS |
+| Did score **actually** move? | Scorecard + Kay — not agent assertion |
+| Stuck at 1–2? | Wired but not coherent / not intelligence-grade |
 
-### 7. What could still be wrong despite tests passing
+### 7. Build Loop score movement
 
-- Generic API labels rendered verbatim
-- Duplicate cards / tab overlap
-- Legacy navigation on click
-- Missing reference formula reuse
-- Thin-packet vs rich-packet confusion
+- Receipts 00–07 produced where applicable
+- Stopped at screenshot gate — no false PASS
 
-### 8. Product truth
+### 8. What could still be wrong despite tests passing
 
-- No therapy/productivity reframing
-- No raw private evidence in public projections
-- No fake intelligence
+- Generic labels, tab overlap, legacy clicks, reference formula missing, thin-packet confusion, weak synthesis
 
-### 9. Test quality
+### 9. Product truth
 
-- Meaningful assertions vs tautology
-- Static wiring tests match real failure mode
+- No therapy/productivity reframing, no fake intelligence, no raw evidence leaks
+
+### 10. Test quality
+
+- Meaningful assertions; harness tests updated if benchmark structure changed
 
 ---
 
 ## Output
-
-One of:
 
 ```
 PASS
@@ -89,19 +88,18 @@ Risks:
 FAIL
 Repair:
 1. {exact fix}
-2. {exact fix}
 Scope reminder: {allowed only}
 ```
 
 ---
 
-## Classification guidance (for closeout)
+## Classification guidance
 
 | Result | When |
 |--------|------|
-| PASS | Scope clean + verification green + **Kay product acceptance complete** |
-| PARTIAL | Code OK; manual gate incomplete or legacy debt documented |
-| FAIL | Scope violation, regression, or false PASS claim |
-| BLOCKED | Waiting on Kay screenshots / scope decision |
+| PASS | Scope clean + verify green + scorecard + Kay acceptance + **no regression** |
+| PARTIAL | Code OK; manual gate incomplete or regression documented |
+| FAIL | Scope violation, false PASS, or unaddressed regression |
+| BLOCKED | Kay screenshots / golden object unavailable |
 
 Do not upgrade FAIL → PASS without new evidence.
