@@ -1,0 +1,21 @@
+# Verification Receipt
+
+- `git diff --check`
+  - PASS
+  - No output.
+- `npx tsc --noEmit`
+  - PASS
+  - No output.
+- `npx vitest run lib/**tests**/shell-legacy-route-cleanup.test.ts lib/**tests**/explore-composer-wireup.test.ts lib/**tests**/today-surface.test.ts lib/**tests**/today-workbench-routes.test.ts lib/**tests**/orvek-ux-integration.test.ts`
+  - PASS
+  - `5` test files passed, `43` tests passed.
+- `npx playwright test scripts/v0-route-smoke.playwright.ts`
+  - PASS
+  - `29` tests passed.
+- `npm run build`
+  - PASS
+  - Build completed successfully.
+  - Build emitted pre-existing warnings only.
+- `bash scripts/verify-mindlab.sh`
+  - PASS
+  - Summary: `PASS: 6`, `FAIL: 0`, `SKIP: 0`.
