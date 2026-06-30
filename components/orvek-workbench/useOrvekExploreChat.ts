@@ -214,8 +214,8 @@ export function useOrvekExploreChat(options?: {
     };
   }, [createSession, loadMessages, loadSessions, persistSessionSelection]);
 
-  const sendMessage = useCallback(async () => {
-    const content = draft.trim();
+  const sendMessage = useCallback(async (overrideContent?: string) => {
+    const content = (overrideContent ?? draft).trim();
     if (!content || !selectedSessionId || isSending) {
       return;
     }
@@ -226,7 +226,9 @@ export function useOrvekExploreChat(options?: {
 
     setIsSending(true);
     setErrorMessage(null);
-    setDraft("");
+    if (overrideContent === undefined) {
+      setDraft("");
+    }
 
     setMessages((current) => [
       ...current,

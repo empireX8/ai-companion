@@ -75,3 +75,7 @@
   - Before: DISABLED_MISLEADING
   - Evidence: `components/orvek-v0/pages/decisions.tsx`
   - Suggested repair slice: `none`
+- [Explore] Ask button + quick prompt chips -> Explore chat session send + chat log output: WIRED
+  - Before: WRONG_TARGET
+  - Evidence: `components/orvek-v0/pages/explore.tsx`, `components/orvek-workbench/OrvekExplorePage.tsx`, `components/orvek-workbench/useOrvekExploreChat.ts`
+  - Suggested repair slice: `none`
