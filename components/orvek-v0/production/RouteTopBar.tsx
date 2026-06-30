@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Activity, Clock, Download, Plus, Search } from "lucide-react";
 
 import { useCommandPalette } from "@/components/command/CommandPaletteContext";
+import { ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract";
 
 export function RouteTopBar() {
   const router = useRouter();
@@ -40,13 +41,15 @@ export function RouteTopBar() {
         </kbd>
       </button>
 
-      <Link
-        href="/import"
-        className="o-calm inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-sm font-medium text-foreground hover:bg-white/[0.08]"
+      <button
+        type="button"
+        disabled
+        title="Import unavailable in v0"
+        className={`o-calm inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-sm font-medium text-foreground hover:bg-white/[0.08] ${ORVEK_DEFERRED_ACTION_CLASS}`}
       >
         <Download className="size-4 text-primary" aria-hidden />
         <span className="hidden sm:inline">Import</span>
-      </Link>
+      </button>
 
       <div className="hidden items-stretch gap-1.5 lg:flex">
         <Link

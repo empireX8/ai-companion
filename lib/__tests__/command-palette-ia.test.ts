@@ -22,7 +22,7 @@ describe("command palette IA", () => {
     const source = readSource("components/command/CommandPalette.tsx");
     const primaryBlock = source.slice(
       source.indexOf("V1_PRIMARY_ROUTES.map"),
-      source.indexOf("V1_LAYER_ROUTES.map")
+      source.indexOf("VISIBLE_LAYER_ROUTES.map")
     );
     expect(primaryBlock).not.toContain("Chat");
   });

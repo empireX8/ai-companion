@@ -14,6 +14,11 @@ Highest-risk failures:
 - Your Map and Watch For still expose `Active Questions` links to a blocked route.
 - Decisions `Add outcome` looks active but no-ops in production.
 
+Shell cleanup result:
+- The shell leakage above was repaired in `shell-legacy-route-cleanup-001`.
+- Top-bar `Import`, command palette legacy entries, Journal Chat `Open patterns`, Your Map legacy context/memory links, Your Map and Watch For `Active Questions`, and Decisions `Add outcome` no longer present blocked public routes as active-looking affordances.
+- Your Map open-questions preview rows and `View all` no longer link to blocked `/active-questions`.
+
 Honest deferrals:
 - Today primary re-entry actions are explicitly disabled when the allowlist rejects their target route.
 - Today full report output is intentionally deferred instead of linking to a report page that is not yet integrated into the workbench shell.
@@ -26,3 +31,6 @@ What remains clean:
 - Inspector model_update Evidence / Context remains boundary-correct.
 - Inspector model_update Mind Model Movement still owns the epistemic report.
 
+Remaining highest-risk failures after shell cleanup:
+- Explore `Ask` and quick prompts still point to Inspector movement instead of sending chat data.
+- Today full report output remains a dead end instead of a navigable report surface.

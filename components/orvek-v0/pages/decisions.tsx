@@ -143,18 +143,16 @@ export function DecisionsPage() {
               <button
                 key={a.label}
                 type="button"
+                disabled={isProduction}
                 onClick={() => {
                   if (isProduction) return
                   if (a.label === "Review due decision") openDecision("d-nav")
                   if (a.label === "Add outcome")
                     setOutcomeAdded((p) => ({ ...p, [workspaceId]: true }))
                 }}
-                disabled={isProduction && a.label !== "Add outcome"}
                 className={cn(
                   "o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.12)] hover:bg-accent/60",
-                  isProduction &&
-                    a.label !== "Add outcome" &&
-                    ORVEK_DEFERRED_ACTION_CLASS,
+                  isProduction && ORVEK_DEFERRED_ACTION_CLASS,
                 )}
               >
                 <a.icon className="size-3.5 text-primary" aria-hidden />

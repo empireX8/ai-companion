@@ -113,9 +113,9 @@ export default async function WatchForPage() {
             Your Map
           </Link>{" "}
           ·{" "}
-          <Link href="/active-questions" className="hover:text-cyan transition-colors">
+          <span className="text-muted-foreground/60" title="Unavailable in v0">
             Active Questions
-          </Link>{" "}
+          </span>{" "}
           ·{" "}
           <Link href="/" className="hover:text-cyan transition-colors">
             Today

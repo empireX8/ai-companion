@@ -86,7 +86,7 @@ describe("your-map preview bands wiring", () => {
     expect(previewSource).toContain("fetchMapOpenQuestionsPreview");
     expect(previewSource).toContain('objectType: "model_update"');
     expect(previewSource).toContain('tab: "movement"');
-    expect(previewSource).toContain("/active-questions/");
+    expect(previewSource).not.toContain("/active-questions/");
     expect(previewSource).not.toContain('objectType: "investigation"');
   });
 });

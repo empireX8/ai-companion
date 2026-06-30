@@ -163,9 +163,9 @@ export function YourMapWorkbench() {
 
         <p className="label-meta text-meta mt-6">
           Explore related surfaces:{" "}
-          <Link href="/active-questions" className="hover:text-cyan transition-colors">
+          <span className="text-muted-foreground/60" title="Unavailable in v0">
             Active Questions
-          </Link>{" "}
+          </span>{" "}
           ·{" "}
           <Link href="/watch-for" className="hover:text-cyan transition-colors">
             Watch For

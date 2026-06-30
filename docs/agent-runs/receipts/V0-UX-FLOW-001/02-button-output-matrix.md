@@ -42,3 +42,36 @@
 - [Inspector] model_update Evidence / Context boundary -> affected object, context, receipts, supporting evidence: WIRED | Evidence: `components/inspector/panels/SelectedObjectEvidencePanel.tsx` + `lib/__tests__/inspector-surface-wiring.test.ts` | Suggested repair slice: `none`
 - [Inspector] model_update Mind Model Movement boundary -> facts, claims, uncertainty, guardrails, reality gate, fieldwork, re-entry, what would change: WIRED | Evidence: `components/inspector/panels/ModelMovementInspectorPanel.tsx` + `lib/__tests__/inspector-surface-wiring.test.ts` | Suggested repair slice: `none`
 
+## After Repair
+- [Shell] RouteTopBar import button -> `/import`: DISABLED_HONESTLY
+  - Before: BROKEN_ROUTE
+  - Evidence: `components/orvek-v0/production/RouteTopBar.tsx`
+  - Suggested repair slice: `none`
+- [Shell] Command palette utility + legacy routes -> blocked legacy public routes removed from visible commands: WIRED
+  - Before: BROKEN_ROUTE
+  - Evidence: `components/command/CommandPalette.tsx`
+  - Suggested repair slice: `none`
+- [Journal Chat] Open patterns link -> `/patterns`: DISABLED_HONESTLY
+  - Before: BROKEN_ROUTE
+  - Evidence: `app/(root)/(routes)/journal-chat/page.tsx`
+  - Suggested repair slice: `none`
+- [Your Map] Mind-context open context / memories / memory detail links -> blocked legacy routes removed or disabled: DISABLED_HONESTLY
+  - Before: BROKEN_ROUTE
+  - Evidence: `components/your-map/YourMapMindContextPanel.tsx`
+  - Suggested repair slice: `none`
+- [Your Map] Footer Active Questions link -> `/active-questions`: DISABLED_HONESTLY
+  - Before: BROKEN_ROUTE
+  - Evidence: `components/your-map/YourMapWorkbench.tsx`
+  - Suggested repair slice: `none`
+- [Your Map] Open questions preview rows / View all -> `/active-questions`: DISABLED_HONESTLY
+  - Before: BROKEN_ROUTE
+  - Evidence: `components/your-map/YourMapPreviewBands.tsx`
+  - Suggested repair slice: `none`
+- [Watch For] Footer Active Questions link -> `/active-questions`: DISABLED_HONESTLY
+  - Before: BROKEN_ROUTE
+  - Evidence: `app/(root)/(routes)/watch-for/page.tsx`
+  - Suggested repair slice: `none`
+- [Decisions] Add outcome quick action -> honestly disabled in production: DISABLED_HONESTLY
+  - Before: DISABLED_MISLEADING
+  - Evidence: `components/orvek-v0/pages/decisions.tsx`
+  - Suggested repair slice: `none`

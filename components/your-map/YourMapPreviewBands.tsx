@@ -16,7 +16,6 @@ import {
   MAP_OPEN_QUESTIONS_EMPTY_COPY,
   MAP_OPEN_QUESTIONS_SECTION_INTRO,
   MAP_OPEN_QUESTIONS_SECTION_LABEL,
-  MAP_OPEN_QUESTIONS_VIEW_ALL_HREF,
   toMapMovementRowTitle,
   type MapMovementPreviewItem,
   type MapOpenQuestionPreviewItem,
@@ -36,7 +35,7 @@ function PreviewSectionShell({
 }: {
   label: string;
   intro: string;
-  viewAllHref: string;
+  viewAllHref: string | null;
   isLoading: boolean;
   isEmpty: boolean;
   emptyCopy: string;
@@ -54,7 +53,7 @@ function PreviewSectionShell({
           <SectionLabel>{label}</SectionLabel>
           <p className="mt-1 text-[12px] text-muted-foreground">{intro}</p>
         </div>
-        {!isLoading && !isEmpty ? (
+        {!isLoading && !isEmpty && viewAllHref ? (
           <Link
             href={viewAllHref}
             className="shrink-0 text-[11px] font-medium text-muted-foreground hover:text-cyan"
@@ -112,9 +111,10 @@ function MapMovementRow({ item }: { item: MapMovementPreviewItem }) {
 
 function MapOpenQuestionRow({ item }: { item: MapOpenQuestionPreviewItem }) {
   return (
-    <Link
-      href={`/active-questions/${item.id}`}
-      className="ml-calm ml-material block rounded-xl px-4 py-3 hover:bg-white/[0.02]"
+    <div
+      className="ml-calm ml-material block rounded-xl px-4 py-3 opacity-75"
+      title="Unavailable in v0"
+      aria-disabled="true"
     >
       <div className="text-[10px] font-medium uppercase tracking-wide text-cyan/70">
         Open question
@@ -128,7 +128,7 @@ function MapOpenQuestionRow({ item }: { item: MapOpenQuestionPreviewItem }) {
       <div className="label-meta mt-2">
         {item.statusLabel} · Updated {formatMapPreviewDateTime(item.updatedAt)}
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -203,7 +203,7 @@ export function YourMapPreviewBands({ className }: { className?: string }) {
       <PreviewSectionShell
         label={MAP_OPEN_QUESTIONS_SECTION_LABEL}
         intro={MAP_OPEN_QUESTIONS_SECTION_INTRO}
-        viewAllHref={MAP_OPEN_QUESTIONS_VIEW_ALL_HREF}
+        viewAllHref={null}
         isLoading={isLoadingQuestions}
         isEmpty={openQuestionItems.length === 0}
         emptyCopy={MAP_OPEN_QUESTIONS_EMPTY_COPY}

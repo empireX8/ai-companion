@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import { SectionLabel } from "@/components/AppShell";
 import { useInspector } from "@/components/inspector/InspectorContext";
 import {
@@ -10,12 +8,11 @@ import {
   formatMindContextDateTime,
   MIND_CONTEXT_EMPTY_PRIMARY,
   MIND_CONTEXT_EMPTY_SECONDARY,
-  MIND_CONTEXT_GOVERNANCE_HREF,
-  MIND_CONTEXT_MEMORIES_HREF,
   MIND_CONTEXT_SECTION_INTRO,
   MIND_CONTEXT_SECTION_LABEL,
   type MindContextDisplayItem,
 } from "@/lib/mind-context-surface";
+import { ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
@@ -64,12 +61,13 @@ function MindContextRow({ item }: { item: MindContextDisplayItem }) {
   }
 
   return (
-    <Link
-      href={item.detailHref}
-      className="ml-calm ml-material block rounded-xl px-4 py-3 hover:bg-white/[0.02]"
+    <div
+      className="ml-calm ml-material block rounded-xl px-4 py-3 opacity-75"
+      title="Unavailable in v0"
+      aria-disabled="true"
     >
       {inner}
-    </Link>
+    </div>
   );
 }
 
@@ -138,18 +136,22 @@ export function YourMapMindContextPanel({ className }: { className?: string }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[11px] font-medium">
-          <Link
-            href={MIND_CONTEXT_GOVERNANCE_HREF}
-            className="rounded-md px-2 py-1 text-muted-foreground hover:bg-white/[0.04] hover:text-cyan"
+          <button
+            type="button"
+            disabled
+            title="Context is unavailable in v0"
+            className={`rounded-md px-2 py-1 text-muted-foreground hover:bg-white/[0.04] hover:text-cyan ${ORVEK_DEFERRED_ACTION_CLASS}`}
           >
             Open Context
-          </Link>
-          <Link
-            href={MIND_CONTEXT_MEMORIES_HREF}
-            className="rounded-md px-2 py-1 text-muted-foreground hover:bg-white/[0.04] hover:text-cyan"
+          </button>
+          <button
+            type="button"
+            disabled
+            title="Memories management is unavailable in v0"
+            className={`rounded-md px-2 py-1 text-muted-foreground hover:bg-white/[0.04] hover:text-cyan ${ORVEK_DEFERRED_ACTION_CLASS}`}
           >
             Manage Memories
-          </Link>
+          </button>
         </div>
       </div>
 
