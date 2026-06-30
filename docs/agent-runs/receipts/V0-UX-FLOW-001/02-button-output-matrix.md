@@ -11,10 +11,10 @@
 - [Journal Chat] Open patterns link -> `/patterns`: BROKEN_ROUTE | Evidence: `app/(root)/(routes)/journal-chat/page.tsx` + `middleware.ts` | Suggested repair slice: `journal-chat-legacy-link-cleanup`
 - [Today] Hero open / see-why-moved actions -> Inspector evidence/movement: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` + `lib/orvek-adapters/today.ts` | Suggested repair slice: `none`
 - [Today] Primary re-entry action -> `/actions`: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` + `lib/orvek-adapters/today.ts` | Suggested repair slice: `none`
-- [Today] Primary re-entry actions -> `/what-changed`, `/journal-chat`, `/watch-for`: DISABLED_HONESTLY | Evidence: `components/orvek-v0/pages/today.tsx` + `lib/orvek-adapters/today.ts` + `lib/orvek-v0/today-workbench-routes.ts` | Suggested repair slice: `today-reentry-allowlist-reconcile`
-- [Today] Now rows -> route push or inspector selection depending on row data: PARTIALLY_WIRED | Evidence: `components/orvek-v0/pages/today.tsx` | Suggested repair slice: `today-now-row-routing`
+- [Today] Primary re-entry actions -> `/what-changed`, `/journal-chat`, `/watch-for`: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` + `lib/orvek-adapters/today.ts` + `lib/orvek-v0/today-workbench-routes.ts` | Suggested repair slice: `none`
+- [Today] Now rows -> route push or inspector selection depending on row data: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` + `lib/orvek-v0/today-workbench-routes.ts` | Suggested repair slice: `none`
 - [Today] Report primary movement card -> Inspector movement tab: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` | Suggested repair slice: `none`
-- [Today] Full report CTA -> deferred text when report view is not integrated: DEAD_END | Evidence: `components/orvek-v0/pages/today.tsx` + `lib/orvek-adapters/today.ts` | Suggested repair slice: `today-report-link-reentry`
+- [Today] Full report CTA -> `/what-changed` report output: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` + `lib/orvek-adapters/today.ts` + `app/(root)/(routes)/what-changed/page.tsx` | Suggested repair slice: `none`
 - [Today] Movement rows "See why" -> Inspector movement tab: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` | Suggested repair slice: `none`
 - [Today] Resurfaced receipts -> Inspector evidence tab: WIRED | Evidence: `components/orvek-v0/pages/today.tsx` | Suggested repair slice: `none`
 - [What Changed] Primary movement card / earlier movement cards / evidence links / re-entry links -> Inspector movement, source detail, and v0 re-entry: WIRED | Evidence: `components/orvek-v0/pages/what-changed.tsx` + `components/orvek-workbench/OrvekWhatChangedPage.tsx` | Suggested repair slice: `none`
@@ -78,4 +78,16 @@
 - [Explore] Ask button + quick prompt chips -> Explore chat session send + chat log output: WIRED
   - Before: WRONG_TARGET
   - Evidence: `components/orvek-v0/pages/explore.tsx`, `components/orvek-workbench/OrvekExplorePage.tsx`, `components/orvek-workbench/useOrvekExploreChat.ts`
+  - Suggested repair slice: `none`
+- [Today] Primary re-entry actions -> `/what-changed`, `/journal-chat`, `/watch-for`: WIRED
+  - Before: DISABLED_HONESTLY
+  - Evidence: `components/orvek-v0/pages/today.tsx`, `lib/orvek-adapters/today.ts`, `lib/orvek-v0/today-workbench-routes.ts`
+  - Suggested repair slice: `none`
+- [Today] Now rows -> route-first output with Inspector fallback only for blocked detail routes: WIRED
+  - Before: PARTIALLY_WIRED
+  - Evidence: `components/orvek-v0/pages/today.tsx`, `lib/orvek-v0/today-workbench-routes.ts`
+  - Suggested repair slice: `none`
+- [Today] Full report CTA -> `/what-changed` report output: WIRED
+  - Before: DEAD_END
+  - Evidence: `components/orvek-v0/pages/today.tsx`, `lib/orvek-adapters/today.ts`, `app/(root)/(routes)/what-changed/page.tsx`
   - Suggested repair slice: `none`

@@ -96,7 +96,7 @@ describe("orvek ux integration — surface copy modules", () => {
 });
 
 describe("orvek ux integration — today what-changed output", () => {
-  it("keeps compact What Changed on Today with Inspector handoff and deferred full report", () => {
+  it("keeps compact What Changed on Today with Inspector handoff and route-ready full report output", () => {
     const todayPage = readSource("components/orvek-workbench/OrvekTodayPage.tsx");
     const todayView = readSource("components/orvek-v0/pages/today.tsx");
     const adapter = readSource("lib/orvek-adapters/today.ts");

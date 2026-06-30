@@ -4,7 +4,7 @@ import {
   TODAY_REPORT_FULL_LABEL,
   TODAY_REPORT_OUTPUT_TITLE,
 } from "../today-intelligence-updates";
-import { isIntegratedOrvekWorkbenchHref } from "../orvek-v0/today-workbench-routes";
+import { isTodayReentryHref } from "../orvek-v0/today-workbench-routes";
 import {
   buildTodayAttentionRows,
   buildTodayBriefingMeta,
@@ -45,15 +45,9 @@ const PRIMARY_ACTIONS: V0PrimaryAction[] = [
   { label: "Capture new signal", href: "/journal-chat" },
 ];
 
-function applyPrimaryActionRouting(
-  actions: V0PrimaryAction[],
-  hasReportOutput: boolean
-): V0PrimaryAction[] {
+function applyPrimaryActionRouting(actions: V0PrimaryAction[]): V0PrimaryAction[] {
   return actions.map((action) => {
-    if (!isIntegratedOrvekWorkbenchHref(action.href)) {
-      return { ...action, disabled: true };
-    }
-    if (hasReportOutput && action.href === TODAY_CHANGES_VIEW_ALL_HREF) {
+    if (!isTodayReentryHref(action.href)) {
       return { ...action, disabled: true };
     }
     return action;
@@ -61,16 +55,17 @@ function applyPrimaryActionRouting(
 }
 
 const CHECK_INS: V0CheckInOption[] = [
-  { id: "calm", label: "Calm", color: "oklch(0.72 0.05 220)", href: "/check-ins?state=stable" },
-  { id: "anxious", label: "Anxious", color: "oklch(0.78 0.12 72)", href: "/check-ins?state=stressed" },
-  { id: "tense", label: "Tense", color: "oklch(0.62 0.16 25)", href: "/check-ins?state=overloaded" },
+  { id: "calm", label: "Calm", color: "oklch(0.72 0.05 220)", href: "#", disabled: true },
+  { id: "anxious", label: "Anxious", color: "oklch(0.78 0.12 72)", href: "#", disabled: true },
+  { id: "tense", label: "Tense", color: "oklch(0.62 0.16 25)", href: "#", disabled: true },
   {
     id: "overwhelmed",
     label: "Overwhelmed",
     color: "oklch(0.55 0.03 250)",
-    href: "/check-ins?state=overloaded",
+    href: "#",
+    disabled: true,
   },
-  { id: "numb", label: "Numb", color: "oklch(0.66 0.006 250)", href: "/check-ins?state=flat" },
+  { id: "numb", label: "Numb", color: "oklch(0.66 0.006 250)", href: "#", disabled: true },
 ];
 
 function formatRelativeTime(value: string | null): string {
@@ -97,7 +92,7 @@ function rowIcon(row: TodayAttentionRow): V0NowRowIcon {
 function mapHero(hero: TodayHeroItem): V0TodayViewProps["hero"] {
   let primaryAction: V0TodayHeroSlot["primaryAction"] = null;
 
-  if (hero.href && isIntegratedOrvekWorkbenchHref(hero.href)) {
+  if (hero.href && isTodayReentryHref(hero.href)) {
     primaryAction = { kind: "link", href: hero.href, label: "Open" };
   } else if (hero.selection) {
     primaryAction = { kind: "inspect" };
@@ -209,7 +204,7 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
       meta: `${count} published movement${count === 1 ? "" : "s"} in this window`,
       href: TODAY_CHANGES_VIEW_ALL_HREF,
       fullReportLabel: TODAY_REPORT_FULL_LABEL,
-      fullReportAvailable: isIntegratedOrvekWorkbenchHref(TODAY_CHANGES_VIEW_ALL_HREF),
+      fullReportAvailable: isTodayReentryHref(TODAY_CHANGES_VIEW_ALL_HREF),
       fullReportDeferredCopy: TODAY_REPORT_FULL_DEFERRED_COPY,
       primaryMovement: {
         id: latest.id,
@@ -219,8 +214,6 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
       },
     };
   }
-
-  const hasReportOutput = report !== null;
 
   const receipts: V0TodayReceiptRow[] = filterDefined(receiptCards).map((card, index) => ({
     id: `receipt-${index}-${card.title?.trim() || "item"}`,
@@ -237,7 +230,7 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
     loadingCopy: TODAY_INTELLIGENCE_LOADING_COPY,
     heroEmptyCopy: TODAY_PRIMARY_EMPTY_COPY,
     hero: hero ? mapHero(hero) : null,
-    primaryActions: applyPrimaryActionRouting(PRIMARY_ACTIONS, hasReportOutput),
+    primaryActions: applyPrimaryActionRouting(PRIMARY_ACTIONS),
     nowRows,
     nowEmptyCopy: TODAY_ATTENTION_EMPTY_COPY,
     movements,

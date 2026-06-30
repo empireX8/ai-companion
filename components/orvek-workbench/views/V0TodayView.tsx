@@ -410,19 +410,35 @@ export function V0TodayView({
 
             <SectionLabel className="mb-2 mt-6">Quick check-in</SectionLabel>
             <div className="flex flex-wrap gap-2">
-              {checkIns.map((state) => (
-                <Link
-                  key={state.id}
-                  href={state.href}
-                  className="o-calm o-material flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] hover:bg-white/[0.03]"
-                >
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ background: state.color }}
-                  />
-                  {state.label}
-                </Link>
-              ))}
+              {checkIns.map((state) =>
+                state.disabled ? (
+                  <button
+                    key={state.id}
+                    type="button"
+                    disabled
+                    title="Quick check-ins are unavailable in v0"
+                    className="o-material flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] opacity-60"
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: state.color }}
+                    />
+                    {state.label}
+                  </button>
+                ) : (
+                  <Link
+                    key={state.id}
+                    href={state.href}
+                    className="o-calm o-material flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] hover:bg-white/[0.03]"
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: state.color }}
+                    />
+                    {state.label}
+                  </Link>
+                )
+              )}
             </div>
           </aside>
         </div>

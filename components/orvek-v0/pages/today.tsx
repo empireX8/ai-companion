@@ -4,7 +4,10 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
-import { isIntegratedOrvekWorkbenchHref } from "@/lib/orvek-v0/today-workbench-routes"
+import {
+  isTodayReentryHref,
+  resolveTodayNowRowTarget,
+} from "@/lib/orvek-v0/today-workbench-routes"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { SectionLabel } from "@/components/orvek-v0/primitives"
 import {
@@ -165,13 +168,17 @@ export function TodayPage() {
     hasSelection: boolean
     inspectorTab: "evidence" | "movement" | null
   }) {
-    const registered = getObject(row.id)
-    if (row.hasSelection && registered) {
-      openInspectorSelection(row.id, row.inspectorTab ?? "evidence")
+    const target = resolveTodayNowRowTarget({
+      href: row.href,
+      hasSelection: row.hasSelection,
+      hasRegisteredSelection: Boolean(getObject(row.id)),
+    })
+    if (target?.kind === "route") {
+      router.push(target.href)
       return
     }
-    if (row.href && row.href !== "#" && isIntegratedOrvekWorkbenchHref(row.href)) {
-      router.push(row.href)
+    if (target?.kind === "inspect") {
+      openInspectorSelection(row.id, row.inspectorTab ?? "evidence")
     }
   }
 
@@ -183,10 +190,13 @@ export function TodayPage() {
     if (!isProduction) {
       return true
     }
-    if (row.hasSelection && getObject(row.id)) {
-      return true
-    }
-    return isIntegratedOrvekWorkbenchHref(row.href)
+    return (
+      resolveTodayNowRowTarget({
+        href: row.href,
+        hasSelection: row.hasSelection,
+        hasRegisteredSelection: Boolean(getObject(row.id)),
+      }) !== null
+    )
   }
 
   const heroEmptyCopy =
@@ -398,13 +408,13 @@ export function TodayPage() {
                 ? (today?.primaryActions ?? []).map((action: V0PrimaryAction) => {
                     const Icon = PRIMARY_ACTION_ICONS[action.label]
                     const className = primaryActionClassName(action.primary)
-                    if (action.disabled || !isIntegratedOrvekWorkbenchHref(action.href)) {
+                    if (action.disabled || !isTodayReentryHref(action.href)) {
                       return (
                         <button
                           key={action.label}
                           type="button"
                           disabled
-                          title="Not available in the workbench yet"
+                          title="Not available on a live v0 route yet"
                           className={cn(className, ORVEK_DEFERRED_ACTION_CLASS)}
                         >
                           {Icon ? (

@@ -207,7 +207,7 @@ describe("today-surface safety and honest copy", () => {
     expect(source.includes("internal_only")).toBe(false);
   });
 
-  it("keeps honest placeholder and fallback copy on Today re-entry", () => {
+  it("keeps honest Today report fallback copy available alongside the live report route", () => {
     const source = readTodayPageSource();
     expect(source.includes("TODAY_INTELLIGENCE_LOADING_COPY")).toBe(true);
     expect(source.includes("data-testid=\"today-what-changed-output\"")).toBe(true);
