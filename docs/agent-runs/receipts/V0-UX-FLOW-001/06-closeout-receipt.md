@@ -91,8 +91,7 @@ Classification:
 Post-repair note:
 - `shell-legacy-route-cleanup-001` repaired the visible shell leakage identified in this audit.
 - `explore-composer-wireup-001` repaired the Explore Ask / quick prompt wrong-target finding.
-- Remaining findings:
-  - `today-report-link-reentry`
-  - `today-reentry-allowlist-reconcile`
-  - `today-now-row-routing`
-- The next highest-impact repair slice is now `today-report-link-reentry`.
+- `today-reentry-routing-001` repaired the remaining Today Step 1 routing/output findings.
+- Remaining Step 1 routing/output findings:
+  - `none`
+- Language polish, visual formula work, and brand work remain out of scope for `V0-UX-FLOW-001`.

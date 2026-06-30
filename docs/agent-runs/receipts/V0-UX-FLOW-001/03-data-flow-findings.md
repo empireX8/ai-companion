@@ -25,9 +25,12 @@ Explore composer wireup result:
 - Explore composer focus no longer routes users into Inspector movement.
 
 Honest deferrals:
-- Today primary re-entry actions are explicitly disabled when the allowlist rejects their target route.
-- Today full report output is intentionally deferred instead of linking to a report page that is not yet integrated into the workbench shell.
 - Explore, fieldwork, and some decision actions are disabled with visible deferred styling rather than silent failure.
+
+Today routing result:
+- Today full report now routes into the live `/what-changed` report surface.
+- Today primary re-entry actions now use the valid v0 re-entry target set rather than the narrower shared-shell allowlist.
+- Today now rows now choose route output first and only fall back to Inspector when the public detail route is blocked or absent.
 
 What remains clean:
 - Today capture and journal-chat send are real data-creation paths.
@@ -36,7 +39,6 @@ What remains clean:
 - Inspector model_update Evidence / Context remains boundary-correct.
 - Inspector model_update Mind Model Movement still owns the epistemic report.
 
-Remaining findings after Explore composer repair:
-- Today full report output remains a dead end instead of a navigable report surface.
-- Today primary re-entry actions still need allowlist reconciliation for valid workbench targets.
-- Today now rows still need route-versus-inspector target reconciliation.
+Remaining findings after Today routing repair:
+- No remaining Step 1 routing/output findings are open in `V0-UX-FLOW-001`.
+- Language polish, visual formula work, and brand work remain outside this audit record.

@@ -29,14 +29,12 @@
 ## Repair Queue
 
 ### Critical Path Wiring
-- `today-reentry-allowlist-reconcile`
-- `today-now-row-routing`
+- `none`
 
 ### Inspector/Detail Routing
 - `none`
 
 ### Empty-State Honesty
-- `today-report-link-reentry`
 - `decisions-entry-cta-copy`
 - `explore-honest-cta-copy`
 - `explore-fieldwork-cta-copy`
@@ -45,7 +43,7 @@
 - `none`
 
 ### Data/API Mismatch
-- `today-report-link-reentry`
+- `none`
 
 ### Later Visual Polish
 - `none`
@@ -62,11 +60,14 @@ Completed in `shell-legacy-route-cleanup-001`:
 Completed in `explore-composer-wireup-001`:
 - `explore-composer-wireup`
 
-Recommended next single repair slice:
+Completed in `today-reentry-routing-001`:
 - `today-report-link-reentry`
+- `today-reentry-allowlist-reconcile`
+- `today-now-row-routing`
+
+Recommended next single repair slice:
+- `none (Step 1 routing/output complete)`
 
 Reason:
-- The core spine is mostly wired.
-- The Explore wrong-target wiring is repaired.
-- The next most visible remaining failure is the Today full-report dead end.
-- Today re-entry allowlist and now-row routing remain separate follow-up slices.
+- The full Step 1 routing/output spine is now wired.
+- Remaining queue items are honesty/copy follow-ups, not wrong-target or broken-route failures.

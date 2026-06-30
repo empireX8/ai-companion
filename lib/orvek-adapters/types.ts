@@ -78,6 +78,7 @@ export type V0CheckInOption = {
   label: string;
   color: string;
   href: string;
+  disabled?: boolean;
 };
 
 export type V0TodayViewProps = {
