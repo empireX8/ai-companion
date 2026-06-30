@@ -1,0 +1,58 @@
+# Closeout Receipt
+
+- Result: FAIL
+- Reason: at least one BLOCKER and one HIGH language-contract finding remain in the visible v0 surfaces.
+- Severity counts:
+  - BLOCKER: 1
+  - HIGH: 1
+  - MEDIUM: 2
+  - LOW: 0
+  - ACCEPTABLE: several checked surfaces
+- Changed files: audit receipts only
+- Source code changed: no
+- Middleware changed: no
+- Schema changed: no
+- Generation logic changed: no
+- Visual styling changed: no
+- Verification output:
+  - `git diff --check`
+    - passed with no output
+  - `npx tsc --noEmit`
+    - passed with no output
+  - `bash scripts/check-trust-language.sh`
+    - `check:trust PASSED — no banned terms found in V1-visible surfaces.`
+  - `bash scripts/check-legacy-surfaces.sh`
+    - `check:legacy PASSED — legacy and hidden surfaces are clean.`
+    - intermediate checks reported:
+      - no numeric score badges
+      - no forecast/prediction language
+      - no old product naming
+  - `npm run build`
+    - passed
+    - `next build --turbopack` completed successfully
+    - emitted existing lint warnings for unrelated files, including:
+      - `app/api/message/route.ts`
+      - `components/orvek-v0/overlays.tsx`
+      - `components/orvek-v0/pages/timeline.tsx`
+      - `components/orvek-v0/reference/ReferencePageHandlersProvider.tsx`
+      - `components/orvek-workbench/OrvekMapPage.tsx`
+      - `components/orvek-workbench/views/V0MapView.tsx`
+      - `lib/__tests__/nav-structure.test.ts`
+      - `lib/__tests__/understanding-dark-engine-fieldwork-candidate-persistence.test.ts`
+      - `lib/__tests__/what-changed-evidence-route.test.ts`
+      - `lib/explore-session-model-updates.ts`
+      - `lib/explore-surface.ts`
+      - `lib/fieldwork-publish-helper.ts`
+      - `lib/orvek-adapters/decisions.ts`
+      - `lib/orvek-adapters/timeline.ts`
+      - `lib/orvek-v0/production/map-api.ts`
+      - `lib/understanding-dark-engine/investigation-candidate-persistence.ts`
+      - `lib/understanding-dark-engine/model-update-candidate-proposal.ts`
+  - `npx vitest run` via `bash scripts/verify-mindlab.sh`
+    - `221` test files passed
+    - `3052` tests passed
+  - `bash scripts/verify-mindlab.sh`
+    - `PASS: 6`
+    - `FAIL: 0`
+    - `SKIP: 0`
+    - `✅ All checks passed.`
