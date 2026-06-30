@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { ChevronRight, Sparkles } from "lucide-react";
 
 import { SurfaceChatShell } from "../chat/_components/SurfaceChatShell";
+import { ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract";
 
 const JOURNAL_CHAT_STORAGE_KEY = "mindlabs:jchat:session-id";
 const TODAY_HANDOFF_KEY = "mindlabs:today-capture-handoff";
@@ -65,12 +65,14 @@ function JournalContextPanel() {
           The forward-lean has appeared repeatedly this week, often before unstructured time.
         </div>
         <div className="flex gap-2 mt-3">
-          <Link
-            href="/patterns"
-            className="label-meta px-2.5 h-7 rounded bg-white/5 hover:bg-white/10 inline-flex items-center gap-1"
+          <button
+            type="button"
+            disabled
+            title="Patterns view is unavailable in v0"
+            className={`label-meta px-2.5 h-7 rounded bg-white/5 hover:bg-white/10 inline-flex items-center gap-1 ${ORVEK_DEFERRED_ACTION_CLASS}`}
           >
             Open patterns <ChevronRight className="h-3 w-3" />
-          </Link>
+          </button>
         </div>
       </div>
       <div className="label-meta mb-2 mt-5">References</div>

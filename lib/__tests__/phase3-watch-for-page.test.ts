@@ -192,6 +192,7 @@ describe("Phase 3 Watch For page", () => {
     expect(html).toContain("/patterns/pc-1");
     expect(html).toContain("/contradictions/cn-1");
     expect(html).toContain("/your-map/umc-1");
+    expect(html).not.toContain('href="/active-questions"');
     expect(html).not.toContain("/active-questions/inv-12");
     expect(html).not.toMatch(/>inv-12</);
     expect(html).toContain("Source unavailable.");

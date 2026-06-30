@@ -87,3 +87,8 @@ Remaining screenshot checks:
 
 Classification:
 - AUDIT ONLY
+
+Post-repair note:
+- `shell-legacy-route-cleanup-001` repaired the visible shell leakage identified in this audit.
+- The next highest-impact repair slice is now `explore-composer-wireup`.
+- The today full report dead-end remains a separate follow-up item.

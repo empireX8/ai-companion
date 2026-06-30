@@ -34,9 +34,7 @@
 - `today-now-row-routing`
 
 ### Inspector/Detail Routing
-- `your-map-legacy-link-cleanup`
-- `watch-for-footer-legacy-cleanup`
-- `map-open-questions-link-cleanup`
+- `none`
 
 ### Empty-State Honesty
 - `today-report-link-reentry`
@@ -45,22 +43,27 @@
 - `explore-fieldwork-cta-copy`
 
 ### Duplicate Navigation Cleanup
-- `shell-legacy-route-cleanup`
-- `journal-chat-legacy-link-cleanup`
-- `your-map-footer-legacy-cleanup`
+- `none`
 
 ### Data/API Mismatch
-- `decisions-outcome-honesty`
 - `today-report-link-reentry`
 
 ### Later Visual Polish
 - `none`
 
-Recommended next single repair slice:
+Completed in `shell-legacy-route-cleanup-001`:
 - `shell-legacy-route-cleanup`
+- `journal-chat-legacy-link-cleanup`
+- `your-map-legacy-link-cleanup`
+- `watch-for-footer-legacy-cleanup`
+- `map-open-questions-link-cleanup`
+- `your-map-footer-legacy-cleanup`
+- `decisions-outcome-honesty`
+
+Recommended next single repair slice:
+- `explore-composer-wireup`
 
 Reason:
 - The core spine is mostly wired.
-- The highest-impact remaining damage is visible shell and palette leakage into blocked legacy routes.
-- This slice removes the largest concentration of dead-end navigation without touching schema, generation logic, or the inspector boundary.
-
+- The highest-impact remaining damage is `Explore` ask / prompt wiring, which still sends users to the wrong output space.
+- This slice should be repaired before broader re-entry or empty-state polish work.

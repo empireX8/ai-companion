@@ -30,6 +30,14 @@ const GROUP_LABELS: Record<CommandGroup, string> = {
 
 const GROUP_ORDER: CommandGroup[] = ["primary", "layers", "legacy", "chat"];
 
+const VISIBLE_LAYER_ROUTES = V1_LAYER_ROUTES.filter(
+  (route) => route.href === "/what-changed" || route.href === "/watch-for"
+);
+
+const VISIBLE_LEGACY_SUPPORT_ROUTES = V1_LEGACY_SUPPORT_ROUTES.filter(
+  (route) => route.href === "/journal-chat"
+);
+
 export function CommandPalette() {
   const { isOpen, close } = useCommandPalette();
   const router = useRouter();
@@ -45,7 +53,7 @@ export function CommandPalette() {
         group: "primary" as const,
         action: () => router.push(route.href),
       })),
-      ...V1_LAYER_ROUTES.map((route) => ({
+      ...VISIBLE_LAYER_ROUTES.map((route) => ({
         id: `layer-${route.href.slice(1)}`,
         label: route.label,
         group: "layers" as const,
@@ -60,7 +68,7 @@ export function CommandPalette() {
           inputRef.current?.focus();
         },
       })),
-      ...V1_LEGACY_SUPPORT_ROUTES.map((route) => ({
+      ...VISIBLE_LEGACY_SUPPORT_ROUTES.map((route) => ({
         id: `legacy-${route.href.slice(1).replace(/\//g, "-")}`,
         label: route.label,
         group: "legacy" as const,
