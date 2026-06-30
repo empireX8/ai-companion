@@ -90,5 +90,9 @@ Classification:
 
 Post-repair note:
 - `shell-legacy-route-cleanup-001` repaired the visible shell leakage identified in this audit.
-- The next highest-impact repair slice is now `explore-composer-wireup`.
-- The today full report dead-end remains a separate follow-up item.
+- `explore-composer-wireup-001` repaired the Explore Ask / quick prompt wrong-target finding.
+- Remaining findings:
+  - `today-report-link-reentry`
+  - `today-reentry-allowlist-reconcile`
+  - `today-now-row-routing`
+- The next highest-impact repair slice is now `today-report-link-reentry`.

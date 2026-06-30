@@ -19,6 +19,11 @@ Shell cleanup result:
 - Top-bar `Import`, command palette legacy entries, Journal Chat `Open patterns`, Your Map legacy context/memory links, Your Map and Watch For `Active Questions`, and Decisions `Add outcome` no longer present blocked public routes as active-looking affordances.
 - Your Map open-questions preview rows and `View all` no longer link to blocked `/active-questions`.
 
+Explore composer wireup result:
+- Explore `Ask` now sends the composer draft into the real `explore_chat` session and renders in the Explore conversation area.
+- Explore quick prompts now send into the same Explore conversation output instead of switching the Inspector to movement.
+- Explore composer focus no longer routes users into Inspector movement.
+
 Honest deferrals:
 - Today primary re-entry actions are explicitly disabled when the allowlist rejects their target route.
 - Today full report output is intentionally deferred instead of linking to a report page that is not yet integrated into the workbench shell.
@@ -31,6 +36,7 @@ What remains clean:
 - Inspector model_update Evidence / Context remains boundary-correct.
 - Inspector model_update Mind Model Movement still owns the epistemic report.
 
-Remaining highest-risk failures after shell cleanup:
-- Explore `Ask` and quick prompts still point to Inspector movement instead of sending chat data.
+Remaining findings after Explore composer repair:
 - Today full report output remains a dead end instead of a navigable report surface.
+- Today primary re-entry actions still need allowlist reconciliation for valid workbench targets.
+- Today now rows still need route-versus-inspector target reconciliation.

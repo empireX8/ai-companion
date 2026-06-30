@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { EXPLORE_GROUNDING } from "@/lib/orvek-v0/orvek-data"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
+import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
 import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { Chip, SectionLabel } from "@/components/orvek-v0/primitives"
@@ -71,10 +72,13 @@ export function ExplorePage() {
 function FreeExplore() {
   const { select, setInspectorTab } = useWorkbench()
   const data = useOrvekData()
+  const exploreHandlers = useOrvekPageHandlers().explore
   const { getObjects, exploreGrounding, exploreMessages, exploreLiveDetectionCopy, emptyCopyBySlot } =
     data
+  const [localDraft, setLocalDraft] = useState("")
   const isProduction = isProductionDisplay(data)
   const isReference = !isProduction
+  const exploreView = data.explore
   const groundingIds =
     exploreGrounding.length > 0
       ? exploreGrounding
@@ -82,6 +86,17 @@ function FreeExplore() {
         ? EXPLORE_GROUNDING
         : []
   const grounding = getObjects(groundingIds)
+  const composerDraft = exploreView?.composerDraft ?? localDraft
+  const isBooting = Boolean(exploreView?.isBooting)
+  const isSending = Boolean(exploreView?.isSending)
+  const composerDisabled = isBooting || isSending
+  const canSend = Boolean(exploreHandlers?.onSend) && !composerDisabled && composerDraft.trim().length > 0
+  const quickPrompts = exploreView?.quickPrompts ?? [
+    "Explore a pattern",
+    "Talk through a decision",
+    "Start an investigation",
+    "Inspect a conflict",
+  ]
   const messages = isProduction
     ? (exploreMessages ?? [])
     : (exploreMessages ?? [
@@ -104,7 +119,9 @@ function FreeExplore() {
       <div className="space-y-3">
         {messages.length === 0 && isProduction ? (
           <div className="o-material rounded-[14px] p-4 text-[13px] leading-relaxed text-muted-foreground">
-            {emptyCopyBySlot?.exploreChatEmpty ?? "Ask the model anything to begin."}
+            {isBooting
+              ? (exploreView?.chatLoadingCopy ?? "Loading conversation…")
+              : (emptyCopyBySlot?.exploreChatEmpty ?? "Ask the model anything to begin.")}
           </div>
         ) : (
           messages.map((message) => (
@@ -166,33 +183,59 @@ function FreeExplore() {
       {/* composer */}
       <div className="o-material mt-4 flex items-center gap-2 rounded-2xl p-2">
         <input
-          placeholder="Ask the model anything…"
-          onFocus={() => setInspectorTab("movement")}
-          className="flex-1 bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          value={composerDraft}
+          onChange={(event) => {
+            const nextValue = event.target.value
+            if (exploreHandlers?.onDraftChange) {
+              exploreHandlers.onDraftChange(nextValue)
+              return
+            }
+            setLocalDraft(nextValue)
+          }}
+          placeholder={exploreView?.composerPlaceholder ?? "Ask the model anything…"}
+          onFocus={() => {
+            exploreHandlers?.onComposerFocus?.()
+          }}
+          disabled={composerDisabled}
+          className="flex-1 bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50"
         />
         <button
           type="button"
-          onClick={() => setInspectorTab("movement")}
-          className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98]"
+          onClick={() => {
+            if (!canSend) {
+              return
+            }
+            exploreHandlers?.onSend?.()
+          }}
+          disabled={!canSend}
+          className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Send className="size-3.5" />
           Ask
         </button>
       </div>
+      {exploreView?.errorMessage ? (
+        <p className="mt-2 text-[12px] text-destructive">{exploreView.errorMessage}</p>
+      ) : null}
 
       {/* quick prompts */}
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {[
-          "Explore a pattern",
-          "Talk through a decision",
-          "Start an investigation",
-          "Inspect a conflict",
-        ].map((q) => (
+        {quickPrompts.map((q) => (
           <button
             key={q}
             type="button"
-            onClick={() => setInspectorTab("movement")}
-            className="o-calm rounded-full bg-secondary/60 px-2.5 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+            onClick={() => {
+              if (composerDisabled) {
+                return
+              }
+              if (exploreHandlers?.onQuickPrompt) {
+                exploreHandlers.onQuickPrompt(q)
+                return
+              }
+              setLocalDraft(q)
+            }}
+            disabled={composerDisabled}
+            className="o-calm rounded-full bg-secondary/60 px-2.5 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
           >
             {q}
           </button>

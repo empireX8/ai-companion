@@ -29,7 +29,6 @@
 ## Repair Queue
 
 ### Critical Path Wiring
-- `explore-composer-wireup`
 - `today-reentry-allowlist-reconcile`
 - `today-now-row-routing`
 
@@ -60,10 +59,14 @@ Completed in `shell-legacy-route-cleanup-001`:
 - `your-map-footer-legacy-cleanup`
 - `decisions-outcome-honesty`
 
-Recommended next single repair slice:
+Completed in `explore-composer-wireup-001`:
 - `explore-composer-wireup`
+
+Recommended next single repair slice:
+- `today-report-link-reentry`
 
 Reason:
 - The core spine is mostly wired.
-- The highest-impact remaining damage is `Explore` ask / prompt wiring, which still sends users to the wrong output space.
-- This slice should be repaired before broader re-entry or empty-state polish work.
+- The Explore wrong-target wiring is repaired.
+- The next most visible remaining failure is the Today full-report dead end.
+- Today re-entry allowlist and now-row routing remain separate follow-up slices.

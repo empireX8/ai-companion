@@ -55,7 +55,9 @@ export function OrvekExplorePage() {
         onSend: () => {
           void sendMessage();
         },
-        onQuickPrompt: (prompt: string) => setDraft(prompt),
+        onQuickPrompt: (prompt: string) => {
+          void sendMessage(prompt);
+        },
         onOpenInspector: () => {},
         onComposerFocus: () => {},
       },
