@@ -1,0 +1,22 @@
+# V0 Step 1 Acceptance Intake
+
+- Branch: `v0-step1-acceptance-001`
+- Base branch: `staging`
+- Objective: audit whether Step 1 is genuinely complete after PRs `#59` through `#63`
+  - visible v0 button/action -> correct UX target -> correct output space
+- Scope:
+  - `/`
+  - `/journal-chat`
+  - `/what-changed`
+  - `/explore`
+  - `/your-map`
+  - `/timeline`
+  - `/watch-for`
+  - `/actions`
+  - top nav / shell actions
+  - command palette actions
+  - page CTAs, cards, rows, tabs, quick prompts, report links, inspector/detail links, re-entry links, empty states
+- Constraints:
+  - audit only
+  - no repair unless a tiny obvious receipt/test typo
+  - do not change generation logic, schema, middleware, styling, or legacy route behavior
