@@ -118,12 +118,12 @@ export type LibraryItem = {
 
 export const libraryItems: LibraryItem[] = [
   { id: "l1", type: "Journal", date: "May 1", sortKey: 501, title: "The shape of a quiet morning", preview: "Woke before the alarm. Sat with coffee for forty minutes…", mood: "Calm", tags: ["morning", "reading"], signals: 1, linked: [{ kind: "Pattern", label: "Morning clarity" }] },
-  { id: "l2", type: "Journal Chat", date: "May 1", sortKey: 500, title: "Sitting with the morning's quiet", preview: "8 turns · Guided reflection", mood: "Calm", tags: ["morning"], signals: 0, linked: [] },
+  { id: "l2", type: "Journal Chat", date: "May 1", sortKey: 500, title: "Sitting with the morning's quiet", preview: "8 turns · Evidence capture", mood: "Calm", tags: ["morning"], signals: 0, linked: [] },
   { id: "l3", type: "Explore", date: "Apr 30", sortKey: 430, title: "Wanting depth · Wanting space", preview: "22 turns · Open exploration", mood: null, tags: ["relationship"], signals: 1, linked: [{ kind: "Tension", label: "Wanting depth · Wanting space" }] },
   { id: "l4", type: "Journal", date: "Apr 30", sortKey: 429, title: "After the call with Mara", preview: "There's a particular flavor of disappointment…", mood: "Tense", tags: ["relationship", "evening"], signals: 2, linked: [{ kind: "Tension", label: "Speak plainly · Stay generous" }, { kind: "Thread", label: "Mara, unresolved" }] },
   { id: "l5", type: "Check-in", date: "Apr 30", sortKey: 428, title: "Anxious · After call", preview: "Mara.", mood: "Anxious", tags: ["relationship"], signals: 1, linked: [{ kind: "Thread", label: "Mara, unresolved" }] },
   { id: "l6", type: "Journal", date: "Apr 29", sortKey: 420, title: "Notes from a long walk", preview: "Three loops of the reservoir. The wind was doing that thing…", mood: "Calm", tags: ["walk"], signals: 0, linked: [] },
-  { id: "l7", type: "Journal Chat", date: "Apr 29", sortKey: 419, title: "Unpacking the call with Mara", preview: "14 turns · Guided reflection", mood: "Tense", tags: ["relationship"], signals: 1, linked: [{ kind: "Tension", label: "Speak plainly · Stay generous" }] },
+  { id: "l7", type: "Journal Chat", date: "Apr 29", sortKey: 419, title: "Unpacking the call with Mara", preview: "14 turns · Evidence capture", mood: "Tense", tags: ["relationship"], signals: 1, linked: [{ kind: "Tension", label: "Speak plainly · Stay generous" }] },
   { id: "l8", type: "Journal", date: "Apr 28", sortKey: 410, title: "Why does Sunday night feel like this", preview: "It's not the work itself…", mood: "Anxious", tags: ["evening", "work"], signals: 1, linked: [{ kind: "Pattern", label: "Sunday contraction" }] },
   { id: "l9", type: "Explore", date: "Apr 27", sortKey: 400, title: "Late-evening rumination", preview: "17 turns · Open exploration", mood: null, tags: ["evening"], signals: 1, linked: [{ kind: "Pattern", label: "Late-evening rumination" }] },
   { id: "l10", type: "Check-in", date: "Apr 27", sortKey: 399, title: "Calm · Walk", preview: null, mood: "Calm", tags: ["walk"], signals: 0, linked: [] },
@@ -131,7 +131,7 @@ export const libraryItems: LibraryItem[] = [
   { id: "l12", type: "Journal", date: "Apr 25", sortKey: 380, title: "Small grief, late afternoon", preview: "The light came in low through the kitchen…", mood: "Tense", tags: ["memory"], signals: 0, linked: [] },
   { id: "l13", type: "Check-in", date: "Apr 24", sortKey: 370, title: "Overwhelmed · Sunday", preview: "The contraction feeling again.", mood: "Overwhelmed", tags: ["evening"], signals: 1, linked: [{ kind: "Pattern", label: "Sunday contraction" }] },
   { id: "l14", type: "Journal", date: "Apr 22", sortKey: 360, title: "A note before the meeting", preview: "I want to be clear without being defensive…", mood: "Anxious", tags: ["work"], signals: 1, linked: [{ kind: "Tension", label: "Speak plainly · Stay generous" }] },
-  { id: "l15", type: "Journal Chat", date: "Apr 22", sortKey: 359, title: "When 'fine' is doing too much work", preview: "6 turns · Guided reflection", mood: "Numb", tags: ["work"], signals: 0, linked: [] },
+  { id: "l15", type: "Journal Chat", date: "Apr 22", sortKey: 359, title: "When 'fine' is doing too much work", preview: "6 turns · Evidence capture", mood: "Numb", tags: ["work"], signals: 0, linked: [] },
 ];
 
 export const journalChatTranscript = [

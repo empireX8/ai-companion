@@ -27,18 +27,18 @@ export default function JournalChatPage() {
 
   return (
     <SurfaceChatShell
-      title="Journal Chat"
-      subtitle="Guided reflection"
+      title="Capture Life Data"
+      subtitle="Low-friction evidence entry"
       surfaceType="journal_chat"
       sessionStorageKey={JOURNAL_CHAT_STORAGE_KEY}
-      placeholder="Respond to the prompt..."
+      placeholder="Add what happened..."
       emptyPrompt={
         handoffText
           ? handoffText
-          : "Let's begin. What's been most present for you in the last 24 hours?"
+          : "If something happened, capture it here."
       }
-      assistantEyebrow="Guided reflection"
-      footerNote="Reflective mode"
+      assistantEyebrow="Capture"
+      footerNote="Structure later"
       contextPanel={<JournalContextPanel />}
     />
   );
@@ -49,20 +49,22 @@ function JournalContextPanel() {
     <>
       <div className="label-meta mb-3">Context</div>
       <div className="card-standard p-3 mb-3">
-        <div className="label-meta mb-1.5">Recent entry</div>
-        <div className="text-[13px] leading-snug">The shape of a quiet morning</div>
+        <div className="label-meta mb-1.5">Recent capture</div>
+        <div className="text-[13px] leading-snug">Morning note from May 1</div>
         <div className="text-[11.5px] text-meta mt-1">May 1 · Calm</div>
       </div>
       <div className="card-standard p-3 mb-3">
-        <div className="label-meta mb-1.5">Memory</div>
-        <div className="text-[13px] leading-snug">You associate &ldquo;forward-lean&rdquo; with anticipatory rumination.</div>
+        <div className="label-meta mb-1.5">Evidence</div>
+        <div className="text-[13px] leading-snug">
+          The phrase &ldquo;forward-lean&rdquo; appears in recent capture.
+        </div>
       </div>
       <div className="card-surfaced p-4 mb-3">
         <div className="label-meta mb-2 text-cyan/70 flex items-center gap-2">
-          <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Pattern surfaced
+          <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Signal surfaced
         </div>
         <div className="text-[13.5px] leading-relaxed">
-          The forward-lean has appeared repeatedly this week, often before unstructured time.
+          The phrase appears more than once in the current capture set.
         </div>
         <div className="flex gap-2 mt-3">
           <button
@@ -76,7 +78,7 @@ function JournalContextPanel() {
         </div>
       </div>
       <div className="label-meta mb-2 mt-5">References</div>
-      <div className="text-[12px] text-meta">Use the Memory panel in `/chat` for full reference controls.</div>
+      <div className="text-[12px] text-meta">Reference controls are unavailable in v0.</div>
     </>
   );
 }

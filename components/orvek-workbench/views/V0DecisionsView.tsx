@@ -85,7 +85,7 @@ export function V0DecisionsView({
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">Decisions</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Enter a decision, see what to choose, record what happened, and learn what it
+              Enter a decision, review the evidence, record what happened, and learn what it
               reveals.
             </p>
           </div>

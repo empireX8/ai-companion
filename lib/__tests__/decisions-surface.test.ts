@@ -79,6 +79,9 @@ describe("decisions page wiring", () => {
 
     expect(pageSource).toContain("OrvekDecisionsPage");
     expect(wiring).toContain("DECISIONS_PAGE_INTRO");
+    expect(wiring).toContain("Evidence-backed read");
+    expect(wiring).not.toContain("What Orvek would choose");
+    expect(wiring).not.toContain("see what to choose");
     expect(adapterSource).toContain('"Active"');
     expect(adapterSource).toContain('"Outcome due"');
     expect(viewSource).toContain("Options");

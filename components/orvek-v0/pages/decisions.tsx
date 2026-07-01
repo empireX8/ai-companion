@@ -86,7 +86,7 @@ export function DecisionsPage() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">Decisions</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Enter a decision, see what to choose, record what happened, and learn what it
+              Enter a decision, review the evidence, record what happened, and learn what it
               reveals.
             </p>
           </div>
@@ -272,7 +272,7 @@ export function DecisionsPage() {
             {decision.recommendation && (
               <div className="mt-4 rounded-lg border-l-2 border-primary bg-evidence-muted/40 px-4 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-                  What Orvek would choose
+                  Evidence-backed read
                 </p>
                 <p className="mt-1 text-[15px] leading-relaxed text-foreground">
                   {decision.recommendation}
@@ -439,7 +439,7 @@ export function DecisionsPage() {
                 </h2>
                 <div className="mt-4 rounded-lg border-l-2 border-primary bg-evidence-muted/40 px-4 py-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-                    What Orvek would choose
+                    Evidence-backed read
                   </p>
                   <p className="mt-1 text-[15px] leading-relaxed text-foreground">
                     {emptyCopyBySlot?.decisionsProjectionEmpty ??

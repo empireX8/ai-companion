@@ -12,6 +12,10 @@ import type { V0TodayViewProps } from "@/lib/orvek-adapters/types";
 import type { V0WhatChangedViewProps } from "@/lib/orvek-adapters/what-changed";
 import type { V0TimelineViewProps } from "@/lib/orvek-adapters/timeline";
 import { TIMELINE_SEMANTIC_FILTERS } from "@/lib/timeline-semantic-layers";
+import {
+  TODAY_ATTENTION_EMPTY_COPY,
+  TODAY_PRIMARY_EMPTY_COPY,
+} from "@/lib/today-reentry";
 import { WHAT_CHANGED_REENTRY_LINKS } from "@/lib/what-changed-surface";
 
 import { getObject, getObjects, OBJECTS } from "./mock-orvek-data";
@@ -47,17 +51,18 @@ export function buildReferenceTodayProps(): V0TodayViewProps {
 
   return {
     briefingDate: "Tuesday",
-    briefingTitle: "Your model moved in 3 places.",
+    briefingTitle: "Current state",
     briefingMeta:
-      "2 reviews are due and 1 report is ready. Start where the change is most consequential.",
+      "2 current changes are ready and 1 report is ready. Start where the state changed.",
     isLoading: false,
     loadingCopy: "",
-    heroEmptyCopy: "Nothing needs your attention right now.",
+    heroEmptyCopy: TODAY_PRIMARY_EMPTY_COPY,
     hero: {
       kicker: "decision outcome due",
       title: lead.title,
       summary:
         "You set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.",
+      whyItMatters: "The current read changed because recent evidence closed the review window.",
       whatChanged: "Outcome window closed",
       linkedReceipts: `${lead.evidenceCount ?? 6} receipts`,
       lastEvidence: "2 hours ago",
@@ -115,7 +120,7 @@ export function buildReferenceTodayProps(): V0TodayViewProps {
         inspectorTab: "evidence",
       },
     ],
-    nowEmptyCopy: "Nothing is active in this window.",
+    nowEmptyCopy: TODAY_ATTENTION_EMPTY_COPY,
     movements: [
       {
         id: "mu-1",
@@ -136,7 +141,7 @@ export function buildReferenceTodayProps(): V0TodayViewProps {
         evidence: "A decision review added social-consequence detail.",
       },
     ],
-    movementEmptyCopy: "No recent movement in this window.",
+    movementEmptyCopy: "No delta log is available in this window.",
     report: {
       title: "What Changed",
       meta: "Ready · 3 published movements in this window",
@@ -159,8 +164,7 @@ export function buildReferenceTodayProps(): V0TodayViewProps {
       href: "#",
     })),
     checkIns: [],
-    priorReadEmptyCopy:
-      "Prior read is not shown in this feed — open movement in the inspector.",
+    priorReadEmptyCopy: "Prior read unavailable.",
   };
 }
 

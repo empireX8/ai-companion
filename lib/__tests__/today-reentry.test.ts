@@ -268,7 +268,7 @@ describe("today-reentry briefing copy", () => {
       ...emptySnapshot(),
       intelligenceUpdates: [movementItem("mu-1"), movementItem("mu-2")],
     };
-    expect(buildTodayBriefingTitle(snapshot)).toBe("Your Mind Model moved in 2 places.");
+    expect(buildTodayBriefingTitle(snapshot)).toBe("Current state");
   });
 
   it("uses sparse fallback title when only non-movement data exists", () => {
@@ -285,12 +285,14 @@ describe("today-reentry briefing copy", () => {
         },
       ],
     };
-    expect(buildTodayBriefingTitle(snapshot)).toBe("What matters now");
+    expect(buildTodayBriefingTitle(snapshot)).toBe("Current state");
   });
 
   it("reports empty content honestly", () => {
     expect(hasTodayReentryContent(emptySnapshot())).toBe(false);
-    expect(buildTodayBriefingMeta(emptySnapshot(), false)).toContain("Nothing surfaced yet");
+    expect(buildTodayBriefingMeta(emptySnapshot(), false)).toContain(
+      "No meaningful model movement"
+    );
   });
 });
 
@@ -391,17 +393,24 @@ describe("today page re-entry wiring", () => {
 
   it("renders attention section and inspector selection affordances", () => {
     const source = readTodayPageSource();
-    expect(source).toContain("Most consequential now");
-    expect(source).toContain(">Now</SectionLabel>");
-    expect(source).toContain("Recent model movement");
-    expect(source).toContain("Receipts resurfaced");
+    expect(source).toContain("TODAY_PRIMARY_SECTION_LABEL");
+    expect(source).toContain("TODAY_ATTENTION_SECTION_LABEL");
+    expect(source).toContain("TODAY_FIELDWORK_SECTION_LABEL");
+    expect(source).toContain("TODAY_RECEIPTS_SECTION_LABEL");
+    expect(source).toContain("TODAY_REPORT_READY_LABEL");
+    expect(source).toContain("Why it matters");
+    expect(source).not.toContain("Most consequential now");
+    expect(source).not.toContain("What changed");
+    expect(source).not.toContain("Linked receipts");
+    expect(source).not.toContain("Last evidence");
+    expect(source).not.toContain("Recent model movement");
+    expect(source).not.toContain("Receipts resurfaced");
     expect(source).toContain("buildTodayFieldworkRows");
     expect(source).toContain("buildTodayOpenLoopRows");
     expect(source).toContain("buildTodayChangeRows");
     expect(source).toContain("openInspectorSelection");
     expect(source).toContain('"movement"');
     expect(source).toContain("See why it moved");
-    expect(source.includes("TODAY_TIMELINE_MOVEMENT_LABEL")).toBe(false);
     expect(source.includes("lg:grid-cols-")).toBe(true);
   });
 
