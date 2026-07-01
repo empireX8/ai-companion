@@ -30,7 +30,7 @@ export const TODAY_REPORT_FULL_LABEL = "Open full What Changed";
 export const TODAY_REPORT_FULL_DEFERRED_COPY =
   "Full report view not available in this workbench yet.";
 export const TODAY_REPORT_EMPTY_COPY =
-  "No published movement to show yet. Meaningful changes appear here when your model moves.";
+  "No re-entry trigger is ready in this window.";
 
 export function toTodayIntelligenceUpdateItem(
   row: TodayIntelligenceUpdateRecord

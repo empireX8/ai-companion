@@ -15,6 +15,13 @@ import {
 } from "lucide-react";
 
 import type { V0NowRowIcon, V0TodayViewProps } from "@/lib/orvek-adapters/types";
+import {
+  TODAY_ATTENTION_SECTION_LABEL,
+  TODAY_FIELDWORK_SECTION_LABEL,
+  TODAY_OPEN_LOOPS_LABEL,
+  TODAY_RECEIPTS_SECTION_LABEL,
+  TODAY_REPORT_READY_LABEL,
+} from "@/lib/today-reentry";
 
 import { SectionLabel } from "../OrvekPrimitives";
 
@@ -104,7 +111,7 @@ export function V0TodayView({
                 <div className="bg-action-muted/50 px-5 py-2.5">
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-action-foreground">
                     <BellRing className="size-3.5" aria-hidden />
-                    Most consequential now · {hero.kicker}
+                    State · {hero.kicker}
                   </span>
                 </div>
                 <div className="p-5">
@@ -123,7 +130,7 @@ export function V0TodayView({
                   <dl className="mt-4 grid grid-cols-3 gap-3 rounded-xl bg-secondary/40 px-3 py-3">
                     <div>
                       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                        What changed
+                        Delta
                       </dt>
                       <dd className="mt-0.5 text-[13px] font-medium text-foreground">
                         {hero.whatChanged}
@@ -131,7 +138,7 @@ export function V0TodayView({
                     </div>
                     <div>
                       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                        Linked receipts
+                        Evidence pointer
                       </dt>
                       <dd className="mt-0.5 text-[13px] font-medium text-foreground">
                         {hero.linkedReceipts}
@@ -139,10 +146,10 @@ export function V0TodayView({
                     </div>
                     <div>
                       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                        Last evidence
+                        Why it matters
                       </dt>
                       <dd className="mt-0.5 text-[13px] font-medium text-foreground">
-                        {hero.lastEvidence}
+                        {hero.whyItMatters ?? "—"}
                       </dd>
                     </div>
                   </dl>
@@ -209,7 +216,7 @@ export function V0TodayView({
               })}
             </div>
 
-            <SectionLabel className="mb-2 mt-8">Now</SectionLabel>
+            <SectionLabel className="mb-2 mt-8">{TODAY_ATTENTION_SECTION_LABEL}</SectionLabel>
             {nowRows.length === 0 ? (
               <div className="o-material rounded-[10px] p-4 text-[13px] text-muted-foreground">
                 {nowEmptyCopy}
@@ -269,7 +276,7 @@ export function V0TodayView({
 
             <div className="mb-2 mt-8 flex items-center gap-1.5">
               <GitCompareArrows className="size-3.5 text-primary" aria-hidden />
-              <SectionLabel>Recent model movement</SectionLabel>
+              <SectionLabel>{TODAY_FIELDWORK_SECTION_LABEL}</SectionLabel>
             </div>
             {movements.length === 0 ? (
               <div className="o-material rounded-[10px] p-4 text-[13px] text-muted-foreground">
@@ -321,6 +328,10 @@ export function V0TodayView({
           </div>
 
           <aside className="min-w-0 lg:sticky lg:top-2 lg:self-start">
+            <div className="mb-2 flex items-center gap-1.5">
+              <GitCompareArrows className="size-3.5 text-primary" aria-hidden />
+              <SectionLabel>{TODAY_REPORT_READY_LABEL}</SectionLabel>
+            </div>
             {report ? (
               <Link
                 href={report.href}
@@ -339,13 +350,13 @@ export function V0TodayView({
               </Link>
             ) : (
               <div className="o-material rounded-2xl px-4 py-3 text-[12px] text-muted-foreground">
-                No movement report ready in this window.
+                No re-entry trigger is ready in this window.
               </div>
             )}
 
             <div className="mb-2 mt-7 flex items-center gap-1.5">
               <ScrollText className="size-3.5 text-primary" aria-hidden />
-              <SectionLabel>Receipts resurfaced</SectionLabel>
+              <SectionLabel>{TODAY_RECEIPTS_SECTION_LABEL}</SectionLabel>
             </div>
             {receipts.length === 0 ? (
               <div className="o-material rounded-[10px] p-4 text-[13px] text-muted-foreground">
@@ -376,7 +387,7 @@ export function V0TodayView({
               </div>
             )}
 
-            <SectionLabel className="mb-2 mt-7">Capture</SectionLabel>
+            <SectionLabel className="mb-2 mt-7">{TODAY_OPEN_LOOPS_LABEL}</SectionLabel>
             <div className="o-material rounded-2xl p-4">
               <textarea
                 rows={3}

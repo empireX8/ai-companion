@@ -120,6 +120,7 @@ describe("today primary action routing", () => {
     expect(props.report?.primaryMovement?.summary).toBe("Updated summary");
     expect(props.report?.primaryMovement?.inspectSelectId).toBe("mu-1");
     expect(props.report?.fullReportAvailable).toBe(true);
+    expect(props.hero?.whyItMatters).toContain("evidence");
     const continueAction = props.primaryActions.find(
       (a) => a.label === "Continue from what changed"
     );

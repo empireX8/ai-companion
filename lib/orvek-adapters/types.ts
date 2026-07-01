@@ -14,6 +14,7 @@ export type V0TodayHeroSlot = {
   kicker: string;
   title: string;
   summary: string;
+  whyItMatters: string | null;
   whatChanged: string;
   linkedReceipts: string;
   lastEvidence: string;

@@ -193,7 +193,7 @@ function JournalView({ detail }: { detail: Extract<LibraryDetailView, { kind: "j
 function SessionView({ detail }: { detail: Extract<LibraryDetailView, { kind: "session" }> }) {
   const modeLabel =
     detail.mode === "journal_chat"
-      ? "Guided reflection"
+      ? "Evidence capture"
       : detail.mode === "explore_chat"
         ? "Open exploration"
         : "Imported archive";

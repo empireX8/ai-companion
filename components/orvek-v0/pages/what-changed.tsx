@@ -8,6 +8,21 @@ import type { V0WhatChangedViewProps } from "@/lib/orvek-adapters/what-changed";
 import { useOrvekData } from "@/lib/orvek-v0/data-provider";
 import { isProductionDisplay } from "@/lib/orvek-v0/display-contract";
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers";
+import {
+  WHAT_CHANGED_CONCLUSION_EMPTY,
+  WHAT_CHANGED_CONCLUSION_LABEL,
+  WHAT_CHANGED_DISCONFIRMING_EMPTY,
+  WHAT_CHANGED_DISCONFIRMING_LABEL,
+  WHAT_CHANGED_FIELDWORK_EMPTY,
+  WHAT_CHANGED_FIELDWORK_LABEL,
+  WHAT_CHANGED_IMPACT_EMPTY,
+  WHAT_CHANGED_IMPACT_LABEL,
+  WHAT_CHANGED_EVIDENCE_EMPTY,
+  WHAT_CHANGED_REALITY_GATE_EMPTY,
+  WHAT_CHANGED_REALITY_GATE_LABEL,
+  WHAT_CHANGED_UNCERTAINTY_EMPTY,
+  WHAT_CHANGED_UNCERTAINTY_LABEL,
+} from "@/lib/what-changed-surface";
 
 import { SectionLabel } from "@/components/orvek-v0/primitives";
 import { cn } from "@/lib/utils";
@@ -43,6 +58,21 @@ function BeforeAfter({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function BriefingNote({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <SectionLabel>{label}</SectionLabel>
+      <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{children}</p>
+    </section>
   );
 }
 
@@ -99,6 +129,13 @@ function WhatChangedEmptyShell({
           </div>
           <div className="space-y-5 p-5">
             <section>
+              <SectionLabel>{view.evidenceLabel}</SectionLabel>
+              <p className="mb-3 text-[12px] text-muted-foreground">{view.evidenceIntro}</p>
+              <div className="o-sunken rounded-[10px] p-3.5 text-[13px] text-muted-foreground">
+                {WHAT_CHANGED_EVIDENCE_EMPTY}
+              </div>
+            </section>
+            <section>
               <SectionLabel>{view.whatChangedLabel}</SectionLabel>
               <p className="mt-2 text-[15px] font-medium leading-snug text-muted-foreground">—</p>
             </section>
@@ -108,16 +145,21 @@ function WhatChangedEmptyShell({
                 {view.emptySecondary}
               </p>
             </section>
-            <section>
-              <p className="text-[13px] text-muted-foreground">—</p>
-            </section>
-            <section>
-              <SectionLabel>{view.evidenceLabel}</SectionLabel>
-              <p className="mb-3 text-[12px] text-muted-foreground">{view.evidenceIntro}</p>
-              <div className="o-sunken rounded-[10px] p-3.5 text-[13px] text-muted-foreground">
-                —
-              </div>
-            </section>
+            <BriefingNote label={WHAT_CHANGED_DISCONFIRMING_LABEL}>
+              {WHAT_CHANGED_DISCONFIRMING_EMPTY}
+            </BriefingNote>
+            <BriefingNote label={WHAT_CHANGED_UNCERTAINTY_LABEL}>
+              {WHAT_CHANGED_UNCERTAINTY_EMPTY}
+            </BriefingNote>
+            <BriefingNote label={WHAT_CHANGED_IMPACT_LABEL}>
+              {WHAT_CHANGED_IMPACT_EMPTY}
+            </BriefingNote>
+            <BriefingNote label={WHAT_CHANGED_REALITY_GATE_LABEL}>
+              {WHAT_CHANGED_REALITY_GATE_EMPTY}
+            </BriefingNote>
+            <BriefingNote label={WHAT_CHANGED_FIELDWORK_LABEL}>
+              {WHAT_CHANGED_FIELDWORK_EMPTY}
+            </BriefingNote>
             <section>
               <SectionLabel>{view.reentryLabel}</SectionLabel>
               <p className="mb-3 text-[12px] text-muted-foreground">{view.reentryIntro}</p>
@@ -133,6 +175,9 @@ function WhatChangedEmptyShell({
                 ))}
               </div>
             </section>
+            <BriefingNote label={WHAT_CHANGED_CONCLUSION_LABEL}>
+              {WHAT_CHANGED_CONCLUSION_EMPTY}
+            </BriefingNote>
           </div>
         </section>
       </section>
@@ -195,6 +240,43 @@ function WhatChangedBody({
                     </div>
                     <div className="space-y-5 p-5">
                       <section>
+                        <SectionLabel>{view.evidenceLabel}</SectionLabel>
+                        <p className="mb-3 text-[12px] text-muted-foreground">
+                          {view.evidenceIntro}
+                        </p>
+                        {view.evidenceItems.length > 0 ? (
+                          <div className="space-y-2">
+                            {view.evidenceItems.map((evidence) => (
+                              <article
+                                key={`${evidence.id}-${evidence.linkedAt}`}
+                                className="o-sunken rounded-[10px] p-3.5 text-[13px]"
+                              >
+                                <div className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+                                  {evidence.label}
+                                </div>
+                                {evidence.href ? (
+                                  <Link
+                                    href={evidence.href}
+                                    className="text-primary hover:underline"
+                                  >
+                                    {evidence.sourceTypeLabel}
+                                  </Link>
+                                ) : (
+                                  <span>{evidence.sourceTypeLabel}</span>
+                                )}
+                                <div className="mt-1 text-[11px] text-muted-foreground">
+                                  Linked {evidence.linkedAt}
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="o-sunken rounded-[10px] p-3.5 text-[13px] text-muted-foreground">
+                            {WHAT_CHANGED_EVIDENCE_EMPTY}
+                          </div>
+                        )}
+                      </section>
+                      <section>
                         <SectionLabel>{view.whatChangedLabel}</SectionLabel>
                         <p className="mt-2 text-[15px] font-medium leading-snug text-foreground">
                           {view.primary.title}
@@ -226,39 +308,26 @@ function WhatChangedBody({
                           Open in inspector
                         </button>
                       </section>
-                      {view.evidenceItems.length > 0 ? (
-                        <section>
-                          <SectionLabel>{view.evidenceLabel}</SectionLabel>
-                          <p className="mb-3 text-[12px] text-muted-foreground">
-                            {view.evidenceIntro}
-                          </p>
-                          <div className="space-y-2">
-                            {view.evidenceItems.map((evidence) => (
-                              <article
-                                key={`${evidence.id}-${evidence.linkedAt}`}
-                                className="o-sunken rounded-[10px] p-3.5 text-[13px]"
-                              >
-                                <div className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-                                  {evidence.label}
-                                </div>
-                                {evidence.href ? (
-                                  <Link href={evidence.href} className="text-primary hover:underline">
-                                    {evidence.sourceTypeLabel}
-                                  </Link>
-                                ) : (
-                                  <span>{evidence.sourceTypeLabel}</span>
-                                )}
-                                <div className="mt-1 text-[11px] text-muted-foreground">
-                                  Linked {evidence.linkedAt}
-                                </div>
-                              </article>
-                            ))}
-                          </div>
-                        </section>
-                      ) : null}
+                      <BriefingNote label={WHAT_CHANGED_DISCONFIRMING_LABEL}>
+                        {WHAT_CHANGED_DISCONFIRMING_EMPTY}
+                      </BriefingNote>
+                      <BriefingNote label={WHAT_CHANGED_UNCERTAINTY_LABEL}>
+                        {WHAT_CHANGED_UNCERTAINTY_EMPTY}
+                      </BriefingNote>
+                      <BriefingNote label={WHAT_CHANGED_IMPACT_LABEL}>
+                        {WHAT_CHANGED_IMPACT_EMPTY}
+                      </BriefingNote>
+                      <BriefingNote label={WHAT_CHANGED_REALITY_GATE_LABEL}>
+                        {WHAT_CHANGED_REALITY_GATE_EMPTY}
+                      </BriefingNote>
+                      <BriefingNote label={WHAT_CHANGED_FIELDWORK_LABEL}>
+                        {WHAT_CHANGED_FIELDWORK_EMPTY}
+                      </BriefingNote>
                       <section>
                         <SectionLabel>{view.reentryLabel}</SectionLabel>
-                        <p className="mb-3 text-[12px] text-muted-foreground">{view.reentryIntro}</p>
+                        <p className="mb-3 text-[12px] text-muted-foreground">
+                          {view.reentryIntro}
+                        </p>
                         <div className="flex flex-wrap gap-2">
                           {view.reentryLinks.map((link) => (
                             <Link
@@ -271,6 +340,9 @@ function WhatChangedBody({
                           ))}
                         </div>
                       </section>
+                      <BriefingNote label={WHAT_CHANGED_CONCLUSION_LABEL}>
+                        {WHAT_CHANGED_CONCLUSION_EMPTY}
+                      </BriefingNote>
                     </div>
                   </section>
                 </section>

@@ -12,7 +12,12 @@ import { useWorkbench } from "@/components/orvek-v0/store"
 import { SectionLabel } from "@/components/orvek-v0/primitives"
 import {
   TODAY_ATTENTION_EMPTY_COPY,
+  TODAY_ATTENTION_SECTION_LABEL,
+  TODAY_FIELDWORK_SECTION_LABEL,
   TODAY_PRIMARY_EMPTY_COPY,
+  TODAY_PRIMARY_SECTION_LABEL,
+  TODAY_RECEIPTS_SECTION_LABEL,
+  TODAY_REPORT_READY_LABEL,
 } from "@/lib/today-reentry"
 import type { V0NowRowIcon, V0PrimaryAction } from "@/lib/orvek-adapters/types"
 import { cn } from "@/lib/utils"
@@ -206,7 +211,7 @@ export function TodayPage() {
   const reportEmptyCopy =
     emptyCopyBySlot?.todayReportEmpty ??
     today?.movementEmptyCopy ??
-    "No published movement to show yet."
+    "No re-entry trigger is ready in this window."
 
   return (
     <div className="px-6 py-7 lg:px-10">
@@ -215,13 +220,13 @@ export function TodayPage() {
           {todayCopy?.briefingLine ?? "Tuesday · since your last visit"}
         </p>
         <h1 className="mt-1.5 text-[28px] font-semibold leading-tight tracking-tight text-foreground text-balance">
-          {todayCopy?.briefingTitle ?? (isProduction ? "Today" : "Your model moved in 3 places.")}
+          {todayCopy?.briefingTitle ?? "Current state"}
         </h1>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
           {todayCopy?.briefingMeta ??
             (isProduction
               ? heroEmptyCopy
-              : "2 reviews are due and 1 report is ready. Start where the change is most consequential.")}
+              : "2 current changes are ready and 1 report is ready. Start where the state changed.")}
         </p>
         {isProduction && todayIsLoading && (
           <p className="mt-2 text-[13px] text-muted-foreground">Loading today…</p>
@@ -236,9 +241,9 @@ export function TodayPage() {
                     <BellRing className="size-3.5" aria-hidden />
                     {isProduction
                       ? productionHero
-                        ? `${productionHero.kicker}${productionHero.whatChanged ? ` · ${productionHero.whatChanged}` : ""}`
-                        : "Most consequential now"
-                      : "Most consequential now · decision outcome due"}
+                        ? `${TODAY_PRIMARY_SECTION_LABEL} · ${productionHero.kicker}`
+                        : TODAY_PRIMARY_SECTION_LABEL
+                      : `${TODAY_PRIMARY_SECTION_LABEL} · decision outcome due`}
                   </span>
                 </div>
                 <div className="p-5">
@@ -256,7 +261,7 @@ export function TodayPage() {
                         <dl className="mt-4 grid grid-cols-3 gap-3 rounded-xl bg-secondary/40 px-3 py-3">
                           <div>
                             <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                              What changed
+                              Delta
                             </dt>
                             <dd className="mt-0.5 text-[13px] font-medium text-foreground">
                               {productionHero.whatChanged}
@@ -264,7 +269,7 @@ export function TodayPage() {
                           </div>
                           <div>
                             <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                              Linked receipts
+                              Evidence pointer
                             </dt>
                             <dd className="mt-0.5 text-[13px] font-medium text-foreground">
                               {productionHero.linkedReceipts}
@@ -272,10 +277,10 @@ export function TodayPage() {
                           </div>
                           <div>
                             <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                              Last evidence
+                              Why it matters
                             </dt>
                             <dd className="mt-0.5 text-[13px] font-medium text-foreground">
-                              {productionHero.lastEvidence}
+                              {productionHero.whyItMatters ?? "—"}
                             </dd>
                           </div>
                         </dl>
@@ -326,7 +331,7 @@ export function TodayPage() {
                           review.
                         </p>
                         <dl className="mt-4 grid grid-cols-3 gap-3 rounded-xl bg-secondary/40 px-3 py-3">
-                          {["What changed", "Linked receipts", "Last evidence"].map((label) => (
+                          {["Delta", "Evidence pointer", "Why it matters"].map((label) => (
                             <div key={label}>
                               <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
                                 {label}
@@ -356,7 +361,7 @@ export function TodayPage() {
                       <dl className="mt-4 grid grid-cols-3 gap-3 rounded-xl bg-secondary/40 px-3 py-3">
                         <div>
                           <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                            What changed
+                            Delta
                           </dt>
                           <dd className="mt-0.5 text-[13px] font-medium text-foreground">
                             Outcome window closed
@@ -364,7 +369,7 @@ export function TodayPage() {
                         </div>
                         <div>
                           <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                            Linked receipts
+                            Evidence pointer
                           </dt>
                           <dd className="mt-0.5 text-[13px] font-medium text-foreground">
                             {referenceLead.evidenceCount ?? 6} receipts
@@ -372,10 +377,11 @@ export function TodayPage() {
                         </div>
                         <div>
                           <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                            Last evidence
+                            Why it matters
                           </dt>
                           <dd className="mt-0.5 text-[13px] font-medium text-foreground">
-                            2 hours ago
+                            The current read changed because recent evidence closed the review
+                            window.
                           </dd>
                         </div>
                       </dl>
@@ -460,7 +466,7 @@ export function TodayPage() {
                   })}
             </div>
 
-            <SectionLabel className="mb-2 mt-8">Now</SectionLabel>
+            <SectionLabel className="mb-2 mt-8">{TODAY_ATTENTION_SECTION_LABEL}</SectionLabel>
             <div className="o-material divide-y divide-border overflow-hidden rounded-[10px]">
               {isProduction ? (
                 today?.nowRows.length ? (
@@ -558,7 +564,7 @@ export function TodayPage() {
               <section className="mt-8" data-testid="today-what-changed-output">
                 <div className="mb-2 flex items-center gap-1.5">
                   <GitCompareArrows className="size-3.5 text-primary" aria-hidden />
-                  <SectionLabel>{today?.report?.title ?? "What Changed"}</SectionLabel>
+                  <SectionLabel>{TODAY_REPORT_READY_LABEL}</SectionLabel>
                 </div>
                 {today?.report ? (
                   <div className="o-float overflow-hidden rounded-2xl">
@@ -639,7 +645,7 @@ export function TodayPage() {
             <>
             <div className="mb-2 mt-8 flex items-center gap-1.5">
               <GitCompareArrows className="size-3.5 text-primary" aria-hidden />
-              <SectionLabel>Recent model movement</SectionLabel>
+              <SectionLabel>{TODAY_FIELDWORK_SECTION_LABEL}</SectionLabel>
             </div>
             <div className="space-y-2.5">
               {isProduction ? (
@@ -706,7 +712,7 @@ export function TodayPage() {
                         <p className="mt-0.5 text-[13px] leading-relaxed text-foreground">
                           {emptyCopyBySlot?.todayMovementEmpty ??
                             today?.movementEmptyCopy ??
-                            "No recent movement in this window."}
+                            "No delta log is available in this window."}
                         </p>
                       </div>
                     </div>
@@ -782,7 +788,7 @@ export function TodayPage() {
 
             <div className={cn("mb-2 flex items-center gap-1.5", isProduction ? "mt-0" : "mt-7")}>
               <ScrollText className="size-3.5 text-primary" aria-hidden />
-              <SectionLabel>Receipts resurfaced</SectionLabel>
+              <SectionLabel>{TODAY_RECEIPTS_SECTION_LABEL}</SectionLabel>
             </div>
             <div className="o-material space-y-px overflow-hidden rounded-[10px]">
               {resurfacedReceipts.length > 0 ? (

@@ -36,22 +36,22 @@ export const TODAY_SECTION_ORDER = [
 
 export type TodaySectionId = (typeof TODAY_SECTION_ORDER)[number];
 
-export const TODAY_PRIMARY_SECTION_LABEL = "Most consequential now";
+export const TODAY_PRIMARY_SECTION_LABEL = "State";
 export const TODAY_PRIMARY_EMPTY_COPY =
-  `Nothing consequential right now. When ${PRODUCT_NAME} surfaces a meaningful shift, it will appear here first.`;
-export const TODAY_ATTENTION_SECTION_LABEL = "Needs attention now";
+  `No current state surfaced yet. When ${PRODUCT_NAME} surfaces a meaningful shift, it will appear here first.`;
+export const TODAY_ATTENTION_SECTION_LABEL = "Next observation / test";
 export const TODAY_ATTENTION_EMPTY_COPY =
-  "Nothing needs review right now. Recent shifts and tensions will appear here when supported.";
-export const TODAY_FIELDWORK_SECTION_LABEL = "Fieldwork / Watch For";
+  "No next observation or test surfaced yet. Recent shifts and tensions will appear here when supported.";
+export const TODAY_FIELDWORK_SECTION_LABEL = "Delta log";
 export const TODAY_FIELDWORK_EMPTY_COPY =
-  "No active watch prompts. When evidence supports field observation, prompts appear here.";
-export const TODAY_OPEN_LOOPS_LABEL = "Open loops / active questions";
+  "No delta log is available yet.";
+export const TODAY_OPEN_LOOPS_LABEL = "Capture path";
 export const TODAY_OPEN_LOOPS_EMPTY_COPY =
-  "No open loops or active questions right now.";
-export const TODAY_RECEIPTS_SECTION_LABEL = "Resurfaced receipts";
+  "No capture path is ready yet.";
+export const TODAY_RECEIPTS_SECTION_LABEL = "Evidence pointer";
 export const TODAY_RECEIPTS_EMPTY_COPY =
-  "No receipts resurfaced in this window.";
-export const TODAY_REPORT_READY_LABEL = "Report ready";
+  "No evidence pointers surfaced in this window.";
+export const TODAY_REPORT_READY_LABEL = "Re-entry trigger";
 
 export const TODAY_REENTRY_ENDPOINTS = {
   ...TIMELINE_SEMANTIC_ENDPOINTS,
@@ -512,8 +512,7 @@ export function buildTodayChangeRows(
 
 export function buildTodayBriefingTitle(snapshot: TodayReentrySnapshot): string {
   if (snapshot.intelligenceUpdates.length > 0) {
-    const count = snapshot.intelligenceUpdates.length;
-    return `Your ${ORVEK_COPY.mindModel} moved in ${count} place${count === 1 ? "" : "s"}.`;
+    return "Current state";
   }
   if (
     snapshot.userMapConclusions.length > 0 ||
@@ -522,9 +521,9 @@ export function buildTodayBriefingTitle(snapshot: TodayReentrySnapshot): string 
     snapshot.actions.length > 0 ||
     snapshot.investigations.length > 0
   ) {
-    return "What matters now";
+    return "Current state";
   }
-  return "Today";
+  return "Quiet";
 }
 
 export function buildTodayBriefingMeta(
@@ -550,14 +549,14 @@ export function buildTodayBriefingMeta(
   }
 
   if (snapshot.intelligenceUpdates.length > 0) {
-    const parts = [`${snapshot.intelligenceUpdates.length} meaningful change${snapshot.intelligenceUpdates.length === 1 ? "" : "s"}`];
+    const parts = [`${snapshot.intelligenceUpdates.length} current change${snapshot.intelligenceUpdates.length === 1 ? "" : "s"}`];
     if (surfacedCount > 0) {
       parts.push(`${surfacedCount} surfaced item${surfacedCount === 1 ? "" : "s"}`);
     }
     return `${parts.join(" · ")} · composed from your existing records.`;
   }
 
-  return "Surfaced material and meaningful changes, composed from your existing records.";
+  return "Surfaced material and current changes, composed from your existing records.";
 }
 
 export function hasTodayReentryContent(snapshot: TodayReentrySnapshot): boolean {

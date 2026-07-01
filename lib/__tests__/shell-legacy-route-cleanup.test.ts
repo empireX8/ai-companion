@@ -44,6 +44,12 @@ describe("shell legacy route cleanup", () => {
   it("renders journal-chat pattern surfacing as an unavailable affordance", () => {
     const source = readSource("app/(root)/(routes)/journal-chat/page.tsx");
 
+    expect(source).toContain("Capture Life Data");
+    expect(source).toContain("Low-friction evidence entry");
+    expect(source).toContain("Reference controls are unavailable in v0.");
+    expect(source).not.toContain("Guided reflection");
+    expect(source).not.toContain("Reflective mode");
+    expect(source).not.toContain("Memory panel in `/chat`");
     expect(source).toContain("Patterns view is unavailable in v0");
     expect(source).toContain("disabled");
     expect(source).not.toContain('href="/patterns"');
