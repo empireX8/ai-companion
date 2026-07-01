@@ -6,6 +6,7 @@ export const INSPECTOR_SELECTABLE_OBJECT_TYPES = [
   "model_update",
   "pattern_claim",
   "contradiction_node",
+  "context_profile",
 ] as const;
 
 export type InspectorSelectableObjectType =

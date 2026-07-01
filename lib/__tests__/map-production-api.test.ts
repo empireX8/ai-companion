@@ -175,6 +175,68 @@ describe("map production data bridge", () => {
     });
   });
 
+  it("exposes mind context items as selectable context_profile objects and raw aliases", () => {
+    const api = buildMapProductionDataApi({
+      ...BASE_INPUT,
+      items: [],
+      selectedId: null,
+      detail: null,
+      evidence: [],
+      openQuestionsCount: 0,
+      mindContext: {
+        isLoading: false,
+        items: [
+          {
+            id: "memory-ref-1",
+            kind: "memory",
+            title: "I prefer quiet mornings for deep work.",
+            categoryLabel: "Preference",
+            statusLabel: "Active",
+            evidenceCount: null,
+            updatedAt: "2026-06-24T11:00:00.000Z",
+            detailHref: "/references/ref-1",
+            inspectorObjectId: null,
+          },
+          {
+            id: "pattern-pc-1",
+            kind: "pattern",
+            title: "I overcommit before deadlines.",
+            categoryLabel: "Repetitive loops",
+            statusLabel: "Active",
+            evidenceCount: 3,
+            updatedAt: "2026-06-24T12:00:00.000Z",
+            detailHref: "/patterns/pc-1",
+            inspectorObjectId: "pc-1",
+          },
+        ],
+        summaryCounts: { memories: 1, patterns: 1 },
+      },
+    });
+
+    expect(api.mapCategories?.find((category) => category.id === "context")?.ids).toEqual([
+      "context-memory-ref-1",
+      "context-pattern-pc-1",
+    ]);
+    expect(["context-memory-ref-1", "context-pattern-pc-1"]).toContain(api.mapSelectedId);
+
+    const memoryRail = api.getObject("context-memory-ref-1");
+    const memoryAlias = api.getObject("memory-ref-1");
+    const patternRail = api.getObject("context-pattern-pc-1");
+    const patternAlias = api.getObject("pattern-pc-1");
+
+    expect(memoryRail?.type).toBe("context");
+    expect(memoryRail?.inspectorObjectType).toBe("context_profile");
+    expect(memoryRail?.detailHref).toBe("/references/ref-1");
+    expect(memoryAlias?.id).toBe("memory-ref-1");
+    expect(memoryAlias?.inspectorObjectType).toBe("context_profile");
+    expect(patternRail?.type).toBe("context");
+    expect(patternRail?.inspectorObjectType).toBe("context_profile");
+    expect(patternRail?.detailHref).toBe("/patterns/pc-1");
+    expect(patternRail?.whatWouldChange).toEqual(["Capture correction in Capture Life Data"]);
+    expect(patternAlias?.id).toBe("pattern-pc-1");
+    expect(patternAlias?.inspectorObjectId).toBe("pattern-pc-1");
+  });
+
   it("reports an empty map only when every production source is empty", () => {
     const api = buildMapProductionDataApi({
       items: [],

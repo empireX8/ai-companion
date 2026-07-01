@@ -77,6 +77,27 @@ describe("your-map workbench", () => {
     expect(mindContextSource).not.toContain("mock");
   });
 
+  it("shows mind context detail copy and capture correction handoff in the production workspace", () => {
+    const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
+    const viewSource = readSource("components/orvek-v0/pages/map.tsx");
+    const bridgeSource = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
+    const inspectorSource = readSource("components/inspector/panels/SelectedObjectEvidencePanel.tsx");
+    const contextPageSource = readSource("app/(root)/(routes)/context/page.tsx");
+
+    expect(mapApiSource).toContain('inspectorObjectType = "context_profile"');
+    expect(viewSource).toContain("Mind Context");
+    expect(viewSource).toContain("Linked path");
+    expect(viewSource).toContain("Missing evidence");
+    expect(bridgeSource).toContain('return "context_profile"');
+    expect(inspectorSource).toContain('case "context_profile"');
+    expect(inspectorSource).toContain("Capture correction");
+    expect(inspectorSource).toContain("mindlabs:today-capture-handoff");
+    expect(inspectorSource).toContain("User correction is first-class evidence");
+    expect(contextPageSource).toContain("Mind Context");
+    expect(contextPageSource).toContain("Capture correction");
+    expect(contextPageSource).toContain("/journal-chat");
+  });
+
   it("loads conclusions from the public API and shows honest empty state copy", () => {
     const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
     const adapterSource = readSource("lib/orvek-adapters/map.ts");

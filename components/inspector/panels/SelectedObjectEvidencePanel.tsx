@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -47,6 +48,8 @@ import { PATTERN_STATUS_LABELS } from "@/lib/trust-language";
 import { YOUR_MAP_CORRECTION_DEFERRED_COPY } from "@/lib/your-map-surface";
 
 import { InspectorEvidenceSelectionControl } from "../InspectorEvidenceSelectionControl";
+
+const TODAY_HANDOFF_KEY = "mindlabs:today-capture-handoff";
 
 function formatDateTime(value: string): string {
   const date = new Date(value);
@@ -764,6 +767,113 @@ function ModelUpdateEvidenceEmptyState({
   );
 }
 
+function buildContextCapturePrompt(
+  selection: InspectorSelection,
+  sourceObject: OrvekObject
+): string {
+  const currentRead = selection.selectedTitle?.trim() || sourceObject.title;
+  const lines = [
+    "Correct this context read.",
+    `Current read: ${currentRead}`,
+    sourceObject.summary ? `Model read: ${sourceObject.summary}` : null,
+    sourceObject.confidence ? `Confidence: ${sourceObject.confidence}` : null,
+    sourceObject.evidenceCount != null
+      ? `Evidence count: ${sourceObject.evidenceCount}`
+      : null,
+    sourceObject.detailHref ? `Linked path: ${sourceObject.detailHref}` : null,
+    sourceObject.supporting?.length
+      ? `Supporting evidence: ${sourceObject.supporting.join(" | ")}`
+      : null,
+    sourceObject.missingEvidence?.length
+      ? `Missing evidence: ${sourceObject.missingEvidence.join(" | ")}`
+      : null,
+    "User correction is first-class evidence. Capture the correction in Capture Life Data.",
+  ];
+
+  return lines.filter((line): line is string => Boolean(line && line.trim().length > 0)).join("\n");
+}
+
+function ContextEvidencePanel({
+  selection,
+  sourceObject,
+}: {
+  selection: InspectorSelection;
+  sourceObject: OrvekObject | undefined;
+}) {
+  const router = useRouter();
+
+  if (!sourceObject) {
+    return <UnavailableState objectTypeLabel="Mind Context" />;
+  }
+
+  const evidenceCountLabel =
+    sourceObject.evidenceCount != null
+      ? `${sourceObject.evidenceCount} evidence source${sourceObject.evidenceCount === 1 ? "" : "s"}`
+      : "Evidence count unavailable";
+  const meta = [
+    sourceObject.confidence ?? "Evidence-backed read",
+    evidenceCountLabel,
+    sourceObject.lastUpdated ? `Updated ${formatDateTime(sourceObject.lastUpdated)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const currentRead = sourceObject.recommendation ?? sourceObject.summary ?? sourceObject.title;
+
+  return (
+    <>
+      <ObjectHeader typeLabel="Mind Context" title={selection.selectedTitle ?? sourceObject.title} meta={meta} />
+      <section className="px-4 pb-3">
+        <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+          This is a model read, not a hidden verdict.
+        </p>
+        <div className="mt-3 rounded-xl bg-secondary/50 px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Current read
+          </p>
+          <p className="mt-1 text-[13px] leading-relaxed text-foreground">{currentRead}</p>
+        </div>
+        <FactGrid
+          items={[
+            { label: "Evidence", value: evidenceCountLabel },
+            { label: "Confidence", value: sourceObject.confidence ?? "Evidence-linked" },
+            { label: "Linked path", value: sourceObject.detailHref ? "Available" : "Unavailable" },
+          ]}
+        />
+        {sourceObject.detailHref ? (
+          <div className="mt-3">
+            <Link href={sourceObject.detailHref} className="text-[13px] font-medium text-primary hover:underline">
+              Open linked record
+            </Link>
+          </div>
+        ) : null}
+      </section>
+
+      <SourceObjectSections object={sourceObject} hideSummary />
+
+      <SectionBlock label="Correct or contest">
+        <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+          User correction is first-class evidence. Capture the correction in Capture Life Data.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            const handoffText = buildContextCapturePrompt(selection, sourceObject);
+            try {
+              window.sessionStorage.setItem(TODAY_HANDOFF_KEY, handoffText);
+            } catch {
+              // Ignore storage failures.
+            }
+            router.push("/journal-chat");
+          }}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-evidence-muted px-3 py-1.5 text-[13px] font-medium text-primary hover:brightness-[0.98]"
+        >
+          Capture correction
+        </button>
+      </SectionBlock>
+    </>
+  );
+}
+
 function UserMapEvidencePanel({
   selection,
   sourceObject,
@@ -1235,6 +1345,8 @@ export function SelectedObjectEvidencePanel({
       return <UserMapEvidencePanel selection={selection} sourceObject={sourceObject} />;
     case "pattern_claim":
       return <PatternEvidencePanel selection={selection} sourceObject={sourceObject} />;
+    case "context_profile":
+      return <ContextEvidencePanel selection={selection} sourceObject={sourceObject} />;
     case "contradiction_node":
       return <ContradictionEvidencePanel selection={selection} sourceObject={sourceObject} />;
     case "model_update":

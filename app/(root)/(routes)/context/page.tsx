@@ -7,15 +7,16 @@
  *   - Active memories (count + list from /api/reference/list?status=active)
  *   - Patterns scope (active claim count from /api/patterns)
  *
- * V1 scope: read-only. No forecast framing. No tension/audit links.
+ * V1 scope: inspectable and correctable. No forecast framing. No tension/audit links.
  * No /projections, /contradictions, /audit references.
  * Language is honest: Mind Context — what Orvek currently understands.
  */
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Clock3, Brain, BookOpen } from "lucide-react";
-import { ORVEK_COPY, PRODUCT_NAME } from "@/lib/trust-language";
+import { PRODUCT_NAME } from "@/lib/trust-language";
 
 // ── Quality filter ────────────────────────────────────────────────────────────
 
@@ -58,12 +59,35 @@ type PatternsResponse = {
   }>;
 };
 
+const TODAY_HANDOFF_KEY = "mindlabs:today-capture-handoff";
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ContextPage() {
+  const router = useRouter();
   const [memories, setMemories] = useState<MemoryEntry[]>([]);
   const [activePatternCount, setActivePatternCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const captureContextCorrection = () => {
+    const prompt = [
+      "Correct this context read.",
+      `${PRODUCT_NAME} Mind Context page`,
+      memories.length > 0 ? `Memories shown: ${memories.length}` : null,
+      activePatternCount > 0 ? `Active patterns shown: ${activePatternCount}` : null,
+      "User correction is first-class evidence. Capture the correction in Capture Life Data.",
+    ]
+      .filter((line): line is string => Boolean(line && line.trim().length > 0))
+      .join("\n");
+
+    try {
+      window.sessionStorage.setItem(TODAY_HANDOFF_KEY, prompt);
+    } catch {
+      // Ignore storage failures.
+    }
+
+    router.push("/journal-chat");
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -105,11 +129,26 @@ export default function ContextPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Clock3 className="h-5 w-5 text-primary" />
-            <h1 className="text-base font-semibold text-foreground">Context</h1>
+            <h1 className="text-base font-semibold text-foreground">Mind Context</h1>
           </div>
           <p className="text-xs text-muted-foreground">
-            What {PRODUCT_NAME} currently understands — your {ORVEK_COPY.mindContext.toLowerCase()}.
+            What {PRODUCT_NAME} currently understands — a correctable model read, not a final conclusion about you.
           </p>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <button
+              type="button"
+              onClick={captureContextCorrection}
+              className="inline-flex items-center rounded-md bg-evidence-muted px-2.5 py-1 text-[11px] font-medium text-primary hover:brightness-[0.98]"
+            >
+              Capture correction
+            </button>
+            <Link
+              href="/patterns"
+              className="inline-flex items-center rounded-md border border-border/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+            >
+              Inspect patterns
+            </Link>
+          </div>
         </div>
 
         {/* Loading */}
@@ -166,7 +205,12 @@ export default function ContextPage() {
                           <ul>
                             {byType.get(type)!.map((mem) => (
                               <li key={mem.id} className="px-4 py-2 border-t border-border/20 first:border-t-0">
-                                <p className="text-sm text-foreground leading-snug">{mem.statement}</p>
+                                <Link
+                                  href={`/references/${mem.id}`}
+                                  className="block rounded-sm text-sm leading-snug text-foreground hover:text-primary"
+                                >
+                                  {mem.statement}
+                                </Link>
                               </li>
                             ))}
                           </ul>

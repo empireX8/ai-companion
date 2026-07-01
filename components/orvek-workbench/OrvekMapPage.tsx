@@ -157,11 +157,29 @@ export function OrvekMapPage() {
       setSelectedId(null);
       return;
     }
+    if (preferredSelectionId) {
+      const preferredMindContext = mindContextItems.find(
+        (item) =>
+          item.id === preferredSelectionId ||
+          `context-${item.id}` === preferredSelectionId
+      );
+      if (preferredMindContext) {
+        setSelectedId(preferredSelectionId);
+        return;
+      }
+    }
     setSelectedId(pickInitialYourMapSelectionId(items, preferredSelectionId));
-  }, [items, preferredSelectionId]);
+  }, [items, preferredSelectionId, mindContextItems]);
 
   useEffect(() => {
     if (!selectedId) {
+      setDetail(null);
+      setEvidence([]);
+      setIsDetailLoading(false);
+      return;
+    }
+
+    if (!items.some((item) => item.id === selectedId)) {
       setDetail(null);
       setEvidence([]);
       setIsDetailLoading(false);
@@ -265,7 +283,15 @@ export function OrvekMapPage() {
             },
           });
           const obj = api.getObject(railId);
-          const conclusionId = obj?.inspectorObjectId ?? railId.replace(/^conclusion-/, "");
+          const selectedObjectId = obj?.inspectorObjectId ?? railId;
+          if (!obj) {
+            return;
+          }
+          if (obj.type === "context") {
+            openItem(selectedObjectId);
+            return;
+          }
+          const conclusionId = selectedObjectId.replace(/^conclusion-/, "");
           if (conclusionId && items.some((item) => item.id === conclusionId)) {
             openItem(conclusionId);
           }

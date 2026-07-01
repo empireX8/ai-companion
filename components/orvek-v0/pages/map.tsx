@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
@@ -98,6 +99,7 @@ const CATEGORY_ICON_BY_ID: Record<string, LucideIcon> = {
 function mapObjectIdsMatch(a: string, b: string): boolean {
   if (a === b) return true
   if (a === `conclusion-${b}` || b === `conclusion-${a}`) return true
+  if (a === `context-${b}` || b === `context-${a}`) return true
   return false
 }
 
@@ -211,6 +213,8 @@ export function MapPage() {
       ? (emptyCopyBySlot?.mapSelectPrompt ?? emptyCopyBySlot?.mapEmpty ?? "Nothing on your map yet.")
       : "")
   const detailType = obj?.type ?? "map-object"
+  const detailTypeLabel =
+    obj?.type === "context" ? "Mind Context" : TYPE_META[detailType].label
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="orvek-v0-map-page">
@@ -313,7 +317,7 @@ export function MapPage() {
                   const Icon = TYPE_META[detailType].icon
                   return <Icon className="size-3" aria-hidden />
                 })()}
-                {TYPE_META[detailType].label}
+                {detailTypeLabel}
               </span>
               {obj?.lastUpdated && (
                 <span className="text-xs text-muted-foreground">Updated {obj.lastUpdated}</span>
@@ -420,6 +424,27 @@ export function MapPage() {
                 </span>
               </DetailBlock>
             )}
+
+            {obj?.detailHref ? (
+              <DetailBlock label="Linked path">
+                <Link href={obj.detailHref} className="font-medium text-primary hover:underline">
+                  Open linked record
+                </Link>
+              </DetailBlock>
+            ) : null}
+
+            {obj?.missingEvidence?.length ? (
+              <DetailBlock label="Missing evidence">
+                <ul className="space-y-1.5">
+                  {obj.missingEvidence.map((item) => (
+                    <li key={item} className="flex gap-1.5 text-[13px] leading-relaxed text-foreground">
+                      <span className="text-cyan/75">•</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </DetailBlock>
+            ) : null}
 
             {/* related */}
             {(related.length > 0 || showProductionDetailSkeleton) && (
