@@ -101,6 +101,16 @@ describe("inspector surface wiring", () => {
     expect(panel).toContain("/journal-chat");
   });
 
+  it("does not surface bracketed audit tags in the evidence panel copy", () => {
+    const panel = readSource("components/inspector/panels/SelectedObjectEvidencePanel.tsx");
+
+    expect(panel).not.toContain("[FACT]");
+    expect(panel).not.toContain("[INFERENCE]");
+    expect(panel).not.toContain("[REALITY GATE]");
+    expect(panel).not.toContain("[SPECULATION]");
+    expect(panel).not.toContain("[MODEL MOVEMENT]");
+  });
+
   it("wires Timeline model changes and linked activity hrefs to inspector", () => {
     const container = readSource("components/orvek-workbench/OrvekTimelinePage.tsx");
     const view = readSource("components/orvek-v0/pages/timeline.tsx");

@@ -230,6 +230,69 @@ describe("map production data bridge", () => {
     expect(goalAlias?.type).toBe("model-goal");
   });
 
+  it("reports weak and missing evidence for model goals without overclaiming", () => {
+    const api = buildMapProductionDataApi({
+      ...BASE_INPUT,
+      items: [
+        {
+          id: "m-goal-1",
+          title: "Build Orvek into a private intelligence system",
+          summary: "Make Orvek a durable model of the user.",
+          area: "developmental_vector",
+          status: "supported",
+          confidenceLevel: "high",
+          evidenceCount: 1,
+          updatedAt: "2026-06-24T09:00:00.000Z",
+        },
+        {
+          id: "m-goal-2",
+          title: "Create a defensible product category",
+          summary: "The product category should be defensible and inspectable.",
+          area: "developmental_vector",
+          status: "supported",
+          confidenceLevel: "high",
+          evidenceCount: 0,
+          updatedAt: "2026-06-24T08:00:00.000Z",
+        },
+      ],
+      selectedId: "m-goal-1",
+      detail: null,
+      evidence: [],
+      openQuestionsCount: 0,
+      mindContext: {
+        isLoading: false,
+        items: [],
+        summaryCounts: { memories: 0, patterns: 0 },
+      },
+      movementPreview: { isLoading: false, items: [] },
+      openQuestionsPreview: {
+        isLoading: false,
+        items: [],
+      },
+    });
+
+    const thinGoal = api.getObject("goal-m-goal-1");
+    const missingGoal = api.getObject("goal-m-goal-2");
+
+    expect(thinGoal?.confidence).toBe("Thin support");
+    expect(thinGoal?.supporting).toEqual([
+      "1 linked receipt",
+      "Linked path: /your-map?selected=goal-m-goal-1",
+    ]);
+    expect(thinGoal?.missingEvidence).toEqual([
+      "Support is thin; review before treating this as settled.",
+    ]);
+
+    expect(missingGoal?.confidence).toBe("Provisional");
+    expect(missingGoal?.supporting).toEqual([
+      "No linked receipts surfaced yet",
+      "Linked path: /your-map?selected=goal-m-goal-2",
+    ]);
+    expect(missingGoal?.missingEvidence).toEqual([
+      "Evidence is thin or unavailable in this projection.",
+    ]);
+  });
+
   it("exposes mind context items as selectable context_profile objects and raw aliases", () => {
     const api = buildMapProductionDataApi({
       ...BASE_INPUT,
