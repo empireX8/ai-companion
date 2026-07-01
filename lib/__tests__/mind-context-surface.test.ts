@@ -159,4 +159,43 @@ describe("mind-context-surface", () => {
     expect(memoryEvidence.uncertaintyLabel).toBeNull();
     expect(memoryEvidence.correctionPrompt).toContain("Linked path: /references/ref-1");
   });
+
+  it("summarizes weak and missing evidence for pattern reads without overclaiming", () => {
+    const thinEvidence = summarizeMindContextEvidence({
+      id: "pattern-pc-2",
+      kind: "pattern",
+      title: "I overcommit before deadlines.",
+      categoryLabel: "Pattern",
+      statusLabel: "Active",
+      evidenceCount: 1,
+      updatedAt: "2026-06-24T11:00:00.000Z",
+      detailHref: "/patterns/pc-2",
+      inspectorObjectId: "pc-2",
+    });
+    const missingEvidence = summarizeMindContextEvidence({
+      id: "pattern-pc-3",
+      kind: "pattern",
+      title: "I reopen the same scope loop.",
+      categoryLabel: "Pattern",
+      statusLabel: "Active",
+      evidenceCount: 0,
+      updatedAt: "2026-06-24T12:00:00.000Z",
+      detailHref: "/patterns/pc-3",
+      inspectorObjectId: "pc-3",
+    });
+
+    expect(thinEvidence.evidenceSummary).toBe("1 linked receipt");
+    expect(thinEvidence.confidenceLabel).toBe("Thin support");
+    expect(thinEvidence.uncertaintyLabel).toBe(
+      "Support is thin; review before treating this as settled."
+    );
+    expect(thinEvidence.correctionPrompt).toContain("User correction is first-class evidence");
+
+    expect(missingEvidence.evidenceSummary).toBe("No linked receipts surfaced yet");
+    expect(missingEvidence.confidenceLabel).toBe("Provisional");
+    expect(missingEvidence.uncertaintyLabel).toBe(
+      "Evidence is thin or unavailable in this projection."
+    );
+    expect(missingEvidence.correctionPrompt).toContain("Linked path: /patterns/pc-3");
+  });
 });
