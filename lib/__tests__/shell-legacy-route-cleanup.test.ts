@@ -67,19 +67,24 @@ describe("shell legacy route cleanup", () => {
 
   it("keeps your-map preview open questions non-linkable", () => {
     const source = readSource("components/your-map/YourMapPreviewBands.tsx");
-    const workbenchSource = readSource("components/your-map/YourMapWorkbench.tsx");
 
     expect(source).toContain("viewAllHref={null}");
     expect(source).toContain("Unavailable in v0");
     expect(source).not.toContain("/active-questions/");
-    expect(workbenchSource).not.toContain('href="/active-questions"');
   });
 
-  it("keeps watch-for footer off active-questions", () => {
+  it("keeps watch-for footer on active-questions", () => {
     const source = readSource("app/(root)/(routes)/watch-for/page.tsx");
 
-    expect(source).toContain("Unavailable in v0");
-    expect(source).not.toContain('href="/active-questions"');
+    expect(source).toContain('href="/active-questions"');
+    expect(source).not.toContain('title="Unavailable in v0"');
+  });
+
+  it("keeps the your-map footer on the live active-questions route", () => {
+    const source = readSource("components/your-map/YourMapWorkbench.tsx");
+
+    expect(source).toContain('href="/active-questions"');
+    expect(source).not.toContain('title="Unavailable in v0"');
   });
 
   it("keeps decisions add outcome disabled in production", () => {
