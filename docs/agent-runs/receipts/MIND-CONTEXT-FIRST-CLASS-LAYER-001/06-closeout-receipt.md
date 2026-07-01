@@ -7,7 +7,7 @@ Status:
 - Context items are selectable objects with inspector detail, evidence shape, and correction capture.
 - The `/context` page now matches the inspectable/correctable contract more closely.
 - No schema, route, middleware, or generation-logic changes were introduced.
-- Verification passed: `git diff --check`, `npx tsc --noEmit`, targeted Vitest slice, trust-language and legacy-surface scripts, and `npm run build`.
+- Verification passed: `git diff --check`, `npx tsc --noEmit`, targeted Vitest slice, trust-language and legacy-surface scripts, and full `npx vitest run`.
 
 Files changed:
 - `app/(root)/(routes)/context/page.tsx`
@@ -20,9 +20,12 @@ Files changed:
 - `lib/mind-context-surface.ts`
 - `lib/orvek-v0/orvek-types.ts`
 - `lib/orvek-v0/production/map-api.ts`
+- `lib/orvek-v0/production/map-selection.ts`
 - `lib/today-reentry.ts`
+- `lib/__tests__/orvek-ux-integration.test.ts`
 - `lib/__tests__/map-production-api.test.ts`
 - `lib/__tests__/mind-context-surface.test.ts`
+- `lib/__tests__/orvek-workbench-selection.test.ts`
 - `lib/__tests__/your-map-workbench.test.ts`
 
 Next exact step:

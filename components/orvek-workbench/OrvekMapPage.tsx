@@ -17,6 +17,7 @@ import {
   type MindContextDisplayItem,
 } from "@/lib/mind-context-surface";
 import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
+import { resolveMapWorkbenchSelectedId } from "@/lib/orvek-v0/production/map-selection";
 import type {
   UserMapConclusionPublicApiDetailItem,
   UserMapConclusionPublicApiListItem,
@@ -29,7 +30,6 @@ import {
 } from "@/lib/your-map-preview-surface";
 import {
   fetchYourMapConclusions,
-  pickInitialYourMapSelectionId,
 } from "@/lib/your-map-surface";
 
 export function OrvekMapPage() {
@@ -153,22 +153,13 @@ export function OrvekMapPage() {
   }, []);
 
   useEffect(() => {
-    if (items.length === 0) {
-      setSelectedId(null);
-      return;
-    }
-    if (preferredSelectionId) {
-      const preferredMindContext = mindContextItems.find(
-        (item) =>
-          item.id === preferredSelectionId ||
-          `context-${item.id}` === preferredSelectionId
-      );
-      if (preferredMindContext) {
-        setSelectedId(preferredSelectionId);
-        return;
-      }
-    }
-    setSelectedId(pickInitialYourMapSelectionId(items, preferredSelectionId));
+    setSelectedId(
+      resolveMapWorkbenchSelectedId({
+        items,
+        preferredSelectionId,
+        mindContextItems,
+      })
+    );
   }, [items, preferredSelectionId, mindContextItems]);
 
   useEffect(() => {

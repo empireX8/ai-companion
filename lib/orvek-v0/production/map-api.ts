@@ -11,6 +11,7 @@ import {
 import { filterDefined } from "../../orvek-adapters/today";
 import type { InspectorSelectableObjectType } from "../../inspector-selection";
 import { summarizeMindContextEvidence } from "../../mind-context-surface";
+import { PUBLIC_OBJECT_LINK_HREF_PREFIXES } from "../../public-continuity-registry";
 import { formatUserMapStatus } from "../../public-intelligence-safe-slice";
 import {
   YOUR_MAP_EVIDENCE_BREADTH_INTRO,
@@ -20,6 +21,33 @@ import type { OrvekDataApi } from "../data-provider";
 import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import type { OrvekObject } from "../orvek-types";
+
+const V0_SAFE_CONTEXT_DETAIL_HREF_PREFIXES = Object.values(
+  PUBLIC_OBJECT_LINK_HREF_PREFIXES
+).filter((prefix) => prefix !== "/patterns");
+
+function resolveClickableMindContextDetailHref(
+  href: string | null | undefined
+): string | undefined {
+  if (!href) {
+    return undefined;
+  }
+
+  let pathname = href;
+  try {
+    pathname = new URL(href, "http://mindlab.local").pathname;
+  } catch {
+    // Keep the raw path if it cannot be parsed as a URL.
+  }
+
+  for (const prefix of V0_SAFE_CONTEXT_DETAIL_HREF_PREFIXES) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+      return pathname;
+    }
+  }
+
+  return undefined;
+}
 
 function railItemToOrvekObject(
   item: V0MapOntologyRailItem,
@@ -62,15 +90,16 @@ function railItemToOrvekObject(
     if (mindContextItem) {
       summary = mindContextItem.title;
       whyItMatters = mindContextItem.categoryLabel;
+      const linkedPath = mindContextItem.detailHref?.trim() || undefined;
       supporting = [mindContextEvidence?.evidenceSummary ?? mindContextItem.categoryLabel];
-      if (mindContextItem.detailHref) {
-        supporting.push(`Linked path: ${mindContextItem.detailHref}`);
+      if (linkedPath) {
+        supporting.push(`Linked path: ${linkedPath}`);
       }
       conflicting = mindContextEvidence?.uncertaintyLabel
         ? [mindContextEvidence.uncertaintyLabel]
         : undefined;
       confidence = mindContextEvidence?.confidenceLabel;
-      detailHref = mindContextItem.detailHref;
+      detailHref = resolveClickableMindContextDetailHref(linkedPath);
       lastUpdated = mindContextItem.updatedAt;
       evidenceCount = mindContextItem.evidenceCount ?? undefined;
       missingEvidence = mindContextEvidence?.uncertaintyLabel
