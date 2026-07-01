@@ -38,6 +38,24 @@ describe("inspector-selection helpers", () => {
     expect(resolveActiveModelUpdateId(selection)).toBe("mu-1");
   });
 
+  it("accepts model_goal as a published-safe selector type", () => {
+    const selection = buildInspectorSelection({
+      objectType: "model_goal",
+      objectId: "goal-m-goal-1",
+      title: "Build Orvek into a private intelligence system",
+      sourceSurface: "map",
+    });
+
+    expect(selection).toEqual({
+      selectedObjectType: "model_goal",
+      selectedObjectId: "goal-m-goal-1",
+      selectedModelUpdateId: null,
+      selectedTitle: "Build Orvek into a private intelligence system",
+      sourceSurface: "map",
+    });
+    expect(isInspectorSelectableObjectType("model_goal")).toBe(true);
+  });
+
   it("rejects unsupported object types and blank ids", () => {
     expect(
       buildInspectorSelection({

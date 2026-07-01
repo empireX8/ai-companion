@@ -63,6 +63,26 @@ describe("your-map workbench", () => {
     expect(viewSource).not.toContain("row-span-2");
   });
 
+  it("surfaces model goals as first-class selectable objects in the production workspace", () => {
+    const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
+    const bridgeSource = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
+    const inspectorSource = readSource("components/inspector/panels/SelectedObjectEvidencePanel.tsx");
+    const viewSource = readSource("components/orvek-v0/pages/map.tsx");
+    const adapterSource = readSource("lib/orvek-adapters/map.ts");
+
+    expect(adapterSource).toContain('isGoal ? "model_goal" : "conclusion"');
+    expect(adapterSource).toContain("Model Goals");
+    expect(viewSource).toContain("Model Goals");
+    expect(viewSource).toContain("goal-");
+    expect(mapApiSource).toContain('type = "model-goal"');
+    expect(mapApiSource).toContain('inspectorObjectType = "model_goal"');
+    expect(mapApiSource).toContain("Capture correction in Capture Life Data");
+    expect(bridgeSource).toContain('return "model_goal"');
+    expect(inspectorSource).toContain('case "model_goal"');
+    expect(inspectorSource).toContain("Correct this model goal.");
+    expect(inspectorSource).toContain("Capture Life Data");
+  });
+
   it("selects map rows into inspector evidence context without full navigation", () => {
     const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
     const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");

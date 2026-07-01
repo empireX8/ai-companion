@@ -44,6 +44,7 @@ describe("orvek ux integration — inspector safety", () => {
       "pattern_claim",
       "contradiction_node",
       "context_profile",
+      "model_goal",
     ]);
   });
 

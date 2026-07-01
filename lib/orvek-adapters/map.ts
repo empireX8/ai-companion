@@ -61,6 +61,7 @@ export type V0MapOntologyRailKey =
 
 export type V0MapOntologyRailItemKind =
   | "conclusion"
+  | "model_goal"
   | "mind_context"
   | "open_question"
   | "model_update";
@@ -96,7 +97,7 @@ export const V0_MAP_ONTOLOGY_RAIL_LABELS: Record<V0MapOntologyRailKey, string> =
   patterns: "Patterns",
   claims: "Claims",
   conflicts: "Active conflicts",
-  goals: "Goals / directions",
+  goals: "Model Goals",
   context: "Background / Context",
   questions: "Active questions",
   model_updates: "Model updates",
@@ -255,6 +256,42 @@ function resolveConclusionOntology(
   return "claims";
 }
 
+export function isModelGoalConclusion(
+  item: UserMapConclusionPublicApiListItem
+): boolean {
+  return resolveConclusionOntology(item) === "goals";
+}
+
+function resolveSelectedConclusionId(
+  selectedId: string | null | undefined,
+  items: UserMapConclusionPublicApiListItem[]
+): string | null {
+  const normalized = selectedId?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (items.some((item) => item.id === normalized)) {
+    return normalized;
+  }
+
+  if (normalized.startsWith("goal-")) {
+    const rawId = normalized.slice("goal-".length);
+    if (items.some((item) => item.id === rawId)) {
+      return rawId;
+    }
+  }
+
+  if (normalized.startsWith("conclusion-")) {
+    const rawId = normalized.slice("conclusion-".length);
+    if (items.some((item) => item.id === rawId)) {
+      return rawId;
+    }
+  }
+
+  return null;
+}
+
 function isRecentlyMoved(item: UserMapConclusionPublicApiListItem): boolean {
   return (
     item.status === "emerging" || item.status === "superseded" || item.status === "disputed"
@@ -276,14 +313,15 @@ function buildOntologyRailGroups(input: MapMapDataInput): V0MapOntologyRailGroup
   };
 
   for (const item of input.items) {
+    const isGoal = isModelGoalConclusion(item);
     push(resolveConclusionOntology(item), {
-      id: `conclusion-${item.id}`,
+      id: isGoal ? `goal-${item.id}` : `conclusion-${item.id}`,
       rawId: item.id,
       title: item.title,
       statusLabel: formatUserMapStatus(item.status),
       recentlyMoved: isRecentlyMoved(item),
-      kind: "conclusion",
-      inspectorObjectId: null,
+      kind: isGoal ? "model_goal" : "conclusion",
+      inspectorObjectId: isGoal ? item.id : null,
     });
   }
 
@@ -358,7 +396,11 @@ function buildHeaderStats(items: UserMapConclusionPublicApiListItem[]): V0MapHea
 }
 
 function buildRelatedItems(input: MapMapDataInput): V0MapRelatedItem[] {
-  const selectedListItem = input.items.find((entry) => entry.id === input.selectedId);
+  const selectedListItemId =
+    resolveSelectedConclusionId(input.selectedId ?? input.detail?.id ?? null, input.items) ??
+    input.detail?.id ??
+    null;
+  const selectedListItem = input.items.find((entry) => entry.id === selectedListItemId);
   if (!selectedListItem) {
     return [];
   }
@@ -371,7 +413,7 @@ function buildRelatedItems(input: MapMapDataInput): V0MapRelatedItem[] {
       (entry.area === selectedListItem.area || entry.status === selectedListItem.status)
   )) {
     related.push({
-      id: `conclusion-${item.id}`,
+      id: isModelGoalConclusion(item) ? `goal-${item.id}` : `conclusion-${item.id}`,
       title: item.title,
       areaLabel: formatUserMapArea(item.area),
       typeLabel: formatUserMapStatus(item.status),
@@ -425,7 +467,9 @@ function mapDetailSlot(
 export function mapMapDataToV0Props(input: MapMapDataInput): V0MapViewProps {
   const { items, evidence, selectedId, detail } = input;
   const ontologyGroups = buildOntologyRailGroups(input);
-  const selectedListItem = items.find((entry) => entry.id === selectedId);
+  const selectedListItemId =
+    resolveSelectedConclusionId(selectedId ?? detail?.id ?? null, items) ?? detail?.id ?? null;
+  const selectedListItem = items.find((entry) => entry.id === selectedListItemId);
   const { preview, hasMore } = summarizeCentreEvidence(evidence);
   const ontologyItemCount = ontologyGroups.reduce(
     (count, group) => count + group.items.length,

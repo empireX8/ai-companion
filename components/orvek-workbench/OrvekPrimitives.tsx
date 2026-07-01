@@ -9,6 +9,7 @@ import {
   ScrollText,
   Sparkles,
   Telescope,
+  Target,
   ArrowRight,
   type LucideIcon,
 } from "lucide-react";
@@ -24,6 +25,7 @@ export type OrvekObjectType =
   | "timeline-event"
   | "investigation"
   | "context"
+  | "model-goal"
   | "model-update"
   | "active-question";
 
@@ -36,6 +38,7 @@ export const TYPE_META: Record<
   report: { label: "Report", icon: FileText, tone: "action" },
   fieldwork: { label: "Fieldwork", icon: Telescope, tone: "action" },
   "map-object": { label: "Model object", icon: Compass, tone: "evidence" },
+  "model-goal": { label: "Model Goal", icon: Target, tone: "evidence" },
   "timeline-event": { label: "Event", icon: GitBranch, tone: "neutral" },
   investigation: { label: "Investigation", icon: Microscope, tone: "evidence" },
   context: { label: "Context", icon: Compass, tone: "neutral" },

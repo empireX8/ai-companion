@@ -48,7 +48,7 @@ const CATEGORIES: Category[] = [
     icon: AlertTriangle,
     ids: ["m-conflict-1", "m-conflict-2", "m-conflict-3", "m-conflict-4"],
   },
-  { id: "goals", label: "Goals / directions", icon: Target, ids: ["m-goal-1", "m-goal-2", "m-goal-3"] },
+  { id: "goals", label: "Model Goals", icon: Target, ids: ["m-goal-1", "m-goal-2", "m-goal-3"] },
   {
     id: "context",
     label: "Background / Context",
@@ -100,6 +100,7 @@ function mapObjectIdsMatch(a: string, b: string): boolean {
   if (a === b) return true
   if (a === `conclusion-${b}` || b === `conclusion-${a}`) return true
   if (a === `context-${b}` || b === `context-${a}`) return true
+  if (a === `goal-${b}` || b === `goal-${a}`) return true
   return false
 }
 
@@ -108,6 +109,12 @@ function resolveMapObjectId(
   getObject: (objectId: string) => OrvekObject | undefined,
 ): string {
   if (getObject(id)) return id
+  if (id.startsWith("goal-")) {
+    const rawId = id.slice("goal-".length)
+    if (getObject(rawId)) return rawId
+  } else if (getObject(`goal-${id}`)) {
+    return `goal-${id}`
+  }
   if (id.startsWith("conclusion-")) {
     const rawId = id.slice("conclusion-".length)
     if (getObject(rawId)) return rawId
@@ -123,6 +130,7 @@ function lookupMapObject(
 ): OrvekObject | undefined {
   return (
     getObject(id) ??
+    getObject(id.startsWith("goal-") ? id.slice("goal-".length) : `goal-${id}`) ??
     getObject(id.startsWith("conclusion-") ? id.slice("conclusion-".length) : `conclusion-${id}`)
   )
 }

@@ -12,7 +12,7 @@ import { filterDefined } from "../../orvek-adapters/today";
 import type { InspectorSelectableObjectType } from "../../inspector-selection";
 import { summarizeMindContextEvidence } from "../../mind-context-surface";
 import { PUBLIC_OBJECT_LINK_HREF_PREFIXES } from "../../public-continuity-registry";
-import { formatUserMapStatus } from "../../public-intelligence-safe-slice";
+import { formatUserMapArea, formatUserMapStatus } from "../../public-intelligence-safe-slice";
 import {
   YOUR_MAP_EVIDENCE_BREADTH_INTRO,
 } from "../../your-map-surface";
@@ -49,6 +49,32 @@ function resolveClickableMindContextDetailHref(
   return undefined;
 }
 
+function summarizeModelGoalEvidence(evidenceCount: number | null | undefined): {
+  evidenceSummary: string;
+  confidenceLabel: string;
+  uncertaintyLabel: string | null;
+} {
+  const count = evidenceCount ?? 0;
+  const evidenceSummary =
+    count > 0
+      ? `${count} linked receipt${count === 1 ? "" : "s"}`
+      : "No linked receipts surfaced yet";
+  const confidenceLabel =
+    count === 0 ? "Provisional" : count === 1 ? "Thin support" : "Supported by linked receipts";
+  const uncertaintyLabel =
+    count === 0
+      ? "Evidence is thin or unavailable in this projection."
+      : count === 1
+        ? "Support is thin; review before treating this as settled."
+        : null;
+
+  return {
+    evidenceSummary,
+    confidenceLabel,
+    uncertaintyLabel,
+  };
+}
+
 function railItemToOrvekObject(
   item: V0MapOntologyRailItem,
   input: MapMapDataInput
@@ -64,7 +90,7 @@ function railItemToOrvekObject(
     ? summarizeMindContextEvidence(mindContextItem)
     : null;
   const listItem =
-    item.kind === "conclusion"
+    item.kind === "conclusion" || item.kind === "model_goal"
       ? input.items.find((entry) => entry.id === item.rawId)
       : undefined;
   let summary = listItem?.summary?.trim() || mindContextItem?.title?.trim() || undefined;
@@ -107,6 +133,22 @@ function railItemToOrvekObject(
         : undefined;
       whatWouldChange = ["Capture correction in Capture Life Data"];
     }
+  } else if (item.kind === "model_goal") {
+    const goalEvidence = summarizeModelGoalEvidence(listItem?.evidenceCount);
+    type = "model-goal";
+    inspectorObjectType = "model_goal";
+    inspectorObjectId = item.rawId;
+    summary = listItem?.summary?.trim() || item.title;
+    whyItMatters = listItem ? formatUserMapArea(listItem.area) : "Model goal";
+    detailHref = `/your-map?selected=${encodeURIComponent(item.id)}`;
+    supporting = [goalEvidence.evidenceSummary, `Linked path: ${detailHref}`];
+    confidence = goalEvidence.confidenceLabel;
+    lastUpdated = listItem?.updatedAt;
+    evidenceCount = listItem?.evidenceCount ?? undefined;
+    missingEvidence = goalEvidence.uncertaintyLabel
+      ? [goalEvidence.uncertaintyLabel]
+      : undefined;
+    whatWouldChange = ["Capture correction in Capture Life Data"];
   } else if (item.kind === "conclusion") {
     inspectorObjectType = "usermap_conclusion";
   }
@@ -205,10 +247,30 @@ function resolveMapSelectedId(
   const selectedConclusionId = view.selectedId ?? view.detail?.id ?? input.selectedId ?? null;
 
   if (selectedConclusionId) {
-    const railId = `conclusion-${selectedConclusionId}`;
-    if (objects[railId]) {
-      return railId;
+    const normalizedSelectedId =
+      input.items.find((entry) => entry.id === selectedConclusionId)?.id ??
+      (selectedConclusionId.startsWith("goal-")
+        ? selectedConclusionId.slice("goal-".length)
+        : selectedConclusionId.startsWith("conclusion-")
+          ? selectedConclusionId.slice("conclusion-".length)
+          : null);
+
+    if (normalizedSelectedId) {
+      const goalRailId = `goal-${normalizedSelectedId}`;
+      if (objects[goalRailId]) {
+        return goalRailId;
+      }
+
+      const railId = `conclusion-${normalizedSelectedId}`;
+      if (objects[railId]) {
+        return railId;
+      }
+
+      if (objects[normalizedSelectedId]) {
+        return normalizedSelectedId;
+      }
     }
+
     if (objects[selectedConclusionId]) {
       return selectedConclusionId;
     }
@@ -232,6 +294,11 @@ export function buildMapProductionDataApi(input: MapMapDataInput): OrvekDataApi 
       const object = railItemToOrvekObject(item, input);
       objects[item.id] = object;
       if (item.kind === "mind_context") {
+        objects[item.rawId] = {
+          ...object,
+          id: item.rawId,
+        };
+      } else if (item.kind === "model_goal") {
         objects[item.rawId] = {
           ...object,
           id: item.rawId,
