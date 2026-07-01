@@ -5,7 +5,10 @@ import {
   hasMindContextContent,
   isQualityMindContextStatement,
   MIND_CONTEXT_EMPTY_PRIMARY,
+  MIND_CONTEXT_EMPTY_SECONDARY,
   MIND_CONTEXT_REFERENCE_ENDPOINT,
+  MIND_CONTEXT_SECTION_INTRO,
+  summarizeMindContextEvidence,
   toMindContextPatternItems,
 } from "../mind-context-surface";
 import type { PatternsResponse } from "../patterns-api";
@@ -109,9 +112,51 @@ describe("mind-context-surface", () => {
   it("reports empty mind context honestly", () => {
     expect(hasMindContextContent({ memories: [], activePatterns: [] })).toBe(false);
     expect(MIND_CONTEXT_EMPTY_PRIMARY).toContain("has not confirmed enough stable");
+    expect(MIND_CONTEXT_EMPTY_SECONDARY).toContain("Capture Life Data");
+    expect(MIND_CONTEXT_SECTION_INTRO).toContain("model read");
+    expect(MIND_CONTEXT_SECTION_INTRO).toContain("final verdict");
   });
 
   it("uses public-safe endpoints only", () => {
     expect(MIND_CONTEXT_REFERENCE_ENDPOINT).toBe("/api/reference/list?status=active&limit=50");
+  });
+
+  it("summarizes evidence shape and correction handoff for context reads", () => {
+    const patternEvidence = summarizeMindContextEvidence({
+      id: "pattern-pc-1",
+      kind: "pattern",
+      title: "I overcommit before deadlines",
+      categoryLabel: "Pattern",
+      statusLabel: "Active",
+      evidenceCount: 2,
+      updatedAt: "2026-06-24T10:00:00.000Z",
+      detailHref: "/patterns/pc-1",
+      inspectorObjectId: "pc-1",
+    });
+    const memoryEvidence = summarizeMindContextEvidence({
+      id: "memory-ref-1",
+      kind: "memory",
+      title: "I prefer quiet mornings for deep work.",
+      categoryLabel: "Preference",
+      statusLabel: "Active",
+      evidenceCount: null,
+      updatedAt: "2026-06-24T10:00:00.000Z",
+      detailHref: "/references/ref-1",
+      inspectorObjectId: null,
+    });
+
+    expect(patternEvidence.evidenceSummary).toBe("2 linked receipts");
+    expect(patternEvidence.confidenceLabel).toBe("Supported by linked receipts");
+    expect(patternEvidence.uncertaintyLabel).toBeNull();
+    expect(patternEvidence.correctionPrompt).toContain("Correct this context read.");
+    expect(patternEvidence.correctionPrompt).toContain("Linked path: /patterns/pc-1");
+    expect(patternEvidence.correctionPrompt).toContain(
+      "User correction is first-class evidence"
+    );
+
+    expect(memoryEvidence.evidenceSummary).toBe("Linked memory record");
+    expect(memoryEvidence.confidenceLabel).toBe("Record-backed");
+    expect(memoryEvidence.uncertaintyLabel).toBeNull();
+    expect(memoryEvidence.correctionPrompt).toContain("Linked path: /references/ref-1");
   });
 });

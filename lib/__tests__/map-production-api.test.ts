@@ -175,6 +175,120 @@ describe("map production data bridge", () => {
     });
   });
 
+  it("exposes mind context items as selectable context_profile objects and raw aliases", () => {
+    const api = buildMapProductionDataApi({
+      ...BASE_INPUT,
+      items: [],
+      selectedId: null,
+      detail: null,
+      evidence: [],
+      openQuestionsCount: 0,
+      mindContext: {
+        isLoading: false,
+        items: [
+          {
+            id: "memory-ref-1",
+            kind: "memory",
+            title: "I prefer quiet mornings for deep work.",
+            categoryLabel: "Preference",
+            statusLabel: "Active",
+            evidenceCount: null,
+            updatedAt: "2026-06-24T11:00:00.000Z",
+            detailHref: "/references/ref-1",
+            inspectorObjectId: null,
+          },
+          {
+            id: "pattern-pc-1",
+            kind: "pattern",
+            title: "I overcommit before deadlines.",
+            categoryLabel: "Repetitive loops",
+            statusLabel: "Active",
+            evidenceCount: 3,
+            updatedAt: "2026-06-24T12:00:00.000Z",
+            detailHref: "/patterns/pc-1",
+            inspectorObjectId: "pc-1",
+          },
+        ],
+        summaryCounts: { memories: 1, patterns: 1 },
+      },
+    });
+
+    expect(api.mapCategories?.find((category) => category.id === "context")?.ids).toEqual([
+      "context-memory-ref-1",
+      "context-pattern-pc-1",
+    ]);
+    expect(["context-memory-ref-1", "context-pattern-pc-1"]).toContain(api.mapSelectedId);
+
+    const memoryRail = api.getObject("context-memory-ref-1");
+    const memoryAlias = api.getObject("memory-ref-1");
+    const patternRail = api.getObject("context-pattern-pc-1");
+    const patternAlias = api.getObject("pattern-pc-1");
+
+    expect(memoryRail?.type).toBe("context");
+    expect(memoryRail?.inspectorObjectType).toBe("context_profile");
+    expect(memoryRail?.detailHref).toBeUndefined();
+    expect(memoryRail?.supporting).toEqual([
+      "Linked memory record",
+      "Linked path: /references/ref-1",
+    ]);
+    expect(memoryAlias?.id).toBe("memory-ref-1");
+    expect(memoryAlias?.inspectorObjectType).toBe("context_profile");
+    expect(memoryAlias?.detailHref).toBeUndefined();
+    expect(patternRail?.type).toBe("context");
+    expect(patternRail?.inspectorObjectType).toBe("context_profile");
+    expect(patternRail?.detailHref).toBeUndefined();
+    expect(patternRail?.supporting).toEqual([
+      "3 linked receipts",
+      "Linked path: /patterns/pc-1",
+    ]);
+    expect(patternRail?.whatWouldChange).toEqual(["Capture correction in Capture Life Data"]);
+    expect(patternAlias?.id).toBe("pattern-pc-1");
+    expect(patternAlias?.inspectorObjectId).toBe("pattern-pc-1");
+    expect(patternAlias?.detailHref).toBeUndefined();
+  });
+
+  it("keeps v0-safe context hrefs clickable while blocking unavailable reference and pattern routes", () => {
+    const api = buildMapProductionDataApi({
+      ...BASE_INPUT,
+      items: [],
+      selectedId: null,
+      detail: null,
+      evidence: [],
+      openQuestionsCount: 0,
+      mindContext: {
+        isLoading: false,
+        items: [
+          {
+            id: "safe-memory-1",
+            kind: "memory",
+            title: "I keep a map-linked overview of work in one place.",
+            categoryLabel: "Preference",
+            statusLabel: "Active",
+            evidenceCount: null,
+            updatedAt: "2026-06-24T13:00:00.000Z",
+            detailHref: "/your-map/umc-9",
+            inspectorObjectId: null,
+          },
+          {
+            id: "blocked-pattern-1",
+            kind: "pattern",
+            title: "I reopen the same loop before decisions.",
+            categoryLabel: "Pattern",
+            statusLabel: "Active",
+            evidenceCount: 2,
+            updatedAt: "2026-06-24T14:00:00.000Z",
+            detailHref: "/patterns/pc-9",
+            inspectorObjectId: "pc-9",
+          },
+        ],
+        summaryCounts: { memories: 1, patterns: 1 },
+      },
+    });
+
+    expect(api.getObject("context-safe-memory-1")?.detailHref).toBe("/your-map/umc-9");
+    expect(api.getObject("context-blocked-pattern-1")?.detailHref).toBeUndefined();
+  });
+
   it("reports an empty map only when every production source is empty", () => {
     const api = buildMapProductionDataApi({
       items: [],

@@ -51,6 +51,7 @@ export interface OrvekObject {
   lastUpdated?: string
   date?: string
   tags?: string[]
+  detailHref?: string
 
   // receipt
   sourceText?: string

@@ -6,12 +6,12 @@ export const MIND_CONTEXT_REFERENCE_ENDPOINT =
 
 export const MIND_CONTEXT_SECTION_LABEL = ORVEK_COPY.mindContext;
 export const MIND_CONTEXT_SECTION_INTRO =
-  `Stable context ${PRODUCT_NAME} draws on when forming ${ORVEK_COPY.orveksRead.toLowerCase()}. Each item is backed by your records — not a personality summary.`;
+  `Stable context ${PRODUCT_NAME} draws on when forming ${ORVEK_COPY.orveksRead.toLowerCase()}. Each item is a model read backed by your records — not a personality summary or final verdict.`;
 
 export const MIND_CONTEXT_EMPTY_PRIMARY =
   `${PRODUCT_NAME} has not confirmed enough stable ${ORVEK_COPY.mindContext.toLowerCase()} yet.`;
 export const MIND_CONTEXT_EMPTY_SECONDARY =
-  "Active memories and patterns appear here when supported. Review and manage them in Context or Memories.";
+  "Active memories and patterns appear here when supported. Inspect them in Context or Memories, or capture a correction in Capture Life Data.";
 
 export const MIND_CONTEXT_GOVERNANCE_HREF = "/context";
 export const MIND_CONTEXT_MEMORIES_HREF = "/memories";
@@ -50,6 +50,13 @@ export type MindContextDisplayItem = {
   updatedAt: string;
   detailHref: string;
   inspectorObjectId: string | null;
+};
+
+export type MindContextEvidenceState = {
+  evidenceSummary: string;
+  confidenceLabel: string;
+  uncertaintyLabel: string | null;
+  correctionPrompt: string;
 };
 
 /**
@@ -161,6 +168,44 @@ export function buildMindContextDisplayItems(
       (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
     )
     .slice(0, limit);
+}
+
+export function summarizeMindContextEvidence(
+  item: MindContextDisplayItem
+): MindContextEvidenceState {
+  const isPattern = item.kind === "pattern";
+  const evidenceCount = item.evidenceCount ?? 0;
+  const evidenceSummary = isPattern
+    ? evidenceCount > 0
+      ? `${evidenceCount} linked receipt${evidenceCount === 1 ? "" : "s"}`
+      : "No linked receipts surfaced yet"
+    : "Linked memory record";
+  const confidenceLabel = isPattern
+    ? evidenceCount === 0
+      ? "Provisional"
+      : evidenceCount === 1
+        ? "Thin support"
+        : "Supported by linked receipts"
+    : "Record-backed";
+  const uncertaintyLabel =
+    isPattern && evidenceCount === 0
+      ? "Evidence is thin or unavailable in this projection."
+      : isPattern && evidenceCount === 1
+        ? "Support is thin; review before treating this as settled."
+        : null;
+
+  return {
+    evidenceSummary,
+    confidenceLabel,
+    uncertaintyLabel,
+    correctionPrompt: [
+      "Correct this context read.",
+      `Current read: ${item.title}`,
+      `Evidence summary: ${evidenceSummary}.`,
+      `Linked path: ${item.detailHref}`,
+      "User correction is first-class evidence. Capture the correction in Capture Life Data.",
+    ].join("\n"),
+  };
 }
 
 export function hasMindContextContent(snapshot: MindContextSnapshot): boolean {

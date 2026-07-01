@@ -10,6 +10,8 @@ import {
 } from "../../orvek-adapters/map";
 import { filterDefined } from "../../orvek-adapters/today";
 import type { InspectorSelectableObjectType } from "../../inspector-selection";
+import { summarizeMindContextEvidence } from "../../mind-context-surface";
+import { PUBLIC_OBJECT_LINK_HREF_PREFIXES } from "../../public-continuity-registry";
 import { formatUserMapStatus } from "../../public-intelligence-safe-slice";
 import {
   YOUR_MAP_EVIDENCE_BREADTH_INTRO,
@@ -20,6 +22,33 @@ import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import type { OrvekObject } from "../orvek-types";
 
+const V0_SAFE_CONTEXT_DETAIL_HREF_PREFIXES = Object.values(
+  PUBLIC_OBJECT_LINK_HREF_PREFIXES
+).filter((prefix) => prefix !== "/patterns");
+
+function resolveClickableMindContextDetailHref(
+  href: string | null | undefined
+): string | undefined {
+  if (!href) {
+    return undefined;
+  }
+
+  let pathname = href;
+  try {
+    pathname = new URL(href, "http://mindlab.local").pathname;
+  } catch {
+    // Keep the raw path if it cannot be parsed as a URL.
+  }
+
+  for (const prefix of V0_SAFE_CONTEXT_DETAIL_HREF_PREFIXES) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+      return pathname;
+    }
+  }
+
+  return undefined;
+}
+
 function railItemToOrvekObject(
   item: V0MapOntologyRailItem,
   input: MapMapDataInput
@@ -27,11 +56,27 @@ function railItemToOrvekObject(
   let type: OrvekObject["type"] = "map-object";
   let inspectorObjectType: InspectorSelectableObjectType | undefined;
   let inspectorObjectId = item.rawId;
+  const mindContextItem =
+    item.kind === "mind_context"
+      ? input.mindContext.items.find((entry) => entry.id === item.rawId)
+      : undefined;
+  const mindContextEvidence = mindContextItem
+    ? summarizeMindContextEvidence(mindContextItem)
+    : null;
   const listItem =
     item.kind === "conclusion"
       ? input.items.find((entry) => entry.id === item.rawId)
       : undefined;
-  const summary = listItem?.summary?.trim() || undefined;
+  let summary = listItem?.summary?.trim() || mindContextItem?.title?.trim() || undefined;
+  let whyItMatters: string | undefined;
+  let supporting: string[] | undefined;
+  let conflicting: string[] | undefined;
+  let confidence: string | undefined;
+  let lastUpdated: string | undefined;
+  let evidenceCount: number | undefined;
+  let detailHref: string | undefined;
+  let missingEvidence: string[] | undefined;
+  let whatWouldChange: string[] | undefined;
 
   if (item.kind === "model_update") {
     type = "model-update";
@@ -40,9 +85,27 @@ function railItemToOrvekObject(
     type = "active-question";
   } else if (item.kind === "mind_context") {
     type = "context";
-    if (item.inspectorObjectId) {
-      inspectorObjectType = "pattern_claim";
-      inspectorObjectId = item.inspectorObjectId;
+    inspectorObjectType = "context_profile";
+    inspectorObjectId = item.rawId;
+    if (mindContextItem) {
+      summary = mindContextItem.title;
+      whyItMatters = mindContextItem.categoryLabel;
+      const linkedPath = mindContextItem.detailHref?.trim() || undefined;
+      supporting = [mindContextEvidence?.evidenceSummary ?? mindContextItem.categoryLabel];
+      if (linkedPath) {
+        supporting.push(`Linked path: ${linkedPath}`);
+      }
+      conflicting = mindContextEvidence?.uncertaintyLabel
+        ? [mindContextEvidence.uncertaintyLabel]
+        : undefined;
+      confidence = mindContextEvidence?.confidenceLabel;
+      detailHref = resolveClickableMindContextDetailHref(linkedPath);
+      lastUpdated = mindContextItem.updatedAt;
+      evidenceCount = mindContextItem.evidenceCount ?? undefined;
+      missingEvidence = mindContextEvidence?.uncertaintyLabel
+        ? [mindContextEvidence.uncertaintyLabel]
+        : undefined;
+      whatWouldChange = ["Capture correction in Capture Life Data"];
     }
   } else if (item.kind === "conclusion") {
     inspectorObjectType = "usermap_conclusion";
@@ -54,6 +117,15 @@ function railItemToOrvekObject(
     title: item.title,
     summary,
     recommendation: summary,
+    whyItMatters,
+    supporting,
+    conflicting,
+    confidence,
+    lastUpdated,
+    evidenceCount,
+    detailHref,
+    missingEvidence,
+    whatWouldChange,
     tags: [item.statusLabel],
     inspectorObjectType,
     inspectorObjectId,
@@ -157,7 +229,14 @@ export function buildMapProductionDataApi(input: MapMapDataInput): OrvekDataApi 
 
   for (const group of view.ontologyGroups) {
     for (const item of group.items) {
-      objects[item.id] = railItemToOrvekObject(item, input);
+      const object = railItemToOrvekObject(item, input);
+      objects[item.id] = object;
+      if (item.kind === "mind_context") {
+        objects[item.rawId] = {
+          ...object,
+          id: item.rawId,
+        };
+      }
     }
   }
 

@@ -37,7 +37,12 @@ export function InspectorSelectButton({
   className,
   children,
 }: {
-  objectType: "usermap_conclusion" | "model_update" | "pattern_claim" | "contradiction_node";
+  objectType:
+    | "usermap_conclusion"
+    | "model_update"
+    | "pattern_claim"
+    | "contradiction_node"
+    | "context_profile";
   objectId: string;
   title?: string | null;
   sourceSurface: InspectorSourceSurface;

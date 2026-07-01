@@ -17,6 +17,7 @@ import {
   type MindContextDisplayItem,
 } from "@/lib/mind-context-surface";
 import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
+import { resolveMapWorkbenchSelectedId } from "@/lib/orvek-v0/production/map-selection";
 import type {
   UserMapConclusionPublicApiDetailItem,
   UserMapConclusionPublicApiListItem,
@@ -29,7 +30,6 @@ import {
 } from "@/lib/your-map-preview-surface";
 import {
   fetchYourMapConclusions,
-  pickInitialYourMapSelectionId,
 } from "@/lib/your-map-surface";
 
 export function OrvekMapPage() {
@@ -153,15 +153,24 @@ export function OrvekMapPage() {
   }, []);
 
   useEffect(() => {
-    if (items.length === 0) {
-      setSelectedId(null);
-      return;
-    }
-    setSelectedId(pickInitialYourMapSelectionId(items, preferredSelectionId));
-  }, [items, preferredSelectionId]);
+    setSelectedId(
+      resolveMapWorkbenchSelectedId({
+        items,
+        preferredSelectionId,
+        mindContextItems,
+      })
+    );
+  }, [items, preferredSelectionId, mindContextItems]);
 
   useEffect(() => {
     if (!selectedId) {
+      setDetail(null);
+      setEvidence([]);
+      setIsDetailLoading(false);
+      return;
+    }
+
+    if (!items.some((item) => item.id === selectedId)) {
       setDetail(null);
       setEvidence([]);
       setIsDetailLoading(false);
@@ -265,7 +274,15 @@ export function OrvekMapPage() {
             },
           });
           const obj = api.getObject(railId);
-          const conclusionId = obj?.inspectorObjectId ?? railId.replace(/^conclusion-/, "");
+          const selectedObjectId = obj?.inspectorObjectId ?? railId;
+          if (!obj) {
+            return;
+          }
+          if (obj.type === "context") {
+            openItem(selectedObjectId);
+            return;
+          }
+          const conclusionId = selectedObjectId.replace(/^conclusion-/, "");
           if (conclusionId && items.some((item) => item.id === conclusionId)) {
             openItem(conclusionId);
           }

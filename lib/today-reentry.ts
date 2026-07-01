@@ -84,7 +84,10 @@ export type TodayHeroItem = {
   selection: TodaySelectableTarget | null;
   movement: TodayIntelligenceUpdateItem | null;
   affectedObjectHref: string | null;
-  affectedObjectType: TodayIntelligenceUpdateItem["affectedObjectType"] | null;
+  affectedObjectType:
+    | TodayIntelligenceUpdateItem["affectedObjectType"]
+    | InspectorSelectableObjectType
+    | null;
   affectedObjectId: string | null;
 };
 
