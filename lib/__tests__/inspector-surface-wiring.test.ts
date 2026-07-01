@@ -86,6 +86,21 @@ describe("inspector surface wiring", () => {
     expect(viewSource).toContain('data-testid="orvek-v0-map-page"');
   });
 
+  it("wires model goal selections to model_goal inspector context and capture handoff copy", () => {
+    const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
+    const bridge = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
+    const panel = readSource("components/inspector/panels/SelectedObjectEvidencePanel.tsx");
+    const source = `${mapApiSource}\n${bridge}\n${panel}`;
+
+    expect(source).toContain('model_goal');
+    expect(mapApiSource).toContain('type = "model-goal"');
+    expect(bridge).toContain('return "model_goal"');
+    expect(panel).toContain('case "model_goal"');
+    expect(panel).toContain("Correct this model goal.");
+    expect(panel).toContain("User correction is first-class evidence");
+    expect(panel).toContain("/journal-chat");
+  });
+
   it("wires Timeline model changes and linked activity hrefs to inspector", () => {
     const container = readSource("components/orvek-workbench/OrvekTimelinePage.tsx");
     const view = readSource("components/orvek-v0/pages/timeline.tsx");

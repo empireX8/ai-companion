@@ -42,7 +42,8 @@ export function InspectorSelectButton({
     | "model_update"
     | "pattern_claim"
     | "contradiction_node"
-    | "context_profile";
+    | "context_profile"
+    | "model_goal";
   objectId: string;
   title?: string | null;
   sourceSurface: InspectorSourceSurface;

@@ -347,6 +347,7 @@ function ObjectDetail({ obj }: { obj: OrvekObject }) {
 
   const showCorrections =
     obj.type === "map-object" ||
+    obj.type === "model-goal" ||
     obj.type === "context" ||
     obj.type === "receipt" ||
     obj.type === "model-update" ||

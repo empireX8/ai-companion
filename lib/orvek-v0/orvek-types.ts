@@ -7,6 +7,7 @@ export type OrvekObjectType =
   | "timeline-event"
   | "investigation"
   | "context"
+  | "model-goal"
   | "model-update"
   | "active-question"
 

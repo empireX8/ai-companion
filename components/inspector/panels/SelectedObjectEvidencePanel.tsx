@@ -50,6 +50,8 @@ import { YOUR_MAP_CORRECTION_DEFERRED_COPY } from "@/lib/your-map-surface";
 import { InspectorEvidenceSelectionControl } from "../InspectorEvidenceSelectionControl";
 
 const TODAY_HANDOFF_KEY = "mindlabs:today-capture-handoff";
+const MODEL_GOAL_CORRECTION_DEFERRED_COPY =
+  "To correct this model goal, capture contradicting evidence in Capture Life Data. Correction controls are deferred here.";
 
 function formatDateTime(value: string): string {
   const date = new Date(value);
@@ -242,7 +244,7 @@ function SourceObjectSections({
   const hasDeferredCorrection = Boolean(
     deferredCorrectionCopy &&
       !object.whatWouldChange?.length &&
-      (object.type === "map-object" || object.type === "context")
+      (object.type === "map-object" || object.type === "context" || object.type === "model-goal")
   );
   const showCurrentModelRead =
     Boolean(object.recommendation) && object.recommendation !== object.summary;
@@ -793,6 +795,32 @@ function buildContextCapturePrompt(
   return lines.filter((line): line is string => Boolean(line && line.trim().length > 0)).join("\n");
 }
 
+function buildModelGoalCapturePrompt(
+  selection: InspectorSelection,
+  sourceObject: OrvekObject
+): string {
+  const currentRead = selection.selectedTitle?.trim() || sourceObject.title;
+  const lines = [
+    "Correct this model goal.",
+    `Current read: ${currentRead}`,
+    sourceObject.summary ? `Model read: ${sourceObject.summary}` : null,
+    sourceObject.confidence ? `Confidence: ${sourceObject.confidence}` : null,
+    sourceObject.evidenceCount != null
+      ? `Evidence count: ${sourceObject.evidenceCount}`
+      : null,
+    sourceObject.detailHref ? `Linked path: ${sourceObject.detailHref}` : null,
+    sourceObject.supporting?.length
+      ? `Supporting evidence: ${sourceObject.supporting.join(" | ")}`
+      : null,
+    sourceObject.missingEvidence?.length
+      ? `Missing evidence: ${sourceObject.missingEvidence.join(" | ")}`
+      : null,
+    "User correction is first-class evidence. Capture the correction in Capture Life Data.",
+  ];
+
+  return lines.filter((line): line is string => Boolean(line && line.trim().length > 0)).join("\n");
+}
+
 function ContextEvidencePanel({
   selection,
   sourceObject,
@@ -824,7 +852,7 @@ function ContextEvidencePanel({
       <ObjectHeader typeLabel="Mind Context" title={selection.selectedTitle ?? sourceObject.title} meta={meta} />
       <section className="px-4 pb-3">
         <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
-          This is a model read, not a hidden verdict.
+          This is a correctable model read, not a final conclusion about you.
         </p>
         <div className="mt-3 rounded-xl bg-secondary/50 px-3 py-2.5">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -858,6 +886,103 @@ function ContextEvidencePanel({
           type="button"
           onClick={() => {
             const handoffText = buildContextCapturePrompt(selection, sourceObject);
+            try {
+              window.sessionStorage.setItem(TODAY_HANDOFF_KEY, handoffText);
+            } catch {
+              // Ignore storage failures.
+            }
+            router.push("/journal-chat");
+          }}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-evidence-muted px-3 py-1.5 text-[13px] font-medium text-primary hover:brightness-[0.98]"
+        >
+          Capture correction
+        </button>
+      </SectionBlock>
+    </>
+  );
+}
+
+function ModelGoalEvidencePanel({
+  selection,
+  sourceObject,
+}: {
+  selection: InspectorSelection;
+  sourceObject: OrvekObject | undefined;
+}) {
+  const router = useRouter();
+
+  if (!sourceObject) {
+    return <UnavailableState objectTypeLabel="Model Goal" />;
+  }
+
+  const evidenceCountLabel =
+    sourceObject.evidenceCount != null
+      ? `${sourceObject.evidenceCount} evidence source${sourceObject.evidenceCount === 1 ? "" : "s"}`
+      : "Evidence count unavailable";
+  const meta = [
+    sourceObject.confidence ?? "Evidence-linked read",
+    evidenceCountLabel,
+    sourceObject.lastUpdated ? `Updated ${formatDateTime(sourceObject.lastUpdated)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const currentRead = sourceObject.recommendation ?? sourceObject.summary ?? sourceObject.title;
+
+  return (
+    <>
+      <ObjectHeader
+        typeLabel="Model Goal"
+        title={selection.selectedTitle ?? sourceObject.title}
+        meta={meta}
+      />
+      <section className="px-4 pb-3">
+        <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+          This is a correctable model read, not a final conclusion about you.
+        </p>
+        <div className="mt-3 rounded-xl bg-secondary/50 px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Current read
+          </p>
+          <p className="mt-1 text-[13px] leading-relaxed text-foreground">{currentRead}</p>
+        </div>
+        <FactGrid
+          items={[
+            { label: "Evidence", value: evidenceCountLabel },
+            { label: "Confidence", value: sourceObject.confidence ?? "Evidence-linked" },
+            { label: "Linked path", value: sourceObject.detailHref ? "Available" : "Unavailable" },
+          ]}
+        />
+        {sourceObject.detailHref ? (
+          <div className="mt-3">
+            <Link
+              href={sourceObject.detailHref}
+              className="text-[13px] font-medium text-primary hover:underline"
+            >
+              Open linked path
+            </Link>
+          </div>
+        ) : null}
+        {sourceObject.missingEvidence?.length ? (
+          <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+            {sourceObject.missingEvidence.join(" ")}
+          </p>
+        ) : null}
+      </section>
+
+      <SourceObjectSections
+        object={sourceObject}
+        hideSummary
+        deferredCorrectionCopy={MODEL_GOAL_CORRECTION_DEFERRED_COPY}
+      />
+
+      <SectionBlock label="Correct or contest">
+        <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+          User correction is first-class evidence. Capture the correction in Capture Life Data.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            const handoffText = buildModelGoalCapturePrompt(selection, sourceObject);
             try {
               window.sessionStorage.setItem(TODAY_HANDOFF_KEY, handoffText);
             } catch {
@@ -1347,6 +1472,8 @@ export function SelectedObjectEvidencePanel({
       return <PatternEvidencePanel selection={selection} sourceObject={sourceObject} />;
     case "context_profile":
       return <ContextEvidencePanel selection={selection} sourceObject={sourceObject} />;
+    case "model_goal":
+      return <ModelGoalEvidencePanel selection={selection} sourceObject={sourceObject} />;
     case "contradiction_node":
       return <ContradictionEvidencePanel selection={selection} sourceObject={sourceObject} />;
     case "model_update":

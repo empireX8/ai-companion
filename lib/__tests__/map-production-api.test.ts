@@ -175,6 +175,61 @@ describe("map production data bridge", () => {
     });
   });
 
+  it("projects model goals as first-class model-goal objects with safe map links", () => {
+    const api = buildMapProductionDataApi({
+      ...BASE_INPUT,
+      items: [
+        {
+          id: "m-goal-1",
+          title: "Build Orvek into a private intelligence system",
+          summary: "Make Orvek a durable model of the user.",
+          area: "developmental_vector",
+          status: "supported",
+          confidenceLevel: "high",
+          evidenceCount: 4,
+          updatedAt: "2026-06-24T09:00:00.000Z",
+        },
+      ],
+      selectedId: "m-goal-1",
+      detail: null,
+      evidence: [],
+      openQuestionsCount: 0,
+      mindContext: {
+        isLoading: false,
+        items: [],
+        summaryCounts: { memories: 0, patterns: 0 },
+      },
+      movementPreview: { isLoading: false, items: [] },
+      openQuestionsPreview: {
+        isLoading: false,
+        items: [],
+      },
+    });
+
+    const goalRail = api.getObject("goal-m-goal-1");
+    const goalAlias = api.getObject("m-goal-1");
+
+    expect(api.mapCategories.find((category) => category.id === "goals")?.ids).toEqual([
+      "goal-m-goal-1",
+    ]);
+    expect(api.mapSelectedId).toBe("goal-m-goal-1");
+    expect(goalRail?.type).toBe("model-goal");
+    expect(goalRail?.inspectorObjectType).toBe("model_goal");
+    expect(goalRail?.inspectorObjectId).toBe("m-goal-1");
+    expect(goalRail?.summary).toBe("Make Orvek a durable model of the user.");
+    expect(goalRail?.whyItMatters).toBe("Developmental Vector");
+    expect(goalRail?.supporting).toEqual([
+      "4 linked receipts",
+      "Linked path: /your-map?selected=goal-m-goal-1",
+    ]);
+    expect(goalRail?.confidence).toBe("Supported by linked receipts");
+    expect(goalRail?.detailHref).toBe("/your-map?selected=goal-m-goal-1");
+    expect(goalRail?.missingEvidence).toBeUndefined();
+    expect(goalRail?.whatWouldChange).toEqual(["Capture correction in Capture Life Data"]);
+    expect(goalAlias?.id).toBe("m-goal-1");
+    expect(goalAlias?.type).toBe("model-goal");
+  });
+
   it("exposes mind context items as selectable context_profile objects and raw aliases", () => {
     const api = buildMapProductionDataApi({
       ...BASE_INPUT,

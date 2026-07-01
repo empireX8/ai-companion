@@ -289,8 +289,8 @@ function isRailItemActive(item: V0MapOntologyRailItem, selectedId: string | null
   if (!selectedId) {
     return false;
   }
-  if (item.kind === "conclusion") {
-    return selectedId === item.rawId;
+  if (item.kind === "conclusion" || item.kind === "model_goal") {
+    return selectedId === item.rawId || selectedId === item.id;
   }
   return false;
 }

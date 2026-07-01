@@ -10,6 +10,7 @@ import {
   Microscope,
   CircleHelp,
   Sparkles,
+  Target,
   Telescope,
   User,
   type LucideIcon,
@@ -27,6 +28,7 @@ export const TYPE_META: Record<
   "timeline-event": { label: "Event", icon: GitBranch, tone: "neutral" },
   investigation: { label: "Investigation", icon: Microscope, tone: "evidence" },
   context: { label: "Context", icon: User, tone: "neutral" },
+  "model-goal": { label: "Model Goal", icon: Target, tone: "evidence" },
   "model-update": { label: "Model update", icon: Sparkles, tone: "evidence" },
   "active-question": { label: "Active question", icon: CircleHelp, tone: "action" },
 }

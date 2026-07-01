@@ -19,6 +19,14 @@ const CONCLUSIONS = [
   },
 ] as UserMapConclusionPublicApiListItem[];
 
+const MODEL_GOALS = [
+  {
+    id: "m-goal-1",
+    area: "developmental_vector",
+    status: "supported",
+  },
+] as UserMapConclusionPublicApiListItem[];
+
 describe("map workbench selection", () => {
   it("keeps a preferred context selection when conclusions are empty", () => {
     expect(
@@ -48,5 +56,25 @@ describe("map workbench selection", () => {
         mindContextItems: MIND_CONTEXT_ITEMS,
       })
     ).toBe("c-1");
+  });
+
+  it("normalizes model goal selections onto the goal rail id", () => {
+    expect(
+      resolveMapWorkbenchSelectedId({
+        items: MODEL_GOALS,
+        preferredSelectionId: "m-goal-1",
+        mindContextItems: MIND_CONTEXT_ITEMS,
+      })
+    ).toBe("goal-m-goal-1");
+  });
+
+  it("keeps the first selected model goal on the goal rail when no preferred selection exists", () => {
+    expect(
+      resolveMapWorkbenchSelectedId({
+        items: MODEL_GOALS,
+        preferredSelectionId: null,
+        mindContextItems: MIND_CONTEXT_ITEMS,
+      })
+    ).toBe("goal-m-goal-1");
   });
 });

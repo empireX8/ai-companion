@@ -20,6 +20,9 @@ function resolveInspectorType(obj: OrvekObject): InspectorSelectableObjectType |
   if (obj.type === "context") {
     return "context_profile";
   }
+  if (obj.type === "model-goal") {
+    return "model_goal";
+  }
   if (obj.type === "map-object") {
     return "usermap_conclusion";
   }
