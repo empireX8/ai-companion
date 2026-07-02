@@ -13,6 +13,7 @@ type InspectorEvidenceSelectionControlProps = {
   sourceType?: string | null;
   sourceId?: string | null;
   title: string;
+  trailLabel?: string;
   className?: string;
   children: ReactNode;
 };
@@ -22,10 +23,11 @@ export function InspectorEvidenceSelectionControl({
   sourceType,
   sourceId,
   title,
+  trailLabel,
   className,
   children,
 }: InspectorEvidenceSelectionControlProps) {
-  const { selectObject, selection } = useInspector();
+  const { pushObject, selection } = useInspector();
   const pathname = usePathname();
   const target = resolveInspectorEvidenceSelection({ href, sourceType, sourceId });
 
@@ -38,13 +40,14 @@ export function InspectorEvidenceSelectionControl({
       type="button"
       className={className}
       onClick={() => {
-        selectObject({
+        pushObject({
           objectType: target.objectType,
           objectId: target.objectId,
           title,
           sourceSurface:
             selection?.sourceSurface ?? resolveInspectorSourceSurfaceFromPathname(pathname),
           tab: "evidence",
+          trailLabel: trailLabel ?? "Viewing linked evidence",
         });
       }}
     >

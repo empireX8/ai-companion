@@ -20,6 +20,12 @@ import { InspectorNavigationSync } from "./InspectorNavigationSync";
 
 export type InspectorTab = "evidence" | "movement";
 
+type InspectorHistoryEntry = {
+  selection: InspectorSelection;
+  tab: InspectorTab;
+  trailLabel: string | null;
+};
+
 type InspectorContextValue = {
   isOpen: boolean;
   open: () => void;
@@ -29,8 +35,14 @@ type InspectorContextValue = {
   setTab: (tab: InspectorTab) => void;
   selection: InspectorSelection | null;
   selectObject: (input: SelectObjectInput & { tab?: InspectorTab }) => void;
+  pushObject: (
+    input: SelectObjectInput & { tab?: InspectorTab; trailLabel?: string | null }
+  ) => void;
   clearSelection: () => void;
   openInspector: (tab?: InspectorTab) => void;
+  canGoBack: boolean;
+  backTarget: InspectorHistoryEntry | null;
+  goBack: () => void;
 };
 
 const InspectorContext = createContext<InspectorContextValue>({
@@ -42,20 +54,28 @@ const InspectorContext = createContext<InspectorContextValue>({
   setTab: () => {},
   selection: null,
   selectObject: () => {},
+  pushObject: () => {},
   clearSelection: () => {},
   openInspector: () => {},
+  canGoBack: false,
+  backTarget: null,
+  goBack: () => {},
 });
 
 export function InspectorProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(true);
   const [tab, setTab] = useState<InspectorTab>("evidence");
   const [selection, setSelection] = useState<InspectorSelection | null>(null);
+  const [history, setHistory] = useState<InspectorHistoryEntry[]>([]);
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
   const toggle = useCallback(() => setIsOpen((v) => !v), []);
 
-  const clearSelection = useCallback(() => setSelection(null), []);
+  const clearSelection = useCallback(() => {
+    setSelection(null);
+    setHistory([]);
+  }, []);
 
   const openInspector = useCallback((nextTab?: InspectorTab) => {
     setIsOpen(true);
@@ -70,12 +90,55 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
       if (!nextSelection) {
         return;
       }
+      setHistory([]);
       setSelection(nextSelection);
       setIsOpen(true);
       setTab(input.tab ?? (input.objectType === "model_update" ? "movement" : "evidence"));
     },
     []
   );
+
+  const pushObject = useCallback(
+    (input: SelectObjectInput & { tab?: InspectorTab; trailLabel?: string | null }) => {
+      const nextSelection = buildInspectorSelection(input);
+      if (!nextSelection) {
+        return;
+      }
+
+      setHistory((prev) => {
+        if (!selection) {
+          return prev;
+        }
+
+        return [
+          ...prev,
+          {
+            selection,
+            tab,
+            trailLabel: input.trailLabel?.trim() || null,
+          },
+        ];
+      });
+      setSelection(nextSelection);
+      setIsOpen(true);
+      setTab(input.tab ?? (input.objectType === "model_update" ? "movement" : "evidence"));
+    },
+    [selection, tab]
+  );
+
+  const goBack = useCallback(() => {
+    setHistory((prev) => {
+      const nextEntry = prev[prev.length - 1] ?? null;
+      if (!nextEntry) {
+        return prev;
+      }
+
+      setSelection(nextEntry.selection);
+      setTab(nextEntry.tab);
+      setIsOpen(true);
+      return prev.slice(0, -1);
+    });
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -87,8 +150,12 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
       setTab,
       selection,
       selectObject,
+      pushObject,
       clearSelection,
       openInspector,
+      canGoBack: history.length > 0,
+      backTarget: history[history.length - 1] ?? null,
+      goBack,
     }),
     [
       isOpen,
@@ -98,8 +165,11 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
       tab,
       selection,
       selectObject,
+      pushObject,
       clearSelection,
       openInspector,
+      history,
+      goBack,
     ]
   );
 
