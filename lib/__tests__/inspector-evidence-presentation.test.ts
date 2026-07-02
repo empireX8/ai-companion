@@ -212,4 +212,22 @@ describe("inspector evidence presentation", () => {
     expect(modelUpdatePanel).not.toContain("What Would Change This Conclusion");
     expect(modelUpdatePanel).not.toContain("What would change this");
   });
+
+  it("keeps production inspector panels on the accepted reference card rhythm", () => {
+    const evidencePanel = readSource(
+      "components/inspector/panels/SelectedObjectEvidencePanel.tsx"
+    );
+    const movementPanel = readSource(
+      "components/inspector/panels/ModelMovementInspectorPanel.tsx"
+    );
+    const source = `${evidencePanel}\n${movementPanel}`;
+
+    expect(source).toContain("px-5 pt-4");
+    expect(source).toContain("rounded-[10px] bg-card p-2.5");
+    expect(source).toContain("bg-secondary/50");
+    expect(movementPanel).toContain('import { SectionLabel } from "@/components/orvek-v0/primitives";');
+    expect(source).not.toContain("ml-material");
+    expect(source).not.toContain("ml-hairline");
+    expect(source).not.toContain('bg-white/[0.04]');
+  });
 });
