@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import { ArrowLeft, Check } from "lucide-react";
 
 import { Chip, TYPE_META } from "@/components/orvek-v0/primitives";
 import { useWorkbench } from "@/components/orvek-v0/store";
@@ -39,19 +40,31 @@ import {
 import { resolveInspectorSourceObject } from "@/lib/inspector-source-object";
 import {
   dedupeInspectorEvidenceLinks,
+  formatEvidenceRefRole,
   filterResolvableEvidenceRefs,
   formatEvidenceRefDisplay,
   projectInspectorEvidenceCard,
+  sanitizeInspectorDisplayText,
+  splitInspectorReadoutText,
 } from "@/lib/inspector-evidence-presentation";
 import { ORVEK_COPY } from "@/lib/trust-language";
 import { PATTERN_STATUS_LABELS } from "@/lib/trust-language";
 import { YOUR_MAP_CORRECTION_DEFERRED_COPY } from "@/lib/your-map-surface";
 
+import { useInspector } from "../InspectorContext";
 import { InspectorEvidenceSelectionControl } from "../InspectorEvidenceSelectionControl";
 
 const TODAY_HANDOFF_KEY = "mindlabs:today-capture-handoff";
 const MODEL_GOAL_CORRECTION_DEFERRED_COPY =
   "To correct this model goal, capture contradicting evidence in Capture Life Data. Correction controls are deferred here.";
+const CORRECTION_ACTIONS = [
+  "Confirm",
+  "This is wrong",
+  "Missing context",
+  "Only true here",
+  "Used to be true",
+  "Don't use this",
+] as const;
 
 function formatDateTime(value: string): string {
   const date = new Date(value);
@@ -74,12 +87,35 @@ function ObjectHeader({
   title: string;
   meta: string;
 }) {
+  const { canGoBack, backTarget, goBack } = useInspector();
+  const backTitle =
+    sanitizeInspectorDisplayText(backTarget?.selection.selectedTitle) ??
+    backTarget?.selection.selectedObjectType;
+  const displayTitle = sanitizeInspectorDisplayText(title) ?? "Selected object";
+
   return (
     <header className="border-b ml-hairline px-4 py-3">
+      {canGoBack ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-secondary/35 px-3 py-2">
+          <button
+            type="button"
+            onClick={goBack}
+            className="inline-flex items-center gap-1 text-[12px] font-medium text-foreground hover:text-primary"
+          >
+            <ArrowLeft className="size-3.5" aria-hidden />
+            Back to {backTitle}
+          </button>
+          <span className="text-[11px] text-muted-foreground">
+            {backTarget?.trailLabel ?? "Viewing linked evidence"}
+          </span>
+        </div>
+      ) : null}
       <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-cyan/75">
         {typeLabel}
       </div>
-      <h3 className="mt-1 text-[15px] font-semibold leading-snug text-foreground">{title}</h3>
+      <h3 className="mt-1 text-[15px] font-semibold leading-snug text-foreground">
+        {displayTitle}
+      </h3>
       <p className="mt-1 text-[11px] text-muted-foreground">{meta}</p>
     </header>
   );
@@ -106,9 +142,12 @@ function PanelSkeleton() {
 function UnavailableState({ objectTypeLabel }: { objectTypeLabel: string }) {
   return (
     <div className="px-4 py-8 text-center">
-      <p className="text-sm font-medium text-foreground">Detail unavailable</p>
+      <p className="text-sm font-medium text-foreground">This linked object is recorded.</p>
       <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-        This {objectTypeLabel.toLowerCase()} is not available through the public inspector projection.
+        Detail for this {objectTypeLabel.toLowerCase()} is not available in this view yet.
+      </p>
+      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+        Use the related surface to inspect the full object when that surface is available.
       </p>
     </div>
   );
@@ -124,7 +163,7 @@ function SectionBlock({
   return (
     <section className="px-4 pb-4">
       <SectionLabel>{label}</SectionLabel>
-      <div className="mt-2 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+      <div className="mt-2 rounded-xl bg-secondary/30 px-3 py-3 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
         {children}
       </div>
     </section>
@@ -168,7 +207,40 @@ function RenderList({
       {items.map((item) => (
         <li key={item} className="flex gap-1.5 text-[13px] leading-relaxed">
           <span className="text-cyan/75">•</span>
-          <span>{item}</span>
+          <div className="min-w-0 flex-1">
+            <ReadoutText value={item} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ReadoutText({
+  value,
+  muted = false,
+}: {
+  value: string;
+  muted?: boolean;
+}) {
+  const parts = splitInspectorReadoutText(value);
+
+  if (parts.length <= 1) {
+    return (
+      <p className={muted ? "text-muted-foreground" : "text-foreground"}>
+        {sanitizeInspectorDisplayText(value) ?? value}
+      </p>
+    );
+  }
+
+  return (
+    <ul className="space-y-1">
+      {parts.map((part) => (
+        <li key={part} className="flex gap-1.5">
+          <span className="mt-[7px] size-1 shrink-0 rounded-full bg-primary/55" aria-hidden />
+          <span className={muted ? "text-muted-foreground" : "text-foreground"}>
+            {sanitizeInspectorDisplayText(part) ?? part}
+          </span>
         </li>
       ))}
     </ul>
@@ -206,13 +278,13 @@ function LinkedObjectsSection({
                 <span className="truncate font-medium text-foreground">{object.title}</span>
               </div>
               {object.summary ? (
-                <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">
-                  {object.summary}
-                </p>
+                <div className="mt-1.5 line-clamp-3 text-[12px] leading-relaxed">
+                  <ReadoutText value={object.summary} muted />
+                </div>
               ) : object.whyItMatters ? (
-                <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">
-                  {object.whyItMatters}
-                </p>
+                <div className="mt-1.5 line-clamp-3 text-[12px] leading-relaxed">
+                  <ReadoutText value={object.whyItMatters} muted />
+                </div>
               ) : null}
             </li>
           ))}
@@ -222,14 +294,55 @@ function LinkedObjectsSection({
   );
 }
 
+function CorrectionActionsSection({ objectId }: { objectId: string }) {
+  const { applyCorrection, corrections } = useWorkbench();
+  const correction = corrections[objectId];
+
+  return (
+    <section className="mx-4 mb-4 rounded-2xl bg-secondary/40 px-4 py-3.5">
+      <SectionLabel>Correct the model</SectionLabel>
+      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+        Choose the closest correction. This keeps weak or missing evidence visible while you
+        correct the read.
+      </p>
+      {correction ? (
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-evidence-muted px-2 py-1 text-xs font-medium text-primary">
+          <Check className="size-3.5" aria-hidden />
+          Selected here: “{correction}”
+        </p>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {CORRECTION_ACTIONS.map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => applyCorrection(objectId, label)}
+            className={
+              label === "Confirm"
+                ? "rounded-full bg-evidence-muted px-2.5 py-1 text-xs font-medium text-primary hover:brightness-[0.97]"
+                : label === "This is wrong" || label === "Don't use this"
+                  ? "rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/15"
+                  : "rounded-full bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.12)] hover:bg-accent/60"
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function SourceObjectSections({
   object,
   hideSummary = false,
   deferredCorrectionCopy,
+  hideReceipts = false,
 }: {
   object: OrvekObject | undefined;
   hideSummary?: boolean;
   deferredCorrectionCopy?: string | null;
+  hideReceipts?: boolean;
 }) {
   const orvekData = useOptionalOrvekData();
 
@@ -253,9 +366,8 @@ function SourceObjectSections({
   const showModelMovement = Boolean(object.before || object.after);
   const showOptions = Boolean(object.options && object.options.length > 0);
   const showDecisionContext = Boolean(object.decisionContext && object.decisionContext.length > 0);
-  const showSupporting = Boolean(
-    (object.supporting && object.supporting.length > 0) ||
-      (object.conflicting && object.conflicting.length > 0)
+  const showSupportingEvidence = Boolean(
+    (object.receiptIds?.length ?? 0) > 0 || receipts.length > 0
   );
 
   return (
@@ -276,15 +388,21 @@ function SourceObjectSections({
       ) : null}
 
       {!hideSummary && object.summary ? (
-        <SectionBlock label="Summary">{object.summary}</SectionBlock>
+        <SectionBlock label="Current understanding">
+          <ReadoutText value={object.summary} />
+        </SectionBlock>
       ) : null}
 
       {object.whyItMatters ? (
-        <SectionBlock label="Why it matters">{object.whyItMatters}</SectionBlock>
+        <SectionBlock label="Why Orvek thinks this">
+          <ReadoutText value={object.whyItMatters} />
+        </SectionBlock>
       ) : null}
 
       {showCurrentModelRead ? (
-        <SectionBlock label="Current model read">{object.recommendation}</SectionBlock>
+        <SectionBlock label="Current read">
+          <ReadoutText value={object.recommendation ?? ""} />
+        </SectionBlock>
       ) : null}
 
       {showOptions ? (
@@ -335,10 +453,10 @@ function SourceObjectSections({
       ) : null}
 
       {object.projection ? (
-        <SectionBlock label="Projection">
-          <p>{object.projection}</p>
+        <SectionBlock label="Evidence strength / confidence">
+          <ReadoutText value={object.projection} />
           {object.confidence ? (
-            <p className="mt-1.5 text-xs">
+            <p className="mt-2 text-xs">
               <span className="text-muted-foreground">Confidence: </span>
               <span className="font-medium text-foreground">{object.confidence}</span>
             </p>
@@ -367,25 +485,21 @@ function SourceObjectSections({
       ) : null}
 
       {object.hypotheses?.length ? (
-        <SectionBlock label="Hypotheses">
+        <SectionBlock label="Open questions">
           <RenderList items={object.hypotheses} emptyCopy="" />
         </SectionBlock>
       ) : null}
 
-      {object.missingEvidence?.length ? (
-        <SectionBlock label="Missing evidence">
-          <RenderList items={object.missingEvidence} emptyCopy="" />
-        </SectionBlock>
-      ) : null}
-
       {showModelMovement ? (
-        <SectionBlock label="Model movement">
+        <SectionBlock label="What changed">
           {object.before ? (
             <div className="rounded-[9px] bg-muted/70 px-2.5 py-1.5">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Before
               </p>
-              <p className="mt-0.5 text-[13px] text-foreground">{object.before}</p>
+              <div className="mt-1 text-[13px]">
+                <ReadoutText value={object.before} />
+              </div>
             </div>
           ) : null}
           {object.after ? (
@@ -393,41 +507,22 @@ function SourceObjectSections({
               <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">
                 After
               </p>
-              <p className="mt-0.5 text-[13px] text-foreground">{object.after}</p>
+              <div className="mt-1 text-[13px]">
+                <ReadoutText value={object.after} />
+              </div>
             </div>
           ) : null}
         </SectionBlock>
       ) : null}
 
-      {showSupporting ? (
-        <SectionBlock label="Supporting & conflicting">
-          <div className="rounded-[10px] bg-secondary/40 px-3 py-2.5">
-            {object.supporting?.length ? (
-              <ul className="space-y-1">
-                {object.supporting.map((item) => (
-                  <li key={item} className="flex gap-1.5 text-[13px]">
-                    <span className="text-primary">+</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {object.conflicting?.length ? (
-              <ul className={object.supporting?.length ? "mt-1.5 space-y-1" : "space-y-1"}>
-                {object.conflicting.map((item) => (
-                  <li key={item} className="flex gap-1.5 text-[13px] text-muted-foreground">
-                    <span className="text-destructive">−</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
+      {object.supporting?.length ? (
+        <SectionBlock label="Supporting signals">
+          <RenderList items={object.supporting} emptyCopy="" />
         </SectionBlock>
       ) : null}
 
-      {receipts.length > 0 || (object.receiptIds?.length ?? 0) > 0 ? (
-        <SectionBlock label="Receipts">
+      {!hideReceipts && showSupportingEvidence ? (
+        <SectionBlock label="Supporting evidence">
           {receipts.length === 0 ? (
             <p className="text-[12px] leading-relaxed text-muted-foreground">
               {PUBLIC_EVIDENCE_FALLBACK_COPY}
@@ -441,18 +536,27 @@ function SourceObjectSections({
                     <span className="truncate font-medium text-foreground">{receipt.title}</span>
                   </div>
                   {receipt.sourceText ? (
-                    <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">
-                      {receipt.sourceText}
-                    </p>
+                    <div className="mt-1.5 line-clamp-3 text-[12px] leading-relaxed">
+                      <ReadoutText value={receipt.sourceText} muted />
+                    </div>
                   ) : receipt.summary ? (
-                    <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground">
-                      {receipt.summary}
-                    </p>
+                    <div className="mt-1.5 line-clamp-3 text-[12px] leading-relaxed">
+                      <ReadoutText value={receipt.summary} muted />
+                    </div>
+                  ) : null}
+                  {receipt.date ? (
+                    <div className="label-meta mt-1.5">Recorded {receipt.date}</div>
                   ) : null}
                 </li>
               ))}
             </ul>
           )}
+        </SectionBlock>
+      ) : null}
+
+      {object.conflicting?.length ? (
+        <SectionBlock label="Conflicting evidence">
+          <RenderList items={object.conflicting} emptyCopy="" />
         </SectionBlock>
       ) : null}
 
@@ -469,16 +573,24 @@ function SourceObjectSections({
       />
 
       {object.whatWouldChange?.length ? (
-        <SectionBlock label="What would change this">
+        <SectionBlock label="What could change this read">
           <RenderList items={object.whatWouldChange} emptyCopy="" />
         </SectionBlock>
       ) : hasDeferredCorrection ? (
-        <SectionBlock label="What would change this">
+        <SectionBlock label="What could change this read">
           <p className="text-[12px] leading-relaxed text-muted-foreground">
             {deferredCorrectionCopy}
           </p>
         </SectionBlock>
       ) : null}
+
+      {object.missingEvidence?.length ? (
+        <SectionBlock label="Missing or unavailable evidence">
+          <RenderList items={object.missingEvidence} emptyCopy="" />
+        </SectionBlock>
+      ) : null}
+
+      <CorrectionActionsSection objectId={object.id} />
     </>
   );
 }
@@ -505,13 +617,23 @@ function EvidenceLinksSection({ items }: { items: InspectorEvidenceLinkItem[] })
             sourceType={card.sourceType}
             sourceId={card.sourceId}
             title={card.title}
+            trailLabel="Viewing supporting evidence"
             className="ml-material block w-full rounded-xl px-3 py-2.5 text-left text-[12px] hover:bg-white/[0.02]"
           >
             <div className="font-medium text-foreground">{card.title}</div>
-            <div className="mt-0.5 text-[11px] font-medium text-cyan/80">{card.sourceKind}</div>
-            {card.linkRoleLabel ? (
-              <div className="mt-0.5 text-muted-foreground capitalize">{card.linkRoleLabel}</div>
+            {card.summary ? (
+              <div className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                <ReadoutText value={card.summary} muted />
+              </div>
             ) : null}
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+              <span className="font-medium text-cyan/80">{card.sourceKind}</span>
+              {card.linkRoleLabel ? (
+                <span className="text-muted-foreground capitalize">{card.linkRoleLabel}</span>
+              ) : (
+                <span className="text-muted-foreground">Support relation not recorded</span>
+              )}
+            </div>
             <div className="label-meta mt-1">Linked {formatDateTime(card.createdAt)}</div>
           </InspectorEvidenceSelectionControl>
         </li>
@@ -658,7 +780,9 @@ function RelatedMapConclusionSection({
       ) : (
         <p className="text-[14px] font-semibold text-foreground">{detail.title}</p>
       )}
-      <p className="mt-2 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{detail.summary}</p>
+      <div className="mt-2 text-[13px] leading-relaxed">
+        <ReadoutText value={detail.summary} muted />
+      </div>
       <FactGrid
         items={[
           { label: "Area", value: formatUserMapArea(detail.area) },
@@ -686,7 +810,7 @@ function RelatedPatternSection({ claim }: { claim: PatternClaimView }) {
 
   return (
     <SectionBlock label="Related pattern">
-      <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{claim.summary}</p>
+      <ReadoutText value={claim.summary} muted />
       <FactGrid
         items={[
           { label: "Family", value: familyLabel },
@@ -711,11 +835,15 @@ function RelatedSignalSection({ item }: { item: InspectorContradictionProjection
       <div className="mt-3 space-y-2">
         <div>
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Side A</div>
-          <p className="mt-1 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{item.sideA}</p>
+          <div className="mt-1 text-[13px] leading-relaxed">
+            <ReadoutText value={item.sideA} muted />
+          </div>
         </div>
         <div>
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Side B</div>
-          <p className="mt-1 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{item.sideB}</p>
+          <div className="mt-1 text-[13px] leading-relaxed">
+            <ReadoutText value={item.sideB} muted />
+          </div>
         </div>
       </div>
     </SectionBlock>
@@ -738,9 +866,18 @@ function ReportReceiptLinksSection({ refs }: { refs: RealityTrackingEvidenceRef[
             sourceType={ref.sourceType}
             sourceId={ref.sourceId}
             title={formatEvidenceRefDisplay(ref)}
+            trailLabel="Viewing supporting receipt"
             className="block w-full text-left hover:text-foreground"
           >
             <div className="font-medium text-foreground">{formatEvidenceRefDisplay(ref)}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+              <span className="font-medium text-cyan/80">{ref.sourceTypeLabel}</span>
+              {formatEvidenceRefRole(ref.role) ? (
+                <span className="text-muted-foreground capitalize">
+                  {formatEvidenceRefRole(ref.role)}
+                </span>
+              ) : null}
+            </div>
             <div className="label-meta mt-1">Linked {formatDateTime(ref.createdAt)}</div>
           </InspectorEvidenceSelectionControl>
         </li>
@@ -758,12 +895,12 @@ function ModelUpdateEvidenceEmptyState({
     <div className="space-y-2 px-4 pb-4 text-[12px] leading-relaxed text-muted-foreground">
       <p>
         {hasResolvableAffectedObject
-          ? "This related object is recorded, but no linked public evidence is available yet."
-          : "This related object is recorded, but no linked public evidence is attached yet."}
+          ? "This linked object is recorded, but its detail is not available in this view yet."
+          : "This linked object is recorded, but no readable evidence is attached in this view yet."}
       </p>
       <p className="text-[11px]">
-        Open the {ORVEK_COPY.mindModelMovementTab} tab for facts, guardrails, and the full
-        epistemic read on this movement.
+        Use the {ORVEK_COPY.mindModelMovementTab} tab for the full movement read, facts, and
+        guardrails.
       </p>
     </div>
   );
@@ -782,7 +919,7 @@ function buildContextCapturePrompt(
     sourceObject.evidenceCount != null
       ? `Evidence count: ${sourceObject.evidenceCount}`
       : null,
-    sourceObject.detailHref ? `Linked path: ${sourceObject.detailHref}` : null,
+    sourceObject.detailHref ? "Related surface: available" : "Related surface: unavailable",
     sourceObject.supporting?.length
       ? `Supporting evidence: ${sourceObject.supporting.join(" | ")}`
       : null,
@@ -808,7 +945,7 @@ function buildModelGoalCapturePrompt(
     sourceObject.evidenceCount != null
       ? `Evidence count: ${sourceObject.evidenceCount}`
       : null,
-    sourceObject.detailHref ? `Linked path: ${sourceObject.detailHref}` : null,
+    sourceObject.detailHref ? "Related surface: available" : "Related surface: unavailable",
     sourceObject.supporting?.length
       ? `Supporting evidence: ${sourceObject.supporting.join(" | ")}`
       : null,
@@ -858,19 +995,24 @@ function ContextEvidencePanel({
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Current read
           </p>
-          <p className="mt-1 text-[13px] leading-relaxed text-foreground">{currentRead}</p>
+          <div className="mt-1 text-[13px] leading-relaxed">
+            <ReadoutText value={currentRead} />
+          </div>
         </div>
         <FactGrid
           items={[
             { label: "Evidence", value: evidenceCountLabel },
             { label: "Confidence", value: sourceObject.confidence ?? "Evidence-linked" },
-            { label: "Linked path", value: sourceObject.detailHref ? "Available" : "Unavailable" },
+            {
+              label: "Related surface",
+              value: sourceObject.detailHref ? "Available" : "Unavailable",
+            },
           ]}
         />
         {sourceObject.detailHref ? (
           <div className="mt-3">
             <Link href={sourceObject.detailHref} className="text-[13px] font-medium text-primary hover:underline">
-              Open linked record
+              Open related surface
             </Link>
           </div>
         ) : null}
@@ -878,7 +1020,7 @@ function ContextEvidencePanel({
 
       <SourceObjectSections object={sourceObject} hideSummary />
 
-      <SectionBlock label="Correct or contest">
+      <SectionBlock label="Capture correction">
         <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
           User correction is first-class evidence. Capture the correction in Capture Life Data.
         </p>
@@ -943,13 +1085,18 @@ function ModelGoalEvidencePanel({
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Current read
           </p>
-          <p className="mt-1 text-[13px] leading-relaxed text-foreground">{currentRead}</p>
+          <div className="mt-1 text-[13px] leading-relaxed">
+            <ReadoutText value={currentRead} />
+          </div>
         </div>
         <FactGrid
           items={[
             { label: "Evidence", value: evidenceCountLabel },
             { label: "Confidence", value: sourceObject.confidence ?? "Evidence-linked" },
-            { label: "Linked path", value: sourceObject.detailHref ? "Available" : "Unavailable" },
+            {
+              label: "Related surface",
+              value: sourceObject.detailHref ? "Available" : "Unavailable",
+            },
           ]}
         />
         {sourceObject.detailHref ? (
@@ -958,7 +1105,7 @@ function ModelGoalEvidencePanel({
               href={sourceObject.detailHref}
               className="text-[13px] font-medium text-primary hover:underline"
             >
-              Open linked path
+              Open related surface
             </Link>
           </div>
         ) : null}
@@ -975,7 +1122,7 @@ function ModelGoalEvidencePanel({
         deferredCorrectionCopy={MODEL_GOAL_CORRECTION_DEFERRED_COPY}
       />
 
-      <SectionBlock label="Correct or contest">
+      <SectionBlock label="Capture correction">
         <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
           User correction is first-class evidence. Capture the correction in Capture Life Data.
         </p>
@@ -1055,7 +1202,9 @@ function UserMapEvidencePanel({
         meta={`${formatUserMapArea(detail.area)} · ${formatUserMapStatus(detail.status)} · ${formatUserMapConfidenceLevel(detail.confidenceLevel)}`}
       />
       <section className="px-4 pb-3">
-        <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{detail.summary}</p>
+        <div className="text-[13px] leading-relaxed">
+          <ReadoutText value={detail.summary} muted />
+        </div>
         <FactGrid
           items={[
             { label: "Evidence sources", value: String(detail.evidenceCount) },
@@ -1076,6 +1225,7 @@ function UserMapEvidencePanel({
         object={sourceObject}
         hideSummary
         deferredCorrectionCopy={YOUR_MAP_CORRECTION_DEFERRED_COPY}
+        hideReceipts
       />
       <SectionLabel>Supporting evidence</SectionLabel>
       <EvidenceLinksSection items={evidence} />
@@ -1131,7 +1281,9 @@ function PatternEvidencePanel({
         meta={`${familyLabel} · ${statusLabel} · ${STRENGTH_LABELS[claim.strengthLevel]}`}
       />
       <section className="px-4 pb-3">
-        <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{claim.summary}</p>
+        <div className="text-[13px] leading-relaxed">
+          <ReadoutText value={claim.summary} muted />
+        </div>
         <FactGrid
           items={[
             { label: "Receipts", value: String(claim.evidenceCount) },
@@ -1149,6 +1301,7 @@ function PatternEvidencePanel({
 
       <SourceObjectSections
         object={sourceObject}
+        hideReceipts
         deferredCorrectionCopy={
           sourceObject?.type === "context" || sourceObject?.type === "map-object"
             ? YOUR_MAP_CORRECTION_DEFERRED_COPY
@@ -1159,7 +1312,9 @@ function PatternEvidencePanel({
       <SectionBlock label="Next step">
         {claim.action ? (
           <div className="rounded-xl bg-secondary/50 px-3 py-2.5">
-            <p className="text-[13px] font-medium text-foreground">{claim.action.prompt}</p>
+            <div className="text-[13px] font-medium leading-relaxed text-foreground">
+              <ReadoutText value={claim.action.prompt} />
+            </div>
             <dl className="mt-2 grid grid-cols-2 gap-2 text-[12px] text-muted-foreground">
               <div>
                 <dt className="uppercase tracking-wide text-[10px]">Status</dt>
@@ -1187,9 +1342,9 @@ function PatternEvidencePanel({
               </div>
             </dl>
             {claim.action.reflectionNote ? (
-              <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
-                {claim.action.reflectionNote}
-              </p>
+              <div className="mt-2 text-[12px] leading-relaxed">
+                <ReadoutText value={claim.action.reflectionNote} muted />
+              </div>
             ) : null}
           </div>
         ) : (
@@ -1199,18 +1354,18 @@ function PatternEvidencePanel({
         )}
       </SectionBlock>
 
-      <SectionLabel>Receipts</SectionLabel>
+      <SectionLabel>Supporting evidence</SectionLabel>
       {claim.receipts.length === 0 ? (
         <p className="px-4 pb-4 text-[12px] text-muted-foreground">{PUBLIC_EVIDENCE_FALLBACK_COPY}</p>
       ) : (
         <ul className="space-y-2 px-4 pb-4">
           {claim.receipts.slice(0, 6).map((receipt) => (
             <li key={receipt.id} className="ml-material rounded-xl px-3 py-2.5 text-[12px]">
-              <div className="font-medium text-cyan/80">{receipt.source}</div>
+              <div className="font-medium text-foreground">{receipt.source}</div>
               {receipt.quote ? (
-                <p className="mt-1 leading-relaxed text-muted-foreground line-clamp-3">
-                  {receipt.quote}
-                </p>
+                <div className="mt-1 leading-relaxed line-clamp-3">
+                  <ReadoutText value={receipt.quote} muted />
+                </div>
               ) : (
                 <p className="mt-1 text-muted-foreground">Receipt recorded without stored quote.</p>
               )}
@@ -1278,11 +1433,15 @@ function ContradictionEvidencePanel({
         />
         <div>
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Side A</div>
-          <p className="mt-1 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{item.sideA}</p>
+          <div className="mt-1 text-[13px] leading-relaxed">
+            <ReadoutText value={item.sideA} muted />
+          </div>
         </div>
         <div>
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Side B</div>
-          <p className="mt-1 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">{item.sideB}</p>
+          <div className="mt-1 text-[13px] leading-relaxed">
+            <ReadoutText value={item.sideB} muted />
+          </div>
         </div>
       </section>
       <SourceObjectSections object={sourceObject} />
@@ -1369,17 +1528,20 @@ function ModelUpdateEvidencePanel({
     ? resolveOrvekObject(item.affectedObjectId)
     : undefined;
   const affectedTitle =
-    contextObject?.title ??
-    affectedContext.userMap?.title ??
-    affectedContext.pattern?.summary ??
-    affectedContext.contradiction?.title ??
+    sanitizeInspectorDisplayText(contextObject?.title) ??
+    sanitizeInspectorDisplayText(affectedContext.userMap?.title) ??
+    sanitizeInspectorDisplayText(affectedContext.pattern?.summary) ??
+    sanitizeInspectorDisplayText(affectedContext.contradiction?.title) ??
+    item.affectedObjectTypeLabel;
+  const targetLabel =
+    sanitizeInspectorDisplayText(report.evidencePacketSummary.targetLabel) ??
     item.affectedObjectTypeLabel;
   const showSupportingEvidenceSection = supportingEvidence.length > 0 || reportReceiptRefs.length > 0;
 
   return (
     <>
       <ObjectHeader
-        typeLabel="Related map item"
+        typeLabel="Affected object"
         title={affectedTitle}
         meta={`${item.affectedObjectTypeLabel} · Recorded ${formatDateTime(item.createdAt)}`}
       />
@@ -1393,11 +1555,14 @@ function ModelUpdateEvidencePanel({
               value: String(report.evidencePacketSummary.receiptCount),
             },
             {
-              label: "Linked object",
-              value: report.evidencePacketSummary.targetLabel,
+              label: "Selected object",
+              value: targetLabel,
             },
           ]}
         />
+        <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+          Receipt counts show packet size, not certainty.
+        </p>
         <div className="mt-3">
           <PublicLinkedObjectContinuity
             objectType={item.affectedObjectType}
@@ -1426,6 +1591,7 @@ function ModelUpdateEvidencePanel({
       <SourceObjectSections
         object={contextObject}
         hideSummary={Boolean(affectedContext.userMap?.summary)}
+        hideReceipts
         deferredCorrectionCopy={
           item.affectedObjectType === "usermap_conclusion"
             ? YOUR_MAP_CORRECTION_DEFERRED_COPY
@@ -1444,8 +1610,8 @@ function ModelUpdateEvidencePanel({
 
       {showSupportingEvidenceSection ? (
         <p className="px-4 pb-4 text-[11px] text-muted-foreground">
-          Open the {ORVEK_COPY.mindModelMovementTab} tab for facts, guardrails, and the full
-          epistemic read on this movement.
+          Open the {ORVEK_COPY.mindModelMovementTab} tab for the full movement read, guardrails,
+          and evidence used.
         </p>
       ) : null}
     </>

@@ -6,10 +6,12 @@ import {
   dedupeInspectorEvidenceLinks,
   filterResolvableEvidenceRefs,
   isLegacyInspectorEvidenceHref,
+  sanitizeInspectorDisplayText,
   isUnresolvedEvidenceRefDisplay,
   projectInspectorEvidenceCard,
   resolveInspectorEvidenceSelection,
   resolveInspectorEvidenceTitle,
+  splitInspectorReadoutText,
   UNRESOLVED_DUPLICATE_EVIDENCE_REF_DISPLAY,
 } from "../inspector-evidence-presentation";
 import type { InspectorEvidenceLinkItem } from "../inspector-object-api";
@@ -92,16 +94,39 @@ describe("inspector evidence presentation", () => {
 
   it("projects meaningful card titles and compact fallbacks instead of generic continuity labels", () => {
     const withSummary = projectInspectorEvidenceCard(
-      makeEvidenceItem({ objectTitle: "Recovery loop after constraint naming" })
+      makeEvidenceItem({
+        objectTitle: "Recovery loop after constraint naming",
+        evidenceSummaryLabel: "Constraint naming happened before the reset held.",
+      })
     );
     const fallback = projectInspectorEvidenceCard(
       makeEvidenceItem({ objectTitle: null, evidenceSummaryLabel: "Linked evidence" })
     );
 
     expect(withSummary.title).toBe("Recovery loop after constraint naming");
+    expect(withSummary.summary).toBe("Constraint naming happened before the reset held.");
     expect(withSummary.sourceKind).toBe("Pattern");
     expect(fallback.title).toBe("Linked pattern evidence");
     expect(fallback.title).not.toBe("Related pattern");
+  });
+
+  it("hides raw path-like and opaque inspector strings from user-facing display text", () => {
+    expect(sanitizeInspectorDisplayText("/patterns/pc-1")).toBeNull();
+    expect(sanitizeInspectorDisplayText("cmq7xttgo0000qlwzet7g6j5f")).toBeNull();
+    expect(sanitizeInspectorDisplayText("Recovery loop after constraint naming")).toBe(
+      "Recovery loop after constraint naming"
+    );
+  });
+
+  it("splits dense inspector readouts into structured clauses", () => {
+    expect(
+      splitInspectorReadoutText(
+        "Before scope reopened under pressure. After the loop was named, it narrowed."
+      )
+    ).toEqual([
+      "Before scope reopened under pressure.",
+      "After the loop was named, it narrowed.",
+    ]);
   });
 
   it("treats duplicate Reference item labels as unresolved and filters them from movement refs", () => {
@@ -178,9 +203,10 @@ describe("inspector evidence presentation", () => {
       "function SelectedObjectEvidencePanel"
     );
 
-    expect(modelUpdatePanel).toContain('typeLabel="Related map item"');
+    expect(modelUpdatePanel).toContain('typeLabel="Affected object"');
     expect(modelUpdatePanel).toContain("Supporting evidence");
     expect(modelUpdatePanel).toContain("Open the {ORVEK_COPY.mindModelMovementTab} tab");
+    expect(modelUpdatePanel).toContain("Receipt counts show packet size, not certainty.");
     expect(modelUpdatePanel).not.toContain("MIND MODEL MOVEMENT");
     expect(modelUpdatePanel).not.toContain("Movement summary");
     expect(modelUpdatePanel).not.toContain("What Would Change This Conclusion");

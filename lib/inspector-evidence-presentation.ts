@@ -22,6 +22,7 @@ const GENERIC_EVIDENCE_LABELS = new Set([
 export type InspectorEvidenceCardView = {
   dedupeKey: string;
   title: string;
+  summary: string | null;
   sourceKind: string;
   linkRoleLabel: string | null;
   createdAt: string;
@@ -65,6 +66,52 @@ export function isGenericInspectorEvidenceLabel(
   }
 
   return GENERIC_EVIDENCE_LABELS.has(value.trim().toLowerCase());
+}
+
+export function isInspectorPathLikeValue(value: string | null | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const trimmed = value.trim();
+  return (
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("api/") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://")
+  );
+}
+
+export function isInspectorOpaqueIdValue(value: string | null | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.includes(" ") || trimmed.length < 12) {
+    return false;
+  }
+
+  return /^[a-z0-9][a-z0-9_-]+$/i.test(trimmed);
+}
+
+export function sanitizeInspectorDisplayText(
+  value: string | null | undefined
+): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (isInspectorPathLikeValue(trimmed) || isInspectorOpaqueIdValue(trimmed)) {
+    return null;
+  }
+
+  return trimmed;
 }
 
 export function parseInspectorEvidenceSourceFromHref(
@@ -158,18 +205,55 @@ export function formatInspectorEvidenceLinkRole(
   return role.replace(/_/g, " ");
 }
 
+export function formatEvidenceRefRole(role: string | null | undefined): string | null {
+  if (!role) {
+    return null;
+  }
+
+  return role.replace(/_/g, " ");
+}
+
+export function splitInspectorReadoutText(value: string | null | undefined): string[] {
+  const normalized = value?.trim().replace(/\s+/g, " ");
+  if (!normalized) {
+    return [];
+  }
+
+  return normalized
+    .split(/(?:\s+[|·•]\s+)|(?<=[.!?;])\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 export function resolveInspectorEvidenceTitle(item: InspectorEvidenceLinkItem): string {
-  const objectTitle = item.objectTitle?.trim();
+  const objectTitle = sanitizeInspectorDisplayText(item.objectTitle);
   if (objectTitle) {
     return objectTitle;
   }
 
-  if (!isGenericInspectorEvidenceLabel(item.evidenceSummaryLabel)) {
-    return item.evidenceSummaryLabel.trim();
+  const evidenceSummaryLabel = sanitizeInspectorDisplayText(item.evidenceSummaryLabel);
+  if (evidenceSummaryLabel && !isGenericInspectorEvidenceLabel(evidenceSummaryLabel)) {
+    return evidenceSummaryLabel;
   }
 
   const parsed = parseInspectorEvidenceSourceFromHref(item.sourceObjectHref);
   return fallbackInspectorEvidenceTitle(item.sourceType ?? parsed?.sourceType ?? null);
+}
+
+export function resolveInspectorEvidenceSummary(
+  item: InspectorEvidenceLinkItem,
+  title: string
+): string | null {
+  const evidenceSummaryLabel = sanitizeInspectorDisplayText(item.evidenceSummaryLabel);
+  if (
+    evidenceSummaryLabel &&
+    !isGenericInspectorEvidenceLabel(evidenceSummaryLabel) &&
+    evidenceSummaryLabel !== title
+  ) {
+    return evidenceSummaryLabel;
+  }
+
+  return null;
 }
 
 export function projectInspectorEvidenceCard(
@@ -178,10 +262,12 @@ export function projectInspectorEvidenceCard(
   const parsed = parseInspectorEvidenceSourceFromHref(item.sourceObjectHref);
   const sourceType = item.sourceType ?? parsed?.sourceType ?? null;
   const sourceId = item.sourceId ?? parsed?.sourceId ?? null;
+  const title = resolveInspectorEvidenceTitle(item);
 
   return {
     dedupeKey: inspectorEvidenceDedupeKey(item),
-    title: resolveInspectorEvidenceTitle(item),
+    title,
+    summary: resolveInspectorEvidenceSummary(item, title),
     sourceKind: formatInspectorEvidenceSourceKind(sourceType),
     linkRoleLabel: formatInspectorEvidenceLinkRole(item.linkRole),
     createdAt: item.createdAt,

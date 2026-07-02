@@ -111,6 +111,25 @@ describe("inspector surface wiring", () => {
     expect(panel).not.toContain("[MODEL MOVEMENT]");
   });
 
+  it("keeps inspector copy free of raw linked-path labels and vague projection errors", () => {
+    const evidencePanel = readSource(
+      "components/inspector/panels/SelectedObjectEvidencePanel.tsx"
+    );
+    const movementPanel = readSource(
+      "components/inspector/panels/ModelMovementInspectorPanel.tsx"
+    );
+
+    for (const source of [evidencePanel, movementPanel]) {
+      expect(source).not.toContain("Linked path");
+      expect(source).not.toContain("public inspector projection");
+      expect(source).not.toContain("Detail unavailable");
+    }
+
+    expect(evidencePanel).toContain("Related surface");
+    expect(evidencePanel).toContain("Back to");
+    expect(movementPanel).toContain("Detail for this movement is not available in this view yet.");
+  });
+
   it("wires Timeline model changes and linked activity hrefs to inspector", () => {
     const container = readSource("components/orvek-workbench/OrvekTimelinePage.tsx");
     const view = readSource("components/orvek-v0/pages/timeline.tsx");
@@ -136,6 +155,8 @@ describe("inspector surface wiring", () => {
     expect(source).toContain(
       'input.tab ?? (input.objectType === "model_update" ? "movement" : "evidence")'
     );
+    expect(source).toContain("pushObject");
+    expect(source).toContain("goBack");
   });
 
   it("routes movement tab through scoped detail with safe fallback", () => {
@@ -147,10 +168,12 @@ describe("inspector surface wiring", () => {
     expect(routerSource).toContain("ModelMovementInspectorPanel");
     expect(panelSource).toContain("resolveActiveModelUpdateId");
     expect(panelSource).toContain("TODAY_INTELLIGENCE_UPDATES_ENDPOINT");
-    expect(panelSource).toContain("Evidence Packet Summary");
+    expect(panelSource).toContain("Evidence strength / confidence");
     expect(panelSource).toContain("ThinPacketNotice");
     expect(panelSource).toContain("no receipt packet is linked yet");
-    expect(panelSource).toContain("What Would Change This Conclusion");
+    expect(panelSource).toContain("What could change this read");
+    expect(panelSource).toContain("InspectorReturnBanner");
+    expect(panelSource).toContain("Back to");
     expect(panelSource).toContain("filterResolvableEvidenceRefs");
     expect(panelSource).toContain("InspectorEvidenceSelectionControl");
     expect(panelSource).not.toContain("<Link href={ref.href}");
@@ -171,9 +194,10 @@ describe("inspector surface wiring", () => {
       "function SelectedObjectEvidencePanel"
     );
 
-    expect(modelUpdatePanel).toContain('typeLabel="Related map item"');
+    expect(modelUpdatePanel).toContain('typeLabel="Affected object"');
     expect(modelUpdatePanel).toContain("Supporting evidence");
     expect(modelUpdatePanel).toContain("Open the {ORVEK_COPY.mindModelMovementTab} tab");
+    expect(modelUpdatePanel).toContain("Receipt counts show packet size, not certainty.");
     expect(modelUpdatePanel).not.toContain("MIND MODEL MOVEMENT");
     expect(modelUpdatePanel).not.toContain("Movement summary");
     expect(modelUpdatePanel).not.toContain("What Would Change This Conclusion");

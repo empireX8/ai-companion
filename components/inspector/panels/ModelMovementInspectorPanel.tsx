@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GitCompareArrows, ScrollText } from "lucide-react";
+import { ArrowLeft, GitCompareArrows, ScrollText } from "lucide-react";
 
 import { ExploreSessionMovementInspectorList } from "@/components/explore/ExploreModelMovementStrip";
 
 import { InspectorEvidenceSelectionControl } from "@/components/inspector/InspectorEvidenceSelectionControl";
 import {
+  formatEvidenceRefRole,
   filterResolvableEvidenceRefs,
   formatEvidenceRefDisplay,
+  sanitizeInspectorDisplayText,
+  splitInspectorReadoutText,
 } from "@/lib/inspector-evidence-presentation";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { fetchInspectorModelUpdateDetail } from "@/lib/inspector-object-api";
@@ -50,6 +53,37 @@ function SectionLabel({ children }: { children: string }) {
     <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
       {children}
     </div>
+  );
+}
+
+function ReadoutText({
+  value,
+  muted = false,
+}: {
+  value: string;
+  muted?: boolean;
+}) {
+  const parts = splitInspectorReadoutText(value);
+
+  if (parts.length <= 1) {
+    return (
+      <p className={muted ? "text-muted-foreground" : "text-foreground"}>
+        {sanitizeInspectorDisplayText(value) ?? value}
+      </p>
+    );
+  }
+
+  return (
+    <ul className="space-y-1">
+      {parts.map((part) => (
+        <li key={part} className="flex gap-1.5">
+          <span className="mt-[7px] size-1 shrink-0 rounded-full bg-primary/55" aria-hidden />
+          <span className={muted ? "text-muted-foreground" : "text-foreground"}>
+            {sanitizeInspectorDisplayText(part) ?? part}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -96,13 +130,46 @@ function EvidenceRefs({
             sourceType={ref.sourceType}
             sourceId={ref.sourceId}
             title={formatEvidenceRefDisplay(ref)}
+            trailLabel="Viewing movement evidence"
             className="text-left hover:text-foreground"
           >
             <span className="font-medium text-cyan/80">{formatEvidenceRefDisplay(ref)}</span>
+            {formatEvidenceRefRole(ref.role) ? (
+              <span className="ml-2 text-muted-foreground capitalize">
+                {formatEvidenceRefRole(ref.role)}
+              </span>
+            ) : null}
           </InspectorEvidenceSelectionControl>
         </li>
       ))}
     </ul>
+  );
+}
+
+function InspectorReturnBanner() {
+  const { canGoBack, backTarget, goBack } = useInspector();
+  const backTitle =
+    sanitizeInspectorDisplayText(backTarget?.selection.selectedTitle) ??
+    backTarget?.selection.selectedObjectType;
+
+  if (!canGoBack) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-xl bg-secondary/35 px-3 py-2">
+      <button
+        type="button"
+        onClick={goBack}
+        className="inline-flex items-center gap-1 text-[12px] font-medium text-foreground hover:text-primary"
+      >
+        <ArrowLeft className="size-3.5" aria-hidden />
+        Back to {backTitle}
+      </button>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        {backTarget?.trailLabel ?? "Viewing linked evidence"}
+      </p>
+    </div>
   );
 }
 
@@ -154,8 +221,11 @@ function ThinPacketNotice({ report }: { report: RealityTrackingModelMovementRepo
         {PRODUCT_NAME} cannot strengthen this claim until receipts are attached.
       </p>
       <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
-        <span className="font-medium text-foreground">Next evidence needed:</span> {nextEvidence}
+        <span className="font-medium text-foreground">Next evidence needed:</span>
       </p>
+      <div className="mt-1 text-[12px] leading-relaxed">
+        <ReadoutText value={nextEvidence} muted />
+      </div>
     </section>
   );
 }
@@ -167,7 +237,7 @@ function PacketReceiptRollup({ refs }: { refs: RealityTrackingEvidenceRef[] }) {
 
   return (
     <section>
-      <SectionLabel>Linked Receipts</SectionLabel>
+      <SectionLabel>Evidence used</SectionLabel>
       <EvidenceRefs refs={refs} showEmptyCopy={false} />
     </section>
   );
@@ -214,15 +284,15 @@ function ClaimSection({
                   </div>
                 </div>
               ) : null}
-              <p
+              <div
                 className={
                   compact
                     ? "text-[12px] leading-relaxed text-muted-foreground"
-                    : "mt-1.5 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]"
+                    : "mt-1.5 text-[13px] leading-relaxed"
                 }
               >
-                {item.text}
-              </p>
+                <ReadoutText value={item.text} muted={!compact} />
+              </div>
               {showPerCardRefs ? <EvidenceRefs refs={item.evidenceRefs} showEmptyCopy={false} /> : null}
             </article>
           ))}
@@ -233,24 +303,28 @@ function ClaimSection({
 }
 
 function MovementSection({
+  label,
   section,
   compact = false,
   showPerCardRefs = true,
 }: {
+  label: string;
   section: RealityTrackingModelMovementSection;
   compact?: boolean;
   showPerCardRefs?: boolean;
 }) {
   return (
     <section>
-      <SectionLabel>Model Movement</SectionLabel>
+      <SectionLabel>{label}</SectionLabel>
       <div className="space-y-2.5">
         {section.before ? (
           <div className="rounded-xl bg-muted/70 px-3 py-2.5">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Before
             </div>
-            <p className="mt-1 text-[13px] leading-relaxed text-foreground">{section.before}</p>
+            <div className="mt-1 text-[13px] leading-relaxed">
+              <ReadoutText value={section.before} />
+            </div>
           </div>
         ) : null}
         {section.after ? (
@@ -258,7 +332,9 @@ function MovementSection({
             <div className="text-[10px] font-semibold uppercase tracking-wide text-primary">
               After
             </div>
-            <p className="mt-1 text-[13px] leading-relaxed text-foreground">{section.after}</p>
+            <div className="mt-1 text-[13px] leading-relaxed">
+              <ReadoutText value={section.after} />
+            </div>
           </div>
         ) : null}
         {section.confidenceShift !== null ? (
@@ -286,15 +362,15 @@ function MovementSection({
                     {formatEvidenceStatus(item.evidenceStatus)}
                   </div>
                 ) : null}
-                <p
+                <div
                   className={
                     compact
                       ? "text-[12px] leading-relaxed text-muted-foreground"
-                      : "mt-1.5 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]"
+                      : "mt-1.5 text-[13px] leading-relaxed"
                   }
                 >
-                  {item.text}
-                </p>
+                  <ReadoutText value={item.text} muted={!compact} />
+                </div>
                 {showPerCardRefs ? (
                   <EvidenceRefs refs={item.evidenceRefs} showEmptyCopy={false} />
                 ) : null}
@@ -346,8 +422,14 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
 
   if (notFound || !detail) {
     return (
-      <div className="px-5 py-8 text-center text-[13px] text-muted-foreground">
-        This {ORVEK_COPY.mindModelMovement} is not available through the public projection.
+      <div className="px-5 py-8 text-center">
+        <p className="text-sm font-medium text-foreground">This movement is recorded.</p>
+        <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+          Detail for this movement is not available in this view yet.
+        </p>
+        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+          Use the related surface to inspect the full object when that surface is available.
+        </p>
       </div>
     );
   }
@@ -355,19 +437,23 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
   const receiptCount = detail.report.evidencePacketSummary.receiptCount;
   const isThinPacket = receiptCount === 0;
   const packetReceiptRefs = collectUniqueReceiptRefs(detail.report);
+  const targetLabel =
+    sanitizeInspectorDisplayText(detail.report.evidencePacketSummary.targetLabel) ??
+    detail.item.affectedObjectTypeLabel;
 
   return (
     <div className="space-y-3 px-4 py-4">
       <header className="border-b ml-hairline pb-3">
+        <InspectorReturnBanner />
         <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-cyan/75">
           {ORVEK_COPY.mindModelMovement}
         </div>
         <h3 className="mt-1 text-[15px] font-semibold leading-snug">
           {detail.item.updateTypeLabel} · {detail.item.affectedObjectTypeLabel}
         </h3>
-        <p className="mt-2 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
-          {detail.item.userFacingSummary}
-        </p>
+        <div className="mt-2 text-[13px] leading-relaxed">
+          <ReadoutText value={detail.item.userFacingSummary} muted />
+        </div>
         <div className="mt-3">
           <PublicLinkedObjectContinuity
             objectType={detail.item.affectedObjectType}
@@ -382,7 +468,7 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
       {isThinPacket ? <ThinPacketNotice report={detail.report} /> : null}
 
       <section>
-        <SectionLabel>Evidence Packet Summary</SectionLabel>
+        <SectionLabel>Evidence strength / confidence</SectionLabel>
         <FactGrid
           items={[
             {
@@ -420,9 +506,12 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
           ]}
         />
         <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+          Receipt counts show packet size, not certainty.
+        </p>
+        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
           Target:{" "}
           <span className="font-medium text-foreground">
-            {detail.report.evidencePacketSummary.targetLabel}
+            {targetLabel}
           </span>{" "}
           · {detail.report.evidencePacketSummary.targetObjectTypeLabel}
         </p>
@@ -431,67 +520,68 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
       {!isThinPacket ? <PacketReceiptRollup refs={packetReceiptRefs} /> : null}
 
       <ClaimSection
-        label="Facts"
+        label="Evidence used"
         section={detail.report.facts}
         compact={isThinPacket}
         showPerCardRefs={!isThinPacket}
       />
       <ClaimSection
-        label="Strongly Supported Claims"
+        label="Why Orvek thinks this"
         section={detail.report.stronglySupportedClaims}
         collapseWhenEmpty
         showPerCardRefs={!isThinPacket}
       />
       <ClaimSection
-        label="Inferences"
+        label="What Orvek infers"
         section={detail.report.inferences}
         collapseWhenEmpty
         showPerCardRefs={!isThinPacket}
       />
       <ClaimSection
-        label="Speculations / Uncertainties"
+        label="Weak or uncertain"
         section={detail.report.speculations}
         collapseWhenEmpty
         showPerCardRefs={!isThinPacket}
       />
       <ClaimSection
-        label="Overreach Guardrails"
+        label="Guardrails / confidence"
         section={detail.report.overreachGuardrails}
         compact={isThinPacket}
         collapseWhenEmpty
         showPerCardRefs={!isThinPacket}
       />
       <ClaimSection
-        label="Loop / Pattern Detection"
+        label="Pattern context"
         section={detail.report.loopPatternDetection}
         collapseWhenEmpty
         showPerCardRefs={!isThinPacket}
       />
       <MovementSection
+        label="What changed"
         section={detail.report.modelMovement}
         compact={isThinPacket}
         showPerCardRefs={!isThinPacket}
       />
       <ClaimSection
-        label="Reality Gate"
+        label="Reality check"
         section={detail.report.realityGate}
         compact={isThinPacket}
         showPerCardRefs={!isThinPacket}
       />
       <ClaimSection
-        label="Fieldwork / Watch For"
+        label="Watch for next"
         section={detail.report.fieldworkWatchFor}
         compact={isThinPacket}
         showPerCardRefs={!isThinPacket}
       />
       <ClaimSection
-        label="Re-entry Action"
+        label="Re-entry"
         section={detail.report.reentryAction}
         collapseWhenEmpty
         showPerCardRefs={!isThinPacket}
       />
       <ClaimSection
-        label="What Would Change This Conclusion"
+        label="What could change this read"
         section={detail.report.whatWouldChangeThisConclusion}
         compact={isThinPacket}
         showPerCardRefs={!isThinPacket}
@@ -591,9 +681,9 @@ function GlobalModelMovementList() {
           <div className="text-[11px] font-medium uppercase tracking-wide text-cyan/75">
             {item.updateTypeLabel} · {item.affectedObjectTypeLabel}
           </div>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
-            {item.userFacingSummary}
-          </p>
+          <div className="mt-1.5 text-[13px] leading-relaxed">
+            <ReadoutText value={item.userFacingSummary} muted />
+          </div>
           <div className="mt-2.5 border-t ml-hairline pt-2.5">
             <PublicLinkedObjectContinuity
               objectType={item.affectedObjectType}
