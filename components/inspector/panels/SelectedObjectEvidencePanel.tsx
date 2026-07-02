@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 
-import { Chip, TYPE_META } from "@/components/orvek-v0/primitives";
+import { Chip, SectionLabel, TYPE_META } from "@/components/orvek-v0/primitives";
 import { useWorkbench } from "@/components/orvek-v0/store";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { PUBLIC_EVIDENCE_FALLBACK_COPY } from "@/lib/public-continuity-registry";
@@ -94,46 +94,38 @@ function ObjectHeader({
   const displayTitle = sanitizeInspectorDisplayText(title) ?? "Selected object";
 
   return (
-    <header className="border-b ml-hairline px-4 py-3">
+    <header className="px-5 pt-4">
       {canGoBack ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-secondary/35 px-3 py-2">
+        <div className="mb-3 rounded-[10px] bg-secondary/50 px-2.5 py-2">
           <button
             type="button"
             onClick={goBack}
-            className="inline-flex items-center gap-1 text-[12px] font-medium text-foreground hover:text-primary"
+            className="o-calm inline-flex items-center gap-1 text-[12px] font-medium text-foreground hover:text-primary"
           >
             <ArrowLeft className="size-3.5" aria-hidden />
             Back to {backTitle}
           </button>
-          <span className="text-[11px] text-muted-foreground">
+          <span className="ml-2 text-[11px] text-muted-foreground">
             {backTarget?.trailLabel ?? "Viewing linked evidence"}
           </span>
         </div>
       ) : null}
-      <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-cyan/75">
+      <div className="inline-flex items-center rounded-md bg-evidence-muted px-2 py-0.5 text-xs font-medium text-primary">
         {typeLabel}
       </div>
-      <h3 className="mt-1 text-[15px] font-semibold leading-snug text-foreground">
+      <h3 className="mt-2 text-base font-semibold leading-snug text-foreground text-pretty">
         {displayTitle}
       </h3>
-      <p className="mt-1 text-[11px] text-muted-foreground">{meta}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{meta}</p>
     </header>
-  );
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="px-4 pt-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-      {children}
-    </div>
   );
 }
 
 function PanelSkeleton() {
   return (
-    <div className="space-y-2 p-4">
+    <div className="space-y-2 px-5 pt-4">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-14 animate-pulse rounded-xl bg-white/[0.04]" />
+        <div key={i} className="h-14 animate-pulse rounded-[10px] bg-secondary/50" />
       ))}
     </div>
   );
@@ -141,7 +133,7 @@ function PanelSkeleton() {
 
 function UnavailableState({ objectTypeLabel }: { objectTypeLabel: string }) {
   return (
-    <div className="px-4 py-8 text-center">
+    <div className="px-8 py-10 text-center">
       <p className="text-sm font-medium text-foreground">This linked object is recorded.</p>
       <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
         Detail for this {objectTypeLabel.toLowerCase()} is not available in this view yet.
@@ -161,9 +153,9 @@ function SectionBlock({
   children: ReactNode;
 }) {
   return (
-    <section className="px-4 pb-4">
+    <section className="px-5 pt-4">
       <SectionLabel>{label}</SectionLabel>
-      <div className="mt-2 rounded-xl bg-secondary/30 px-3 py-3 text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+      <div className="mt-2 text-sm leading-relaxed text-foreground">
         {children}
       </div>
     </section>
@@ -270,19 +262,28 @@ function LinkedObjectsSection({
       {objects.length === 0 ? (
         <p className="text-[12px] leading-relaxed text-muted-foreground">{emptyCopy}</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-1.5">
           {objects.map((object) => (
-            <li key={object.id} className="ml-material rounded-xl px-3 py-2.5">
+            <li
+              key={object.id}
+              className="o-calm rounded-[9px] bg-secondary/50 px-2.5 py-2 hover:bg-accent/60"
+            >
               <div className="flex items-center gap-2">
-                <Chip tone="neutral">{TYPE_META[object.type].label}</Chip>
-                <span className="truncate font-medium text-foreground">{object.title}</span>
+                {(() => {
+                  const Icon = TYPE_META[object.type].icon;
+                  return <Icon className="size-3.5 shrink-0 text-primary" aria-hidden />;
+                })()}
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
+                  {object.title}
+                </span>
+                <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
               </div>
               {object.summary ? (
-                <div className="mt-1.5 line-clamp-3 text-[12px] leading-relaxed">
+                <div className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed">
                   <ReadoutText value={object.summary} muted />
                 </div>
               ) : object.whyItMatters ? (
-                <div className="mt-1.5 line-clamp-3 text-[12px] leading-relaxed">
+                <div className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed">
                   <ReadoutText value={object.whyItMatters} muted />
                 </div>
               ) : null}
@@ -299,7 +300,7 @@ function CorrectionActionsSection({ objectId }: { objectId: string }) {
   const correction = corrections[objectId];
 
   return (
-    <section className="mx-4 mb-4 rounded-2xl bg-secondary/40 px-4 py-3.5">
+    <section className="mx-4 mt-5 rounded-2xl bg-secondary/40 px-4 py-3.5">
       <SectionLabel>Correct the model</SectionLabel>
       <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
         Choose the closest correction. This keeps weak or missing evidence visible while you
@@ -319,10 +320,10 @@ function CorrectionActionsSection({ objectId }: { objectId: string }) {
             onClick={() => applyCorrection(objectId, label)}
             className={
               label === "Confirm"
-                ? "rounded-full bg-evidence-muted px-2.5 py-1 text-xs font-medium text-primary hover:brightness-[0.97]"
+                ? "o-calm rounded-full bg-evidence-muted px-2.5 py-1 text-xs font-medium text-primary hover:brightness-[0.97]"
                 : label === "This is wrong" || label === "Don't use this"
-                  ? "rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/15"
-                  : "rounded-full bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.12)] hover:bg-accent/60"
+                  ? "o-calm rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/15"
+                  : "o-calm rounded-full bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.12)] hover:bg-accent/60"
             }
           >
             {label}
@@ -530,7 +531,10 @@ function SourceObjectSections({
           ) : (
             <ul className="space-y-2">
               {receipts.map((receipt) => (
-                <li key={receipt.id} className="ml-material rounded-xl px-3 py-2.5">
+                <li
+                  key={receipt.id}
+                  className="o-calm rounded-[10px] bg-card p-2.5 shadow-[0_1px_3px_-1px_rgba(30,41,59,0.1)]"
+                >
                   <div className="flex items-center gap-2">
                     <Chip tone="neutral">{TYPE_META[receipt.type].label}</Chip>
                     <span className="truncate font-medium text-foreground">{receipt.title}</span>
@@ -602,14 +606,14 @@ function EvidenceLinksSection({ items }: { items: InspectorEvidenceLinkItem[] })
 
   if (cards.length === 0) {
     return (
-      <p className="px-4 pb-4 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
         {PUBLIC_EVIDENCE_FALLBACK_COPY}
       </p>
     );
   }
 
   return (
-    <ul className="space-y-2 px-4 pb-4">
+    <ul className="mt-2 space-y-1.5">
       {cards.map((card) => (
         <li key={card.dedupeKey}>
           <InspectorEvidenceSelectionControl
@@ -618,7 +622,7 @@ function EvidenceLinksSection({ items }: { items: InspectorEvidenceLinkItem[] })
             sourceId={card.sourceId}
             title={card.title}
             trailLabel="Viewing supporting evidence"
-            className="ml-material block w-full rounded-xl px-3 py-2.5 text-left text-[12px] hover:bg-white/[0.02]"
+            className="o-calm block w-full rounded-[10px] bg-card p-2.5 text-left text-[12px] shadow-[0_1px_3px_-1px_rgba(30,41,59,0.1)] hover:bg-accent/40"
           >
             <div className="font-medium text-foreground">{card.title}</div>
             {card.summary ? (
@@ -858,9 +862,12 @@ function ReportReceiptLinksSection({ refs }: { refs: RealityTrackingEvidenceRef[
   }
 
   return (
-    <ul className="space-y-2 px-4 pb-4">
+    <ul className="mt-2 space-y-1.5">
       {visibleRefs.map((ref) => (
-        <li key={ref.id} className="ml-material rounded-xl px-3 py-2.5 text-[12px]">
+        <li
+          key={ref.id}
+          className="o-calm rounded-[10px] bg-card p-2.5 text-[12px] shadow-[0_1px_3px_-1px_rgba(30,41,59,0.1)] hover:bg-accent/40"
+        >
           <InspectorEvidenceSelectionControl
             href={ref.href}
             sourceType={ref.sourceType}
@@ -892,7 +899,7 @@ function ModelUpdateEvidenceEmptyState({
   hasResolvableAffectedObject: boolean;
 }) {
   return (
-    <div className="space-y-2 px-4 pb-4 text-[12px] leading-relaxed text-muted-foreground">
+    <div className="mt-2 space-y-2 text-[12px] leading-relaxed text-muted-foreground">
       <p>
         {hasResolvableAffectedObject
           ? "This linked object is recorded, but its detail is not available in this view yet."
@@ -987,11 +994,11 @@ function ContextEvidencePanel({
   return (
     <>
       <ObjectHeader typeLabel="Mind Context" title={selection.selectedTitle ?? sourceObject.title} meta={meta} />
-      <section className="px-4 pb-3">
-        <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+      <section className="px-5 pt-4">
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
           This is a correctable model read, not a final conclusion about you.
         </p>
-        <div className="mt-3 rounded-xl bg-secondary/50 px-3 py-2.5">
+        <div className="mt-3 rounded-[9px] bg-secondary/50 p-2.5">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Current read
           </p>
@@ -1021,7 +1028,7 @@ function ContextEvidencePanel({
       <SourceObjectSections object={sourceObject} hideSummary />
 
       <SectionBlock label="Capture correction">
-        <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
           User correction is first-class evidence. Capture the correction in Capture Life Data.
         </p>
         <button
@@ -1035,7 +1042,7 @@ function ContextEvidencePanel({
             }
             router.push("/journal-chat");
           }}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-evidence-muted px-3 py-1.5 text-[13px] font-medium text-primary hover:brightness-[0.98]"
+          className="o-calm mt-3 inline-flex items-center gap-1.5 rounded-md bg-evidence-muted px-3 py-1.5 text-[13px] font-medium text-primary hover:brightness-[0.98]"
         >
           Capture correction
         </button>
@@ -1077,11 +1084,11 @@ function ModelGoalEvidencePanel({
         title={selection.selectedTitle ?? sourceObject.title}
         meta={meta}
       />
-      <section className="px-4 pb-3">
-        <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+      <section className="px-5 pt-4">
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
           This is a correctable model read, not a final conclusion about you.
         </p>
-        <div className="mt-3 rounded-xl bg-secondary/50 px-3 py-2.5">
+        <div className="mt-3 rounded-[9px] bg-secondary/50 p-2.5">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Current read
           </p>
@@ -1123,7 +1130,7 @@ function ModelGoalEvidencePanel({
       />
 
       <SectionBlock label="Capture correction">
-        <p className="text-[13px] leading-relaxed text-[hsl(216_11%_75%)]">
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
           User correction is first-class evidence. Capture the correction in Capture Life Data.
         </p>
         <button
@@ -1137,7 +1144,7 @@ function ModelGoalEvidencePanel({
             }
             router.push("/journal-chat");
           }}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-evidence-muted px-3 py-1.5 text-[13px] font-medium text-primary hover:brightness-[0.98]"
+          className="o-calm mt-3 inline-flex items-center gap-1.5 rounded-md bg-evidence-muted px-3 py-1.5 text-[13px] font-medium text-primary hover:brightness-[0.98]"
         >
           Capture correction
         </button>
@@ -1201,7 +1208,7 @@ function UserMapEvidencePanel({
         title={selection.selectedTitle ?? detail.title}
         meta={`${formatUserMapArea(detail.area)} · ${formatUserMapStatus(detail.status)} · ${formatUserMapConfidenceLevel(detail.confidenceLevel)}`}
       />
-      <section className="px-4 pb-3">
+      <section className="px-5 pt-4">
         <div className="text-[13px] leading-relaxed">
           <ReadoutText value={detail.summary} muted />
         </div>
@@ -1227,8 +1234,10 @@ function UserMapEvidencePanel({
         deferredCorrectionCopy={YOUR_MAP_CORRECTION_DEFERRED_COPY}
         hideReceipts
       />
-      <SectionLabel>Supporting evidence</SectionLabel>
-      <EvidenceLinksSection items={evidence} />
+      <section className="px-5 pt-4">
+        <SectionLabel>Supporting evidence</SectionLabel>
+        <EvidenceLinksSection items={evidence} />
+      </section>
     </>
   );
 }
@@ -1280,7 +1289,7 @@ function PatternEvidencePanel({
         title={selection.selectedTitle ?? claim.summary}
         meta={`${familyLabel} · ${statusLabel} · ${STRENGTH_LABELS[claim.strengthLevel]}`}
       />
-      <section className="px-4 pb-3">
+      <section className="px-5 pt-4">
         <div className="text-[13px] leading-relaxed">
           <ReadoutText value={claim.summary} muted />
         </div>
@@ -1311,7 +1320,7 @@ function PatternEvidencePanel({
 
       <SectionBlock label="Next step">
         {claim.action ? (
-          <div className="rounded-xl bg-secondary/50 px-3 py-2.5">
+          <div className="rounded-[9px] bg-secondary/50 p-2.5">
             <div className="text-[13px] font-medium leading-relaxed text-foreground">
               <ReadoutText value={claim.action.prompt} />
             </div>
@@ -1354,26 +1363,31 @@ function PatternEvidencePanel({
         )}
       </SectionBlock>
 
-      <SectionLabel>Supporting evidence</SectionLabel>
-      {claim.receipts.length === 0 ? (
-        <p className="px-4 pb-4 text-[12px] text-muted-foreground">{PUBLIC_EVIDENCE_FALLBACK_COPY}</p>
-      ) : (
-        <ul className="space-y-2 px-4 pb-4">
-          {claim.receipts.slice(0, 6).map((receipt) => (
-            <li key={receipt.id} className="ml-material rounded-xl px-3 py-2.5 text-[12px]">
-              <div className="font-medium text-foreground">{receipt.source}</div>
-              {receipt.quote ? (
-                <div className="mt-1 leading-relaxed line-clamp-3">
-                  <ReadoutText value={receipt.quote} muted />
-                </div>
-              ) : (
-                <p className="mt-1 text-muted-foreground">Receipt recorded without stored quote.</p>
-              )}
-              <div className="label-meta mt-1">{formatDateTime(receipt.createdAt)}</div>
-            </li>
-          ))}
-        </ul>
-      )}
+      <section className="px-5 pt-4">
+        <SectionLabel>Supporting evidence</SectionLabel>
+        {claim.receipts.length === 0 ? (
+          <p className="mt-2 text-[12px] text-muted-foreground">{PUBLIC_EVIDENCE_FALLBACK_COPY}</p>
+        ) : (
+          <ul className="mt-2 space-y-1.5">
+            {claim.receipts.slice(0, 6).map((receipt) => (
+              <li
+                key={receipt.id}
+                className="rounded-[9px] rounded-l-sm border-l-2 border-primary/50 bg-secondary/50 px-2.5 py-1.5 text-[12px]"
+              >
+                <div className="font-medium text-foreground">{receipt.source}</div>
+                {receipt.quote ? (
+                  <div className="mt-1 leading-relaxed line-clamp-3">
+                    <ReadoutText value={receipt.quote} muted />
+                  </div>
+                ) : (
+                  <p className="mt-1 text-muted-foreground">Receipt recorded without stored quote.</p>
+                )}
+                <div className="label-meta mt-1">{formatDateTime(receipt.createdAt)}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </>
   );
 }
@@ -1419,7 +1433,7 @@ function ContradictionEvidencePanel({
         title={selection.selectedTitle ?? item.title}
         meta={`${item.status.replace(/_/g, " ")} · ${item.evidenceCount} evidence`}
       />
-      <section className="px-4 pb-3 space-y-3">
+      <section className="space-y-3 px-5 pt-4">
         <FactGrid
           items={[
             { label: "Status", value: item.status.replace(/_/g, " ") },
@@ -1445,7 +1459,7 @@ function ContradictionEvidencePanel({
         </div>
       </section>
       <SourceObjectSections object={sourceObject} />
-      <p className="px-4 pb-4 text-[12px] text-muted-foreground">
+      <p className="px-5 pt-4 text-[12px] text-muted-foreground">
         Raw message evidence stays on the signal detail surface. Use the full page for deeper review.
       </p>
     </>
@@ -1546,7 +1560,7 @@ function ModelUpdateEvidencePanel({
         meta={`${item.affectedObjectTypeLabel} · Recorded ${formatDateTime(item.createdAt)}`}
       />
 
-      <section className="px-4 pb-3">
+      <section className="px-5 pt-4">
         <FactGrid
           items={[
             { label: "Recorded", value: formatDateTime(item.createdAt) },
@@ -1599,17 +1613,19 @@ function ModelUpdateEvidencePanel({
         }
       />
 
-      <SectionLabel>Supporting evidence</SectionLabel>
-      {supportingEvidence.length > 0 ? (
-        <EvidenceLinksSection items={supportingEvidence} />
-      ) : reportReceiptRefs.length > 0 ? (
-        <ReportReceiptLinksSection refs={reportReceiptRefs} />
-      ) : (
-        <ModelUpdateEvidenceEmptyState hasResolvableAffectedObject={hasResolvableAffectedObject} />
-      )}
+      <section className="px-5 pt-4">
+        <SectionLabel>Supporting evidence</SectionLabel>
+        {supportingEvidence.length > 0 ? (
+          <EvidenceLinksSection items={supportingEvidence} />
+        ) : reportReceiptRefs.length > 0 ? (
+          <ReportReceiptLinksSection refs={reportReceiptRefs} />
+        ) : (
+          <ModelUpdateEvidenceEmptyState hasResolvableAffectedObject={hasResolvableAffectedObject} />
+        )}
+      </section>
 
       {showSupportingEvidenceSection ? (
-        <p className="px-4 pb-4 text-[11px] text-muted-foreground">
+        <p className="px-5 pt-2 text-[11px] text-muted-foreground">
           Open the {ORVEK_COPY.mindModelMovementTab} tab for the full movement read, guardrails,
           and evidence used.
         </p>

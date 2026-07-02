@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { ArrowLeft, GitCompareArrows, ScrollText } from "lucide-react";
 
 import { ExploreSessionMovementInspectorList } from "@/components/explore/ExploreModelMovementStrip";
+import { SectionLabel } from "@/components/orvek-v0/primitives";
 
 import { InspectorEvidenceSelectionControl } from "@/components/inspector/InspectorEvidenceSelectionControl";
 import {
@@ -46,14 +47,6 @@ function formatDateTime(value: string): string {
 
 function formatEvidenceStatus(value: string): string {
   return value.replace(/_/g, " ");
-}
-
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-      {children}
-    </div>
-  );
 }
 
 function ReadoutText({
@@ -124,18 +117,18 @@ function EvidenceRefs({
   return (
     <ul className="mt-2 space-y-1.5">
       {visibleRefs.map((ref) => (
-        <li key={ref.id} className="text-[11px] leading-relaxed text-muted-foreground">
+        <li key={ref.id}>
           <InspectorEvidenceSelectionControl
             href={ref.href}
             sourceType={ref.sourceType}
             sourceId={ref.sourceId}
             title={formatEvidenceRefDisplay(ref)}
             trailLabel="Viewing movement evidence"
-            className="text-left hover:text-foreground"
+            className="o-calm block w-full rounded-[10px] bg-card p-2.5 text-left text-[12px] shadow-[0_1px_3px_-1px_rgba(30,41,59,0.1)] hover:bg-accent/40"
           >
-            <span className="font-medium text-cyan/80">{formatEvidenceRefDisplay(ref)}</span>
+            <span className="font-medium text-foreground">{formatEvidenceRefDisplay(ref)}</span>
             {formatEvidenceRefRole(ref.role) ? (
-              <span className="ml-2 text-muted-foreground capitalize">
+              <span className="ml-2 text-[11px] text-muted-foreground capitalize">
                 {formatEvidenceRefRole(ref.role)}
               </span>
             ) : null}
@@ -157,11 +150,11 @@ function InspectorReturnBanner() {
   }
 
   return (
-    <div className="rounded-xl bg-secondary/35 px-3 py-2">
+    <div className="mb-3 rounded-[10px] bg-secondary/50 px-2.5 py-2">
       <button
         type="button"
         onClick={goBack}
-        className="inline-flex items-center gap-1 text-[12px] font-medium text-foreground hover:text-primary"
+        className="o-calm inline-flex items-center gap-1 text-[12px] font-medium text-foreground hover:text-primary"
       >
         <ArrowLeft className="size-3.5" aria-hidden />
         Back to {backTitle}
@@ -213,7 +206,7 @@ function ThinPacketNotice({ report }: { report: RealityTrackingModelMovementRepo
     "Capture the next instance with trigger, behavior, aftermath, and whether it repeats in a second context.";
 
   return (
-    <section className="rounded-xl border ml-hairline bg-muted/40 px-3.5 py-3">
+    <section className="mx-4 mt-4 rounded-2xl bg-secondary/40 px-4 py-3.5 ring-1 ring-inset ring-border/60">
       <p className="text-[13px] leading-relaxed text-foreground">
         This movement exists, but no receipt packet is linked yet.
       </p>
@@ -236,7 +229,7 @@ function PacketReceiptRollup({ refs }: { refs: RealityTrackingEvidenceRef[] }) {
   }
 
   return (
-    <section>
+    <section className="px-5 pt-4">
       <SectionLabel>Evidence used</SectionLabel>
       <EvidenceRefs refs={refs} showEmptyCopy={false} />
     </section>
@@ -261,18 +254,22 @@ function ClaimSection({
   }
 
   return (
-    <section>
+    <section className="px-5 pt-4">
       <SectionLabel>{label}</SectionLabel>
       {section.items.length === 0 ? (
-        <p className="text-[12px] leading-relaxed text-muted-foreground">
+        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
           {section.emptyState ?? "No detail available."}
         </p>
       ) : (
-        <div className="space-y-2.5">
+        <div className="mt-2 space-y-2.5">
           {section.items.map((item, index) => (
             <article
               key={`${label}-${index}-${item.text}`}
-              className={compact ? "rounded-xl px-1 py-1" : "ml-material rounded-xl px-3 py-2.5"}
+              className={
+                compact
+                  ? "rounded-[9px] bg-secondary/50 p-2.5"
+                  : "o-calm rounded-[10px] bg-card p-2.5 shadow-[0_1px_3px_-1px_rgba(30,41,59,0.1)]"
+              }
             >
               {!compact ? (
                 <div className="flex items-center justify-between gap-3">
@@ -314,11 +311,11 @@ function MovementSection({
   showPerCardRefs?: boolean;
 }) {
   return (
-    <section>
+    <section className="px-5 pt-4">
       <SectionLabel>{label}</SectionLabel>
-      <div className="space-y-2.5">
+      <div className="mt-2 space-y-2.5">
         {section.before ? (
-          <div className="rounded-xl bg-muted/70 px-3 py-2.5">
+          <div className="rounded-[9px] bg-muted/70 p-2.5">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Before
             </div>
@@ -328,7 +325,7 @@ function MovementSection({
           </div>
         ) : null}
         {section.after ? (
-          <div className="rounded-xl bg-evidence-muted/70 px-3 py-2.5 ring-1 ring-inset ring-primary/15">
+          <div className="rounded-[9px] bg-evidence-muted/70 p-2.5 ring-1 ring-inset ring-primary/15">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-primary">
               After
             </div>
@@ -355,7 +352,11 @@ function MovementSection({
             {section.items.map((item, index) => (
               <article
                 key={`movement-${index}-${item.text}`}
-                className={compact ? "rounded-xl px-1 py-1" : "ml-material rounded-xl px-3 py-2.5"}
+                className={
+                  compact
+                    ? "rounded-[9px] bg-secondary/50 p-2.5"
+                    : "o-calm rounded-[10px] bg-card p-2.5 shadow-[0_1px_3px_-1px_rgba(30,41,59,0.1)]"
+                }
               >
                 {!compact ? (
                   <div className="text-[11px] font-medium uppercase tracking-wide text-cyan/75">
@@ -412,9 +413,9 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
 
   if (isLoading) {
     return (
-      <div className="space-y-2 p-4">
+      <div className="space-y-2 px-5 pt-4">
         {[0, 1].map((i) => (
-          <div key={i} className="h-16 animate-pulse rounded-xl bg-white/[0.04]" />
+          <div key={i} className="h-16 animate-pulse rounded-[10px] bg-secondary/50" />
         ))}
       </div>
     );
@@ -442,13 +443,13 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
     detail.item.affectedObjectTypeLabel;
 
   return (
-    <div className="space-y-3 px-4 py-4">
-      <header className="border-b ml-hairline pb-3">
+    <div className="pb-6">
+      <header className="px-5 pt-4">
         <InspectorReturnBanner />
-        <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-cyan/75">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {ORVEK_COPY.mindModelMovement}
         </div>
-        <h3 className="mt-1 text-[15px] font-semibold leading-snug">
+        <h3 className="mt-2 text-base font-semibold leading-snug text-foreground text-pretty">
           {detail.item.updateTypeLabel} · {detail.item.affectedObjectTypeLabel}
         </h3>
         <div className="mt-2 text-[13px] leading-relaxed">
@@ -467,8 +468,9 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
 
       {isThinPacket ? <ThinPacketNotice report={detail.report} /> : null}
 
-      <section>
+      <section className="px-5 pt-4">
         <SectionLabel>Evidence strength / confidence</SectionLabel>
+        <div className="mt-2">
         <FactGrid
           items={[
             {
@@ -505,6 +507,7 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
             },
           ]}
         />
+        </div>
         <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
           Receipt counts show packet size, not certainty.
         </p>
@@ -637,9 +640,9 @@ function GlobalModelMovementList() {
 
   if (isLoading) {
     return (
-      <div className="space-y-2 p-4">
+      <div className="space-y-2 px-5 pt-4">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-16 animate-pulse rounded-xl bg-white/[0.04]" />
+          <div key={i} className="h-16 animate-pulse rounded-[10px] bg-secondary/50" />
         ))}
       </div>
     );
@@ -672,36 +675,44 @@ function GlobalModelMovementList() {
   }
 
   return (
-    <div className="space-y-3 px-4 py-4">
-      <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-        Recent {ORVEK_COPY.mindModelMovement}
-      </p>
-      {items.map((item) => (
-        <article key={item.id} className="ml-material rounded-xl px-3.5 py-3">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-cyan/75">
-            {item.updateTypeLabel} · {item.affectedObjectTypeLabel}
-          </div>
-          <div className="mt-1.5 text-[13px] leading-relaxed">
-            <ReadoutText value={item.userFacingSummary} muted />
-          </div>
-          <div className="mt-2.5 border-t ml-hairline pt-2.5">
-            <PublicLinkedObjectContinuity
-              objectType={item.affectedObjectType}
-              objectId={item.affectedObjectId}
-              href={item.affectedObjectHref}
-              context="model_update"
-            />
-            <div className="label-meta mt-1.5">Recorded {formatDateTime(item.createdAt)}</div>
-          </div>
-        </article>
-      ))}
-      <Link
-        href="/what-changed"
-        className="ml-calm ml-material flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-[12px] font-medium text-muted-foreground hover:text-foreground"
-      >
-        <ScrollText className="size-3.5" aria-hidden />
-        View all changes
-      </Link>
+    <div className="pb-6">
+      <section className="px-5 pt-4">
+        <div className="flex items-center gap-1.5">
+          <GitCompareArrows className="size-3.5 text-primary" aria-hidden />
+          <SectionLabel>Recent {ORVEK_COPY.mindModelMovement}</SectionLabel>
+        </div>
+        <div className="mt-2.5 space-y-2.5">
+          {items.map((item) => (
+            <article
+              key={item.id}
+              className="o-calm rounded-[10px] bg-card p-2.5 shadow-[0_1px_3px_-1px_rgba(30,41,59,0.1)]"
+            >
+              <div className="text-[11px] font-medium uppercase tracking-wide text-cyan/75">
+                {item.updateTypeLabel} · {item.affectedObjectTypeLabel}
+              </div>
+              <div className="mt-1.5 text-[13px] leading-relaxed">
+                <ReadoutText value={item.userFacingSummary} muted />
+              </div>
+              <div className="mt-2.5 border-t border-border/60 pt-2.5">
+                <PublicLinkedObjectContinuity
+                  objectType={item.affectedObjectType}
+                  objectId={item.affectedObjectId}
+                  href={item.affectedObjectHref}
+                  context="model_update"
+                />
+                <div className="label-meta mt-1.5">Recorded {formatDateTime(item.createdAt)}</div>
+              </div>
+            </article>
+          ))}
+        </div>
+        <Link
+          href="/what-changed"
+          className="o-calm mt-3 flex items-center justify-center gap-1.5 rounded-[10px] bg-secondary/70 px-3 py-2.5 text-[12px] font-medium text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+        >
+          <ScrollText className="size-3.5" aria-hidden />
+          View all changes
+        </Link>
+      </section>
     </div>
   );
 }
