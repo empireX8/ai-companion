@@ -16,6 +16,10 @@ export {
 export type {
   V0CheckInOption,
   V0NowRowIcon,
+  V0TodayInspectorTab,
+  V0TodayIntentMetadata,
+  V0TodayOverlayId,
+  V0TodayPageId,
   V0PrimaryAction,
   V0TodayHeroSlot,
   V0TodayMovementRow,

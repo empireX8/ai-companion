@@ -150,7 +150,7 @@ describe("today primary action routing", () => {
       briefingDate: "Tuesday",
     });
 
-    expect(props.hero?.primaryAction).toEqual({
+    expect(props.hero?.primaryAction).toMatchObject({
       kind: "link",
       href: "/watch-for/wf-1",
       label: "Open",
