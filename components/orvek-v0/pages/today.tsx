@@ -1,12 +1,10 @@
 "use client"
 
-import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
 import {
-  isTodayReentryHref,
-  resolveTodayNowRowTarget,
+  resolveTodayWorkbenchCommands,
+  runTodayWorkbenchCommands,
 } from "@/lib/orvek-v0/today-workbench-routes"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { SectionLabel } from "@/components/orvek-v0/primitives"
@@ -19,7 +17,11 @@ import {
   TODAY_RECEIPTS_SECTION_LABEL,
   TODAY_REPORT_READY_LABEL,
 } from "@/lib/today-reentry"
-import type { V0NowRowIcon, V0PrimaryAction } from "@/lib/orvek-adapters/types"
+import type {
+  V0NowRowIcon,
+  V0PrimaryAction,
+  V0TodayIntentMetadata,
+} from "@/lib/orvek-adapters/types"
 import { cn } from "@/lib/utils"
 import {
   ArrowRight,
@@ -135,12 +137,11 @@ function primaryActionClassName(primary?: boolean) {
 }
 
 export function TodayPage() {
-  const router = useRouter()
   const data = useOrvekData()
   const { getObject, getObjects, todayCopy, todayResurfacedIds, today, emptyCopyBySlot, todayIsLoading } =
     data
   const isProduction = isProductionDisplay(data)
-  const { select, openReport } = useWorkbench()
+  const { select, openReport, setPage, setOverlay } = useWorkbench()
 
   const productionHero = isProduction ? today?.hero ?? null : null
   const referenceLead = isProduction ? undefined : getObject("d1")
@@ -167,47 +168,56 @@ export function TodayPage() {
     openInspectorSelection(id, "movement")
   }
 
-  function handleNowRowActivate(row: {
-    id: string
-    href: string | null
-    hasSelection: boolean
-    inspectorTab: "evidence" | "movement" | null
-  }) {
-    const target = resolveTodayNowRowTarget({
-      href: row.href,
-      hasSelection: row.hasSelection,
-      hasRegisteredSelection: Boolean(getObject(row.id)),
+  function runProductionIntent(intent: V0TodayIntentMetadata & { href?: string | null }) {
+    const commands = resolveTodayWorkbenchCommands(intent)
+    if (commands.length === 0) {
+      return false
+    }
+
+    runTodayWorkbenchCommands(commands, {
+      select,
+      openReport,
+      setPage,
+      setOverlay,
     })
-    if (target?.kind === "route") {
-      router.push(target.href)
-      return
-    }
-    if (target?.kind === "inspect") {
-      openInspectorSelection(row.id, row.inspectorTab ?? "evidence")
-    }
+    return true
+  }
+
+  function handleNowRowActivate(row: {
+    href?: string | null
+    selectionId?: string | null
+    inspectSelectId?: string | null
+    movementId?: string | null
+    reportId?: string | null
+    pageId?: "map" | "decisions" | "timeline" | "explore" | null
+    overlayId?: "capture" | null
+    inspectorTab?: "evidence" | "movement" | null
+  }) {
+    runProductionIntent(row)
   }
 
   function isNowRowInteractive(row: {
-    id: string
-    href: string | null
-    hasSelection: boolean
+    href?: string | null
+    selectionId?: string | null
+    inspectSelectId?: string | null
+    movementId?: string | null
+    reportId?: string | null
+    pageId?: "map" | "decisions" | "timeline" | "explore" | null
+    overlayId?: "capture" | null
+    inspectorTab?: "evidence" | "movement" | null
   }): boolean {
     if (!isProduction) {
       return true
     }
-    return (
-      resolveTodayNowRowTarget({
-        href: row.href,
-        hasSelection: row.hasSelection,
-        hasRegisteredSelection: Boolean(getObject(row.id)),
-      }) !== null
-    )
+    return resolveTodayWorkbenchCommands(row).length > 0
   }
 
   const heroEmptyCopy =
     emptyCopyBySlot?.todayHeroEmpty ?? today?.heroEmptyCopy ?? TODAY_PRIMARY_EMPTY_COPY
   const nowEmptyCopy =
     emptyCopyBySlot?.todayNowEmpty ?? today?.nowEmptyCopy ?? TODAY_ATTENTION_EMPTY_COPY
+  const productionReport = today?.report ?? null
+  const reportCommands = productionReport ? resolveTodayWorkbenchCommands(productionReport) : []
   const reportEmptyCopy =
     emptyCopyBySlot?.todayReportEmpty ??
     today?.movementEmptyCopy ??
@@ -285,16 +295,38 @@ export function TodayPage() {
                           </div>
                         </dl>
                         <div className="mt-4 flex flex-wrap items-center gap-2">
-                          {productionHero.primaryAction?.kind === "link" ? (
-                            <Link
-                              href={productionHero.primaryAction.href}
-                              className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-action px-3.5 py-2 text-sm font-semibold text-action-foreground shadow-[0_1px_2px_-1px_rgba(60,40,10,0.3)] hover:brightness-[1.03] active:scale-[0.98]"
-                            >
-                              {productionHero.primaryAction.label}
-                              <ArrowRight className="size-4" aria-hidden />
-                            </Link>
-                          ) : productionHero.primaryAction?.kind === "inspect" &&
-                            productionHero.inspectSelectId ? (
+                          {productionHero.primaryAction ? (
+                            (() => {
+                              const commands = resolveTodayWorkbenchCommands(
+                                productionHero.primaryAction
+                              )
+                              const interactive = commands.length > 0
+                              const primaryActionLabel =
+                                productionHero.primaryAction.kind === "inspect"
+                                  ? "Open in Inspector"
+                                  : productionHero.primaryAction.label
+
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => runProductionIntent(productionHero.primaryAction!)}
+                                  disabled={!interactive}
+                                  title={
+                                    interactive
+                                      ? undefined
+                                      : "Not available on a live v0 route yet"
+                                  }
+                                  className={cn(
+                                    "o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-action px-3.5 py-2 text-sm font-semibold text-action-foreground shadow-[0_1px_2px_-1px_rgba(60,40,10,0.3)] hover:brightness-[1.03] active:scale-[0.98]",
+                                    !interactive && ORVEK_DEFERRED_ACTION_CLASS
+                                  )}
+                                >
+                                  {primaryActionLabel}
+                                  <ArrowRight className="size-4" aria-hidden />
+                                </button>
+                              )
+                            })()
+                          ) : productionHero.inspectSelectId ? (
                             <button
                               type="button"
                               onClick={() =>
@@ -414,7 +446,9 @@ export function TodayPage() {
                 ? (today?.primaryActions ?? []).map((action: V0PrimaryAction) => {
                     const Icon = PRIMARY_ACTION_ICONS[action.label]
                     const className = primaryActionClassName(action.primary)
-                    if (action.disabled || !isTodayReentryHref(action.href)) {
+                    const commands = resolveTodayWorkbenchCommands(action)
+                    const interactive = !action.disabled && commands.length > 0
+                    if (!interactive) {
                       return (
                         <button
                           key={action.label}
@@ -434,7 +468,12 @@ export function TodayPage() {
                       )
                     }
                     return (
-                      <Link key={action.label} href={action.href} className={className}>
+                      <button
+                        key={action.label}
+                        type="button"
+                        onClick={() => runProductionIntent(action)}
+                        className={className}
+                      >
                         {Icon ? (
                           <Icon
                             className={action.primary ? "size-3.5" : "size-3.5 text-primary"}
@@ -442,7 +481,7 @@ export function TodayPage() {
                           />
                         ) : null}
                         {action.label}
-                      </Link>
+                      </button>
                     )
                   })
                 : REFERENCE_PRIMARY_ACTIONS.map((action) => {
@@ -566,17 +605,17 @@ export function TodayPage() {
                   <GitCompareArrows className="size-3.5 text-primary" aria-hidden />
                   <SectionLabel>{TODAY_REPORT_READY_LABEL}</SectionLabel>
                 </div>
-                {today?.report ? (
+                {productionReport ? (
                   <div className="o-float overflow-hidden rounded-2xl">
                     <div className="bg-evidence-muted/40 px-5 py-3 ring-1 ring-inset ring-primary/15">
                       <span className="text-[11px] font-semibold uppercase tracking-wide text-action-foreground">
-                        {today.report.meta}
+                        {productionReport.meta}
                       </span>
                     </div>
                     <div className="space-y-4 p-5">
-                      {today.report.primaryMovement ? (
+                      {productionReport.primaryMovement ? (
                         (() => {
-                          const movement = today.report.primaryMovement!
+                          const movement = productionReport.primaryMovement!
                           const selectId = movement.inspectSelectId
                           const registered = isInspectableObject(selectId)
                           const body = (
@@ -612,14 +651,15 @@ export function TodayPage() {
                           )
                         })()
                       ) : null}
-                      {today.report.fullReportAvailable ? (
-                        <Link
-                          href={today.report.href}
+                      {reportCommands.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => runProductionIntent(productionReport)}
                           className="o-calm inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
                         >
-                          {today.report.fullReportLabel}
+                          {productionReport.fullReportLabel}
                           <ArrowRight className="size-3.5" aria-hidden />
-                        </Link>
+                        </button>
                       ) : (
                         <p
                           className={cn(
@@ -628,7 +668,7 @@ export function TodayPage() {
                           )}
                           data-testid="today-full-report-deferred"
                         >
-                          {today.report.fullReportDeferredCopy}
+                          {productionReport.fullReportDeferredCopy}
                         </p>
                       )}
                     </div>
