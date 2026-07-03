@@ -1,3 +1,10 @@
+import type {
+  V0TodayInspectorTab,
+  V0TodayIntentMetadata,
+  V0TodayOverlayId,
+  V0TodayPageId,
+} from "../orvek-adapters/types";
+
 /**
  * Production Today distinguishes between:
  * - integrated workbench routes that preserve the shared Orvek shell/Inspector context
@@ -75,4 +82,83 @@ export function resolveTodayNowRowTarget(input: {
   }
 
   return null;
+}
+
+export type TodayWorkbenchCommand =
+  | {
+      kind: "openReport";
+      reportId: string;
+    }
+  | {
+      kind: "setPage";
+      pageId: V0TodayPageId;
+    }
+  | {
+      kind: "setOverlay";
+      overlayId: V0TodayOverlayId;
+    }
+  | {
+      kind: "select";
+      objectId: string;
+      inspectorTab: V0TodayInspectorTab;
+    };
+
+export type TodayWorkbenchIntentInput = V0TodayIntentMetadata & {
+  href?: string | null;
+};
+
+export function resolveTodayWorkbenchCommands(
+  input: TodayWorkbenchIntentInput,
+): TodayWorkbenchCommand[] {
+  const commands: TodayWorkbenchCommand[] = [];
+
+  if (input.pageId) {
+    commands.push({ kind: "setPage", pageId: input.pageId });
+  }
+
+  if (input.overlayId) {
+    commands.push({ kind: "setOverlay", overlayId: input.overlayId });
+  }
+
+  if (input.reportId) {
+    commands.push({ kind: "openReport", reportId: input.reportId });
+  }
+
+  const selectionId = input.movementId ?? input.inspectSelectId ?? input.selectionId;
+  if (selectionId) {
+    commands.push({
+      kind: "select",
+      objectId: selectionId,
+      inspectorTab: input.movementId ? "movement" : input.inspectorTab ?? "evidence",
+    });
+  }
+
+  return commands;
+}
+
+export function runTodayWorkbenchCommands(
+  commands: TodayWorkbenchCommand[],
+  handlers: {
+    select: (id: string, tab?: V0TodayInspectorTab) => void;
+    openReport: (reportId: string) => void;
+    setPage: (pageId: V0TodayPageId) => void;
+    setOverlay: (overlayId: V0TodayOverlayId) => void;
+  },
+): void {
+  for (const command of commands) {
+    switch (command.kind) {
+      case "setPage":
+        handlers.setPage(command.pageId);
+        break;
+      case "setOverlay":
+        handlers.setOverlay(command.overlayId);
+        break;
+      case "openReport":
+        handlers.openReport(command.reportId);
+        break;
+      case "select":
+        handlers.select(command.objectId, command.inspectorTab);
+        break;
+    }
+  }
 }
