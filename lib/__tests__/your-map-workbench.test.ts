@@ -26,12 +26,23 @@ describe("your-map workbench", () => {
     expect(mapApiSource).toContain("mapHasContent");
     expect(mapApiSource).toContain("resolveMapSelectedId");
     expect(workbenchSource).toContain("isMindContextLoading");
-    expect(readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx")).toContain(
-      "OrvekShellLayout"
-    );
-    expect(readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx")).toContain(
-      "<ProductionInspectorAside />"
-    );
+    const appShellSource = readSource("components/layout/AppShell.tsx");
+    const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
+    const referenceWorkbenchSource = readSource("components/orvek-v0/workbench.tsx");
+
+    expect(appShellSource).toContain("OrvekWorkbenchShell");
+    expect(shellSource).toContain("Workbench");
+    expect(shellSource).toContain("Temporary hard swap");
+    expect(shellSource).toContain("mount the accepted reference workbench directly");
+    expect(shellSource).not.toContain("RouteTopBar");
+    expect(shellSource).not.toContain("RouteSidebar");
+    expect(shellSource).not.toContain("ProductionInspectorAside");
+    expect(shellSource).not.toContain("OrvekShellLayout");
+    expect(referenceWorkbenchSource).toContain("OrvekShellLayout");
+    expect(referenceWorkbenchSource).toContain("<EvidencePanel />");
+    expect(referenceWorkbenchSource).toContain("<Sidebar />");
+    expect(referenceWorkbenchSource).toContain("<TopBar");
+    expect(referenceWorkbenchSource).toContain("Overlays");
     expect(readSource("components/orvek-workbench/ProductionMapHeader.tsx")).toContain(
       "flex flex-wrap items-end justify-between gap-3"
     );
