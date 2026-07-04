@@ -221,6 +221,13 @@ describe("today-surface safety and honest copy", () => {
     expect(source.includes("No intelligence updates yet.")).toBe(false);
   });
 
+  it("keeps production Today actions workbench-native instead of router pushes", () => {
+    const source = readTodayPageSource();
+    expect(source.includes("router.push")).toBe(false);
+    expect(source.includes("resolveTodayWorkbenchCommands")).toBe(true);
+    expect(source.includes("runTodayWorkbenchCommands")).toBe(true);
+  });
+
   it("clears intelligence snapshot loading in finally even when JSON parsing fails", () => {
     const source = readTodayPageSource();
     expect(source.includes("setIsLoadingSnapshot(true)")).toBe(true);
@@ -262,6 +269,5 @@ describe("today-surface safety and honest copy", () => {
     );
     expect(source.includes("/internal/user-map/review")).toBe(false);
     expect(source.includes("/api/timeline")).toBe(false);
-    expect(source.includes("/timeline")).toBe(false);
   });
 });

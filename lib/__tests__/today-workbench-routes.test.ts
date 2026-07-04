@@ -5,7 +5,9 @@ import {
   isIntegratedOrvekWorkbenchHref,
   INTEGRATED_ORVEK_WORKBENCH_ROUTE_PREFIXES,
   isTodayReentryHref,
+  resolveTodayWorkbenchCommands,
   resolveTodayNowRowTarget,
+  runTodayWorkbenchCommands,
   TODAY_REENTRY_ROUTE_PREFIXES,
 } from "../orvek-v0/today-workbench-routes";
 import type { TodayReentrySnapshot } from "../today-reentry";
@@ -204,5 +206,76 @@ describe("today now-row routing", () => {
         hasRegisteredSelection: false,
       })
     ).toBeNull();
+  });
+});
+
+describe("today workbench intent commands", () => {
+  it("maps production Today intent metadata into workbench-native commands", () => {
+    expect(
+      resolveTodayWorkbenchCommands({
+        href: "/what-changed",
+        reportId: "rep-weekly",
+        pageId: "decisions",
+        overlayId: "capture",
+        selectionId: "row-1",
+        inspectSelectId: "row-2",
+        movementId: "row-3",
+        inspectorTab: "evidence",
+      })
+    ).toEqual([
+      { kind: "setPage", pageId: "decisions" },
+      { kind: "setOverlay", overlayId: "capture" },
+      { kind: "openReport", reportId: "rep-weekly" },
+      { kind: "select", objectId: "row-3", inspectorTab: "movement" },
+    ]);
+  });
+
+  it("prefers inspectSelectId when movement metadata is absent", () => {
+    expect(
+      resolveTodayWorkbenchCommands({
+        href: "/active-questions/aq-1",
+        selectionId: "row-1",
+        inspectSelectId: "row-2",
+        pageId: "explore",
+        inspectorTab: "evidence",
+      })
+    ).toEqual([
+      { kind: "setPage", pageId: "explore" },
+      { kind: "select", objectId: "row-2", inspectorTab: "evidence" },
+    ]);
+  });
+
+  it("keeps href-only watch-for targets deferred", () => {
+    expect(
+      resolveTodayWorkbenchCommands({
+        href: "/watch-for",
+      })
+    ).toEqual([]);
+  });
+
+  it("runs workbench commands without routing the browser", () => {
+    const calls: string[] = [];
+
+    runTodayWorkbenchCommands(
+      resolveTodayWorkbenchCommands({
+        href: "/journal-chat",
+        overlayId: "capture",
+        pageId: "timeline",
+        selectionId: "mu-1",
+        inspectorTab: "movement",
+      }),
+      {
+        setPage: (pageId) => calls.push(`setPage:${pageId}`),
+        setOverlay: (overlayId) => calls.push(`setOverlay:${overlayId}`),
+        openReport: (reportId) => calls.push(`openReport:${reportId}`),
+        select: (objectId, tab) => calls.push(`select:${objectId}:${tab ?? "evidence"}`),
+      }
+    );
+
+    expect(calls).toEqual([
+      "setPage:timeline",
+      "setOverlay:capture",
+      "select:mu-1:movement",
+    ]);
   });
 });
