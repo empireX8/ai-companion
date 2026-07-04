@@ -445,6 +445,15 @@ function mapDetailSlot(
   detail: UserMapConclusionPublicApiDetailItem,
   selectedListItem: UserMapConclusionPublicApiListItem | undefined
 ): V0MapDetailSlot {
+  const afterSummary = detail.summary?.trim() || null;
+  const beforeCandidate =
+    detail.status === "superseded" ? selectedListItem?.summary?.trim() || null : null;
+  const showBeforeAfter =
+    detail.status === "superseded" &&
+    Boolean(beforeCandidate) &&
+    Boolean(afterSummary) &&
+    beforeCandidate!.toLowerCase() !== afterSummary!.toLowerCase();
+
   return {
     id: detail.id,
     areaLabel: formatUserMapArea(detail.area),
@@ -457,9 +466,9 @@ function mapDetailSlot(
     status: detail.status,
     confidenceLabel: formatUserMapConfidenceLevel(detail.confidenceLevel),
     statusLabel: formatUserMapStatus(detail.status),
-    showBeforeAfter: detail.status === "superseded",
-    beforeSummary: selectedListItem?.summary ?? null,
-    afterSummary: detail.summary,
+    showBeforeAfter,
+    beforeSummary: showBeforeAfter ? beforeCandidate : null,
+    afterSummary: showBeforeAfter ? afterSummary : null,
     isDisputed: detail.status === "disputed",
   };
 }

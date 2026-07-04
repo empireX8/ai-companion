@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createMockOrvekDataApi } from "../../lib/orvek-v0/mock-api";
 import { buildHybridWorkbenchDataApi } from "../../lib/orvek-v0/production/hybrid-workbench-api";
+import { buildMapProductionDataApi } from "../../lib/orvek-v0/production/map-api";
 import { buildTodayProductionDataApi } from "../../lib/orvek-v0/production/today-api";
 import type { TodayReentrySnapshot } from "../today-reentry";
 
@@ -72,5 +73,38 @@ describe("hybrid workbench data api", () => {
       "r2",
     ]);
     expect(hybridApi.getObject("d1")).toMatchObject(baseApi.getObject("d1") ?? {});
+  });
+
+  it("does not merge unsafe production Map data into the hybrid workbench", () => {
+    const baseApi = createMockOrvekDataApi();
+    const unsafeMapApi = buildMapProductionDataApi({
+      items: [
+        {
+          id: "c-1",
+          title: "Broken row",
+          summary: "A".repeat(400),
+          area: "operating_logic",
+          status: "disputed",
+          confidenceLevel: "medium",
+          evidenceCount: 3,
+          updatedAt: "2026-06-24T10:00:00.000Z",
+        },
+      ],
+      isLoading: false,
+      loadError: null,
+      selectedId: "c-1",
+      detail: null,
+      isDetailLoading: false,
+      evidence: [],
+      openQuestionsCount: 0,
+      mindContext: { isLoading: false, items: [], summaryCounts: { memories: 0, patterns: 0 } },
+      movementPreview: { isLoading: false, items: [] },
+      openQuestionsPreview: { isLoading: false, items: [] },
+    });
+
+    const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, unsafeMapApi);
+
+    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi.mapCategories).toEqual([]);
   });
 });
