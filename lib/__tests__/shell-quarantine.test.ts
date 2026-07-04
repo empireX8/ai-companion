@@ -16,6 +16,8 @@ describe("reference shell quarantine", () => {
 
     expect(appLayout).toContain("AppShell");
     expect(shell).toContain("Workbench");
+    expect(shell).toContain("useOrvekHybridWorkbenchDataApi");
+    expect(shell).toContain("dataApi={dataApi}");
     expect(shell).not.toContain("RouteTopBar");
     expect(shell).not.toContain("RouteSidebar");
     expect(shell).not.toContain("OrvekTopBar");
@@ -27,6 +29,7 @@ describe("reference shell quarantine", () => {
     expect(workbench).toContain("<Sidebar />");
     expect(workbench).toContain("<EvidencePanel />");
     expect(workbench).toContain("<Overlays />");
+    expect(workbench).toContain("dataApi?: OrvekDataApi");
   });
 
   it("keeps mock data confined to the reference workbench baseline", () => {

@@ -210,11 +210,14 @@ describe("today-surface safety and honest copy", () => {
   it("keeps honest Today report fallback copy available alongside the live report route", () => {
     const source = readTodayPageSource();
     expect(source.includes("TODAY_INTELLIGENCE_LOADING_COPY")).toBe(true);
+    expect(source.includes("TODAY_FIELDWORK_SECTION_LABEL")).toBe(true);
     expect(source.includes("data-testid=\"today-what-changed-output\"")).toBe(true);
     expect(source.includes("data-testid=\"today-full-report-deferred\"")).toBe(true);
     expect(source.includes("TODAY_PRIMARY_EMPTY_COPY")).toBe(true);
     expect(source.includes("TODAY_ATTENTION_EMPTY_COPY")).toBe(true);
     expect(TODAY_CHANGES_VIEW_ALL_HREF).toBe("/what-changed");
+    expect(source.includes('onClick={() => select("d1")}')).toBe(true);
+    expect(source.includes("select(r.id)")).toBe(true);
     expect(source.includes("Surfacing now")).toBe(false);
     expect(source.includes("Intelligence updates")).toBe(false);
     expect(source.includes("No surfaced items yet.")).toBe(false);

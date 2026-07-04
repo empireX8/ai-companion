@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 
+import type { OrvekDataApi } from "@/lib/orvek-v0/data-provider";
 import { OrvekDataProvider } from "@/lib/orvek-v0/data-provider";
 import { createMockOrvekDataApi } from "@/lib/orvek-v0/mock-api";
 
@@ -47,8 +48,9 @@ function Layout() {
   );
 }
 
-export function Workbench() {
-  const api = useMemo(() => createMockOrvekDataApi(), []);
+export function Workbench({ dataApi }: { dataApi?: OrvekDataApi } = {}) {
+  const mockApi = useMemo(() => createMockOrvekDataApi(), []);
+  const api = dataApi ?? mockApi;
   return (
     <WorkbenchProvider>
       <OrvekDataProvider value={api}>
