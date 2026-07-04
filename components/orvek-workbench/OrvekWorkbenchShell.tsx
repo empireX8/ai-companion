@@ -2,23 +2,11 @@
 
 import { type ReactNode } from "react";
 
-import { OrvekMobileInspector, ProductionInspectorAside } from "@/components/orvek-workbench/OrvekEvidencePanel";
-import { OrvekShellLayout } from "@/components/orvek-v0/OrvekShellLayout";
-import { RouteSidebar } from "@/components/orvek-v0/production/RouteSidebar";
-import { RouteTopBar } from "@/components/orvek-v0/production/RouteTopBar";
-import { WorkbenchProvider } from "@/components/orvek-v0/store";
+import { Workbench } from "@/components/orvek-v0/workbench";
 
 export function OrvekWorkbenchShell({ children }: { children: ReactNode }) {
-  return (
-    <WorkbenchProvider>
-      <OrvekShellLayout
-        topBar={<RouteTopBar />}
-        beforeBody={<OrvekMobileInspector />}
-        sidebar={<RouteSidebar />}
-        inspector={<ProductionInspectorAside />}
-      >
-        {children}
-      </OrvekShellLayout>
-    </WorkbenchProvider>
-  );
+  void children;
+  // Temporary hard swap: mount the accepted reference workbench directly.
+  // Production adapter wiring can be restored after the UI is visually verified.
+  return <Workbench />;
 }
