@@ -4,6 +4,7 @@ import {
   TODAY_REPORT_FULL_LABEL,
   TODAY_REPORT_OUTPUT_TITLE,
 } from "../today-intelligence-updates";
+import type { InspectorSelectableObjectType } from "../inspector-selection";
 import { isTodayReentryHref } from "../orvek-v0/today-workbench-routes";
 import {
   buildTodayAttentionRows,
@@ -32,6 +33,9 @@ import type {
   V0TodayReceiptRow,
   V0TodayReportSlot,
   V0TodayViewProps,
+  V0TodayIntentMetadata,
+  V0TodayInspectorTab,
+  V0TodayPageId,
 } from "./types";
 
 const PRIOR_READ_EMPTY =
@@ -45,12 +49,87 @@ const PRIMARY_ACTIONS: V0PrimaryAction[] = [
   { label: "Capture new signal", href: "/journal-chat" },
 ];
 
+function routeIntentForHref(
+  href: string
+): Pick<V0TodayIntentMetadata, "reportId" | "pageId" | "overlayId"> {
+  if (href === "/what-changed") {
+    return { reportId: "rep-weekly" };
+  }
+  if (href === "/journal-chat") {
+    return { overlayId: "capture" };
+  }
+  if (href.startsWith("/your-map")) {
+    return { pageId: "map" };
+  }
+  if (href.startsWith("/actions")) {
+    return { pageId: "decisions" };
+  }
+  if (href.startsWith("/timeline")) {
+    return { pageId: "timeline" };
+  }
+  if (href.startsWith("/explore")) {
+    return { pageId: "explore" };
+  }
+  if (href.startsWith("/active-questions")) {
+    return { pageId: "explore" };
+  }
+
+  return {};
+}
+
+function pageIdForSelectableType(
+  type: InspectorSelectableObjectType | null | undefined
+): V0TodayPageId | null {
+  switch (type) {
+    case "usermap_conclusion":
+    case "pattern_claim":
+    case "contradiction_node":
+    case "context_profile":
+    case "model_goal":
+      return "map";
+    case "model_update":
+      return "timeline";
+    default:
+      return null;
+  }
+}
+
+function extractRouteTargetId(
+  href: string | null | undefined,
+  prefix: string
+): string | null {
+  if (!href || !href.startsWith(prefix)) {
+    return null;
+  }
+
+  const tail = href.slice(prefix.length).split("/")[0]?.trim();
+  return tail ? tail : null;
+}
+
+function selectionIntent(
+  selectionId: string | null,
+  inspectSelectId: string | null = selectionId,
+  movementId: string | null = null,
+  inspectorTab: V0TodayInspectorTab | null = null
+): Pick<
+  V0TodayIntentMetadata,
+  "selectionId" | "inspectSelectId" | "movementId" | "inspectorTab"
+> {
+  return {
+    selectionId,
+    inspectSelectId,
+    movementId,
+    inspectorTab,
+  };
+}
+
 function applyPrimaryActionRouting(actions: V0PrimaryAction[]): V0PrimaryAction[] {
   return actions.map((action) => {
+    const intent = routeIntentForHref(action.href);
     if (!isTodayReentryHref(action.href)) {
-      return { ...action, disabled: true };
+      return { ...action, ...intent, disabled: true };
     }
-    return action;
+    return { ...action, ...intent };
   });
 }
 
@@ -91,18 +170,37 @@ function rowIcon(row: TodayAttentionRow): V0NowRowIcon {
 
 function mapHero(hero: TodayHeroItem): V0TodayViewProps["hero"] {
   let primaryAction: V0TodayHeroSlot["primaryAction"] = null;
+  const routeIntent = hero.href ? routeIntentForHref(hero.href) : {};
+  const inferredTargetId = extractRouteTargetId(hero.href, "/active-questions/");
+  const selectionId = hero.selection?.objectId ?? inferredTargetId ?? null;
+  const inspectSelectId = hero.selection
+    ? hero.selection.modelUpdateId ?? hero.selection.objectId
+    : hero.movement?.id ?? inferredTargetId ?? null;
+  const movementId = hero.movement?.id ?? null;
+  const pageId = routeIntent.pageId ?? pageIdForSelectableType(hero.selection?.objectType);
+  const inspectorTab = hero.selection?.tab ?? (movementId ? "movement" : null);
+  const selectionMetadata = selectionIntent(
+    selectionId,
+    inspectSelectId,
+    movementId,
+    inspectorTab
+  );
 
   if (hero.href && isTodayReentryHref(hero.href)) {
-    primaryAction = { kind: "link", href: hero.href, label: "Open" };
+    primaryAction = {
+      kind: "link",
+      href: hero.href,
+      label: "Open",
+      ...routeIntent,
+      ...selectionMetadata,
+    };
   } else if (hero.selection) {
-    primaryAction = { kind: "inspect" };
+    primaryAction = {
+      kind: "inspect",
+      ...routeIntent,
+      ...selectionMetadata,
+    };
   }
-
-  const inspectSelectId = hero.selection
-    ? hero.movement
-      ? hero.movement.id
-      : hero.id
-    : null;
 
   return {
     kicker: hero.laneLabel,
@@ -115,11 +213,26 @@ function mapHero(hero: TodayHeroItem): V0TodayViewProps["hero"] {
     primaryAction,
     showSeeWhyMoved: Boolean(hero.movement),
     inspectSelectId,
-    movementId: hero.movement?.id ?? null,
+    movementId,
+    selectionId,
+    pageId,
+    inspectorTab,
   };
 }
 
 function mapNowRow(row: TodayAttentionRow): V0TodayNowRow {
+  const inferredTargetId = extractRouteTargetId(row.href, "/active-questions/");
+  const selectionId = row.selection?.objectId ?? inferredTargetId ?? null;
+  const inspectSelectId = row.selection
+    ? row.selection.modelUpdateId ?? row.selection.objectId
+    : inferredTargetId;
+  const movementId = row.selection?.modelUpdateId ?? null;
+  const pageId =
+    row.href && routeIntentForHref(row.href).pageId
+      ? routeIntentForHref(row.href).pageId
+      : pageIdForSelectableType(row.selection?.objectType);
+  const inspectorTab = row.selection?.tab ?? (movementId ? "movement" : null);
+
   return {
     id: row.id,
     kicker: row.laneLabel,
@@ -128,7 +241,11 @@ function mapNowRow(row: TodayAttentionRow): V0TodayNowRow {
     status: row.meta ?? row.typeLabel,
     href: row.href,
     hasSelection: Boolean(row.selection),
-    inspectorTab: row.selection?.tab ?? null,
+    inspectorTab,
+    selectionId,
+    inspectSelectId,
+    movementId,
+    pageId,
   };
 }
 
@@ -204,6 +321,7 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
       title: TODAY_REPORT_OUTPUT_TITLE,
       meta: `${count} published movement${count === 1 ? "" : "s"} in this window`,
       href: TODAY_CHANGES_VIEW_ALL_HREF,
+      reportId: "rep-weekly",
       fullReportLabel: TODAY_REPORT_FULL_LABEL,
       fullReportAvailable: isTodayReentryHref(TODAY_CHANGES_VIEW_ALL_HREF),
       fullReportDeferredCopy: TODAY_REPORT_FULL_DEFERRED_COPY,
@@ -212,6 +330,9 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
         inspectSelectId: latest.id,
         summary: latest.userFacingSummary,
         evidence: `${latest.updateTypeLabel} · ${latest.affectedObjectTypeLabel}`,
+        selectionId: latest.id,
+        movementId: latest.id,
+        inspectorTab: "movement",
       },
     };
   }
