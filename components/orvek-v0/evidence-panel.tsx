@@ -3,12 +3,11 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import {
-  getObject,
-  getObjects,
   EXPLORE_MOVEMENT,
   EXPLORE_GROUNDING,
 } from "@/lib/orvek-v0/orvek-data"
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
+import { useOrvekObjectGraph } from "@/lib/orvek-v0/data-provider"
 import { useWorkbench, type InspectorTab } from "@/components/orvek-v0/store"
 import { Chip, SectionLabel, TYPE_META, TypeBadge } from "@/components/orvek-v0/primitives"
 import {
@@ -35,6 +34,7 @@ const CORRECTIONS = [
 
 export function EvidencePanel() {
   const { selectedId, inspectorTab, setInspectorTab, exploreActive } = useWorkbench()
+  const { getObject } = useOrvekObjectGraph()
   const obj = getObject(selectedId)
 
   const tabs: { id: InspectorTab; label: string }[] = [
@@ -122,6 +122,7 @@ function EmptyState() {
 
 function MovementView({ obj }: { obj: OrvekObject | undefined }) {
   const { exploreActive, extractions, setExtraction, select, openReport } = useWorkbench()
+  const { getObject, getObjects } = useOrvekObjectGraph()
   const recent = getObjects(["mu-1", "mu-2", "mu-3"])
 
   return (
@@ -336,6 +337,7 @@ function LinkedRow({ obj }: { obj: OrvekObject }) {
 function ObjectDetail({ obj }: { obj: OrvekObject }) {
   const { select, openReport, setPage, setInspectorTab, applyCorrection, corrections } =
     useWorkbench()
+  const { getObjects } = useOrvekObjectGraph()
   const [outcomeAdded, setOutcomeAdded] = useState(false)
   const [checkin, setCheckin] = useState("")
   const [checkedIn, setCheckedIn] = useState(false)
