@@ -96,7 +96,10 @@ export type OrvekDataApi = {
   displayContract?: OrvekDisplayContract;
   exploreQuestionIds?: string[];
   exploreInvestigationIds?: string[];
+  exploreFieldworkIds?: string[];
+  exploreFieldworkSelectedId?: string | null;
   exploreIsLoading?: boolean;
+  experimentIsLoading?: boolean;
   decisionsHeaderStats?: OrvekDecisionsHeaderStats;
   decisionsSelectedId?: string | null;
   decisionsIsLoading?: boolean;
