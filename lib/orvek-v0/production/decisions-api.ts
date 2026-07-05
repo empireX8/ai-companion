@@ -13,8 +13,18 @@ import type { OrvekDataApi, OrvekDecisionListGroup } from "../data-provider";
 import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import type { OrvekObject } from "../orvek-types";
+import {
+  buildLinkedClaimAliasObject,
+  mapDecisionStatusToReferenceGroup,
+  referenceTagsForDecisionGroup,
+} from "./decisions-presentation";
 
-function actionToObject(action: SurfacedActionView): OrvekObject {
+function actionToObject(
+  action: SurfacedActionView,
+  groupHeading: ReturnType<typeof mapDecisionStatusToReferenceGroup>,
+): OrvekObject {
+  const tags = groupHeading ? referenceTagsForDecisionGroup(groupHeading) : [toDecisionStatusLabel(action.status)];
+
   return {
     id: action.id,
     type: "decision",
@@ -23,10 +33,27 @@ function actionToObject(action: SurfacedActionView): OrvekObject {
     recommendation: action.whySuggested,
     receiptIds: action.linkedClaimId ? [action.linkedClaimId] : [],
     contextIds: [],
-    tags: [toDecisionStatusLabel(action.status)],
+    tags,
+    outcomeWindow:
+      action.status === "done" && !action.note ? "Outcome review due" : undefined,
+    actualOutcome:
+      action.status === "helped" || action.status === "didnt_help"
+        ? action.note ?? undefined
+        : undefined,
+    outcomeState:
+      groupHeading === "Outcome due"
+        ? "due"
+        : groupHeading === "Reviewed"
+          ? "recorded"
+          : undefined,
     inspectorObjectType: action.linkedClaimId ? "pattern_claim" : undefined,
     inspectorObjectId: action.linkedClaimId ?? action.id,
+    lastUpdated: action.updatedAt,
   };
+}
+
+function groupHeadingForAction(action: SurfacedActionView): ReturnType<typeof mapDecisionStatusToReferenceGroup> {
+  return mapDecisionStatusToReferenceGroup(action.status, action.note);
 }
 
 function buildGroups(list: SurfacedActionView[]): OrvekDecisionListGroup[] {
@@ -56,7 +83,15 @@ function buildGroups(list: SurfacedActionView[]): OrvekDecisionListGroup[] {
 export function buildDecisionsProductionDataApi(list: SurfacedActionView[]): OrvekDataApi {
   const objects: Record<string, OrvekObject> = {};
   for (const action of list) {
-    objects[action.id] = actionToObject(action);
+    const groupHeading = groupHeadingForAction(action);
+    objects[action.id] = actionToObject(action, groupHeading);
+
+    if (action.linkedClaimId && action.linkedClaimSummary) {
+      objects[action.linkedClaimId] = buildLinkedClaimAliasObject({
+        claimId: action.linkedClaimId,
+        claimSummary: action.linkedClaimSummary,
+      });
+    }
   }
 
   const decisionListGroups = buildGroups(list);

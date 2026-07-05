@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
+import { resolveDecisionsOpenSelectionId } from "@/lib/orvek-v0/production/decisions-presentation"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { Chip, SectionLabel } from "@/components/orvek-v0/primitives"
 import { ArrowRight, Check, GitBranch, MessageSquare, Scale, Send } from "lucide-react"
@@ -61,6 +62,12 @@ export function DecisionsPage() {
   const decision = getObject(workspaceId)
   const receipts = getObjects(decision?.receiptIds)
   const contexts = getObjects(decision?.contextIds)
+  const showLiveHeaderStats =
+    isProduction || (decisionListGroups.length > 0 && decisionsHeaderStats != null)
+
+  function resolveInspectorSelection(id: string) {
+    return resolveDecisionsOpenSelectionId(id, getObject)
+  }
 
   function openDecision(id: string) {
     setWorkspaceId(id)
@@ -91,7 +98,7 @@ export function DecisionsPage() {
             </p>
           </div>
           <span className="hidden text-sm text-muted-foreground sm:block">
-            {isProduction ? (
+            {showLiveHeaderStats ? (
               <>
                 <span className="font-medium text-action-foreground">
                   {decisionsHeaderStats?.outcomesDue ?? 0}
@@ -334,7 +341,7 @@ export function DecisionsPage() {
               <WSBlock label="Relevant background / context">
                 <div className="flex flex-wrap gap-1.5">
                   {contexts.map((c) => (
-                    <button key={c.id} type="button" onClick={() => select(c.id)}>
+                    <button key={c.id} type="button" onClick={() => select(resolveInspectorSelection(c.id))}>
                       <Chip tone="neutral" className="cursor-pointer hover:opacity-80">
                         {c.title}
                       </Chip>
@@ -351,7 +358,7 @@ export function DecisionsPage() {
                     <button
                       key={r.id}
                       type="button"
-                      onClick={() => select(r.id)}
+                      onClick={() => select(resolveInspectorSelection(r.id))}
                       className="o-calm block w-full rounded-[9px] rounded-l-sm border-l-2 border-primary/50 bg-secondary/50 px-2.5 py-1.5 text-left text-[13px] italic text-foreground hover:bg-accent/60"
                     >
                       “{r.title}”

@@ -13,6 +13,11 @@ import {
   fetchMindContextSnapshot,
   type MindContextDisplayItem,
 } from "@/lib/mind-context-surface";
+import {
+  fetchActionsPageData,
+  type ActionsPageData,
+} from "@/lib/actions-api";
+import { buildDecisionsProductionDataApi } from "@/lib/orvek-v0/production/decisions-api";
 import { buildTodayProductionDataApi } from "@/lib/orvek-v0/production/today-api";
 import { buildHybridWorkbenchDataApi } from "@/lib/orvek-v0/production/hybrid-workbench-api";
 import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
@@ -99,6 +104,9 @@ export function useOrvekHybridWorkbenchDataApi() {
   const [timelineActivityError, setTimelineActivityError] = useState<string | null>(null);
   const [timelineModelLayerError, setTimelineModelLayerError] = useState<string | null>(null);
 
+  const [actionsData, setActionsData] = useState<ActionsPageData | null>(null);
+  const [isLoadingActions, setIsLoadingActions] = useState(true);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -116,6 +124,32 @@ export function useOrvekHybridWorkbenchDataApi() {
       } finally {
         if (!cancelled) {
           setIsLoadingSnapshot(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      setIsLoadingActions(true);
+      try {
+        const next = await fetchActionsPageData();
+        if (!cancelled) {
+          setActionsData(next);
+        }
+      } catch {
+        if (!cancelled) {
+          setActionsData(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingActions(false);
         }
       }
     })();
@@ -382,6 +416,14 @@ export function useOrvekHybridWorkbenchDataApi() {
   const timelineIsLoading =
     isLoadingTimelineActivity || isLoadingTimelineSemantic || isLoadingTimelineModelLayers;
 
+  const decisionsList = useMemo(() => {
+    if (!actionsData) {
+      return [];
+    }
+
+    return [...actionsData.stabilizeNow, ...actionsData.buildForward];
+  }, [actionsData]);
+
   return useMemo(() => {
     if (isLoadingSnapshot) {
       return baseApi;
@@ -430,7 +472,18 @@ export function useOrvekHybridWorkbenchDataApi() {
       selectedObjectId: null,
     });
 
-    return buildHybridWorkbenchDataApi(baseApi, todayApi, mapApi, timelineApi);
+    const decisionsApi = {
+      ...buildDecisionsProductionDataApi(decisionsList),
+      decisionsIsLoading: isLoadingActions,
+    };
+
+    return buildHybridWorkbenchDataApi(
+      baseApi,
+      todayApi,
+      mapApi,
+      timelineApi,
+      decisionsApi,
+    );
   }, [
     baseApi,
     isLoadingSnapshot,
@@ -457,5 +510,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     isLoadingTimelineSemantic,
     timelineActivityError,
     timelineModelLayerError,
+    decisionsList,
+    isLoadingActions,
   ]);
 }

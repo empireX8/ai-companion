@@ -2,13 +2,20 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import type { SurfacedActionView } from "../actions-api";
 import type { MapMapDataInput } from "../orvek-adapters/map";
 import type { MapTimelineDataInput } from "../orvek-adapters/timeline";
 import { createMockOrvekDataApi } from "../../lib/orvek-v0/mock-api";
+import { buildDecisionsProductionDataApi } from "../../lib/orvek-v0/production/decisions-api";
 import { buildHybridWorkbenchDataApi } from "../../lib/orvek-v0/production/hybrid-workbench-api";
 import { buildMapProductionDataApi } from "../../lib/orvek-v0/production/map-api";
 import { buildTimelineProductionDataApi } from "../../lib/orvek-v0/production/timeline-api";
 import { buildTodayProductionDataApi } from "../../lib/orvek-v0/production/today-api";
+import {
+  findDuplicateDecisionRowIds,
+  referenceTagsForDecisionGroup,
+  shouldMergeDecisionsProductionApi,
+} from "../../lib/orvek-v0/production/decisions-presentation";
 import { shouldMergeMapProductionApi } from "../../lib/orvek-v0/production/map-presentation";
 import {
   REFERENCE_TIMELINE_FILTERS,
@@ -127,6 +134,50 @@ const LIVE_SNAPSHOT: TodayReentrySnapshot = {
     },
   ],
 };
+
+function decisionAction(
+  id: string,
+  status: SurfacedActionView["status"],
+  overrides: Partial<SurfacedActionView> = {},
+): SurfacedActionView {
+  return {
+    id,
+    title: `Choice ${id}`,
+    whySuggested: "Because recent pattern signal supports it.",
+    bucket: "stabilize",
+    effort: "Low",
+    linkedFamily: null,
+    linkedFamilyLabel: null,
+    linkedClaimId: "pc-1",
+    linkedClaimSummary: "I overcommit when scope expands.",
+    linkedGoalId: null,
+    linkedGoalStatement: null,
+    linkedSourceLabel: "Pattern",
+    status,
+    note: null,
+    surfacedAt: "2026-06-20T10:00:00.000Z",
+    updatedAt: "2026-06-20T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
+const READY_DECISIONS_ACTIONS: SurfacedActionView[] = [
+  decisionAction("act-active", "not_started"),
+  decisionAction("act-chosen", "done", {
+    note: "Chose the simpler path.",
+    linkedClaimId: "pc-2",
+    linkedClaimSummary: "Scope pressure rises near deadlines.",
+  }),
+  decisionAction("act-outcome", "done", {
+    linkedClaimId: "pc-3",
+    linkedClaimSummary: "Navigation complexity slows decisions.",
+  }),
+  decisionAction("act-reviewed", "helped", {
+    note: "The change held through the release cycle.",
+    linkedClaimId: "pc-4",
+    linkedClaimSummary: "Investigations feel disconnected when isolated.",
+  }),
+];
 
 describe("hybrid workbench data api", () => {
   it("preserves the reference Today branch while hydrating live evidence pointers", () => {
@@ -415,7 +466,148 @@ describe("hybrid workbench data api", () => {
     expect(hookSource).toContain("buildTimelineProductionDataApi");
     expect(hookSource).toContain("fetchTimelineSemanticEntries");
     expect(hookSource).toContain("buildTimelineRequestUrl");
-    expect(hookSource).toContain("buildHybridWorkbenchDataApi(baseApi, todayApi, mapApi, timelineApi)");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("decisionsApi");
     expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/timeline/);
+  });
+
+  it("merges presentation-ready production Decisions overlay into the hybrid workbench", () => {
+    const baseApi = createMockOrvekDataApi();
+    const decisionsApi = buildDecisionsProductionDataApi(READY_DECISIONS_ACTIONS);
+
+    expect(shouldMergeDecisionsProductionApi(decisionsApi)).toBe(true);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      decisionsApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.decisionListGroups.some((group) => group.ids.length > 0)).toBe(true);
+    expect(hybridApi.getObject("act-active")?.tags).toEqual(referenceTagsForDecisionGroup("Active"));
+    expect(hybridApi.getObject("pc-1")?.inspectorObjectType).toBe("pattern_claim");
+    expect(hybridApi.getObject("d1")).toMatchObject(baseApi.getObject("d1") ?? {});
+  });
+
+  it("falls back to reference Decisions when production Decisions overlay fails readiness", () => {
+    const baseApi = createMockOrvekDataApi();
+    const unsafeDecisionsApi = buildDecisionsProductionDataApi([
+      decisionAction("act-active", "not_started", {
+        linkedClaimId: "pc-missing",
+        linkedClaimSummary: null,
+      }),
+    ]);
+
+    expect(shouldMergeDecisionsProductionApi(unsafeDecisionsApi)).toBe(false);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      unsafeDecisionsApi,
+    );
+
+    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi.decisionListGroups).toEqual([]);
+    expect(hybridApi.getObject("d1")?.title).toBe(baseApi.getObject("d1")?.title);
+  });
+
+  it("falls back to reference Decisions when thin production rows cannot resolve linked receipts", () => {
+    const baseApi = createMockOrvekDataApi();
+    const thinDecisionsApi = buildDecisionsProductionDataApi([
+      decisionAction("act-active", "not_started", {
+        title: "   ",
+        whySuggested: "Because recent pattern signal supports it.",
+      }),
+    ]);
+
+    expect(shouldMergeDecisionsProductionApi(thinDecisionsApi)).toBe(false);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      thinDecisionsApi,
+    );
+
+    expect(hybridApi.decisionListGroups).toEqual([]);
+    expect(hybridApi.getObject("d1")?.title).toBe(baseApi.getObject("d1")?.title);
+  });
+
+  it("dedupes duplicate decision rows during hybrid Decisions overlay merge", () => {
+    const baseApi = createMockOrvekDataApi();
+    const decisionsApi = buildDecisionsProductionDataApi(READY_DECISIONS_ACTIONS);
+    decisionsApi.decisionListGroups[0].ids.push("act-active");
+
+    expect(findDuplicateDecisionRowIds(decisionsApi)).toContain("act-active");
+    expect(shouldMergeDecisionsProductionApi(decisionsApi)).toBe(true);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      decisionsApi,
+    );
+    const activeIds =
+      hybridApi.decisionListGroups.find((group) => group.heading === "Active")?.ids ?? [];
+
+    expect(activeIds.filter((id) => id === "act-active")).toHaveLength(1);
+    expect(findDuplicateDecisionRowIds(hybridApi)).toEqual([]);
+  });
+
+  it("does not merge Decisions overlay when passed as timelineApi by mistake", () => {
+    const baseApi = createMockOrvekDataApi();
+    const decisionsApi = buildDecisionsProductionDataApi(READY_DECISIONS_ACTIONS);
+    const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, undefined, decisionsApi);
+
+    expect(hybridApi.decisionListGroups).toEqual([]);
+    expect(hybridApi.timelineGroups).toEqual([]);
+    expect(hybridApi.getObject("d1")?.title).toBe(baseApi.getObject("d1")?.title);
+  });
+
+  it("preserves Today, Map, and Timeline hybrid merges when Decisions overlay is ready", () => {
+    const baseApi = createMockOrvekDataApi();
+    const productionTodayApi = buildTodayProductionDataApi({
+      snapshot: LIVE_SNAPSHOT,
+      isLoading: false,
+      briefingDate: "Tuesday · 24 June",
+    });
+    const readyMapApi = buildMapProductionDataApi(READY_MAP_INPUT);
+    const readyTimelineApi = buildTimelineProductionDataApi(READY_TIMELINE_INPUT);
+    const readyDecisionsApi = buildDecisionsProductionDataApi(READY_DECISIONS_ACTIONS);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      productionTodayApi,
+      readyMapApi,
+      readyTimelineApi,
+      readyDecisionsApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.getObject("r6")).toMatchObject(baseApi.getObject("r6") ?? {});
+    expect(hybridApi.getObject("conclusion-c-1")?.summary).toBe(
+      "The most active loop; directly raises decision pressure.",
+    );
+    expect(hybridApi.timelineFilters).toEqual([...REFERENCE_TIMELINE_FILTERS]);
+    expect(hybridApi.getObject("activity-journal-1")?.title).toBe("Scope note");
+    expect(hybridApi.decisionListGroups.some((group) => group.ids.length > 0)).toBe(true);
+    expect(hybridApi.getObject("pc-2")?.type).toBe("receipt");
+  });
+
+  it("wires bounded Decisions fetch into the root hybrid hook", () => {
+    const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
+
+    expect(hookSource).toContain("fetchActionsPageData");
+    expect(hookSource).toContain("buildDecisionsProductionDataApi");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("decisionsApi");
+    expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/actions/);
   });
 });

@@ -64,7 +64,8 @@ describe("bounded timeline hybrid fetch bridge", () => {
     expect(hookSource).toContain("fetchTimelineSemanticEntries");
     expect(hookSource).toContain("buildTimelineRequestUrl");
     expect(hookSource).toContain("buildTimelineModelLayersRequestUrl");
-    expect(hookSource).toContain("buildHybridWorkbenchDataApi(baseApi, todayApi, mapApi, timelineApi)");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("decisionsApi");
     expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/timeline/);
   });
 
