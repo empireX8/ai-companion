@@ -7,6 +7,7 @@ import type { MapMapDataInput } from "../orvek-adapters/map";
 import type { MapTimelineDataInput } from "../orvek-adapters/timeline";
 import { createMockOrvekDataApi } from "../../lib/orvek-v0/mock-api";
 import { buildDecisionsProductionDataApi } from "../../lib/orvek-v0/production/decisions-api";
+import { buildExperimentProductionDataApi } from "../../lib/orvek-v0/production/experiment-api";
 import { buildHybridWorkbenchDataApi } from "../../lib/orvek-v0/production/hybrid-workbench-api";
 import { buildMapProductionDataApi } from "../../lib/orvek-v0/production/map-api";
 import { buildTimelineProductionDataApi } from "../../lib/orvek-v0/production/timeline-api";
@@ -16,7 +17,13 @@ import {
   referenceTagsForDecisionGroup,
   shouldMergeDecisionsProductionApi,
 } from "../../lib/orvek-v0/production/decisions-presentation";
+import {
+  findDuplicateExperimentRowIds,
+  referenceTagsForFieldworkStatus,
+  shouldMergeExperimentProductionApi,
+} from "../../lib/orvek-v0/production/experiment-presentation";
 import { shouldMergeMapProductionApi } from "../../lib/orvek-v0/production/map-presentation";
+import type { WatchForItem } from "../watch-for";
 import {
   REFERENCE_TIMELINE_FILTERS,
   shouldMergeTimelineProductionApi,
@@ -176,6 +183,38 @@ const READY_DECISIONS_ACTIONS: SurfacedActionView[] = [
     note: "The change held through the release cycle.",
     linkedClaimId: "pc-4",
     linkedClaimSummary: "Investigations feel disconnected when isolated.",
+  }),
+];
+
+function watchForItem(
+  id: string,
+  overrides: Partial<WatchForItem> = {},
+): WatchForItem {
+  return {
+    id,
+    prompt: "Notice whether scope pressure rises before the next review.",
+    reason: "Recent pattern signal suggests visibility triggers overbuilding.",
+    status: "assigned",
+    statusLabel: "Assigned",
+    linkedObjectType: "pattern_claim",
+    linkedObjectId: "pc-fw-1",
+    linkedObjectHref: null,
+    createdAt: "2026-06-20T10:00:00.000Z",
+    updatedAt: "2026-06-20T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
+const READY_WATCH_FOR_ITEMS: WatchForItem[] = [
+  watchForItem("fw-active", {
+    status: "active",
+    statusLabel: "Active",
+    linkedObjectId: "pc-fw-2",
+  }),
+  watchForItem("fw-assigned", {
+    status: "assigned",
+    statusLabel: "Assigned",
+    linkedObjectId: "pc-fw-3",
   }),
 ];
 
@@ -609,5 +648,216 @@ describe("hybrid workbench data api", () => {
     expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
     expect(hookSource).toContain("decisionsApi");
     expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/actions/);
+  });
+
+  it("merges presentation-ready production Experiment/Fieldwork overlay into the hybrid workbench", () => {
+    const baseApi = createMockOrvekDataApi();
+    const experimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
+
+    expect(shouldMergeExperimentProductionApi(experimentApi)).toBe(true);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      experimentApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.exploreFieldworkIds).toEqual(["fw-active", "fw-assigned"]);
+    expect(hybridApi.exploreFieldworkSelectedId).toBe("fw-active");
+    expect(hybridApi.getObject("fw-active")?.tags).toEqual(
+      referenceTagsForFieldworkStatus("active", "Active"),
+    );
+    expect(hybridApi.getObject("pc-fw-2")?.inspectorObjectType).toBe("pattern_claim");
+    expect(hybridApi.getObject("f2")?.title).toBe(baseApi.getObject("f2")?.title);
+  });
+
+  it("falls back to reference Fieldwork Bridge when production Experiment overlay fails readiness", () => {
+    const baseApi = createMockOrvekDataApi();
+    const unsafeExperimentApi = buildExperimentProductionDataApi([
+      watchForItem("fw-broken", {
+        prompt: "   ",
+        linkedObjectId: "pc-missing",
+      }),
+    ]);
+
+    expect(shouldMergeExperimentProductionApi(unsafeExperimentApi)).toBe(false);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      unsafeExperimentApi,
+    );
+
+    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi.exploreFieldworkIds).toBeUndefined();
+    expect(hybridApi.getObject("f2")?.title).toBe(baseApi.getObject("f2")?.title);
+  });
+
+  it("falls back to reference Fieldwork Bridge when thin watch-for rows cannot resolve", () => {
+    const baseApi = createMockOrvekDataApi();
+    const thinExperimentApi = buildExperimentProductionDataApi([
+      watchForItem("fw-thin", {
+        prompt: "Notice scope pressure",
+        reason: "   ",
+      }),
+    ]);
+
+    expect(shouldMergeExperimentProductionApi(thinExperimentApi)).toBe(false);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      thinExperimentApi,
+    );
+
+    expect(hybridApi.exploreFieldworkIds).toBeUndefined();
+    expect(hybridApi.getObject("f2")?.title).toBe(baseApi.getObject("f2")?.title);
+  });
+
+  it("does not leak production displayContract into the root hybrid Experiment overlay", () => {
+    const baseApi = createMockOrvekDataApi();
+    const experimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
+
+    expect(experimentApi.displayContract).toBeDefined();
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      experimentApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.explore).toBeUndefined();
+  });
+
+  it("dedupes duplicate fieldwork rows during hybrid Experiment overlay merge", () => {
+    const baseApi = createMockOrvekDataApi();
+    const experimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
+    experimentApi.exploreFieldworkIds = [...(experimentApi.exploreFieldworkIds ?? []), "fw-active"];
+
+    expect(findDuplicateExperimentRowIds(experimentApi)).toContain("fw-active");
+    expect(shouldMergeExperimentProductionApi(experimentApi)).toBe(true);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      experimentApi,
+    );
+
+    expect(hybridApi.exploreFieldworkIds?.filter((id) => id === "fw-active")).toHaveLength(1);
+    expect(findDuplicateExperimentRowIds(hybridApi)).toEqual([]);
+  });
+
+  it("preserves linked object and inspector target aliases during Experiment overlay merge", () => {
+    const baseApi = createMockOrvekDataApi();
+    const experimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      experimentApi,
+    );
+
+    expect(hybridApi.getObject("fw-active")?.relatedIds).toEqual(["pc-fw-2"]);
+    expect(hybridApi.getObject("pc-fw-2")?.inspectorObjectType).toBe("pattern_claim");
+    expect(hybridApi.getObject("pc-fw-2")?.type).toBe("receipt");
+  });
+
+  it("does not merge Experiment overlay when passed as decisionsApi by mistake", () => {
+    const baseApi = createMockOrvekDataApi();
+    const experimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      experimentApi,
+    );
+
+    expect(hybridApi.exploreFieldworkIds).toBeUndefined();
+    expect(hybridApi.decisionListGroups).toEqual([]);
+    expect(hybridApi.getObject("f2")?.title).toBe(baseApi.getObject("f2")?.title);
+  });
+
+  it("leaves Investigations, Active Questions, and Explore chat on reference/mock when Experiment merges", () => {
+    const baseApi = createMockOrvekDataApi();
+    const experimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      experimentApi,
+    );
+
+    expect(hybridApi.exploreInvestigationIds).toBeUndefined();
+    expect(hybridApi.exploreQuestionIds).toBeUndefined();
+    expect(hybridApi.exploreMessages).toBeUndefined();
+    expect(hybridApi.getObject("inv-1")?.title).toBe(baseApi.getObject("inv-1")?.title);
+    expect(hybridApi.getObject("aq-1")?.title).toBe(baseApi.getObject("aq-1")?.title);
+  });
+
+  it("preserves Today, Map, Timeline, and Decisions hybrid merges when Experiment overlay is ready", () => {
+    const baseApi = createMockOrvekDataApi();
+    const productionTodayApi = buildTodayProductionDataApi({
+      snapshot: LIVE_SNAPSHOT,
+      isLoading: false,
+      briefingDate: "Tuesday · 24 June",
+    });
+    const readyMapApi = buildMapProductionDataApi(READY_MAP_INPUT);
+    const readyTimelineApi = buildTimelineProductionDataApi(READY_TIMELINE_INPUT);
+    const readyDecisionsApi = buildDecisionsProductionDataApi(READY_DECISIONS_ACTIONS);
+    const readyExperimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      productionTodayApi,
+      readyMapApi,
+      readyTimelineApi,
+      readyDecisionsApi,
+      readyExperimentApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.getObject("r6")).toMatchObject(baseApi.getObject("r6") ?? {});
+    expect(hybridApi.getObject("conclusion-c-1")?.summary).toBe(
+      "The most active loop; directly raises decision pressure.",
+    );
+    expect(hybridApi.timelineFilters).toEqual([...REFERENCE_TIMELINE_FILTERS]);
+    expect(hybridApi.getObject("activity-journal-1")?.title).toBe("Scope note");
+    expect(hybridApi.decisionListGroups.some((group) => group.ids.length > 0)).toBe(true);
+    expect(hybridApi.exploreFieldworkIds).toEqual(["fw-active", "fw-assigned"]);
+    expect(hybridApi.getObject("pc-fw-2")?.inspectorObjectType).toBe("pattern_claim");
+  });
+
+  it("wires bounded Experiment watch-for fetch into the root hybrid hook", () => {
+    const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
+
+    expect(hookSource).toContain("fetchWatchForItems");
+    expect(hookSource).toContain("buildExperimentProductionDataApi");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("experimentApi");
+    expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/watch-for/);
   });
 });
