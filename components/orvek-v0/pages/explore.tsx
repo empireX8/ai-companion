@@ -6,6 +6,8 @@ import { EXPLORE_GROUNDING } from "@/lib/orvek-v0/orvek-data"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
 import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
+import { resolveExperimentOpenSelectionId } from "@/lib/orvek-v0/production/experiment-presentation"
+import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { Chip, SectionLabel } from "@/components/orvek-v0/primitives"
 import { ArrowRight, PanelRight, Send, Sparkles } from "lucide-react"
@@ -585,61 +587,172 @@ function InvBlock({ label, children }: { label: string; children: React.ReactNod
 
 function FieldworkBridge({ onSelect }: { onSelect: (id: string) => void }) {
   const data = useOrvekData()
-  const isProduction = isProductionDisplay(data)
-  const emptyCopy =
-    data.emptyCopyBySlot?.exploreFieldworkEmpty ?? "No fieldwork bridge is active yet."
-
-  const fields = [
+  const { getObject, exploreFieldworkIds, exploreFieldworkSelectedId, emptyCopyBySlot } = data
+  const fieldworkIds = exploreFieldworkIds ?? []
+  const hasLiveFieldwork = fieldworkIds.length > 0
+  const referenceFieldworkId = "f2"
+  const referenceLinkedQuestionId = "aq-2"
+  const referenceTitle =
+    "Generate v0 architecture prototype and review against feature architecture."
+  const referenceFields = [
     { label: "Expected signal", value: "Whether the prototype reduces uncertainty." },
     { label: "What to observe", value: "Which page overloads first; right-panel coverage." },
     { label: "What would confirm", value: "Missing flows become obvious; uncertainty drops." },
     { label: "What would weaken", value: "Prototype flattens the concept into a dashboard." },
     { label: "Due / review window", value: "Review after first prototype." },
-  ]
+  ] as const
+
+  const [activeId, setActiveId] = useState(
+    hasLiveFieldwork
+      ? (exploreFieldworkSelectedId ?? fieldworkIds[0] ?? referenceFieldworkId)
+      : referenceFieldworkId,
+  )
+
+  useEffect(() => {
+    if (!hasLiveFieldwork) {
+      return
+    }
+
+    const nextId = exploreFieldworkSelectedId ?? fieldworkIds[0]
+    if (nextId) {
+      setActiveId(nextId)
+    }
+  }, [exploreFieldworkSelectedId, fieldworkIds, hasLiveFieldwork])
+
+  const fieldwork = getObject(activeId)
+  const showLiveDetail = hasLiveFieldwork && fieldwork?.type === "fieldwork"
+
+  function resolveInspectorSelection(id: string) {
+    return hasLiveFieldwork ? resolveExperimentOpenSelectionId(id, getObject) : id
+  }
+
+  function buildLiveFields(object: OrvekObject) {
+    return [
+      { label: "Expected signal", value: object.expectedSignal ?? object.summary ?? "—" },
+      { label: "What to observe", value: object.whatToObserve ?? object.title ?? "—" },
+      {
+        label: "What would confirm",
+        value: object.confirmIf ?? object.supporting?.[0] ?? "—",
+      },
+      {
+        label: "What would weaken",
+        value: object.weakenIf ?? object.conflicting?.[0] ?? "—",
+      },
+      {
+        label: "Due / review window",
+        value: object.reviewWindow ?? object.lastUpdated ?? "—",
+      },
+    ]
+  }
+
+  const title = showLiveDetail
+    ? (fieldwork.summary ?? fieldwork.purpose ?? fieldwork.title ?? referenceTitle)
+    : referenceTitle
+  const fields = showLiveDetail ? buildLiveFields(fieldwork) : referenceFields
+  const statusLabel = showLiveDetail ? fieldwork.tags?.[1] : undefined
+  const linkedRelatedId = showLiveDetail ? fieldwork.relatedIds?.[0] : undefined
 
   return (
     <div>
-      <Chip tone="action">Fieldwork Bridge</Chip>
-      <h2 className="mt-2 text-base font-semibold text-foreground">
-        {isProduction
-          ? emptyCopy
-          : "Generate v0 architecture prototype and review against feature architecture."}
-      </h2>
+      {hasLiveFieldwork && fieldworkIds.length > 1 ? (
+        <div className="mb-4">
+          <SectionLabel>Watch prompts</SectionLabel>
+          <div className="o-material mt-2 divide-y divide-border overflow-hidden rounded-[10px]">
+            {fieldworkIds.map((id) => {
+              const row = getObject(id)
+              if (!row) {
+                return null
+              }
+
+              const active = activeId === id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    setActiveId(id)
+                    onSelect(resolveInspectorSelection(id))
+                  }}
+                  className={cn(
+                    "o-calm flex w-full items-start gap-2.5 px-3 py-2.5 text-left",
+                    active ? "bg-accent/50" : "hover:bg-accent/30",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 size-1.5 shrink-0 rounded-full",
+                      active ? "bg-action" : "bg-muted-foreground/40",
+                    )}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-medium leading-snug text-foreground text-pretty">
+                      {row.title}
+                    </span>
+                    {row.summary ? (
+                      <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                        {row.summary}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      <Chip tone="action">
+        Fieldwork Bridge{statusLabel ? ` · ${statusLabel}` : ""}
+      </Chip>
+      <h2 className="mt-2 text-base font-semibold text-foreground">{title}</h2>
       <dl className="o-material mt-4 divide-y divide-border overflow-hidden rounded-[10px]">
         {fields.map((f) => (
           <div key={f.label} className="grid gap-1 px-3.5 py-2.5 sm:grid-cols-[180px_1fr]">
             <dt className="text-[13px] font-medium text-muted-foreground">{f.label}</dt>
-            <dd className="text-[13px] text-muted-foreground">
-              {isProduction ? "—" : f.value}
-            </dd>
+            <dd className="text-[13px] text-muted-foreground">{f.value}</dd>
           </div>
         ))}
       </dl>
       <div className="mt-4 flex gap-1.5">
         <button
           type="button"
-          onClick={() => !isProduction && onSelect("f2")}
-          disabled={isProduction}
-          className={cn(
-            "o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-action px-3 py-1.5 text-xs font-semibold text-action-foreground hover:brightness-[1.03] active:scale-[0.98]",
-            isProduction && ORVEK_DEFERRED_ACTION_CLASS,
-          )}
+          onClick={() => {
+            if (showLiveDetail) {
+              onSelect(resolveInspectorSelection(activeId))
+              return
+            }
+            onSelect(referenceFieldworkId)
+          }}
+          className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-action px-3 py-1.5 text-xs font-semibold text-action-foreground hover:brightness-[1.03] active:scale-[0.98]"
         >
           Open fieldwork
           <ArrowRight className="size-3.5" aria-hidden />
         </button>
         <button
           type="button"
-          onClick={() => !isProduction && onSelect("aq-2")}
-          disabled={isProduction}
+          onClick={() => {
+            if (showLiveDetail && linkedRelatedId) {
+              onSelect(resolveInspectorSelection(linkedRelatedId))
+              return
+            }
+            if (!showLiveDetail) {
+              onSelect(referenceLinkedQuestionId)
+            }
+          }}
+          disabled={showLiveDetail && !linkedRelatedId}
           className={cn(
             "o-calm rounded-[8px] bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60",
-            isProduction && ORVEK_DEFERRED_ACTION_CLASS,
+            showLiveDetail && !linkedRelatedId && ORVEK_DEFERRED_ACTION_CLASS,
           )}
         >
-          Linked question
+          {showLiveDetail ? "Linked context" : "Linked question"}
         </button>
       </div>
+      {showLiveDetail && !fieldwork.summary && !fieldwork.title ? (
+        <p className="mt-3 text-[13px] text-muted-foreground">
+          {emptyCopyBySlot?.exploreFieldworkEmpty ?? "No fieldwork bridge is active yet."}
+        </p>
+      ) : null}
     </div>
   )
 }

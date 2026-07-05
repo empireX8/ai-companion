@@ -12,7 +12,6 @@ import {
 } from "../../lib/orvek-v0/production/experiment-presentation";
 import type { OrvekObject } from "../../lib/orvek-v0/orvek-types";
 import type { WatchForItem } from "../watch-for";
-import { WATCH_FOR_ENDPOINT } from "../watch-for";
 
 function readSource(relativePath: string): string {
   return readFileSync(join(process.cwd(), relativePath), "utf8");
@@ -50,29 +49,18 @@ const READY_WATCH_FOR_ITEMS: WatchForItem[] = [
   }),
 ];
 
-describe("bounded experiment hybrid fetch bridge", () => {
-  it("wires Experiment watch-for production fetch into the root hybrid hook", () => {
-    const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
-    const watchForSource = readSource("lib/watch-for.ts");
+describe("fieldwork bridge alignment", () => {
+  it("FieldworkBridge consumes exploreFieldworkIds when readiness-gated production data passes", () => {
+    const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
 
-    expect(hookSource).toContain("fetchWatchForItems");
-    expect(hookSource).toContain("buildExperimentProductionDataApi");
-    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
-    expect(hookSource).toContain("experimentApi");
-    expect(hookSource).toContain("isLoadingWatchFor");
-    expect(watchForSource).toContain(WATCH_FOR_ENDPOINT);
-    expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/watch-for/);
+    expect(explorePageSource).toContain("exploreFieldworkIds");
+    expect(explorePageSource).toContain("exploreFieldworkSelectedId");
+    expect(explorePageSource).toContain("hasLiveFieldwork");
+    expect(explorePageSource).toContain("resolveExperimentOpenSelectionId");
+    expect(explorePageSource).toContain("resolveInspectorSelection");
   });
 
-  it("passes experimentApi as the sixth argument to buildHybridWorkbenchDataApi", () => {
-    const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
-
-    expect(hookSource).toMatch(
-      /buildHybridWorkbenchDataApi\(\s*baseApi,\s*todayApi,\s*mapApi,\s*timelineApi,\s*decisionsApi,\s*experimentApi,\s*\)/,
-    );
-  });
-
-  it("can surface ready watch-for production data through the hybrid workbench", () => {
+  it("can surface ready Fieldwork production data through the hybrid provider path", () => {
     const baseApi = createMockOrvekDataApi();
     const experimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
 
@@ -87,15 +75,15 @@ describe("bounded experiment hybrid fetch bridge", () => {
       experimentApi,
     );
 
-    expect(hybridApi.displayContract).toBeUndefined();
     expect(hybridApi.exploreFieldworkIds).toEqual(["fw-active", "fw-assigned"]);
+    expect(hybridApi.exploreFieldworkSelectedId).toBe("fw-active");
     expect(hybridApi.getObject("fw-active")?.tags).toEqual(
       referenceTagsForFieldworkStatus("active", "Active"),
     );
-    expect(hybridApi.getObject("f2")?.title).toBe(baseApi.getObject("f2")?.title);
+    expect(hybridApi.displayContract).toBeUndefined();
   });
 
-  it("falls back to reference Fieldwork Bridge when production fetch fails readiness", () => {
+  it("falls back to reference Fieldwork Bridge when production data fails readiness", () => {
     const baseApi = createMockOrvekDataApi();
     const unsafeExperimentApi = buildExperimentProductionDataApi([
       watchForItem("fw-broken", {
@@ -119,7 +107,7 @@ describe("bounded experiment hybrid fetch bridge", () => {
     expect(hybridApi.getObject("f2")?.title).toBe(baseApi.getObject("f2")?.title);
   });
 
-  it("falls back to reference Fieldwork Bridge when production data is thin or empty", () => {
+  it("falls back to reference Fieldwork Bridge when production fetch returns empty data", () => {
     const baseApi = createMockOrvekDataApi();
     const emptyExperimentApi = buildExperimentProductionDataApi([]);
 
@@ -135,7 +123,7 @@ describe("bounded experiment hybrid fetch bridge", () => {
     );
 
     expect(hybridApi.exploreFieldworkIds).toBeUndefined();
-    expect(hybridApi.getObject("f2")?.title).toBe(baseApi.getObject("f2")?.title);
+    expect(hybridApi.getObject("f2")?.title).toBe("Test architecture visually in v0");
   });
 
   it("falls back to reference Fieldwork Bridge while production Experiment data is loading", () => {
@@ -159,23 +147,7 @@ describe("bounded experiment hybrid fetch bridge", () => {
     expect(hybridApi.exploreFieldworkIds).toBeUndefined();
   });
 
-  it("preserves linked object aliases through the hybrid Experiment overlay", () => {
-    const baseApi = createMockOrvekDataApi();
-    const experimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
-    const hybridApi = buildHybridWorkbenchDataApi(
-      baseApi,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      experimentApi,
-    );
-
-    expect(hybridApi.getObject("pc-fw-2")?.inspectorObjectType).toBe("pattern_claim");
-    expect(hybridApi.getObject("fw-active")?.relatedIds).toEqual(["pc-fw-2"]);
-  });
-
-  it("resolves linked inspector targets when provider lookup can resolve them", () => {
+  it("opens Inspector through safe selection for linked fieldwork targets", () => {
     const objects: Record<string, OrvekObject> = {
       "fw-active": {
         id: "fw-active",
@@ -205,35 +177,43 @@ describe("bounded experiment hybrid fetch bridge", () => {
     expect(resolveExperimentOpenSelectionId("f2", getObject)).toBe("f2");
   });
 
-  it("leaves Investigations, Active Questions, and Explore chat on reference/mock when Experiment merges", () => {
-    const baseApi = createMockOrvekDataApi();
-    const experimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
-    const hybridApi = buildHybridWorkbenchDataApi(
-      baseApi,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      experimentApi,
-    );
-
-    expect(hybridApi.exploreInvestigationIds).toBeUndefined();
-    expect(hybridApi.exploreQuestionIds).toBeUndefined();
-    expect(hybridApi.exploreMessages).toBeUndefined();
-    expect(hybridApi.getObject("inv-1")?.title).toBe(baseApi.getObject("inv-1")?.title);
-    expect(hybridApi.getObject("aq-1")?.title).toBe(baseApi.getObject("aq-1")?.title);
-  });
-
-  it("FieldworkBridge consumes readiness-gated exploreFieldworkIds", () => {
+  it("preserves reference Fieldwork Bridge fallback wiring", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
 
-    expect(explorePageSource).toContain("function FieldworkBridge");
-    expect(explorePageSource).toContain("exploreFieldworkIds");
-    expect(explorePageSource).toContain("resolveExperimentOpenSelectionId");
+    expect(explorePageSource).toContain('referenceFieldworkId = "f2"');
+    expect(explorePageSource).toContain('referenceLinkedQuestionId = "aq-2"');
+    expect(explorePageSource).toContain("Generate v0 architecture prototype and review against feature architecture.");
     expect(explorePageSource).toContain('onSelect(referenceFieldworkId)');
+    expect(explorePageSource).toContain('onSelect(referenceLinkedQuestionId)');
+  });
+
+  it("leaves Investigations and Active Questions on reference/mock lists", () => {
+    const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
+
+    expect(explorePageSource).toContain('["inv-1", "inv-2", "inv-3"]');
+    expect(explorePageSource).toContain('["aq-1", "aq-2", "aq-3", "aq-4"]');
+    expect(explorePageSource).toContain("exploreInvestigationIds");
+    expect(explorePageSource).toContain("exploreQuestionIds");
+  });
+
+  it("keeps Explore chat untouched", () => {
+    const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
+    const freeExploreBlock =
+      explorePageSource.match(/function FreeExplore\(\) \{([\s\S]*?)\n\}\n\nfunction Bubble/)?.[1] ??
+      "";
+
+    expect(explorePageSource).toContain("function FreeExplore()");
+    expect(freeExploreBlock).toContain("exploreHandlers?.onSend");
+    expect(freeExploreBlock).not.toContain("exploreFieldworkIds");
+    expect(freeExploreBlock).not.toContain("resolveExperimentOpenSelectionId");
+  });
+
+  it("does not introduce /watch-for route navigation", () => {
+    const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
+
     expect(explorePageSource).not.toContain("/watch-for");
+    expect(explorePageSource).not.toMatch(/router\.(push|replace)/);
     expect(explorePageSource).not.toContain("WatchForItemCard");
-    expect(explorePageSource).not.toContain("V0ExploreView");
   });
 
   it("keeps the old production shell quarantined", () => {
@@ -243,5 +223,6 @@ describe("bounded experiment hybrid fetch bridge", () => {
     expect(shellSource).not.toContain("RouteTopBar");
     expect(workbenchSource).toContain("<ExplorePage />");
     expect(workbenchSource).toContain("createMockOrvekDataApi");
+    expect(workbenchSource).not.toContain("V0ExploreView");
   });
 });
