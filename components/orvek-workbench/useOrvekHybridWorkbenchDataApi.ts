@@ -18,6 +18,7 @@ import {
   type ActionsPageData,
 } from "@/lib/actions-api";
 import { buildDecisionsProductionDataApi } from "@/lib/orvek-v0/production/decisions-api";
+import { buildExperimentProductionDataApi } from "@/lib/orvek-v0/production/experiment-api";
 import { buildTodayProductionDataApi } from "@/lib/orvek-v0/production/today-api";
 import { buildHybridWorkbenchDataApi } from "@/lib/orvek-v0/production/hybrid-workbench-api";
 import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
@@ -51,6 +52,7 @@ import {
   type MapOpenQuestionPreviewItem,
 } from "@/lib/your-map-preview-surface";
 import { fetchYourMapConclusions } from "@/lib/your-map-surface";
+import { fetchWatchForItems, type WatchForItem } from "@/lib/watch-for";
 
 const TIMELINE_WINDOW = "30d";
 
@@ -107,6 +109,9 @@ export function useOrvekHybridWorkbenchDataApi() {
   const [actionsData, setActionsData] = useState<ActionsPageData | null>(null);
   const [isLoadingActions, setIsLoadingActions] = useState(true);
 
+  const [watchForItems, setWatchForItems] = useState<WatchForItem[]>([]);
+  const [isLoadingWatchFor, setIsLoadingWatchFor] = useState(true);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -150,6 +155,32 @@ export function useOrvekHybridWorkbenchDataApi() {
       } finally {
         if (!cancelled) {
           setIsLoadingActions(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      setIsLoadingWatchFor(true);
+      try {
+        const nextItems = await fetchWatchForItems();
+        if (!cancelled) {
+          setWatchForItems(nextItems);
+        }
+      } catch {
+        if (!cancelled) {
+          setWatchForItems([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingWatchFor(false);
         }
       }
     })();
@@ -477,12 +508,18 @@ export function useOrvekHybridWorkbenchDataApi() {
       decisionsIsLoading: isLoadingActions,
     };
 
+    const experimentApi = {
+      ...buildExperimentProductionDataApi(watchForItems),
+      experimentIsLoading: isLoadingWatchFor,
+    };
+
     return buildHybridWorkbenchDataApi(
       baseApi,
       todayApi,
       mapApi,
       timelineApi,
       decisionsApi,
+      experimentApi,
     );
   }, [
     baseApi,
@@ -512,5 +549,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     timelineModelLayerError,
     decisionsList,
     isLoadingActions,
+    watchForItems,
+    isLoadingWatchFor,
   ]);
 }

@@ -268,12 +268,14 @@ describe("experiment presentation readiness gate", () => {
     expect(shouldMergeExperimentProductionApi(readyExperimentApi)).toBe(true);
   });
 
-  it("does not wire root Explore fetch yet", () => {
+  it("wires bounded Experiment watch-for fetch into the root hybrid hook", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
-    expect(hookSource).not.toContain("WATCH_FOR_ENDPOINT");
-    expect(hookSource).not.toContain("buildExperimentProductionDataApi");
-    expect(hookSource).not.toContain("shouldMergeExperimentProductionApi");
+    expect(hookSource).toContain("fetchWatchForItems");
+    expect(hookSource).toContain("buildExperimentProductionDataApi");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("experimentApi");
+    expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/watch-for/);
   });
 
   it("preserves Today, Map, Timeline, and Decisions parity in hybrid workbench", () => {

@@ -67,6 +67,20 @@ export const WATCH_FOR_ENDPOINT = "/api/watch-for";
 export const WATCH_FOR_LIMIT = 20;
 export const WATCH_FOR_SAFE_VISIBLE_STATUSES = WATCH_FOR_VISIBLE_STATUSES;
 
+export async function fetchWatchForItems(): Promise<WatchForItem[]> {
+  try {
+    const response = await fetch(WATCH_FOR_ENDPOINT, { cache: "no-store" });
+    if (!response.ok) {
+      return [];
+    }
+
+    const payload = (await response.json()) as { items?: WatchForItem[] };
+    return Array.isArray(payload.items) ? payload.items : [];
+  } catch {
+    return [];
+  }
+}
+
 export function toWatchForItem(row: WatchForRecord): WatchForItem | null {
   const safeId = toNonEmptyPublicId(row.id);
   if (!safeId) {

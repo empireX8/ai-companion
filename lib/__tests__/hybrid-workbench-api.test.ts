@@ -851,12 +851,13 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.getObject("pc-fw-2")?.inspectorObjectType).toBe("pattern_claim");
   });
 
-  it("does not wire root Explore watch-for fetch into the hybrid hook yet", () => {
+  it("wires bounded Experiment watch-for fetch into the root hybrid hook", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
-    expect(hookSource).not.toContain("WATCH_FOR_ENDPOINT");
-    expect(hookSource).not.toContain("buildExperimentProductionDataApi");
-    expect(hookSource).not.toContain("shouldMergeExperimentProductionApi");
-    expect(hookSource).not.toContain("experimentApi");
+    expect(hookSource).toContain("fetchWatchForItems");
+    expect(hookSource).toContain("buildExperimentProductionDataApi");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("experimentApi");
+    expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/watch-for/);
   });
 });
