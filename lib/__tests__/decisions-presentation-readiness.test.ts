@@ -277,12 +277,14 @@ describe("decisions presentation readiness gate", () => {
     expect(shouldMergeDecisionsProductionApi(readyDecisionsApi)).toBe(true);
   });
 
-  it("does not wire root Decisions fetch yet", () => {
+  it("wires bounded Decisions fetch into the root hybrid hook", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
-    expect(hookSource).not.toContain("fetchActionsPageData");
-    expect(hookSource).not.toContain("buildDecisionsProductionDataApi");
-    expect(hookSource).not.toContain("shouldMergeDecisionsProductionApi");
+    expect(hookSource).toContain("fetchActionsPageData");
+    expect(hookSource).toContain("buildDecisionsProductionDataApi");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("decisionsApi");
+    expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/actions/);
   });
 
   it("preserves Today, Map, and Timeline parity in hybrid workbench", () => {

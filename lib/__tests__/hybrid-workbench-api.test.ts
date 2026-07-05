@@ -466,7 +466,8 @@ describe("hybrid workbench data api", () => {
     expect(hookSource).toContain("buildTimelineProductionDataApi");
     expect(hookSource).toContain("fetchTimelineSemanticEntries");
     expect(hookSource).toContain("buildTimelineRequestUrl");
-    expect(hookSource).toContain("buildHybridWorkbenchDataApi(baseApi, todayApi, mapApi, timelineApi)");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("decisionsApi");
     expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/timeline/);
   });
 
@@ -600,12 +601,13 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.getObject("pc-2")?.type).toBe("receipt");
   });
 
-  it("does not wire root Decisions fetch into the hybrid hook yet", () => {
+  it("wires bounded Decisions fetch into the root hybrid hook", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
-    expect(hookSource).not.toContain("fetchActionsPageData");
-    expect(hookSource).not.toContain("buildDecisionsProductionDataApi");
-    expect(hookSource).not.toContain("shouldMergeDecisionsProductionApi");
-    expect(hookSource).toContain("buildHybridWorkbenchDataApi(baseApi, todayApi, mapApi, timelineApi)");
+    expect(hookSource).toContain("fetchActionsPageData");
+    expect(hookSource).toContain("buildDecisionsProductionDataApi");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("decisionsApi");
+    expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/actions/);
   });
 });

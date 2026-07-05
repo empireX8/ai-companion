@@ -251,7 +251,8 @@ describe("timeline presentation readiness gate", () => {
     expect(hookSource).toContain("buildTimelineProductionDataApi");
     expect(hookSource).toContain("fetchTimelineSemanticEntries");
     expect(hookSource).toContain("buildTimelineRequestUrl");
-    expect(hookSource).toContain("buildHybridWorkbenchDataApi(baseApi, todayApi, mapApi, timelineApi)");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("decisionsApi");
   });
 
   it("keeps the old production shell quarantined", () => {
