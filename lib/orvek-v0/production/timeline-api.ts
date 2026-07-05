@@ -7,6 +7,7 @@ import type { OrvekDataApi, OrvekTimelineGroup } from "../data-provider";
 import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import type { OrvekObject } from "../orvek-types";
+import { normalizeTimelineProductionDataApi } from "./timeline-presentation";
 
 const TIMELINE_SHELL_GROUP_HEADINGS = [
   "Today",
@@ -22,12 +23,17 @@ export function buildTimelineProductionDataApi(input: MapTimelineDataInput): Orv
 
   for (const group of view.groups) {
     for (const row of group.rows) {
+      const dateLabel =
+        row.time && row.date ? `${row.date} · ${row.time}` : row.date ?? undefined;
+
       objects[row.id] = {
         id: row.id,
         type: "timeline-event",
         title: row.title,
         summary: row.summary ?? undefined,
         eventType: row.eventLabel,
+        date: dateLabel,
+        lastUpdated: dateLabel,
         before: row.beforeSummary ?? undefined,
         after: row.afterSummary ?? undefined,
         tags: [row.eventLabel],
@@ -61,4 +67,10 @@ export function buildTimelineProductionDataApi(input: MapTimelineDataInput): Orv
       timelineEmpty: view.emptyCopy,
     },
   });
+}
+
+export function buildNormalizedTimelineProductionDataApi(
+  input: MapTimelineDataInput,
+): OrvekDataApi {
+  return normalizeTimelineProductionDataApi(buildTimelineProductionDataApi(input));
 }
