@@ -245,12 +245,13 @@ describe("timeline presentation readiness gate", () => {
     expect(hybridApi.getObject("activity-journal-1")?.title).toBe("Scope note");
   });
 
-  it("does not wire root Timeline production fetch in the hybrid hook", () => {
+  it("wires bounded Timeline fetch through the root hybrid hook", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
-    expect(hookSource).not.toContain("buildTimelineProductionDataApi");
-    expect(hookSource).not.toContain("fetchTimelineSemanticEntries");
-    expect(hookSource).not.toContain("buildTimelineRequestUrl");
+    expect(hookSource).toContain("buildTimelineProductionDataApi");
+    expect(hookSource).toContain("fetchTimelineSemanticEntries");
+    expect(hookSource).toContain("buildTimelineRequestUrl");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(baseApi, todayApi, mapApi, timelineApi)");
   });
 
   it("keeps the old production shell quarantined", () => {

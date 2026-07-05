@@ -342,6 +342,20 @@ export function shouldMergeTimelineProductionApi(api: OrvekDataApi | undefined):
   return isTimelinePresentationReady(normalizeTimelineProductionDataApi(api));
 }
 
+export function resolveTimelineOpenSelectionId(
+  rowId: string,
+  getObject: (id: string | null | undefined) => OrvekObject | undefined,
+): string {
+  const row = getObject(rowId);
+  const inspectorObjectId = row?.inspectorObjectId?.trim();
+
+  if (!inspectorObjectId) {
+    return rowId;
+  }
+
+  return getObject(inspectorObjectId) ? inspectorObjectId : rowId;
+}
+
 export function normalizeTimelineProductionDataApi(api: OrvekDataApi): OrvekDataApi {
   const duplicateRowIds = dedupeTimelineMovementRowIds(api);
   const timelineGroups = pruneTimelineGroups(api.timelineGroups ?? [], duplicateRowIds);

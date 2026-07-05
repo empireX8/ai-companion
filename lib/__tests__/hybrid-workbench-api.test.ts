@@ -409,12 +409,13 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.getObject("activity-journal-1")?.title).toBe("Scope note");
   });
 
-  it("does not wire root Timeline production fetch in the hybrid hook yet", () => {
+  it("wires bounded Timeline fetch into the root hybrid hook", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
-    expect(hookSource).not.toContain("buildTimelineProductionDataApi");
-    expect(hookSource).not.toContain("fetchTimelineSemanticEntries");
-    expect(hookSource).not.toContain("buildTimelineRequestUrl");
-    expect(hookSource).toContain("buildHybridWorkbenchDataApi");
+    expect(hookSource).toContain("buildTimelineProductionDataApi");
+    expect(hookSource).toContain("fetchTimelineSemanticEntries");
+    expect(hookSource).toContain("buildTimelineRequestUrl");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(baseApi, todayApi, mapApi, timelineApi)");
+    expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/timeline/);
   });
 });

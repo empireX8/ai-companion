@@ -40,6 +40,14 @@ export function buildTimelineProductionDataApi(input: MapTimelineDataInput): Orv
         inspectorObjectType: row.inspectorTarget?.objectType,
         inspectorObjectId: row.inspectorTarget?.objectId,
       };
+
+      const inspectorObjectId = row.inspectorTarget?.objectId;
+      if (inspectorObjectId && inspectorObjectId !== row.id) {
+        objects[inspectorObjectId] = {
+          ...objects[row.id],
+          id: inspectorObjectId,
+        };
+      }
     }
   }
 
