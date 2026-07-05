@@ -1,5 +1,9 @@
 import type { OrvekDataApi } from "../data-provider";
 import type { OrvekObject } from "../orvek-types";
+import {
+  shouldMergeDecisionsProductionApi,
+  normalizeDecisionsProductionDataApi,
+} from "./decisions-presentation";
 import { shouldMergeMapProductionApi, normalizeMapProductionDataApi } from "./map-presentation";
 import {
   shouldMergeTimelineProductionApi,
@@ -125,6 +129,43 @@ function mergeMapOverlay(baseApi: OrvekDataApi, mapApi: OrvekDataApi): OrvekData
   };
 }
 
+function mergeDecisionsOverlay(baseApi: OrvekDataApi, decisionsApi: OrvekDataApi): OrvekDataApi {
+  const baseGetObject = baseApi.getObject.bind(baseApi);
+
+  return {
+    ...baseApi,
+    getObject: (id) => {
+      if (!id) {
+        return undefined;
+      }
+      return decisionsApi.getObject(id) ?? baseGetObject(id);
+    },
+    getObjects: (ids) => {
+      const resolved: OrvekObject[] = [];
+
+      for (const id of ids ?? []) {
+        if (!id) {
+          continue;
+        }
+        const object = decisionsApi.getObject(id) ?? baseGetObject(id);
+        if (object) {
+          resolved.push(object);
+        }
+      }
+
+      return resolved;
+    },
+    decisionListGroups: decisionsApi.decisionListGroups,
+    decisionsSelectedId: decisionsApi.decisionsSelectedId,
+    decisionsHeaderStats: decisionsApi.decisionsHeaderStats,
+    decisionsIsLoading: decisionsApi.decisionsIsLoading,
+    emptyCopyBySlot: {
+      ...baseApi.emptyCopyBySlot,
+      ...decisionsApi.emptyCopyBySlot,
+    },
+  };
+}
+
 function mergeTimelineOverlay(baseApi: OrvekDataApi, timelineApi: OrvekDataApi): OrvekDataApi {
   const baseGetObject = baseApi.getObject.bind(baseApi);
 
@@ -166,12 +207,14 @@ export function buildHybridWorkbenchDataApi(
   todayApi?: OrvekDataApi,
   mapApi?: OrvekDataApi,
   timelineApi?: OrvekDataApi,
+  decisionsApi?: OrvekDataApi,
 ): OrvekDataApi {
   const mergeToday = !!todayApi && normalizeIds(todayApi.todayResurfacedIds).length > 0;
   const mergeMap = shouldMergeMapProductionApi(mapApi);
   const mergeTimeline = shouldMergeTimelineProductionApi(timelineApi);
+  const mergeDecisions = shouldMergeDecisionsProductionApi(decisionsApi);
 
-  if (!mergeToday && !mergeMap && !mergeTimeline) {
+  if (!mergeToday && !mergeMap && !mergeTimeline && !mergeDecisions) {
     return baseApi;
   }
 
@@ -187,6 +230,10 @@ export function buildHybridWorkbenchDataApi(
 
   if (mergeTimeline && timelineApi) {
     api = mergeTimelineOverlay(api, normalizeTimelineProductionDataApi(timelineApi));
+  }
+
+  if (mergeDecisions && decisionsApi) {
+    api = mergeDecisionsOverlay(api, normalizeDecisionsProductionDataApi(decisionsApi));
   }
 
   return api;
