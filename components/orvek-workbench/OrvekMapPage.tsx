@@ -16,7 +16,9 @@ import {
   fetchMindContextSnapshot,
   type MindContextDisplayItem,
 } from "@/lib/mind-context-surface";
-import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
+import {
+  buildNormalizedMapProductionDataApi,
+} from "@/lib/orvek-v0/production/map-api";
 import { resolveMapWorkbenchSelectedId } from "@/lib/orvek-v0/production/map-selection";
 import type {
   UserMapConclusionPublicApiDetailItem,
@@ -197,7 +199,7 @@ export function OrvekMapPage() {
 
   const dataApi = useMemo(
     () =>
-      buildMapProductionDataApi({
+      buildNormalizedMapProductionDataApi({
         items,
         isLoading:
           isLoading ||
@@ -250,7 +252,7 @@ export function OrvekMapPage() {
     () => ({
       map: {
         onOpenItem: (railId: string) => {
-          const api = buildMapProductionDataApi({
+          const api = buildNormalizedMapProductionDataApi({
             items,
             isLoading,
             loadError,

@@ -14,7 +14,11 @@ import type { V0TimelineViewProps } from "@/lib/orvek-adapters/timeline";
 import type { V0TodayViewProps } from "@/lib/orvek-adapters/types";
 
 import type { OrvekObject } from "./orvek-types";
-import type { ExploreMovement } from "./orvek-data";
+import {
+  getObject as getZipObject,
+  getObjects as getZipObjects,
+  type ExploreMovement,
+} from "./orvek-data";
 import type { OrvekDisplayContract } from "./display-contract";
 
 export type OrvekDecisionsHeaderStats = {
@@ -126,4 +130,50 @@ export function useOrvekData(): OrvekDataApi {
 export function useOrvekObject(id: string | null | undefined): OrvekObject | undefined {
   const { getObject } = useOrvekData();
   return getObject(id);
+}
+
+export function resolveOrvekObjectFromGraph(
+  data: OrvekDataApi | null,
+  id: string | null | undefined,
+): OrvekObject | undefined {
+  if (!id) {
+    return undefined;
+  }
+
+  return data?.getObject(id) ?? getZipObject(id);
+}
+
+export function resolveOrvekObjectsFromGraph(
+  data: OrvekDataApi | null,
+  ids: string[] | undefined,
+): OrvekObject[] {
+  const resolved: OrvekObject[] = [];
+
+  for (const id of ids ?? []) {
+    if (!id) {
+      continue;
+    }
+
+    const object = resolveOrvekObjectFromGraph(data, id);
+    if (object) {
+      resolved.push(object);
+    }
+  }
+
+  return resolved;
+}
+
+export function useOrvekObjectGraph(): {
+  getObject: (id: string | null | undefined) => OrvekObject | undefined;
+  getObjects: (ids: string[] | undefined) => OrvekObject[];
+} {
+  const data = useOrvekData();
+
+  return useMemo(
+    () => ({
+      getObject: (id) => resolveOrvekObjectFromGraph(data, id),
+      getObjects: (ids) => resolveOrvekObjectsFromGraph(data, ids),
+    }),
+    [data],
+  );
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { MapMapDataInput } from "../orvek-adapters/map";
-import { buildMapProductionDataApi } from "../orvek-v0/production/map-api";
+import { buildMapProductionDataApi, buildNormalizedMapProductionDataApi } from "../orvek-v0/production/map-api";
 
 const BASE_INPUT: MapMapDataInput = {
   items: [
@@ -95,6 +95,7 @@ describe("map production data bridge", () => {
     expect(railObject?.summary).toBe(
       "The most active loop; directly raises decision pressure."
     );
+    expect(railObject?.recommendation).toBeUndefined();
     expect(selectedObject?.summary).toBe(railObject?.summary);
     expect(railObject?.supporting).toEqual([
       "Scope reopened twice this week",
@@ -141,7 +142,7 @@ describe("map production data bridge", () => {
   });
 
   it("does not collapse when conclusions exist but selectedId is unset", () => {
-    const api = buildMapProductionDataApi({
+    const api = buildNormalizedMapProductionDataApi({
       ...BASE_INPUT,
       selectedId: null,
       detail: null,
@@ -155,7 +156,7 @@ describe("map production data bridge", () => {
   });
 
   it("keeps rails populated from mind context when conclusions are empty", () => {
-    const api = buildMapProductionDataApi({
+    const api = buildNormalizedMapProductionDataApi({
       ...BASE_INPUT,
       items: [],
       selectedId: null,
@@ -176,7 +177,7 @@ describe("map production data bridge", () => {
   });
 
   it("projects model goals as first-class model-goal objects with safe map links", () => {
-    const api = buildMapProductionDataApi({
+    const api = buildNormalizedMapProductionDataApi({
       ...BASE_INPUT,
       items: [
         {
@@ -218,10 +219,7 @@ describe("map production data bridge", () => {
     expect(goalRail?.inspectorObjectId).toBe("m-goal-1");
     expect(goalRail?.summary).toBe("Make Orvek a durable model of the user.");
     expect(goalRail?.whyItMatters).toBe("Developmental Vector");
-    expect(goalRail?.supporting).toEqual([
-      "4 linked receipts",
-      "Linked path: /your-map?selected=goal-m-goal-1",
-    ]);
+    expect(goalRail?.supporting).toEqual(["4 linked receipts"]);
     expect(goalRail?.confidence).toBe("Supported by linked receipts");
     expect(goalRail?.detailHref).toBe("/your-map?selected=goal-m-goal-1");
     expect(goalRail?.missingEvidence).toBeUndefined();
@@ -231,7 +229,7 @@ describe("map production data bridge", () => {
   });
 
   it("reports weak and missing evidence for model goals without overclaiming", () => {
-    const api = buildMapProductionDataApi({
+    const api = buildNormalizedMapProductionDataApi({
       ...BASE_INPUT,
       items: [
         {
@@ -275,26 +273,20 @@ describe("map production data bridge", () => {
     const missingGoal = api.getObject("goal-m-goal-2");
 
     expect(thinGoal?.confidence).toBe("Thin support");
-    expect(thinGoal?.supporting).toEqual([
-      "1 linked receipt",
-      "Linked path: /your-map?selected=goal-m-goal-1",
-    ]);
+    expect(thinGoal?.supporting).toEqual(["1 linked receipt"]);
     expect(thinGoal?.missingEvidence).toEqual([
       "Support is thin; review before treating this as settled.",
     ]);
 
     expect(missingGoal?.confidence).toBe("Provisional");
-    expect(missingGoal?.supporting).toEqual([
-      "No linked receipts surfaced yet",
-      "Linked path: /your-map?selected=goal-m-goal-2",
-    ]);
+    expect(missingGoal?.supporting).toEqual(["No linked receipts surfaced yet"]);
     expect(missingGoal?.missingEvidence).toEqual([
       "Evidence is thin or unavailable in this projection.",
     ]);
   });
 
   it("exposes mind context items as selectable context_profile objects and raw aliases", () => {
-    const api = buildMapProductionDataApi({
+    const api = buildNormalizedMapProductionDataApi({
       ...BASE_INPUT,
       items: [],
       selectedId: null,
@@ -345,20 +337,14 @@ describe("map production data bridge", () => {
     expect(memoryRail?.type).toBe("context");
     expect(memoryRail?.inspectorObjectType).toBe("context_profile");
     expect(memoryRail?.detailHref).toBeUndefined();
-    expect(memoryRail?.supporting).toEqual([
-      "Linked memory record",
-      "Linked path: /references/ref-1",
-    ]);
+    expect(memoryRail?.supporting).toEqual(["Linked memory record"]);
     expect(memoryAlias?.id).toBe("memory-ref-1");
     expect(memoryAlias?.inspectorObjectType).toBe("context_profile");
     expect(memoryAlias?.detailHref).toBeUndefined();
     expect(patternRail?.type).toBe("context");
     expect(patternRail?.inspectorObjectType).toBe("context_profile");
     expect(patternRail?.detailHref).toBeUndefined();
-    expect(patternRail?.supporting).toEqual([
-      "3 linked receipts",
-      "Linked path: /patterns/pc-1",
-    ]);
+    expect(patternRail?.supporting).toEqual(["3 linked receipts"]);
     expect(patternRail?.whatWouldChange).toEqual(["Capture correction in Capture Life Data"]);
     expect(patternAlias?.id).toBe("pattern-pc-1");
     expect(patternAlias?.inspectorObjectId).toBe("pattern-pc-1");
@@ -366,7 +352,7 @@ describe("map production data bridge", () => {
   });
 
   it("keeps v0-safe context hrefs clickable while blocking unavailable reference and pattern routes", () => {
-    const api = buildMapProductionDataApi({
+    const api = buildNormalizedMapProductionDataApi({
       ...BASE_INPUT,
       items: [],
       selectedId: null,
@@ -408,7 +394,7 @@ describe("map production data bridge", () => {
   });
 
   it("reports an empty map only when every production source is empty", () => {
-    const api = buildMapProductionDataApi({
+    const api = buildNormalizedMapProductionDataApi({
       items: [],
       isLoading: false,
       loadError: null,
@@ -433,7 +419,7 @@ describe("map production data bridge", () => {
   });
 
   it("marks loading state without pretending the map is empty", () => {
-    const api = buildMapProductionDataApi({
+    const api = buildNormalizedMapProductionDataApi({
       ...BASE_INPUT,
       isLoading: true,
     });

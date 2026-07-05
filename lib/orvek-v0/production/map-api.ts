@@ -21,6 +21,10 @@ import type { OrvekDataApi } from "../data-provider";
 import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import type { OrvekObject } from "../orvek-types";
+import {
+  normalizeMapProductionDataApi,
+  resolveMapMovementPair,
+} from "./map-presentation";
 
 const V0_SAFE_CONTEXT_DETAIL_HREF_PREFIXES = Object.values(
   PUBLIC_OBJECT_LINK_HREF_PREFIXES
@@ -158,7 +162,6 @@ function railItemToOrvekObject(
     type,
     title: item.title,
     summary,
-    recommendation: summary,
     whyItMatters,
     supporting,
     conflicting,
@@ -171,7 +174,6 @@ function railItemToOrvekObject(
     tags: [item.statusLabel],
     inspectorObjectType,
     inspectorObjectId,
-    before: item.recentlyMoved ? "Previously held understanding" : undefined,
   };
 }
 
@@ -193,15 +195,18 @@ function buildDetailOrvekObject(view: V0MapViewProps, objectId: string): OrvekOb
   const detail = view.detail!;
   const summary = detail.summary?.trim() || undefined;
   const relatedIds = view.relatedItems.map((related) => related.id);
+  const movement = resolveMapMovementPair({
+    before: detail.beforeSummary,
+    after: detail.afterSummary,
+  });
 
   return {
     id: objectId,
     type: "map-object",
     title: detail.title,
     summary,
-    recommendation: summary,
-    before: detail.beforeSummary ?? undefined,
-    after: detail.afterSummary ?? undefined,
+    before: movement.before,
+    after: movement.after,
     supporting: buildSupportingEvidence(view),
     conflicting: buildConflictingEvidence(view),
     confidence: detail.confidenceLabel,
@@ -369,9 +374,13 @@ export function buildMapProductionDataApi(input: MapMapDataInput): OrvekDataApi 
   });
 }
 
+export function buildNormalizedMapProductionDataApi(input: MapMapDataInput): OrvekDataApi {
+  return normalizeMapProductionDataApi(buildMapProductionDataApi(input));
+}
+
 export function mergeMapDetailIntoApi(
   api: OrvekDataApi,
   input: MapMapDataInput
 ): OrvekDataApi {
-  return buildMapProductionDataApi(input);
+  return buildNormalizedMapProductionDataApi(input);
 }
