@@ -16,6 +16,7 @@ import {
 import { buildTodayProductionDataApi } from "@/lib/orvek-v0/production/today-api";
 import { buildHybridWorkbenchDataApi } from "@/lib/orvek-v0/production/hybrid-workbench-api";
 import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
+import { buildTimelineProductionDataApi } from "@/lib/orvek-v0/production/timeline-api";
 import { resolveMapWorkbenchSelectedId } from "@/lib/orvek-v0/production/map-selection";
 import { createMockOrvekDataApi } from "@/lib/orvek-v0/mock-api";
 import {
@@ -25,12 +26,28 @@ import {
 import type { UserMapConclusionPublicApiDetailItem } from "@/lib/public-intelligence-safe-slice";
 import type { UserMapConclusionPublicApiListItem } from "@/lib/public-intelligence-safe-slice";
 import {
+  buildTimelineModelLayersRequestUrl,
+  type TimelineModelLayerItem,
+} from "@/lib/timeline-model-layers";
+import {
+  enrichTimelineActivityEntry,
+  fetchTimelineSemanticEntries,
+} from "@/lib/timeline-semantic-layers";
+import {
+  buildTimelineRequestUrl,
+  mapTimelineEntries,
+  type TimelineEntry,
+  type TimelineResponse,
+} from "@/lib/timeline-surface";
+import {
   fetchMapMovementPreview,
   fetchMapOpenQuestionsPreview,
   type MapMovementPreviewItem,
   type MapOpenQuestionPreviewItem,
 } from "@/lib/your-map-preview-surface";
 import { fetchYourMapConclusions } from "@/lib/your-map-surface";
+
+const TIMELINE_WINDOW = "30d";
 
 const EMPTY_SNAPSHOT: TodayReentrySnapshot = {
   surfacingCards: [],
@@ -72,6 +89,15 @@ export function useOrvekHybridWorkbenchDataApi() {
   const [isMovementLoading, setIsMovementLoading] = useState(true);
   const [openQuestionItems, setOpenQuestionItems] = useState<MapOpenQuestionPreviewItem[]>([]);
   const [isQuestionsLoading, setIsQuestionsLoading] = useState(true);
+
+  const [timelinePayload, setTimelinePayload] = useState<TimelineResponse | null>(null);
+  const [timelineSemanticEntries, setTimelineSemanticEntries] = useState<TimelineEntry[]>([]);
+  const [timelineModelLayers, setTimelineModelLayers] = useState<TimelineModelLayerItem[]>([]);
+  const [isLoadingTimelineActivity, setIsLoadingTimelineActivity] = useState(true);
+  const [isLoadingTimelineSemantic, setIsLoadingTimelineSemantic] = useState(true);
+  const [isLoadingTimelineModelLayers, setIsLoadingTimelineModelLayers] = useState(true);
+  const [timelineActivityError, setTimelineActivityError] = useState<string | null>(null);
+  const [timelineModelLayerError, setTimelineModelLayerError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -248,12 +274,113 @@ export function useOrvekHybridWorkbenchDataApi() {
     };
   }, [mapItems, mapSelectedId]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      setIsLoadingTimelineActivity(true);
+      setTimelineActivityError(null);
+      try {
+        const response = await fetch(buildTimelineRequestUrl(TIMELINE_WINDOW), {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error("Could not load timeline.");
+        }
+        const next = (await response.json()) as TimelineResponse;
+        if (!cancelled) {
+          setTimelinePayload(next);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setTimelinePayload(null);
+          setTimelineActivityError(
+            error instanceof Error ? error.message : "Could not load timeline.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingTimelineActivity(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      setIsLoadingTimelineSemantic(true);
+      try {
+        const entries = await fetchTimelineSemanticEntries(TIMELINE_WINDOW);
+        if (!cancelled) {
+          setTimelineSemanticEntries(entries);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingTimelineSemantic(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      setIsLoadingTimelineModelLayers(true);
+      try {
+        const response = await fetch(buildTimelineModelLayersRequestUrl(TIMELINE_WINDOW), {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error("Could not load model layers.");
+        }
+        const next = (await response.json()) as { items?: TimelineModelLayerItem[] };
+        if (!cancelled) {
+          setTimelineModelLayers(Array.isArray(next.items) ? next.items : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setTimelineModelLayers([]);
+          setTimelineModelLayerError("Could not load model layers.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingTimelineModelLayers(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const mapIsLoading =
     isLoadingMapList ||
     isMindContextLoading ||
     isMovementLoading ||
     isQuestionsLoading ||
     isMapDetailLoading;
+
+  const timelineEntries = useMemo(() => {
+    const activity = timelinePayload
+      ? mapTimelineEntries(timelinePayload).map(enrichTimelineActivityEntry)
+      : [];
+    return [...activity, ...timelineSemanticEntries];
+  }, [timelinePayload, timelineSemanticEntries]);
+
+  const timelineIsLoading =
+    isLoadingTimelineActivity || isLoadingTimelineSemantic || isLoadingTimelineModelLayers;
 
   return useMemo(() => {
     if (isLoadingSnapshot) {
@@ -290,7 +417,20 @@ export function useOrvekHybridWorkbenchDataApi() {
       },
     });
 
-    return buildHybridWorkbenchDataApi(baseApi, todayApi, mapApi);
+    const timelineApi = buildTimelineProductionDataApi({
+      timelineEntries,
+      modelLayers: timelineModelLayers,
+      semanticFilter: "all",
+      searchQuery: "",
+      isLoadingActivity: timelineIsLoading,
+      isLoadingModelLayers: isLoadingTimelineModelLayers,
+      isLoadingSemantic: isLoadingTimelineSemantic,
+      activityError: timelineActivityError,
+      modelLayerError: timelineModelLayerError,
+      selectedObjectId: null,
+    });
+
+    return buildHybridWorkbenchDataApi(baseApi, todayApi, mapApi, timelineApi);
   }, [
     baseApi,
     isLoadingSnapshot,
@@ -310,5 +450,12 @@ export function useOrvekHybridWorkbenchDataApi() {
     movementItems,
     isQuestionsLoading,
     openQuestionItems,
+    timelineEntries,
+    timelineModelLayers,
+    timelineIsLoading,
+    isLoadingTimelineModelLayers,
+    isLoadingTimelineSemantic,
+    timelineActivityError,
+    timelineModelLayerError,
   ]);
 }

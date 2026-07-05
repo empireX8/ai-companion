@@ -1,6 +1,10 @@
 import type { OrvekDataApi } from "../data-provider";
 import type { OrvekObject } from "../orvek-types";
 import { shouldMergeMapProductionApi, normalizeMapProductionDataApi } from "./map-presentation";
+import {
+  shouldMergeTimelineProductionApi,
+  normalizeTimelineProductionDataApi,
+} from "./timeline-presentation";
 
 function normalizeIds(ids: string[] | undefined): string[] {
   const seen = new Set<string>();
@@ -121,15 +125,53 @@ function mergeMapOverlay(baseApi: OrvekDataApi, mapApi: OrvekDataApi): OrvekData
   };
 }
 
+function mergeTimelineOverlay(baseApi: OrvekDataApi, timelineApi: OrvekDataApi): OrvekDataApi {
+  const baseGetObject = baseApi.getObject.bind(baseApi);
+
+  return {
+    ...baseApi,
+    getObject: (id) => {
+      if (!id) {
+        return undefined;
+      }
+      return timelineApi.getObject(id) ?? baseGetObject(id);
+    },
+    getObjects: (ids) => {
+      const resolved: OrvekObject[] = [];
+
+      for (const id of ids ?? []) {
+        if (!id) {
+          continue;
+        }
+        const object = timelineApi.getObject(id) ?? baseGetObject(id);
+        if (object) {
+          resolved.push(object);
+        }
+      }
+
+      return resolved;
+    },
+    timelineGroups: timelineApi.timelineGroups,
+    timelineFilters: timelineApi.timelineFilters,
+    timelineIsLoading: timelineApi.timelineIsLoading,
+    emptyCopyBySlot: {
+      ...baseApi.emptyCopyBySlot,
+      ...timelineApi.emptyCopyBySlot,
+    },
+  };
+}
+
 export function buildHybridWorkbenchDataApi(
   baseApi: OrvekDataApi,
   todayApi?: OrvekDataApi,
   mapApi?: OrvekDataApi,
+  timelineApi?: OrvekDataApi,
 ): OrvekDataApi {
   const mergeToday = !!todayApi && normalizeIds(todayApi.todayResurfacedIds).length > 0;
   const mergeMap = shouldMergeMapProductionApi(mapApi);
+  const mergeTimeline = shouldMergeTimelineProductionApi(timelineApi);
 
-  if (!mergeToday && !mergeMap) {
+  if (!mergeToday && !mergeMap && !mergeTimeline) {
     return baseApi;
   }
 
@@ -141,6 +183,10 @@ export function buildHybridWorkbenchDataApi(
 
   if (mergeMap && mapApi) {
     api = mergeMapOverlay(api, normalizeMapProductionDataApi(mapApi));
+  }
+
+  if (mergeTimeline && timelineApi) {
+    api = mergeTimelineOverlay(api, normalizeTimelineProductionDataApi(timelineApi));
   }
 
   return api;

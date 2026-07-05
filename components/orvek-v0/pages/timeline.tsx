@@ -88,9 +88,15 @@ export function TimelinePage() {
       : FILTERS
 
   function openEvent(id: string) {
-    select(id)
-    const e = getObject(id)
-    if (e?.before || e?.after) setInspectorTab("movement")
+    const row = getObject(id)
+    const selectionId = row?.inspectorObjectId && getObject(row.inspectorObjectId)
+      ? row.inspectorObjectId
+      : id
+    select(selectionId)
+    const e = getObject(selectionId) ?? row
+    if (e?.before || e?.after || e?.inspectorObjectType === "model_update") {
+      setInspectorTab("movement")
+    }
   }
 
   return (
