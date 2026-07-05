@@ -219,14 +219,30 @@ describe("timeline presentation readiness gate", () => {
     ).toBe(false);
   });
 
-  it("keeps hybrid workbench on reference Timeline when production data is not merged yet", () => {
+  it("keeps hybrid workbench on reference Timeline when timeline overlay is not passed", () => {
+    const baseApi = createMockOrvekDataApi();
+    const hybridApi = buildHybridWorkbenchDataApi(baseApi);
+
+    expect(hybridApi.timelineGroups).toEqual([]);
+    expect(hybridApi.getObject("t1")).toMatchObject(baseApi.getObject("t1") ?? {});
+  });
+
+  it("does not merge Timeline overlay when passed as mapApi by mistake", () => {
     const baseApi = createMockOrvekDataApi();
     const timelineApi = buildTimelineProductionDataApi(READY_TIMELINE_INPUT);
     const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, timelineApi);
 
-    expect(hybridApi).toBe(baseApi);
     expect(hybridApi.timelineGroups).toEqual([]);
     expect(hybridApi.getObject("t1")).toMatchObject(baseApi.getObject("t1") ?? {});
+  });
+
+  it("merges ready Timeline overlay through the hybrid workbench fourth argument", () => {
+    const baseApi = createMockOrvekDataApi();
+    const timelineApi = buildTimelineProductionDataApi(READY_TIMELINE_INPUT);
+    const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, undefined, timelineApi);
+
+    expect(hybridApi.timelineGroups.some((group) => group.ids.length > 0)).toBe(true);
+    expect(hybridApi.getObject("activity-journal-1")?.title).toBe("Scope note");
   });
 
   it("does not wire root Timeline production fetch in the hybrid hook", () => {

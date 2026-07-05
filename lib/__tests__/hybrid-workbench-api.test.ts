@@ -3,11 +3,17 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { MapMapDataInput } from "../orvek-adapters/map";
+import type { MapTimelineDataInput } from "../orvek-adapters/timeline";
 import { createMockOrvekDataApi } from "../../lib/orvek-v0/mock-api";
 import { buildHybridWorkbenchDataApi } from "../../lib/orvek-v0/production/hybrid-workbench-api";
 import { buildMapProductionDataApi } from "../../lib/orvek-v0/production/map-api";
+import { buildTimelineProductionDataApi } from "../../lib/orvek-v0/production/timeline-api";
 import { buildTodayProductionDataApi } from "../../lib/orvek-v0/production/today-api";
 import { shouldMergeMapProductionApi } from "../../lib/orvek-v0/production/map-presentation";
+import {
+  REFERENCE_TIMELINE_FILTERS,
+  shouldMergeTimelineProductionApi,
+} from "../../lib/orvek-v0/production/timeline-presentation";
 import type { TodayReentrySnapshot } from "../today-reentry";
 
 function readSource(relativePath: string): string {
@@ -57,6 +63,45 @@ const READY_MAP_INPUT: MapMapDataInput = {
   mindContext: { isLoading: false, items: [], summaryCounts: { memories: 0, patterns: 0 } },
   movementPreview: { isLoading: false, items: [] },
   openQuestionsPreview: { isLoading: false, items: [] },
+};
+
+const NOW = new Date("2026-06-24T12:00:00.000Z");
+
+const READY_TIMELINE_INPUT: MapTimelineDataInput = {
+  timelineEntries: [
+    {
+      id: "journal-1",
+      occurredAt: "2026-06-24T09:00:00.000Z",
+      chip: "Journal",
+      title: "Scope note",
+      body: "Captured scope uncertainty in journal.",
+      href: "/library/journal-journal-1",
+      kind: "journal",
+      lane: "receipts_activity",
+      sourceLabel: "Journal",
+    },
+  ],
+  modelLayers: [
+    {
+      id: "mu-1",
+      updateTypeLabel: "Map update",
+      affectedObjectType: "usermap_conclusion",
+      affectedObjectTypeLabel: "Map conclusion",
+      affectedObjectId: "c-1",
+      affectedObjectHref: null,
+      userFacingSummary: "Scope reopening under uncertainty.",
+      createdAt: "2026-06-24T10:30:00.000Z",
+    },
+  ],
+  semanticFilter: "all",
+  searchQuery: "",
+  isLoadingActivity: false,
+  isLoadingModelLayers: false,
+  isLoadingSemantic: false,
+  activityError: null,
+  modelLayerError: null,
+  selectedObjectId: null,
+  now: NOW,
 };
 
 const EMPTY_SNAPSHOT: TodayReentrySnapshot = {
@@ -222,5 +267,154 @@ describe("hybrid workbench data api", () => {
     expect(hookSource).toContain("buildHybridWorkbenchDataApi");
     expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/your-map/);
     expect(handlersSource).not.toMatch(/map:\s*\{[\s\S]*onOpenItem/);
+  });
+
+  it("merges presentation-ready production Timeline overlay into the hybrid workbench", () => {
+    const baseApi = createMockOrvekDataApi();
+    const timelineApi = buildTimelineProductionDataApi(READY_TIMELINE_INPUT);
+
+    expect(shouldMergeTimelineProductionApi(timelineApi)).toBe(true);
+
+    const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, undefined, timelineApi);
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.timelineGroups.some((group) => group.ids.length > 0)).toBe(true);
+    expect(hybridApi.timelineFilters).toEqual([...REFERENCE_TIMELINE_FILTERS]);
+    expect(hybridApi.getObject("activity-journal-1")?.title).toBe("Scope note");
+    expect(hybridApi.getObject("t1")).toMatchObject(baseApi.getObject("t1") ?? {});
+  });
+
+  it("falls back to reference Timeline when production Timeline overlay fails readiness", () => {
+    const baseApi = createMockOrvekDataApi();
+    const unsafeTimelineApi = buildTimelineProductionDataApi({
+      ...READY_TIMELINE_INPUT,
+      timelineEntries: [
+        {
+          id: "journal-1",
+          occurredAt: "2026-06-24T09:00:00.000Z",
+          chip: "Journal",
+          title: "Scope note",
+          body: "Traceback (most recent call last): journal dump overflow",
+          href: "/library/journal-journal-1",
+          kind: "journal",
+          lane: "receipts_activity",
+          sourceLabel: "Journal",
+        },
+      ],
+      modelLayers: [],
+    });
+
+    expect(shouldMergeTimelineProductionApi(unsafeTimelineApi)).toBe(false);
+
+    const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, undefined, unsafeTimelineApi);
+
+    expect(hybridApi.timelineGroups).toEqual([]);
+    expect(hybridApi.getObject("t1")).toMatchObject(baseApi.getObject("t1") ?? {});
+  });
+
+  it("falls back to reference Timeline when production Timeline overlay is still loading", () => {
+    const baseApi = createMockOrvekDataApi();
+    const loadingTimelineApi = buildTimelineProductionDataApi({
+      ...READY_TIMELINE_INPUT,
+      isLoadingActivity: true,
+    });
+
+    expect(shouldMergeTimelineProductionApi(loadingTimelineApi)).toBe(false);
+
+    const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, undefined, loadingTimelineApi);
+
+    expect(hybridApi.timelineGroups).toEqual([]);
+  });
+
+  it("falls back to reference Timeline when production rows have unmapped event types", () => {
+    const baseApi = createMockOrvekDataApi();
+    const invalidTimelineApi = buildTimelineProductionDataApi({
+      ...READY_TIMELINE_INPUT,
+      timelineEntries: [
+        {
+          id: "unknown-1",
+          occurredAt: "2026-06-24T09:00:00.000Z",
+          chip: "Mystery Widget",
+          title: "Unknown row",
+          body: "Unknown stream item.",
+          href: null,
+        },
+      ],
+      modelLayers: [],
+    });
+
+    expect(shouldMergeTimelineProductionApi(invalidTimelineApi)).toBe(false);
+
+    const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, undefined, invalidTimelineApi);
+
+    expect(hybridApi.timelineGroups).toEqual([]);
+    expect(hybridApi.getObject("t1")).toMatchObject(baseApi.getObject("t1") ?? {});
+  });
+
+  it("does not merge duplicate movement rows into the hybrid Timeline overlay", () => {
+    const baseApi = createMockOrvekDataApi();
+    const duplicateTimelineApi = buildTimelineProductionDataApi({
+      ...READY_TIMELINE_INPUT,
+      timelineEntries: [
+        ...READY_TIMELINE_INPUT.timelineEntries,
+        {
+          id: "mu-1",
+          occurredAt: "2026-06-24T10:30:00.000Z",
+          chip: "Model Update",
+          title: "Duplicate movement row",
+          body: "Scope reopening under uncertainty.",
+          href: null,
+          kind: "model_update",
+          lane: "model_movement",
+          selectableObjectType: "model_update",
+          selectableObjectId: "mu-1",
+        },
+      ],
+    });
+
+    expect(shouldMergeTimelineProductionApi(duplicateTimelineApi)).toBe(true);
+
+    const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, undefined, duplicateTimelineApi);
+    const rowIds = hybridApi.timelineGroups.flatMap((group) => group.ids);
+
+    expect(rowIds).toContain("model-mu-1");
+    expect(rowIds).not.toContain("activity-mu-1");
+    expect(hybridApi.getObject("t1")).toMatchObject(baseApi.getObject("t1") ?? {});
+  });
+
+  it("preserves Today and Map hybrid merges when Timeline overlay is ready", () => {
+    const baseApi = createMockOrvekDataApi();
+    const productionTodayApi = buildTodayProductionDataApi({
+      snapshot: LIVE_SNAPSHOT,
+      isLoading: false,
+      briefingDate: "Tuesday · 24 June",
+    });
+    const readyMapApi = buildMapProductionDataApi(READY_MAP_INPUT);
+    const readyTimelineApi = buildTimelineProductionDataApi(READY_TIMELINE_INPUT);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      productionTodayApi,
+      readyMapApi,
+      readyTimelineApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.mapHasContent).toBe(true);
+    expect(hybridApi.getObject("r6")).toMatchObject(baseApi.getObject("r6") ?? {});
+    expect(hybridApi.getObject("conclusion-c-1")?.summary).toBe(
+      "The most active loop; directly raises decision pressure.",
+    );
+    expect(hybridApi.timelineFilters).toEqual([...REFERENCE_TIMELINE_FILTERS]);
+    expect(hybridApi.getObject("activity-journal-1")?.title).toBe("Scope note");
+  });
+
+  it("does not wire root Timeline production fetch in the hybrid hook yet", () => {
+    const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
+
+    expect(hookSource).not.toContain("buildTimelineProductionDataApi");
+    expect(hookSource).not.toContain("fetchTimelineSemanticEntries");
+    expect(hookSource).not.toContain("buildTimelineRequestUrl");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi");
   });
 });
