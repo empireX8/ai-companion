@@ -254,12 +254,15 @@ describe("free explore chat presentation readiness", () => {
     expect(shouldMergeFreeExploreChatProductionApi(legacyApi)).toBe(false);
   });
 
-  it("keeps root hybrid hook free of chat session/message fetch", () => {
+  it("keeps root hybrid hook wired for bounded Explore chat session read fetch", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
-    expect(hookSource).not.toContain("useOrvekExploreChat");
-    expect(hookSource).not.toContain("buildFreeExploreChatProductionDataApi");
-    expect(hookSource).not.toContain("/api/message/list");
+    expect(hookSource).toContain("useOrvekExploreChat");
+    expect(hookSource).toContain("buildFreeExploreChatProductionDataApi");
+    expect(hookSource).toContain("freeExploreChatApi");
+    expect(hookSource).toContain("sendHandlerAvailable: false");
+    expect(hookSource).not.toContain("sendMessage");
+    expect(hookSource).not.toContain("OrvekPageHandlersProvider");
   });
 
   it("keeps FreeExplore rendering unchanged", () => {

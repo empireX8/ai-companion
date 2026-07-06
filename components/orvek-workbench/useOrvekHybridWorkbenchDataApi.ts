@@ -22,6 +22,7 @@ import { buildInvestigationsProductionDataApi } from "@/lib/orvek-v0/production/
 import { buildActiveQuestionsProductionDataApi } from "@/lib/orvek-v0/production/active-questions-api";
 import { buildExperimentProductionDataApi } from "@/lib/orvek-v0/production/experiment-api";
 import { buildTodayProductionDataApi } from "@/lib/orvek-v0/production/today-api";
+import { buildFreeExploreChatProductionDataApi } from "@/lib/orvek-v0/production/free-explore-chat-api";
 import { buildHybridWorkbenchDataApi } from "@/lib/orvek-v0/production/hybrid-workbench-api";
 import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
 import { buildTimelineProductionDataApi } from "@/lib/orvek-v0/production/timeline-api";
@@ -61,6 +62,8 @@ import {
 } from "@/lib/investigations";
 import { fetchWatchForItems, type WatchForItem } from "@/lib/watch-for";
 
+import { useOrvekExploreChat } from "./useOrvekExploreChat";
+
 const TIMELINE_WINDOW = "30d";
 
 const EMPTY_SNAPSHOT: TodayReentrySnapshot = {
@@ -82,6 +85,14 @@ const DISPLAY_DATE = new Intl.DateTimeFormat("en-GB", {
 
 export function useOrvekHybridWorkbenchDataApi() {
   const baseApi = useMemo(() => createMockOrvekDataApi(), []);
+  const {
+    selectedSessionId: exploreChatSessionId,
+    messages: exploreChatMessages,
+    draft: exploreChatDraft,
+    isBooting: isExploreChatBooting,
+    isSending: isExploreChatSending,
+    errorMessage: exploreChatErrorMessage,
+  } = useOrvekExploreChat({});
   const [snapshot, setSnapshot] = useState<TodayReentrySnapshot>(EMPTY_SNAPSHOT);
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(true);
 
@@ -590,6 +601,21 @@ export function useOrvekHybridWorkbenchDataApi() {
       investigationsIsLoading: isLoadingInvestigations,
     };
 
+    const freeExploreChatApi = buildFreeExploreChatProductionDataApi({
+      sessionId: exploreChatSessionId,
+      messages: exploreChatMessages.map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        createdAt: message.createdAt,
+      })),
+      composerDraft: exploreChatDraft,
+      isBooting: isExploreChatBooting,
+      isSending: isExploreChatSending,
+      errorMessage: exploreChatErrorMessage,
+      sendHandlerAvailable: false,
+    });
+
     return buildHybridWorkbenchDataApi(
       baseApi,
       todayApi,
@@ -599,6 +625,7 @@ export function useOrvekHybridWorkbenchDataApi() {
       experimentApi,
       activeQuestionsApi,
       investigationsApi,
+      freeExploreChatApi,
     );
   }, [
     baseApi,
@@ -634,5 +661,11 @@ export function useOrvekHybridWorkbenchDataApi() {
     isLoadingActiveQuestions,
     exploreInvestigationItems,
     isLoadingInvestigations,
+    exploreChatSessionId,
+    exploreChatMessages,
+    exploreChatDraft,
+    isExploreChatBooting,
+    isExploreChatSending,
+    exploreChatErrorMessage,
   ]);
 }
