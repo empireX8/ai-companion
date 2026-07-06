@@ -18,6 +18,7 @@ import {
   type ActionsPageData,
 } from "@/lib/actions-api";
 import { buildDecisionsProductionDataApi } from "@/lib/orvek-v0/production/decisions-api";
+import { buildInvestigationsProductionDataApi } from "@/lib/orvek-v0/production/investigations-api";
 import { buildActiveQuestionsProductionDataApi } from "@/lib/orvek-v0/production/active-questions-api";
 import { buildExperimentProductionDataApi } from "@/lib/orvek-v0/production/experiment-api";
 import { buildTodayProductionDataApi } from "@/lib/orvek-v0/production/today-api";
@@ -54,6 +55,10 @@ import {
 } from "@/lib/your-map-preview-surface";
 import { fetchYourMapConclusions } from "@/lib/your-map-surface";
 import { fetchActiveQuestionItems, type ActiveQuestionItem } from "@/lib/active-questions";
+import {
+  fetchExploreInvestigationItems,
+  type ExploreInvestigationItem,
+} from "@/lib/investigations";
 import { fetchWatchForItems, type WatchForItem } from "@/lib/watch-for";
 
 const TIMELINE_WINDOW = "30d";
@@ -116,6 +121,11 @@ export function useOrvekHybridWorkbenchDataApi() {
 
   const [activeQuestionItems, setActiveQuestionItems] = useState<ActiveQuestionItem[]>([]);
   const [isLoadingActiveQuestions, setIsLoadingActiveQuestions] = useState(true);
+
+  const [exploreInvestigationItems, setExploreInvestigationItems] = useState<
+    ExploreInvestigationItem[]
+  >([]);
+  const [isLoadingInvestigations, setIsLoadingInvestigations] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -212,6 +222,32 @@ export function useOrvekHybridWorkbenchDataApi() {
       } finally {
         if (!cancelled) {
           setIsLoadingActiveQuestions(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      setIsLoadingInvestigations(true);
+      try {
+        const nextItems = await fetchExploreInvestigationItems();
+        if (!cancelled) {
+          setExploreInvestigationItems(nextItems);
+        }
+      } catch {
+        if (!cancelled) {
+          setExploreInvestigationItems([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingInvestigations(false);
         }
       }
     })();
@@ -549,6 +585,11 @@ export function useOrvekHybridWorkbenchDataApi() {
       activeQuestionsIsLoading: isLoadingActiveQuestions,
     };
 
+    const investigationsApi = {
+      ...buildInvestigationsProductionDataApi(exploreInvestigationItems),
+      investigationsIsLoading: isLoadingInvestigations,
+    };
+
     return buildHybridWorkbenchDataApi(
       baseApi,
       todayApi,
@@ -557,6 +598,7 @@ export function useOrvekHybridWorkbenchDataApi() {
       decisionsApi,
       experimentApi,
       activeQuestionsApi,
+      investigationsApi,
     );
   }, [
     baseApi,
@@ -590,5 +632,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     isLoadingWatchFor,
     activeQuestionItems,
     isLoadingActiveQuestions,
+    exploreInvestigationItems,
+    isLoadingInvestigations,
   ]);
 }
