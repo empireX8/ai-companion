@@ -10,6 +10,7 @@ import { buildDecisionsProductionDataApi } from "../../lib/orvek-v0/production/d
 import { buildActiveQuestionsProductionDataApi } from "../../lib/orvek-v0/production/active-questions-api";
 import { buildExperimentProductionDataApi } from "../../lib/orvek-v0/production/experiment-api";
 import { buildInvestigationsProductionDataApi } from "../../lib/orvek-v0/production/investigations-api";
+import { buildFreeExploreChatProductionDataApi } from "../../lib/orvek-v0/production/free-explore-chat-api";
 import { buildHybridWorkbenchDataApi } from "../../lib/orvek-v0/production/hybrid-workbench-api";
 import { buildMapProductionDataApi } from "../../lib/orvek-v0/production/map-api";
 import { buildTimelineProductionDataApi } from "../../lib/orvek-v0/production/timeline-api";
@@ -34,6 +35,8 @@ import {
   referenceTagsForInvestigationStatus,
   shouldMergeInvestigationsProductionApi,
 } from "../../lib/orvek-v0/production/investigations-presentation";
+import { shouldMergeFreeExploreChatProductionApi } from "../../lib/orvek-v0/production/free-explore-chat-presentation";
+import { withProductionContract } from "../../lib/orvek-v0/display-contract";
 import { shouldMergeMapProductionApi } from "../../lib/orvek-v0/production/map-presentation";
 import type { ActiveQuestionItem } from "../active-questions";
 import type { ExploreInvestigationItem } from "../investigations";
@@ -302,6 +305,36 @@ const READY_INVESTIGATIONS: ExploreInvestigationItem[] = [
     statusLabel: "Abandoned",
   }),
 ];
+
+function readyFreeExploreChatInput(
+  overrides: Partial<Parameters<typeof buildFreeExploreChatProductionDataApi>[0]> = {},
+) {
+  return {
+    sessionId: "sess-ready-1",
+    sessionTitle: "Architecture uncertainty thread",
+    messages: [
+      {
+        id: "msg-user-1",
+        role: "user" as const,
+        content: "Why do I need to see the architecture visually before locking design?",
+        createdAt: "2026-06-20T10:00:00.000Z",
+      },
+      {
+        id: "msg-assistant-1",
+        role: "assistant" as const,
+        content:
+          "You seem to trust decisions more once the system can express itself visually.",
+        createdAt: "2026-06-20T10:00:05.000Z",
+      },
+    ],
+    composerDraft: "",
+    isBooting: false,
+    isSending: false,
+    errorMessage: null,
+    sendHandlerAvailable: false,
+    ...overrides,
+  };
+}
 
 describe("hybrid workbench data api", () => {
   it("preserves the reference Today branch while hydrating live evidence pointers", () => {
@@ -1454,5 +1487,257 @@ describe("hybrid workbench data api", () => {
     expect(investigationsBlock).toContain("hasLiveInvestigations");
     expect(investigationsBlock).toContain("resolveInvestigationsOpenSelectionId");
     expect(investigationsBlock).not.toContain("isProductionDisplay");
+  });
+
+  it("merges presentation-ready Free Explore chat overlay into the hybrid workbench", () => {
+    const baseApi = createMockOrvekDataApi();
+    const freeExploreChatApi = buildFreeExploreChatProductionDataApi(readyFreeExploreChatInput());
+
+    expect(shouldMergeFreeExploreChatProductionApi(freeExploreChatApi)).toBe(true);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      freeExploreChatApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.freeExploreChatSessionId).toBe("sess-ready-1");
+    expect(hybridApi.freeExploreSendHandlerAvailable).toBe(false);
+    expect(hybridApi.exploreMessages).toEqual([
+      {
+        id: "msg-user-1",
+        role: "user",
+        content: "Why do I need to see the architecture visually before locking design?",
+      },
+      {
+        id: "msg-assistant-1",
+        role: "orvek",
+        content: "You seem to trust decisions more once the system can express itself visually.",
+      },
+    ]);
+    expect(hybridApi.exploreGrounding).toEqual(baseApi.exploreGrounding);
+    expect(hybridApi.exploreLiveDetectionCopy).toBe(baseApi.exploreLiveDetectionCopy);
+    expect(hybridApi.exploreMovement).toEqual(baseApi.exploreMovement);
+  });
+
+  it("merges safe empty-live Free Explore chat overlay when session is ready with no messages", () => {
+    const baseApi = createMockOrvekDataApi();
+    const freeExploreChatApi = buildFreeExploreChatProductionDataApi(
+      readyFreeExploreChatInput({ messages: [] }),
+    );
+
+    expect(shouldMergeFreeExploreChatProductionApi(freeExploreChatApi)).toBe(true);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      freeExploreChatApi,
+    );
+
+    expect(hybridApi.freeExploreChatSessionId).toBe("sess-ready-1");
+    expect(hybridApi.exploreMessages).toEqual([]);
+    expect(hybridApi.freeExploreSendHandlerAvailable).toBe(false);
+  });
+
+  it("falls back to reference Free Explore chat when production overlay fails readiness", () => {
+    const baseApi = createMockOrvekDataApi();
+    const unsafeChatApi = buildFreeExploreChatProductionDataApi(
+      readyFreeExploreChatInput({
+        isBooting: true,
+      }),
+    );
+
+    expect(shouldMergeFreeExploreChatProductionApi(unsafeChatApi)).toBe(false);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      unsafeChatApi,
+    );
+
+    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi.exploreMessages).toBeUndefined();
+    expect(hybridApi.freeExploreChatSessionId).toBeUndefined();
+  });
+
+  it("falls back when Free Explore chat overlay has auth/session boot errors", () => {
+    const baseApi = createMockOrvekDataApi();
+    const authErrorApi = buildFreeExploreChatProductionDataApi(
+      readyFreeExploreChatInput({
+        messages: [],
+        errorMessage: "Please sign in to view sessions.",
+      }),
+    );
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      authErrorApi,
+    );
+
+    expect(hybridApi.exploreMessages).toBeUndefined();
+    expect(hybridApi.freeExploreChatSessionId).toBeUndefined();
+  });
+
+  it("does not enable send from overlay even when upstream marks handler availability true", () => {
+    const baseApi = createMockOrvekDataApi();
+    const handlerTrueApi = buildFreeExploreChatProductionDataApi(
+      readyFreeExploreChatInput({
+        sendHandlerAvailable: true,
+      }),
+    );
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      handlerTrueApi,
+    );
+
+    expect(hybridApi.freeExploreSendHandlerAvailable).toBe(false);
+  });
+
+  it("rejects displayContract production leaks from Free Explore chat overlay merge", () => {
+    const baseApi = createMockOrvekDataApi();
+    const leakedApi = withProductionContract(
+      buildFreeExploreChatProductionDataApi(readyFreeExploreChatInput()),
+    );
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      leakedApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.exploreMessages).toBeUndefined();
+  });
+
+  it("does not merge fake grounding/movement/live-detection fields as production chat overlay", () => {
+    const baseApi = createMockOrvekDataApi();
+    const freeExploreChatApi = buildFreeExploreChatProductionDataApi(readyFreeExploreChatInput());
+    const leakedOverlay = {
+      ...freeExploreChatApi,
+      exploreGrounding: ["r6"],
+      exploreLiveDetectionCopy: "1 receipt extracted",
+      exploreMovement: [{ id: "ex1", kind: "Receipt extracted", text: "Unsafe" }],
+    };
+
+    expect(shouldMergeFreeExploreChatProductionApi(leakedOverlay)).toBe(false);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      leakedOverlay,
+    );
+
+    expect(hybridApi.exploreMessages).toBeUndefined();
+    expect(hybridApi.exploreGrounding).toEqual(baseApi.exploreGrounding);
+    expect(hybridApi.exploreLiveDetectionCopy).toBe(baseApi.exploreLiveDetectionCopy);
+    expect(hybridApi.exploreMovement).toEqual(baseApi.exploreMovement);
+  });
+
+  it("preserves Today, Map, Timeline, Decisions, Experiment, Active Questions, and Investigations merges when Free Explore chat overlay is ready", () => {
+    const baseApi = createMockOrvekDataApi();
+    const productionTodayApi = buildTodayProductionDataApi({
+      snapshot: LIVE_SNAPSHOT,
+      isLoading: false,
+      briefingDate: "Tuesday · 24 June",
+    });
+    const readyMapApi = buildMapProductionDataApi(READY_MAP_INPUT);
+    const readyTimelineApi = buildTimelineProductionDataApi(READY_TIMELINE_INPUT);
+    const readyDecisionsApi = buildDecisionsProductionDataApi(READY_DECISIONS_ACTIONS);
+    const readyExperimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
+    const readyActiveQuestionsApi = buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS);
+    const readyInvestigationsApi = buildInvestigationsProductionDataApi(READY_INVESTIGATIONS, {
+      enrichments: READY_INVESTIGATION_ENRICHMENTS,
+    });
+    const freeExploreChatApi = buildFreeExploreChatProductionDataApi(readyFreeExploreChatInput());
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      productionTodayApi,
+      readyMapApi,
+      readyTimelineApi,
+      readyDecisionsApi,
+      readyExperimentApi,
+      readyActiveQuestionsApi,
+      readyInvestigationsApi,
+      freeExploreChatApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.exploreFieldworkIds).toEqual(["fw-active", "fw-assigned"]);
+    expect(hybridApi.exploreQuestionIds).toEqual(["aq-live-1", "aq-live-2"]);
+    expect(hybridApi.exploreInvestigationIds).toEqual(["inv-resolved-1", "inv-abandoned-1"]);
+    expect(hybridApi.freeExploreChatSessionId).toBe("sess-ready-1");
+    expect(hybridApi.exploreMessages?.length).toBe(2);
+    expect(hybridApi.freeExploreSendHandlerAvailable).toBe(false);
+  });
+
+  it("keeps root hybrid hook wired for bounded Explore chat session read fetch", () => {
+    const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
+
+    expect(hookSource).toContain("useOrvekExploreChat");
+    expect(hookSource).toContain("buildFreeExploreChatProductionDataApi");
+    expect(hookSource).toContain("freeExploreChatApi");
+    expect(hookSource).toContain("sendHandlerAvailable: false");
+    expect(hookSource).not.toContain("sendMessage");
+    expect(hookSource).not.toContain("OrvekPageHandlersProvider");
+  });
+
+  it("keeps FreeExplore consuming gated live exploreMessages read-only", () => {
+    const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
+    const freeExploreBlock =
+      explorePageSource.match(/function FreeExplore\(\) \{([\s\S]*?)\n\}\n\nfunction Bubble/)?.[1] ??
+      "";
+
+    expect(freeExploreBlock).toContain("hasLiveExploreChat");
+    expect(freeExploreBlock).toContain("hasLiveExploreChatFromProvider");
+    expect(freeExploreBlock).not.toContain("isProductionDisplay");
+    expect(freeExploreBlock).toContain("freeExploreSendHandlerAvailable === true");
+    expect(freeExploreBlock).toContain("exploreHandlers?.onSend");
   });
 });

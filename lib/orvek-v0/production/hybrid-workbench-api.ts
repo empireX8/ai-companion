@@ -21,6 +21,10 @@ import {
   shouldMergeTimelineProductionApi,
   normalizeTimelineProductionDataApi,
 } from "./timeline-presentation";
+import {
+  shouldMergeFreeExploreChatProductionApi,
+  normalizeFreeExploreChatProductionDataApi,
+} from "./free-explore-chat-presentation";
 
 function normalizeIds(ids: string[] | undefined): string[] {
   const seen = new Set<string>();
@@ -328,6 +332,31 @@ function mergeTimelineOverlay(baseApi: OrvekDataApi, timelineApi: OrvekDataApi):
   };
 }
 
+function mergeFreeExploreChatOverlay(
+  baseApi: OrvekDataApi,
+  freeExploreChatApi: OrvekDataApi,
+): OrvekDataApi {
+  const chatEmptyCopy = freeExploreChatApi.emptyCopyBySlot ?? {};
+
+  return {
+    ...baseApi,
+    exploreMessages: freeExploreChatApi.exploreMessages,
+    exploreIsLoading: freeExploreChatApi.exploreIsLoading,
+    freeExploreChatSessionId: freeExploreChatApi.freeExploreChatSessionId,
+    freeExploreSendHandlerAvailable: false,
+    explore: freeExploreChatApi.explore,
+    emptyCopyBySlot: {
+      ...baseApi.emptyCopyBySlot,
+      ...(chatEmptyCopy.exploreChatEmpty
+        ? { exploreChatEmpty: chatEmptyCopy.exploreChatEmpty }
+        : {}),
+      ...(chatEmptyCopy.exploreGroundingEmpty
+        ? { exploreGroundingEmpty: chatEmptyCopy.exploreGroundingEmpty }
+        : {}),
+    },
+  };
+}
+
 export function buildHybridWorkbenchDataApi(
   baseApi: OrvekDataApi,
   todayApi?: OrvekDataApi,
@@ -337,6 +366,7 @@ export function buildHybridWorkbenchDataApi(
   experimentApi?: OrvekDataApi,
   activeQuestionsApi?: OrvekDataApi,
   investigationsApi?: OrvekDataApi,
+  freeExploreChatApi?: OrvekDataApi,
 ): OrvekDataApi {
   const mergeToday = !!todayApi && normalizeIds(todayApi.todayResurfacedIds).length > 0;
   const mergeMap = shouldMergeMapProductionApi(mapApi);
@@ -345,6 +375,7 @@ export function buildHybridWorkbenchDataApi(
   const mergeExperiment = shouldMergeExperimentProductionApi(experimentApi);
   const mergeActiveQuestions = shouldMergeActiveQuestionsProductionApi(activeQuestionsApi);
   const mergeInvestigations = shouldMergeInvestigationsProductionApi(investigationsApi);
+  const mergeFreeExploreChat = shouldMergeFreeExploreChatProductionApi(freeExploreChatApi);
 
   if (
     !mergeToday &&
@@ -353,7 +384,8 @@ export function buildHybridWorkbenchDataApi(
     !mergeDecisions &&
     !mergeExperiment &&
     !mergeActiveQuestions &&
-    !mergeInvestigations
+    !mergeInvestigations &&
+    !mergeFreeExploreChat
   ) {
     return baseApi;
   }
@@ -391,6 +423,13 @@ export function buildHybridWorkbenchDataApi(
     api = mergeInvestigationsOverlay(
       api,
       normalizeInvestigationsProductionDataApi(investigationsApi),
+    );
+  }
+
+  if (mergeFreeExploreChat && freeExploreChatApi) {
+    api = mergeFreeExploreChatOverlay(
+      api,
+      normalizeFreeExploreChatProductionDataApi(freeExploreChatApi),
     );
   }
 

@@ -5,10 +5,13 @@ import { cn } from "@/lib/utils"
 import { EXPLORE_GROUNDING } from "@/lib/orvek-v0/orvek-data"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
-import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
+import { ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
+import { V0_EXPLORE_LIVE_DETECTION_COPY } from "@/lib/orvek-adapters/explore"
 import { resolveActiveQuestionsOpenSelectionId } from "@/lib/orvek-v0/production/active-questions-presentation"
 import { resolveInvestigationsOpenSelectionId } from "@/lib/orvek-v0/production/investigations-presentation"
 import { resolveExperimentOpenSelectionId } from "@/lib/orvek-v0/production/experiment-presentation"
+import { hasLiveExploreChatFromProvider } from "@/lib/orvek-v0/production/free-explore-chat-presentation"
+import type { OrvekExploreMessage } from "@/lib/orvek-v0/data-provider"
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { Chip, SectionLabel } from "@/components/orvek-v0/primitives"
@@ -73,55 +76,67 @@ export function ExplorePage() {
   )
 }
 
+const REFERENCE_FREE_EXPLORE_MESSAGES: OrvekExploreMessage[] = [
+  {
+    id: "ref-user",
+    role: "user",
+    content:
+      "Why do I feel like we need to see the architecture visually before locking design?",
+  },
+  {
+    id: "ref-orvek",
+    role: "orvek",
+    content:
+      "You seem to trust decisions more once the system can express itself visually. This connects to a broader pattern: you reject abstract strategy when it feels untested, but you also resist shallow visual polish. The useful move may be an architecture prototype, not a design prototype.",
+  },
+]
+
+const REFERENCE_FREE_EXPLORE_LIVE_DETECTION_COPY =
+  "Orvek is reading the model · 1 receipt extracted · 1 question detected"
+
 function FreeExplore() {
   const { select, setInspectorTab } = useWorkbench()
   const data = useOrvekData()
   const exploreHandlers = useOrvekPageHandlers().explore
-  const { getObjects, exploreGrounding, exploreMessages, exploreLiveDetectionCopy, emptyCopyBySlot } =
-    data
+  const {
+    getObjects,
+    exploreGrounding,
+    exploreMessages,
+    exploreLiveDetectionCopy,
+    emptyCopyBySlot,
+    freeExploreSendHandlerAvailable,
+  } = data
   const [localDraft, setLocalDraft] = useState("")
-  const isProduction = isProductionDisplay(data)
-  const isReference = !isProduction
+  const hasLiveExploreChat = hasLiveExploreChatFromProvider(data)
   const exploreView = data.explore
-  const groundingIds =
-    exploreGrounding.length > 0
-      ? exploreGrounding
-      : isReference
-        ? EXPLORE_GROUNDING
-        : []
+  const useReferenceGrounding = !hasLiveExploreChat || exploreGrounding.length === 0
+  const groundingIds = useReferenceGrounding ? EXPLORE_GROUNDING : exploreGrounding
   const grounding = getObjects(groundingIds)
-  const composerDraft = exploreView?.composerDraft ?? localDraft
+  const composerDraft = localDraft
   const isBooting = Boolean(exploreView?.isBooting)
   const isSending = Boolean(exploreView?.isSending)
   const composerDisabled = isBooting || isSending
-  const canSend = Boolean(exploreHandlers?.onSend) && !composerDisabled && composerDraft.trim().length > 0
+  const canSend =
+    freeExploreSendHandlerAvailable === true &&
+    Boolean(exploreHandlers?.onSend) &&
+    !composerDisabled &&
+    composerDraft.trim().length > 0
   const quickPrompts = exploreView?.quickPrompts ?? [
     "Explore a pattern",
     "Talk through a decision",
     "Start an investigation",
     "Inspect a conflict",
   ]
-  const messages = isProduction
-    ? (exploreMessages ?? [])
-    : (exploreMessages ?? [
-      {
-        id: "ref-user",
-        role: "user" as const,
-        content:
-          "Why do I feel like we need to see the architecture visually before locking design?",
-      },
-      {
-        id: "ref-orvek",
-        role: "orvek" as const,
-        content:
-          "You seem to trust decisions more once the system can express itself visually. This connects to a broader pattern: you reject abstract strategy when it feels untested, but you also resist shallow visual polish. The useful move may be an architecture prototype, not a design prototype.",
-      },
-    ])
+  const liveMessages = (exploreMessages ?? []).filter((message) => message.content.trim().length > 0)
+  const messages = hasLiveExploreChat ? liveMessages : REFERENCE_FREE_EXPLORE_MESSAGES
+  const liveDetectionCopy = hasLiveExploreChat
+    ? V0_EXPLORE_LIVE_DETECTION_COPY
+    : (exploreLiveDetectionCopy ?? REFERENCE_FREE_EXPLORE_LIVE_DETECTION_COPY)
 
   return (
     <div>
       <div className="space-y-3">
-        {messages.length === 0 && isProduction ? (
+        {messages.length === 0 && hasLiveExploreChat ? (
           <div className="o-material rounded-[14px] p-4 text-[13px] leading-relaxed text-muted-foreground">
             {isBooting
               ? (exploreView?.chatLoadingCopy ?? "Loading conversation…")
@@ -159,12 +174,13 @@ function FreeExplore() {
 
       {/* live detection line */}
       <div className="mt-3 flex items-center gap-2 text-[12px] text-muted-foreground">
-        <span className="relative flex size-2 items-center justify-center">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-action/40" />
-          <span className="o-breathe relative inline-flex size-1.5 rounded-full bg-action" />
-        </span>
-        {exploreLiveDetectionCopy ??
-          "Orvek is reading the model · 1 receipt extracted · 1 question detected"}
+        {hasLiveExploreChat ? null : (
+          <span className="relative flex size-2 items-center justify-center">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-action/40" />
+            <span className="o-breathe relative inline-flex size-1.5 rounded-full bg-action" />
+          </span>
+        )}
+        {liveDetectionCopy}
       </div>
 
       {/* end-of-turn movement note → inspector */}
@@ -175,8 +191,14 @@ function FreeExplore() {
       >
         <Sparkles className="size-4 shrink-0 text-action-foreground" aria-hidden />
         <span className="min-w-0 flex-1 text-[13px] leading-relaxed text-foreground">
-          This may update your model in <span className="font-medium">4 places</span>. Review and
-          confirm in the inspector.
+          {hasLiveExploreChat ? (
+            <>Review possible model movement in the inspector.</>
+          ) : (
+            <>
+              This may update your model in <span className="font-medium">4 places</span>. Review and
+              confirm in the inspector.
+            </>
+          )}
         </span>
         <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-action-foreground">
           <PanelRight className="size-3.5" aria-hidden />
@@ -190,7 +212,7 @@ function FreeExplore() {
           value={composerDraft}
           onChange={(event) => {
             const nextValue = event.target.value
-            if (exploreHandlers?.onDraftChange) {
+            if (freeExploreSendHandlerAvailable === true && exploreHandlers?.onDraftChange) {
               exploreHandlers.onDraftChange(nextValue)
               return
             }
@@ -198,7 +220,9 @@ function FreeExplore() {
           }}
           placeholder={exploreView?.composerPlaceholder ?? "Ask the model anything…"}
           onFocus={() => {
-            exploreHandlers?.onComposerFocus?.()
+            if (freeExploreSendHandlerAvailable === true) {
+              exploreHandlers?.onComposerFocus?.()
+            }
           }}
           disabled={composerDisabled}
           className="flex-1 bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50"
@@ -218,7 +242,7 @@ function FreeExplore() {
           Ask
         </button>
       </div>
-      {exploreView?.errorMessage ? (
+      {hasLiveExploreChat && exploreView?.errorMessage ? (
         <p className="mt-2 text-[12px] text-destructive">{exploreView.errorMessage}</p>
       ) : null}
 
@@ -232,7 +256,7 @@ function FreeExplore() {
               if (composerDisabled) {
                 return
               }
-              if (exploreHandlers?.onQuickPrompt) {
+              if (freeExploreSendHandlerAvailable === true && exploreHandlers?.onQuickPrompt) {
                 exploreHandlers.onQuickPrompt(q)
                 return
               }

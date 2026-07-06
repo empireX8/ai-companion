@@ -101,6 +101,10 @@ export type OrvekDataApi = {
   exploreFieldworkIds?: string[];
   exploreFieldworkSelectedId?: string | null;
   exploreIsLoading?: boolean;
+  /** Active explore_chat session id when a live chat bridge is present. */
+  freeExploreChatSessionId?: string | null;
+  /** Explicit send-handler availability for session/handler gate checks. */
+  freeExploreSendHandlerAvailable?: boolean;
   experimentIsLoading?: boolean;
   activeQuestionsIsLoading?: boolean;
   investigationsIsLoading?: boolean;

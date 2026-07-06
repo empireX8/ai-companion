@@ -100,11 +100,11 @@ describe("bounded investigations hybrid fetch bridge", () => {
     expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/investigations/);
   });
 
-  it("passes investigationsApi as the eighth argument to buildHybridWorkbenchDataApi", () => {
+  it("passes investigationsApi as the eighth argument and freeExploreChatApi as the ninth", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
     expect(hookSource).toMatch(
-      /buildHybridWorkbenchDataApi\(\s*baseApi,\s*todayApi,\s*mapApi,\s*timelineApi,\s*decisionsApi,\s*experimentApi,\s*activeQuestionsApi,\s*investigationsApi,\s*\)/,
+      /buildHybridWorkbenchDataApi\(\s*baseApi,\s*todayApi,\s*mapApi,\s*timelineApi,\s*decisionsApi,\s*experimentApi,\s*activeQuestionsApi,\s*investigationsApi,\s*freeExploreChatApi,\s*\)/,
     );
   });
 
