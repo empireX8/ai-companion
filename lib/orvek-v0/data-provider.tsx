@@ -95,11 +95,13 @@ export type OrvekDataApi = {
   /** When set, v0 pages use production data only — no zip mock fallbacks. */
   displayContract?: OrvekDisplayContract;
   exploreQuestionIds?: string[];
+  exploreQuestionSelectedId?: string | null;
   exploreInvestigationIds?: string[];
   exploreFieldworkIds?: string[];
   exploreFieldworkSelectedId?: string | null;
   exploreIsLoading?: boolean;
   experimentIsLoading?: boolean;
+  activeQuestionsIsLoading?: boolean;
   decisionsHeaderStats?: OrvekDecisionsHeaderStats;
   decisionsSelectedId?: string | null;
   decisionsIsLoading?: boolean;

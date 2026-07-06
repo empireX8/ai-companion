@@ -187,13 +187,14 @@ describe("fieldwork bridge alignment", () => {
     expect(explorePageSource).toContain('onSelect(referenceLinkedQuestionId)');
   });
 
-  it("leaves Investigations and Active Questions on reference/mock lists", () => {
+  it("leaves Investigations on reference/mock lists and preserves Active Questions fallback ids", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
 
     expect(explorePageSource).toContain('["inv-1", "inv-2", "inv-3"]');
     expect(explorePageSource).toContain('["aq-1", "aq-2", "aq-3", "aq-4"]');
     expect(explorePageSource).toContain("exploreInvestigationIds");
     expect(explorePageSource).toContain("exploreQuestionIds");
+    expect(explorePageSource).toContain("hasLiveQuestions");
   });
 
   it("keeps Explore chat untouched", () => {

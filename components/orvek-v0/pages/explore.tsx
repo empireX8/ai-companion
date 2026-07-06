@@ -6,6 +6,7 @@ import { EXPLORE_GROUNDING } from "@/lib/orvek-v0/orvek-data"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
 import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
+import { resolveActiveQuestionsOpenSelectionId } from "@/lib/orvek-v0/production/active-questions-presentation"
 import { resolveExperimentOpenSelectionId } from "@/lib/orvek-v0/production/experiment-presentation"
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
 import { useWorkbench } from "@/components/orvek-v0/store"
@@ -273,12 +274,35 @@ function Bubble({ role, children }: { role: "user" | "orvek"; children: React.Re
 function Questions() {
   const { select, setInspectorTab } = useWorkbench()
   const data = useOrvekData()
-  const { getObject, exploreQuestionIds, emptyCopyBySlot } = data
-  const isProduction = isProductionDisplay(data)
-  const ids = isProduction ? (exploreQuestionIds ?? []) : ["aq-1", "aq-2", "aq-3", "aq-4"]
-  const [activeId, setActiveId] = useState(ids[0] ?? "aq-2")
+  const { getObject, exploreQuestionIds, exploreQuestionSelectedId, emptyCopyBySlot } = data
+  const questionIds = exploreQuestionIds ?? []
+  const hasLiveQuestions = questionIds.length > 0
+  const referenceQuestionIds = ["aq-1", "aq-2", "aq-3", "aq-4"] as const
+  const ids = hasLiveQuestions ? questionIds : [...referenceQuestionIds]
+
+  const [activeId, setActiveId] = useState(
+    hasLiveQuestions
+      ? (exploreQuestionSelectedId ?? questionIds[0] ?? referenceQuestionIds[1])
+      : (referenceQuestionIds[0] ?? referenceQuestionIds[1]),
+  )
+
+  useEffect(() => {
+    if (!hasLiveQuestions) {
+      return
+    }
+
+    const nextId = exploreQuestionSelectedId ?? questionIds[0]
+    if (nextId) {
+      setActiveId(nextId)
+    }
+  }, [exploreQuestionSelectedId, questionIds, hasLiveQuestions])
+
   const q = getObject(activeId)
-  const showSkeleton = isProduction && ids.length === 0
+  const showSkeleton = hasLiveQuestions && ids.length === 0
+
+  function resolveInspectorSelection(id: string) {
+    return hasLiveQuestions ? resolveActiveQuestionsOpenSelectionId(id, getObject) : id
+  }
 
   return (
     <div className="grid gap-5 lg:grid-cols-[290px_1fr]">
@@ -301,7 +325,7 @@ function Questions() {
                 type="button"
                 onClick={() => {
                   setActiveId(id)
-                  select(id)
+                  select(resolveInspectorSelection(id))
                 }}
                 className={cn(
                   "o-calm flex w-full items-start gap-2.5 px-3 py-2.5 text-left",
@@ -319,7 +343,9 @@ function Questions() {
                     {o.title}
                   </span>
                   <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                    {o.evidenceCount} receipts · {o.status}
+                    {hasLiveQuestions
+                      ? (o.tags?.[1] ?? o.status ?? "Open")
+                      : `${o.evidenceCount} receipts · ${o.status}`}
                   </span>
                 </span>
               </button>
@@ -342,7 +368,7 @@ function Questions() {
           <div className="o-material rounded-[10px] p-3.5">
             <SectionLabel className="text-primary">Would resolve toward yes if</SectionLabel>
             <ul className="mt-2 space-y-1.5">
-              {(q.supporting ?? (isProduction ? [] : ["A narrow public test reduces felt uncertainty."])).map((s) => (
+              {(q.supporting ?? (hasLiveQuestions ? [] : ["A narrow public test reduces felt uncertainty."])).map((s) => (
                 <li key={s} className="flex gap-2 text-[13px] text-foreground">
                   <span className="mt-0.5 text-primary">+</span>
                   {s}
@@ -353,7 +379,7 @@ function Questions() {
           <div className="o-material rounded-[10px] p-3.5">
             <SectionLabel className="text-destructive/80">Would resolve toward no if</SectionLabel>
             <ul className="mt-2 space-y-1.5">
-              {(q.conflicting ?? (isProduction ? [] : ["Visual output creates false confidence."])).map((c) => (
+              {(q.conflicting ?? (hasLiveQuestions ? [] : ["Visual output creates false confidence."])).map((c) => (
                 <li key={c} className="flex gap-2 text-[13px] text-muted-foreground">
                   <span className="mt-0.5 text-destructive">−</span>
                   {c}
@@ -369,7 +395,11 @@ function Questions() {
                 const o = getObject(id)
                 if (!o) return null
                 return (
-                  <button key={id} type="button" onClick={() => select(id)}>
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => select(resolveInspectorSelection(id))}
+                  >
                     <Chip className="cursor-pointer hover:opacity-80">{o.title}</Chip>
                   </button>
                 )
@@ -381,7 +411,7 @@ function Questions() {
           <button
             type="button"
             onClick={() => {
-              select(activeId)
+              select(resolveInspectorSelection(activeId))
               setInspectorTab("evidence")
             }}
             className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98]"
@@ -393,10 +423,10 @@ function Questions() {
             <button
               key={a}
               type="button"
-              disabled={isProduction}
+              disabled={hasLiveQuestions}
               className={cn(
                 "o-calm rounded-[8px] bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60",
-                isProduction && ORVEK_DEFERRED_ACTION_CLASS,
+                hasLiveQuestions && ORVEK_DEFERRED_ACTION_CLASS,
               )}
             >
               {a}

@@ -54,6 +54,20 @@ export const ACTIVE_QUESTIONS_LIMIT = 20;
 export const ACTIVE_QUESTION_SAFE_VISIBLE_STATUSES =
   ACTIVE_QUESTION_VISIBLE_STATUSES;
 
+export async function fetchActiveQuestionItems(): Promise<ActiveQuestionItem[]> {
+  try {
+    const response = await fetch(ACTIVE_QUESTIONS_ENDPOINT, { cache: "no-store" });
+    if (!response.ok) {
+      return [];
+    }
+
+    const payload = (await response.json()) as { items?: ActiveQuestionItem[] };
+    return Array.isArray(payload.items) ? payload.items : [];
+  } catch {
+    return [];
+  }
+}
+
 export {
   buildPublicActiveInvestigationWhere,
   PUBLIC_INVESTIGATION_ALLOWED_CANDIDATE_LIFECYCLE_STATUSES,
