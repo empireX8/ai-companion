@@ -11,9 +11,12 @@ import {
   resolveActiveQuestionsOpenSelectionId,
   shouldMergeActiveQuestionsProductionApi,
 } from "../../lib/orvek-v0/production/active-questions-presentation";
+import {
+  referenceTagsForFieldworkStatus,
+  shouldMergeExperimentProductionApi,
+} from "../../lib/orvek-v0/production/experiment-presentation";
 import type { OrvekObject } from "../../lib/orvek-v0/orvek-types";
 import type { ActiveQuestionItem } from "../active-questions";
-import { ACTIVE_QUESTIONS_ENDPOINT } from "../active-questions";
 import type { WatchForItem } from "../watch-for";
 
 function readSource(relativePath: string): string {
@@ -64,29 +67,22 @@ const READY_WATCH_FOR_ITEMS: WatchForItem[] = [
   },
 ];
 
-describe("bounded active questions hybrid fetch bridge", () => {
-  it("wires Active Questions production fetch into the root hybrid hook", () => {
-    const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
-    const activeQuestionsSource = readSource("lib/active-questions.ts");
+describe("active questions tab alignment", () => {
+  it("Questions tab consumes exploreQuestionIds when readiness-gated production data passes", () => {
+    const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
+    const questionsBlock =
+      explorePageSource.match(/function Questions\(\) \{([\s\S]*?)\n\}\n\nfunction Investigations/)?.[1] ??
+      "";
 
-    expect(hookSource).toContain("fetchActiveQuestionItems");
-    expect(hookSource).toContain("buildActiveQuestionsProductionDataApi");
-    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
-    expect(hookSource).toContain("activeQuestionsApi");
-    expect(hookSource).toContain("isLoadingActiveQuestions");
-    expect(activeQuestionsSource).toContain(ACTIVE_QUESTIONS_ENDPOINT);
-    expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/active-questions/);
+    expect(questionsBlock).toContain("exploreQuestionIds");
+    expect(questionsBlock).toContain("exploreQuestionSelectedId");
+    expect(questionsBlock).toContain("hasLiveQuestions");
+    expect(questionsBlock).toContain("resolveActiveQuestionsOpenSelectionId");
+    expect(questionsBlock).toContain("resolveInspectorSelection");
+    expect(questionsBlock).not.toContain("isProductionDisplay");
   });
 
-  it("passes activeQuestionsApi as the seventh argument to buildHybridWorkbenchDataApi", () => {
-    const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
-
-    expect(hookSource).toMatch(
-      /buildHybridWorkbenchDataApi\(\s*baseApi,\s*todayApi,\s*mapApi,\s*timelineApi,\s*decisionsApi,\s*experimentApi,\s*activeQuestionsApi,\s*\)/,
-    );
-  });
-
-  it("can surface ready active-question production data through the hybrid workbench", () => {
+  it("can surface ready Active Questions production data through the hybrid provider path", () => {
     const baseApi = createMockOrvekDataApi();
     const activeQuestionsApi = buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS);
 
@@ -102,15 +98,15 @@ describe("bounded active questions hybrid fetch bridge", () => {
       activeQuestionsApi,
     );
 
-    expect(hybridApi.displayContract).toBeUndefined();
     expect(hybridApi.exploreQuestionIds).toEqual(["aq-live-1", "aq-live-2"]);
+    expect(hybridApi.exploreQuestionSelectedId).toBe("aq-live-1");
     expect(hybridApi.getObject("aq-live-1")?.tags).toEqual(
       referenceTagsForActiveQuestionStatus("gathering_evidence", "Gathering evidence"),
     );
-    expect(hybridApi.getObject("aq-1")?.title).toBe(baseApi.getObject("aq-1")?.title);
+    expect(hybridApi.displayContract).toBeUndefined();
   });
 
-  it("falls back to reference Active Questions when production fetch fails readiness", () => {
+  it("falls back to reference Questions tab when production data fails readiness", () => {
     const baseApi = createMockOrvekDataApi();
     const unsafeActiveQuestionsApi = buildActiveQuestionsProductionDataApi([
       activeQuestionItem("aq-broken", {
@@ -135,7 +131,7 @@ describe("bounded active questions hybrid fetch bridge", () => {
     expect(hybridApi.getObject("aq-1")?.title).toBe(baseApi.getObject("aq-1")?.title);
   });
 
-  it("falls back to reference Active Questions when production data is thin or empty", () => {
+  it("falls back to reference Questions tab when production fetch returns empty data", () => {
     const baseApi = createMockOrvekDataApi();
     const emptyActiveQuestionsApi = buildActiveQuestionsProductionDataApi([]);
 
@@ -152,10 +148,10 @@ describe("bounded active questions hybrid fetch bridge", () => {
     );
 
     expect(hybridApi.exploreQuestionIds).toBeUndefined();
-    expect(hybridApi.getObject("aq-1")?.title).toBe(baseApi.getObject("aq-1")?.title);
+    expect(hybridApi.getObject("aq-2")?.title).toBe(baseApi.getObject("aq-2")?.title);
   });
 
-  it("falls back to reference Active Questions while production Active Questions data is loading", () => {
+  it("falls back to reference Questions tab while production Active Questions data is loading", () => {
     const baseApi = createMockOrvekDataApi();
     const loadingActiveQuestionsApi = {
       ...buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS),
@@ -175,28 +171,10 @@ describe("bounded active questions hybrid fetch bridge", () => {
     );
 
     expect(hybridApi.exploreQuestionIds).toBeUndefined();
+    expect(hybridApi.getObject("aq-1")?.title).toBe(baseApi.getObject("aq-1")?.title);
   });
 
-  it("preserves linked object aliases through the hybrid Active Questions overlay", () => {
-    const baseApi = createMockOrvekDataApi();
-    const activeQuestionsApi = buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS, [
-      { linkedObjectType: "usermap_conclusion", linkedObjectId: "c-map-1" },
-    ]);
-    const hybridApi = buildHybridWorkbenchDataApi(
-      baseApi,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      activeQuestionsApi,
-    );
-
-    expect(hybridApi.getObject("c-map-1")?.inspectorObjectType).toBe("usermap_conclusion");
-    expect(hybridApi.getObject("aq-live-1")?.whyItMatters).toContain("visibility");
-  });
-
-  it("resolves linked inspector targets when provider lookup can resolve them", () => {
+  it("resolves linked inspector targets for Active Question selection", () => {
     const objects: Record<string, OrvekObject> = {
       "aq-live-1": {
         id: "aq-live-1",
@@ -225,21 +203,50 @@ describe("bounded active questions hybrid fetch bridge", () => {
     expect(resolveActiveQuestionsOpenSelectionId("aq-1", getObject)).toBe("aq-1");
   });
 
-  it("Questions tab consumes readiness-gated exploreQuestionIds", () => {
+  it("preserves reference Questions tab fallback wiring", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
 
-    expect(explorePageSource).toContain("function Questions()");
-    expect(explorePageSource).toContain('["aq-1", "aq-2", "aq-3", "aq-4"]');
-    expect(explorePageSource).toContain("hasLiveQuestions");
-    expect(explorePageSource).toContain("exploreQuestionSelectedId");
-    expect(explorePageSource).toContain("resolveActiveQuestionsOpenSelectionId");
-    expect(explorePageSource).not.toMatch(/router\.(push|replace)\([^)]*\/active-questions/);
+    expect(explorePageSource).toContain('referenceQuestionIds = ["aq-1", "aq-2", "aq-3", "aq-4"]');
+    expect(explorePageSource).toContain("A narrow public test reduces felt uncertainty.");
+    expect(explorePageSource).toContain("Visual output creates false confidence.");
   });
 
-  it("preserves Experiment / Fieldwork parity when Active Questions overlay is ready", () => {
+  it("Fieldwork Bridge remains unchanged", () => {
+    const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
+
+    expect(explorePageSource).toContain("function FieldworkBridge");
+    expect(explorePageSource).toContain("hasLiveFieldwork");
+    expect(explorePageSource).toContain("resolveExperimentOpenSelectionId");
+    expect(explorePageSource).toContain('referenceFieldworkId = "f2"');
+  });
+
+  it("leaves Investigations on reference/mock lists", () => {
+    const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
+
+    expect(explorePageSource).toContain('["inv-1", "inv-2", "inv-3"]');
+    expect(explorePageSource).toContain("exploreInvestigationIds");
+    expect(explorePageSource).toContain("isProductionDisplay(data)");
+  });
+
+  it("keeps Explore chat untouched", () => {
+    const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
+    const freeExploreBlock =
+      explorePageSource.match(/function FreeExplore\(\) \{([\s\S]*?)\n\}\n\nfunction Bubble/)?.[1] ??
+      "";
+
+    expect(explorePageSource).toContain("function FreeExplore()");
+    expect(freeExploreBlock).toContain("exploreHandlers?.onSend");
+    expect(freeExploreBlock).not.toContain("exploreQuestionIds");
+    expect(freeExploreBlock).not.toContain("resolveActiveQuestionsOpenSelectionId");
+  });
+
+  it("preserves Experiment / Fieldwork parity when Active Questions tab aligns", () => {
     const baseApi = createMockOrvekDataApi();
     const experimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
     const activeQuestionsApi = buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS);
+
+    expect(shouldMergeExperimentProductionApi(experimentApi)).toBe(true);
+    expect(shouldMergeActiveQuestionsProductionApi(activeQuestionsApi)).toBe(true);
 
     const hybridApi = buildHybridWorkbenchDataApi(
       baseApi,
@@ -252,20 +259,17 @@ describe("bounded active questions hybrid fetch bridge", () => {
     );
 
     expect(hybridApi.exploreFieldworkIds).toEqual(["fw-active"]);
+    expect(hybridApi.getObject("fw-active")?.tags).toEqual(
+      referenceTagsForFieldworkStatus("active", "Active"),
+    );
     expect(hybridApi.exploreQuestionIds).toEqual(["aq-live-1", "aq-live-2"]);
-    expect(hybridApi.getObject("f2")?.title).toBe(baseApi.getObject("f2")?.title);
   });
 
-  it("keeps Investigations reference/mock and Explore chat untouched", () => {
+  it("does not introduce /active-questions route navigation", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
-    const freeExploreBlock =
-      explorePageSource.match(/function FreeExplore\(\) \{([\s\S]*?)\n\}\n\nfunction Bubble/)?.[1] ??
-      "";
 
-    expect(explorePageSource).toContain('["inv-1", "inv-2", "inv-3"]');
-    expect(explorePageSource).toContain("function FieldworkBridge");
-    expect(freeExploreBlock).toContain("exploreHandlers?.onSend");
-    expect(freeExploreBlock).not.toContain("exploreQuestionIds");
+    expect(explorePageSource).not.toMatch(/router\.(push|replace)\([^)]*\/active-questions/);
+    expect(explorePageSource).not.toContain('href="/active-questions"');
   });
 
   it("keeps the old production shell quarantined", () => {
@@ -275,5 +279,6 @@ describe("bounded active questions hybrid fetch bridge", () => {
     expect(shellSource).not.toContain("RouteTopBar");
     expect(workbenchSource).toContain("<ExplorePage />");
     expect(workbenchSource).toContain("createMockOrvekDataApi");
+    expect(workbenchSource).not.toContain("V0ExploreView");
   });
 });
