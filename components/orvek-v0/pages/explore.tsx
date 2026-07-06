@@ -44,23 +44,28 @@ export function ExplorePage() {
           Ask, investigate, and turn conversation into model movement. Possible updates appear in
           the inspector.
         </p>
-        {/* segmented control */}
-        <div className="o-sunken mt-3 inline-flex flex-wrap gap-0.5 rounded-[9px] p-1">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={cn(
-                "o-calm rounded-[6px] px-3 py-1.5 text-[13px] font-medium",
-                tab === t.id
-                  ? "bg-card text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.16)]"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="mt-5 border-b border-border/40">
+          <nav
+            aria-label="Explore sections"
+            className="-mb-px flex flex-wrap gap-x-5 sm:gap-x-7"
+          >
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                aria-current={tab === t.id ? "page" : undefined}
+                className={cn(
+                  "border-b pb-2 pt-0.5 text-[12px] leading-none tracking-tight focus-visible:outline-none",
+                  tab === t.id
+                    ? "border-foreground font-medium text-foreground"
+                    : "border-transparent font-normal text-muted-foreground/85 hover:text-foreground/75",
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
         </div>
       </div>
 
