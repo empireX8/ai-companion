@@ -6,6 +6,7 @@ import { createMockOrvekDataApi } from "../../lib/orvek-v0/mock-api";
 import { withProductionContract } from "../../lib/orvek-v0/display-contract";
 import { buildExploreProductionDataApi } from "../../lib/orvek-v0/production/explore-api";
 import { buildFreeExploreChatProductionDataApi } from "../../lib/orvek-v0/production/free-explore-chat-api";
+import { buildHybridWorkbenchDataApi } from "../../lib/orvek-v0/production/hybrid-workbench-api";
 import {
   hasFreeExploreChatFakeMovementOrReviewLeak,
   hasFreeExploreChatProductionDisplayContractLeak,
@@ -302,5 +303,51 @@ describe("free explore chat presentation readiness", () => {
     expect(chatApi.exploreInvestigationIds).toBeUndefined();
     expect(chatApi.exploreFieldworkIds).toBeUndefined();
     expect(isFreeExploreChatPresentationReady(chatApi)).toBe(true);
+  });
+});
+
+describe("free explore chat hybrid overlay merge", () => {
+  it("merges ready chat overlay as ninth hybrid argument when gate passes", () => {
+    const baseApi = createMockOrvekDataApi();
+    const chatApi = buildFreeExploreChatProductionDataApi(readyChatInput());
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      chatApi,
+    );
+
+    expect(hybridApi.freeExploreChatSessionId).toBe("sess-ready-1");
+    expect(hybridApi.exploreMessages?.length).toBe(2);
+    expect(hybridApi.freeExploreSendHandlerAvailable).toBe(false);
+    expect(hybridApi.displayContract).toBeUndefined();
+  });
+
+  it("falls back to reference chat fields when hybrid overlay fails readiness", () => {
+    const baseApi = createMockOrvekDataApi();
+    const bootingApi = buildFreeExploreChatProductionDataApi(
+      readyChatInput({ isBooting: true }),
+    );
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      bootingApi,
+    );
+
+    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi.exploreMessages).toBeUndefined();
   });
 });
