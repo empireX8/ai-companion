@@ -237,14 +237,16 @@ describe("bounded free explore chat hybrid fetch bridge", () => {
     expect(hookSource).not.toContain("sendMessage");
   });
 
-  it("keeps FreeExplore rendering reference-only and send-disabled", () => {
+  it("keeps FreeExplore consuming gated live exploreMessages read-only", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
     const freeExploreBlock =
       explorePageSource.match(/function FreeExplore\(\) \{([\s\S]*?)\n\}\n\nfunction Bubble/)?.[1] ??
       "";
 
-    expect(freeExploreBlock).toContain("isProductionDisplay(data)");
-    expect(freeExploreBlock).not.toContain("hasLiveExploreChat");
+    expect(freeExploreBlock).toContain("hasLiveExploreChat");
+    expect(freeExploreBlock).toContain("hasLiveExploreChatFromProvider");
+    expect(freeExploreBlock).not.toContain("isProductionDisplay");
+    expect(freeExploreBlock).toContain("freeExploreSendHandlerAvailable === true");
     expect(freeExploreBlock).toContain("exploreHandlers?.onSend");
   });
 

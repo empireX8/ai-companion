@@ -10,6 +10,7 @@ import { buildHybridWorkbenchDataApi } from "../../lib/orvek-v0/production/hybri
 import {
   hasFreeExploreChatFakeMovementOrReviewLeak,
   hasFreeExploreChatProductionDisplayContractLeak,
+  hasLiveExploreChatFromProvider,
   isFreeExploreChatMessagePresentationReady,
   isFreeExploreChatPresentationReady,
   isSafeEmptyLiveFreeExploreChatState,
@@ -265,15 +266,30 @@ describe("free explore chat presentation readiness", () => {
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
   });
 
-  it("keeps FreeExplore rendering unchanged", () => {
+  it("detects live explore chat from provider when gate passes", () => {
+    const api = buildFreeExploreChatProductionDataApi(readyChatInput());
+
+    expect(hasLiveExploreChatFromProvider(api)).toBe(true);
+  });
+
+  it("rejects live explore chat from provider when session gate fails", () => {
+    const api = buildFreeExploreChatProductionDataApi(
+      readyChatInput({ errorMessage: "401 Unauthorized — please sign in" }),
+    );
+
+    expect(hasLiveExploreChatFromProvider(api)).toBe(false);
+  });
+
+  it("keeps FreeExplore consuming gated live exploreMessages read-only", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
     const freeExploreBlock =
       explorePageSource.match(/function FreeExplore\(\) \{([\s\S]*?)\n\}\n\nfunction Bubble/)?.[1] ??
       "";
 
-    expect(freeExploreBlock).toContain("isProductionDisplay(data)");
-    expect(freeExploreBlock).not.toContain("hasLiveExploreChat");
-    expect(freeExploreBlock).not.toContain("shouldMergeFreeExploreChatProductionApi");
+    expect(freeExploreBlock).toContain("hasLiveExploreChat");
+    expect(freeExploreBlock).toContain("hasLiveExploreChatFromProvider");
+    expect(freeExploreBlock).not.toContain("isProductionDisplay");
+    expect(freeExploreBlock).toContain("freeExploreSendHandlerAvailable === true");
   });
 
   it("keeps Fieldwork Bridge, Active Questions, and Investigations untouched", () => {
@@ -282,7 +298,7 @@ describe("free explore chat presentation readiness", () => {
     expect(explorePageSource).toContain("hasLiveFieldwork");
     expect(explorePageSource).toContain("hasLiveQuestions");
     expect(explorePageSource).toContain("hasLiveInvestigations");
-    expect(explorePageSource).not.toContain("hasLiveExploreChat");
+    expect(explorePageSource).toContain("hasLiveExploreChat");
   });
 
   it("keeps the old production shell quarantined", () => {

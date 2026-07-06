@@ -297,6 +297,40 @@ export function shouldMergeFreeExploreChatProductionApi(
   return isFreeExploreChatPresentationReady(api);
 }
 
+export function hasLiveExploreChatFromProvider(api: OrvekDataApi | undefined): boolean {
+  if (!api || api.exploreIsLoading || api.explore?.isBooting) {
+    return false;
+  }
+
+  if (hasFreeExploreChatProductionDisplayContractLeak(api)) {
+    return false;
+  }
+
+  if (looksLikeAuthOrSessionBootError(api.explore?.errorMessage)) {
+    return false;
+  }
+
+  if (!isFreeExploreSendHandlerExplicit(api)) {
+    return false;
+  }
+
+  if (!isSafeFreeExploreChatSessionId(api.freeExploreChatSessionId)) {
+    return false;
+  }
+
+  if (api.exploreMessages === undefined) {
+    return false;
+  }
+
+  if ((api.exploreMessages.length ?? 0) > 0) {
+    return api.exploreMessages.every((message) =>
+      isFreeExploreChatMessagePresentationReady(message),
+    );
+  }
+
+  return isSafeEmptyLiveFreeExploreChatState(api);
+}
+
 export function normalizeFreeExploreChatProductionDataApi(api: OrvekDataApi): OrvekDataApi {
   const allowStreamingAssistantEmpty = Boolean(api.explore?.isSending);
   const normalizedMessages: OrvekExploreMessage[] = [];
