@@ -5,6 +5,10 @@ import { useMemo } from "react";
 import type { OrvekDataApi } from "@/lib/orvek-v0/data-provider";
 import { OrvekDataProvider } from "@/lib/orvek-v0/data-provider";
 import { createMockOrvekDataApi } from "@/lib/orvek-v0/mock-api";
+import {
+  OrvekPageHandlersProvider,
+  type OrvekPageHandlers,
+} from "@/lib/orvek-v0/page-handlers";
 
 import { OrvekShellLayout } from "./OrvekShellLayout";
 import { EvidencePanel } from "./evidence-panel";
@@ -48,14 +52,23 @@ function Layout() {
   );
 }
 
-export function Workbench({ dataApi }: { dataApi?: OrvekDataApi } = {}) {
+export function Workbench({
+  dataApi,
+  handlers,
+}: {
+  dataApi?: OrvekDataApi;
+  handlers?: OrvekPageHandlers;
+} = {}) {
   const mockApi = useMemo(() => createMockOrvekDataApi(), []);
   const api = dataApi ?? mockApi;
+  const pageHandlers = handlers ?? {};
   return (
     <WorkbenchProvider>
       <OrvekDataProvider value={api}>
-        <Layout />
-        <Overlays />
+        <OrvekPageHandlersProvider value={pageHandlers}>
+          <Layout />
+          <Overlays />
+        </OrvekPageHandlersProvider>
       </OrvekDataProvider>
     </WorkbenchProvider>
   );

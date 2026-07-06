@@ -229,8 +229,12 @@ describe("free explore chat tab alignment", () => {
   it("does not mount production write handlers at the workbench root", () => {
     const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
+    const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
 
-    expect(workbenchSource).not.toContain("OrvekPageHandlersProvider");
+    expect(workbenchSource).toContain("OrvekPageHandlersProvider");
+    expect(shellSource).toContain("handlers={{}}");
+    expect(shellSource).not.toContain("onSend");
+    expect(shellSource).not.toContain("sendMessage");
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
     expect(hookSource).not.toContain("sendMessage");
   });

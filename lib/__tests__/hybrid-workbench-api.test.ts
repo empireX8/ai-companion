@@ -1719,12 +1719,16 @@ describe("hybrid workbench data api", () => {
 
   it("keeps root hybrid hook wired for bounded Explore chat session read fetch", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
+    const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
+    const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
 
     expect(hookSource).toContain("useOrvekExploreChat");
     expect(hookSource).toContain("buildFreeExploreChatProductionDataApi");
     expect(hookSource).toContain("freeExploreChatApi");
     expect(hookSource).toContain("sendHandlerAvailable: false");
     expect(hookSource).not.toContain("sendMessage");
+    expect(workbenchSource).toContain("OrvekPageHandlersProvider");
+    expect(shellSource).toContain("handlers={{}}");
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
   });
 
