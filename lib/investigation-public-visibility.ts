@@ -1,7 +1,7 @@
 import {
   CandidateLifecycleStatus,
+  InvestigationStatus,
   InvestigationVisibility,
-  type InvestigationStatus,
   type Prisma,
 } from "@prisma/client";
 
@@ -9,6 +9,14 @@ import { ACTIVE_QUESTION_VISIBLE_STATUSES } from "./public-intelligence-safe-sli
 
 export const PUBLIC_INVESTIGATION_VISIBILITY =
   InvestigationVisibility.user_visible;
+
+/**
+ * Complementary public statuses for Explore Investigations threads.
+ * Excludes rows owned by the Active Questions public list contract.
+ */
+export const EXPLORE_INVESTIGATION_VISIBLE_STATUSES = (
+  Object.values(InvestigationStatus) as InvestigationStatus[]
+).filter((status) => !ACTIVE_QUESTION_VISIBLE_STATUSES.includes(status));
 
 /**
  * Fail-closed allow-list for Investigation rows on public Active Questions surfaces.
@@ -44,6 +52,30 @@ export function buildPublicActiveInvestigationWhere(
     ...(input.id ? { id: input.id } : {}),
     visibility: PUBLIC_INVESTIGATION_VISIBILITY,
     status: statusFilter,
+    OR: buildPublicInvestigationCandidateLifecycleOrFilter(),
+  };
+}
+
+export type PublicExploreInvestigationWhereInput = {
+  userId: string;
+  id?: string;
+};
+
+/**
+ * Public Explore Investigations list guard.
+ * Same visibility/lifecycle fail-closed rules as Active Questions, but excludes
+ * statuses owned by the Active Questions public contract.
+ */
+export function buildPublicExploreInvestigationWhere(
+  input: PublicExploreInvestigationWhereInput
+): Prisma.InvestigationWhereInput {
+  return {
+    userId: input.userId,
+    ...(input.id ? { id: input.id } : {}),
+    visibility: PUBLIC_INVESTIGATION_VISIBILITY,
+    status: {
+      notIn: [...ACTIVE_QUESTION_VISIBLE_STATUSES],
+    },
     OR: buildPublicInvestigationCandidateLifecycleOrFilter(),
   };
 }

@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPublicActiveInvestigationWhere,
+  buildPublicExploreInvestigationWhere,
   buildPublicInvestigationCandidateLifecycleOrFilter,
+  EXPLORE_INVESTIGATION_VISIBLE_STATUSES,
   isPublicActiveInvestigationCandidateLifecycle,
   PUBLIC_INVESTIGATION_ALLOWED_CANDIDATE_LIFECYCLE_STATUSES,
   PUBLIC_INVESTIGATION_VISIBILITY,
@@ -38,6 +40,31 @@ describe("investigation public visibility guard", () => {
       id: "inv-1",
       userId: "user-1",
       visibility: InvestigationVisibility.user_visible,
+    });
+  });
+
+  it("builds Explore Investigations where with complementary statuses only", () => {
+    expect(EXPLORE_INVESTIGATION_VISIBLE_STATUSES).toEqual(["resolved", "abandoned"]);
+    expect(buildPublicExploreInvestigationWhere({ userId: "user-1" })).toEqual({
+      userId: "user-1",
+      visibility: PUBLIC_INVESTIGATION_VISIBILITY,
+      status: {
+        notIn: ["open", "gathering_evidence", "testing", "resolving", "reopened"],
+      },
+      OR: buildPublicInvestigationCandidateLifecycleOrFilter(),
+    });
+  });
+
+  it("scopes Explore Investigations detail queries by investigation id", () => {
+    expect(
+      buildPublicExploreInvestigationWhere({ userId: "user-1", id: "inv-resolved-1" })
+    ).toMatchObject({
+      id: "inv-resolved-1",
+      userId: "user-1",
+      visibility: InvestigationVisibility.user_visible,
+      status: {
+        notIn: ["open", "gathering_evidence", "testing", "resolving", "reopened"],
+      },
     });
   });
 
