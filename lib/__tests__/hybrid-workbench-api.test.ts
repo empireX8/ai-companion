@@ -7,6 +7,7 @@ import type { MapMapDataInput } from "../orvek-adapters/map";
 import type { MapTimelineDataInput } from "../orvek-adapters/timeline";
 import { createMockOrvekDataApi } from "../../lib/orvek-v0/mock-api";
 import { buildDecisionsProductionDataApi } from "../../lib/orvek-v0/production/decisions-api";
+import { buildActiveQuestionsProductionDataApi } from "../../lib/orvek-v0/production/active-questions-api";
 import { buildExperimentProductionDataApi } from "../../lib/orvek-v0/production/experiment-api";
 import { buildHybridWorkbenchDataApi } from "../../lib/orvek-v0/production/hybrid-workbench-api";
 import { buildMapProductionDataApi } from "../../lib/orvek-v0/production/map-api";
@@ -22,7 +23,13 @@ import {
   referenceTagsForFieldworkStatus,
   shouldMergeExperimentProductionApi,
 } from "../../lib/orvek-v0/production/experiment-presentation";
+import {
+  findDuplicateActiveQuestionRowIds,
+  referenceTagsForActiveQuestionStatus,
+  shouldMergeActiveQuestionsProductionApi,
+} from "../../lib/orvek-v0/production/active-questions-presentation";
 import { shouldMergeMapProductionApi } from "../../lib/orvek-v0/production/map-presentation";
+import type { ActiveQuestionItem } from "../active-questions";
 import type { WatchForItem } from "../watch-for";
 import {
   REFERENCE_TIMELINE_FILTERS,
@@ -215,6 +222,35 @@ const READY_WATCH_FOR_ITEMS: WatchForItem[] = [
     status: "assigned",
     statusLabel: "Assigned",
     linkedObjectId: "pc-fw-3",
+  }),
+];
+
+function activeQuestionItem(
+  id: string,
+  overrides: Partial<ActiveQuestionItem> = {},
+): ActiveQuestionItem {
+  return {
+    id,
+    title: "Does public visibility trigger overbuilding?",
+    organizingQuestion: "Testing whether anticipated visibility drives scope reopening.",
+    status: "open",
+    statusLabel: "Open",
+    createdAt: "2026-06-20T10:00:00.000Z",
+    updatedAt: "2026-06-20T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
+const READY_ACTIVE_QUESTIONS: ActiveQuestionItem[] = [
+  activeQuestionItem("aq-live-1", {
+    status: "gathering_evidence",
+    statusLabel: "Gathering evidence",
+  }),
+  activeQuestionItem("aq-live-2", {
+    title: "Does visual prototyping reduce architecture uncertainty?",
+    organizingQuestion: "Whether a v0 prototype meaningfully lowers uncertainty before design.",
+    status: "testing",
+    statusLabel: "Testing",
   }),
 ];
 
@@ -859,5 +895,229 @@ describe("hybrid workbench data api", () => {
     expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
     expect(hookSource).toContain("experimentApi");
     expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/watch-for/);
+  });
+
+  it("merges presentation-ready production Active Questions overlay into the hybrid workbench", () => {
+    const baseApi = createMockOrvekDataApi();
+    const activeQuestionsApi = buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS, [
+      { linkedObjectType: "usermap_conclusion", linkedObjectId: "c-map-1" },
+    ]);
+
+    expect(shouldMergeActiveQuestionsProductionApi(activeQuestionsApi)).toBe(true);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      activeQuestionsApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.exploreQuestionIds).toEqual(["aq-live-1", "aq-live-2"]);
+    expect(hybridApi.exploreQuestionSelectedId).toBe("aq-live-1");
+    expect(hybridApi.getObject("aq-live-1")?.tags).toEqual(
+      referenceTagsForActiveQuestionStatus("gathering_evidence", "Gathering evidence"),
+    );
+    expect(hybridApi.getObject("c-map-1")?.inspectorObjectType).toBe("usermap_conclusion");
+    expect(hybridApi.getObject("aq-1")?.title).toBe(baseApi.getObject("aq-1")?.title);
+  });
+
+  it("falls back to reference Active Questions when production overlay fails readiness", () => {
+    const baseApi = createMockOrvekDataApi();
+    const unsafeActiveQuestionsApi = buildActiveQuestionsProductionDataApi([
+      activeQuestionItem("aq-broken", {
+        title: "   ",
+        organizingQuestion: "Testing whether anticipated visibility drives scope reopening.",
+      }),
+    ]);
+
+    expect(shouldMergeActiveQuestionsProductionApi(unsafeActiveQuestionsApi)).toBe(false);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      unsafeActiveQuestionsApi,
+    );
+
+    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi.exploreQuestionIds).toBeUndefined();
+    expect(hybridApi.getObject("aq-1")?.title).toBe(baseApi.getObject("aq-1")?.title);
+  });
+
+  it("falls back to reference Active Questions when thin production rows cannot resolve", () => {
+    const baseApi = createMockOrvekDataApi();
+    const thinActiveQuestionsApi = buildActiveQuestionsProductionDataApi([
+      activeQuestionItem("aq-thin", {
+        organizingQuestion: "   ",
+      }),
+    ]);
+
+    expect(shouldMergeActiveQuestionsProductionApi(thinActiveQuestionsApi)).toBe(false);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      thinActiveQuestionsApi,
+    );
+
+    expect(hybridApi.exploreQuestionIds).toBeUndefined();
+    expect(hybridApi.getObject("aq-1")?.title).toBe(baseApi.getObject("aq-1")?.title);
+  });
+
+  it("does not leak production displayContract into the root hybrid Active Questions overlay", () => {
+    const baseApi = createMockOrvekDataApi();
+    const activeQuestionsApi = buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS);
+
+    expect(activeQuestionsApi.displayContract).toBeDefined();
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      activeQuestionsApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.explore).toBeUndefined();
+  });
+
+  it("dedupes duplicate active-question rows during hybrid Active Questions overlay merge", () => {
+    const baseApi = createMockOrvekDataApi();
+    const activeQuestionsApi = buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS);
+    activeQuestionsApi.exploreQuestionIds = [
+      ...(activeQuestionsApi.exploreQuestionIds ?? []),
+      "aq-live-1",
+    ];
+
+    expect(findDuplicateActiveQuestionRowIds(activeQuestionsApi)).toContain("aq-live-1");
+    expect(shouldMergeActiveQuestionsProductionApi(activeQuestionsApi)).toBe(true);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      activeQuestionsApi,
+    );
+
+    expect(hybridApi.exploreQuestionIds?.filter((id) => id === "aq-live-1")).toHaveLength(1);
+    expect(findDuplicateActiveQuestionRowIds(hybridApi)).toEqual([]);
+  });
+
+  it("preserves linked object and inspector target aliases during Active Questions overlay merge", () => {
+    const baseApi = createMockOrvekDataApi();
+    const activeQuestionsApi = buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS, [
+      { linkedObjectType: "usermap_conclusion", linkedObjectId: "c-map-1" },
+    ]);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      activeQuestionsApi,
+    );
+
+    expect(hybridApi.getObject("c-map-1")?.inspectorObjectType).toBe("usermap_conclusion");
+    expect(hybridApi.getObject("aq-live-1")?.whyItMatters).toContain("visibility");
+  });
+
+  it("does not merge Active Questions overlay when passed as experimentApi by mistake", () => {
+    const baseApi = createMockOrvekDataApi();
+    const activeQuestionsApi = buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS);
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      activeQuestionsApi,
+    );
+
+    expect(hybridApi.exploreQuestionIds).toBeUndefined();
+    expect(hybridApi.exploreFieldworkIds).toBeUndefined();
+    expect(hybridApi.getObject("aq-1")?.title).toBe(baseApi.getObject("aq-1")?.title);
+  });
+
+  it("leaves Investigations and Explore chat on reference/mock when Active Questions merges", () => {
+    const baseApi = createMockOrvekDataApi();
+    const activeQuestionsApi = buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      activeQuestionsApi,
+    );
+
+    expect(hybridApi.exploreInvestigationIds).toBeUndefined();
+    expect(hybridApi.exploreMessages).toBeUndefined();
+    expect(hybridApi.getObject("inv-1")?.title).toBe(baseApi.getObject("inv-1")?.title);
+  });
+
+  it("preserves Today, Map, Timeline, Decisions, and Experiment hybrid merges when Active Questions overlay is ready", () => {
+    const baseApi = createMockOrvekDataApi();
+    const productionTodayApi = buildTodayProductionDataApi({
+      snapshot: LIVE_SNAPSHOT,
+      isLoading: false,
+      briefingDate: "Tuesday · 24 June",
+    });
+    const readyMapApi = buildMapProductionDataApi(READY_MAP_INPUT);
+    const readyTimelineApi = buildTimelineProductionDataApi(READY_TIMELINE_INPUT);
+    const readyDecisionsApi = buildDecisionsProductionDataApi(READY_DECISIONS_ACTIONS);
+    const readyExperimentApi = buildExperimentProductionDataApi(READY_WATCH_FOR_ITEMS);
+    const readyActiveQuestionsApi = buildActiveQuestionsProductionDataApi(READY_ACTIVE_QUESTIONS);
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      productionTodayApi,
+      readyMapApi,
+      readyTimelineApi,
+      readyDecisionsApi,
+      readyExperimentApi,
+      readyActiveQuestionsApi,
+    );
+
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.getObject("r6")).toMatchObject(baseApi.getObject("r6") ?? {});
+    expect(hybridApi.getObject("conclusion-c-1")?.summary).toBe(
+      "The most active loop; directly raises decision pressure.",
+    );
+    expect(hybridApi.timelineFilters).toEqual([...REFERENCE_TIMELINE_FILTERS]);
+    expect(hybridApi.getObject("activity-journal-1")?.title).toBe("Scope note");
+    expect(hybridApi.decisionListGroups.some((group) => group.ids.length > 0)).toBe(true);
+    expect(hybridApi.exploreFieldworkIds).toEqual(["fw-active", "fw-assigned"]);
+    expect(hybridApi.exploreQuestionIds).toEqual(["aq-live-1", "aq-live-2"]);
+    expect(hybridApi.getObject("pc-fw-2")?.inspectorObjectType).toBe("pattern_claim");
+  });
+
+  it("does not wire root Active Questions fetch into the hybrid hook yet", () => {
+    const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
+
+    expect(hookSource).not.toContain("ACTIVE_QUESTIONS_ENDPOINT");
+    expect(hookSource).not.toContain("buildActiveQuestionsProductionDataApi");
+    expect(hookSource).not.toContain("shouldMergeActiveQuestionsProductionApi");
+    expect(hookSource).not.toContain("activeQuestionsApi");
   });
 });
