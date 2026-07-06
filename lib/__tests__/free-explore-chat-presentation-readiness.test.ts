@@ -8,6 +8,7 @@ import { buildExploreProductionDataApi } from "../../lib/orvek-v0/production/exp
 import { buildFreeExploreChatProductionDataApi } from "../../lib/orvek-v0/production/free-explore-chat-api";
 import { buildHybridWorkbenchDataApi } from "../../lib/orvek-v0/production/hybrid-workbench-api";
 import {
+  areFreeExploreChatMessagesLiveReady,
   hasFreeExploreChatFakeMovementOrReviewLeak,
   hasFreeExploreChatProductionDisplayContractLeak,
   hasLiveExploreChatFromProvider,
@@ -255,7 +256,7 @@ describe("free explore chat presentation readiness", () => {
     expect(shouldMergeFreeExploreChatProductionApi(legacyApi)).toBe(false);
   });
 
-  it("keeps root hybrid hook wired for bounded Explore chat session read fetch", () => {
+  it("keeps root hybrid hook wired for bounded Explore chat session read fetch and send handlers", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
     const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
     const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
@@ -263,10 +264,9 @@ describe("free explore chat presentation readiness", () => {
     expect(hookSource).toContain("useOrvekExploreChat");
     expect(hookSource).toContain("buildFreeExploreChatProductionDataApi");
     expect(hookSource).toContain("freeExploreChatApi");
-    expect(hookSource).toContain("sendHandlerAvailable: false");
-    expect(hookSource).not.toContain("sendMessage");
-    expect(shellSource).toContain("handlers={{}}");
-    expect(shellSource).not.toContain("onSend");
+    expect(hookSource).toContain("sendHandlerAvailable: exploreChatSendReady");
+    expect(hookSource).toContain("sendMessage");
+    expect(shellSource).toContain("handlers={handlers}");
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
     expect(workbenchSource).toContain("OrvekPageHandlersProvider");
   });
@@ -275,6 +275,46 @@ describe("free explore chat presentation readiness", () => {
     const api = buildFreeExploreChatProductionDataApi(readyChatInput());
 
     expect(hasLiveExploreChatFromProvider(api)).toBe(true);
+  });
+
+  it("keeps live explore chat ready during in-flight send with pending user and streaming assistant", () => {
+    const sendingApi = buildFreeExploreChatProductionDataApi(
+      readyChatInput({
+        isSending: true,
+        messages: [
+          {
+            id: "msg-user-1",
+            role: "user",
+            content: "Why do I need to see the architecture visually before locking design?",
+          },
+          {
+            id: "tmp-user-abc",
+            role: "user",
+            content: "What pattern is showing up here?",
+          },
+          {
+            id: "tmp-assistant-xyz",
+            role: "assistant",
+            content: "",
+          },
+        ],
+      }),
+    );
+
+    expect(
+      areFreeExploreChatMessagesLiveReady(sendingApi.exploreMessages ?? [], true),
+    ).toBe(true);
+    expect(hasLiveExploreChatFromProvider(sendingApi)).toBe(true);
+    expect(shouldMergeFreeExploreChatProductionApi(sendingApi)).toBe(true);
+  });
+
+  it("rejects pending temporary user messages when not sending", () => {
+    expect(
+      isFreeExploreChatMessagePresentationReady(
+        { id: "tmp-user-abc", role: "user", content: "Pending question" },
+        { allowPendingUserMessage: false, isPendingUserMessage: false },
+      ),
+    ).toBe(false);
   });
 
   it("rejects live explore chat from provider when session gate fails", () => {

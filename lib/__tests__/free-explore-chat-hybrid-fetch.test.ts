@@ -87,17 +87,17 @@ const READY_WATCH_FOR_ITEMS: WatchForItem[] = [
 ];
 
 describe("bounded free explore chat hybrid fetch bridge", () => {
-  it("wires Explore chat session/message read state into the root hybrid hook", () => {
+  it("wires Explore chat session/message read state and send handlers into the root hybrid hook", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
     const chatHookSource = readSource("components/orvek-workbench/useOrvekExploreChat.ts");
 
     expect(hookSource).toContain("useOrvekExploreChat");
     expect(hookSource).toContain("buildFreeExploreChatProductionDataApi");
     expect(hookSource).toContain("freeExploreChatApi");
-    expect(hookSource).toContain("sendHandlerAvailable: false");
-    expect(hookSource).not.toContain("sendMessage");
+    expect(hookSource).toContain("sendHandlerAvailable: exploreChatSendReady");
+    expect(hookSource).toContain("sendMessage");
+    expect(hookSource).toContain("onSend:");
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
-    expect(hookSource).not.toContain("onSend");
     expect(chatHookSource).toContain("/api/message/list");
     expect(chatHookSource).toContain("buildAppSessionListUrl");
   });
@@ -228,16 +228,17 @@ describe("bounded free explore chat hybrid fetch bridge", () => {
     expect(hybridApi.exploreMessages).toBeUndefined();
   });
 
-  it("does not mount production write handlers at the workbench root", () => {
+  it("mounts production explore handlers at the workbench root when session send is ready", () => {
     const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
     const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
 
     expect(workbenchSource).toContain("OrvekPageHandlersProvider");
-    expect(shellSource).toContain("handlers={{}}");
-    expect(shellSource).not.toContain("onSend");
+    expect(shellSource).toContain("handlers={handlers}");
+    expect(shellSource).not.toContain("handlers={{}}");
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
-    expect(hookSource).not.toContain("sendMessage");
+    expect(hookSource).toContain("sendMessage");
+    expect(hookSource).toContain("onSend:");
   });
 
   it("keeps FreeExplore consuming gated live exploreMessages read-only", () => {

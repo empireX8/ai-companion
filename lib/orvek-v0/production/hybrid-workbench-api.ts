@@ -343,7 +343,8 @@ function mergeFreeExploreChatOverlay(
     exploreMessages: freeExploreChatApi.exploreMessages,
     exploreIsLoading: freeExploreChatApi.exploreIsLoading,
     freeExploreChatSessionId: freeExploreChatApi.freeExploreChatSessionId,
-    freeExploreSendHandlerAvailable: false,
+    freeExploreSendHandlerAvailable:
+      freeExploreChatApi.freeExploreSendHandlerAvailable === true,
     explore: freeExploreChatApi.explore,
     emptyCopyBySlot: {
       ...baseApi.emptyCopyBySlot,

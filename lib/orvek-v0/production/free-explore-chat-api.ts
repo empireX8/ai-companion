@@ -7,6 +7,8 @@ import { mapExploreDataToV0Props } from "../../orvek-adapters/explore";
 import type { OrvekDataApi, OrvekExploreMessage } from "../data-provider";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import {
+  isFreeExploreChatMessagePresentationReady,
+  isTemporaryFreeExploreChatMessageId,
   mapFreeExploreChatRoleToReference,
   normalizeFreeExploreChatContent,
   type FreeExploreChatProductionRole,
@@ -47,8 +49,26 @@ function mapInputMessagesToExploreMessages(
       options.allowStreamingAssistantEmpty &&
       role === "orvek" &&
       index === messages.length - 1;
+    const isPendingUserMessage =
+      options.allowStreamingAssistantEmpty &&
+      role === "user" &&
+      isTemporaryFreeExploreChatMessageId(message.id);
 
-    if (!content && !isStreamingAssistant) {
+    if (
+      !isFreeExploreChatMessagePresentationReady(
+        {
+          id: message.id.trim(),
+          role,
+          content: message.content,
+        },
+        {
+          allowStreamingAssistantEmpty: options.allowStreamingAssistantEmpty,
+          isStreamingAssistant,
+          allowPendingUserMessage: options.allowStreamingAssistantEmpty,
+          isPendingUserMessage,
+        },
+      )
+    ) {
       continue;
     }
 

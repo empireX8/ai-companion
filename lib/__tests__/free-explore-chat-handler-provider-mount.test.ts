@@ -33,7 +33,7 @@ function readyFreeExploreChatInput(
   };
 }
 
-describe("free explore chat handler provider mount (E1)", () => {
+describe("free explore chat handler provider mount (E1 + E2/E3)", () => {
   it("mounts OrvekPageHandlersProvider in Workbench with optional handlers prop", () => {
     const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
     const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
@@ -41,20 +41,21 @@ describe("free explore chat handler provider mount (E1)", () => {
     expect(workbenchSource).toContain("OrvekPageHandlersProvider");
     expect(workbenchSource).toContain("handlers?: OrvekPageHandlers");
     expect(workbenchSource).toContain("handlers ?? {}");
-    expect(shellSource).toContain("handlers={{}}");
-    expect(shellSource).not.toContain("onSend");
-    expect(shellSource).not.toContain("sendMessage");
+    expect(shellSource).toContain("handlers={handlers}");
+    expect(shellSource).toContain("useOrvekHybridWorkbenchDataApi");
   });
 
-  it("keeps hybrid hook free of handler wiring and sendMessage in E1", () => {
+  it("wires hybrid hook explore handlers behind session send readiness", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
-    expect(hookSource).not.toContain("sendMessage");
-    expect(hookSource).toContain("sendHandlerAvailable: false");
+    expect(hookSource).toContain("sendMessage");
+    expect(hookSource).toContain("exploreChatSendReady");
+    expect(hookSource).toContain("sendHandlerAvailable: exploreChatSendReady");
+    expect(hookSource).toContain("return { dataApi, handlers }");
   });
 
-  it("keeps FreeExplore dual gate unsatisfied without onSend handler", () => {
+  it("keeps FreeExplore dual gate requiring onSend handler and availability flag", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
     const freeExploreBlock =
       explorePageSource.match(/function FreeExplore\(\) \{([\s\S]*?)\n\}\n\nfunction Bubble/)?.[1] ??
@@ -65,7 +66,25 @@ describe("free explore chat handler provider mount (E1)", () => {
     expect(freeExploreBlock).toContain("disabled={!canSend}");
   });
 
-  it("keeps freeExploreSendHandlerAvailable false on hybrid merge", () => {
+  it("passes freeExploreSendHandlerAvailable through hybrid merge when upstream marks true", () => {
+    const hybridApi = buildHybridWorkbenchDataApi(
+      createMockOrvekDataApi(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      buildFreeExploreChatProductionDataApi(
+        readyFreeExploreChatInput({ sendHandlerAvailable: true }),
+      ),
+    );
+
+    expect(hybridApi.freeExploreSendHandlerAvailable).toBe(true);
+  });
+
+  it("keeps freeExploreSendHandlerAvailable false when upstream marks false", () => {
     const hybridApi = buildHybridWorkbenchDataApi(
       createMockOrvekDataApi(),
       undefined,

@@ -201,7 +201,7 @@ describe("free explore chat tab alignment", () => {
     expect(hasLiveExploreChatFromProvider(hybridApi)).toBe(true);
   });
 
-  it("keeps Ask/send disabled and freeExploreSendHandlerAvailable false", () => {
+  it("keeps Ask/send disabled until freeExploreSendHandlerAvailable is true", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
     const freeExploreBlock =
       explorePageSource.match(/function FreeExplore\(\) \{([\s\S]*?)\n\}\n\nfunction Bubble/)?.[1] ??
@@ -224,19 +224,34 @@ describe("free explore chat tab alignment", () => {
     );
 
     expect(hybridApi.freeExploreSendHandlerAvailable).toBe(false);
+
+    const sendReadyHybridApi = buildHybridWorkbenchDataApi(
+      createMockOrvekDataApi(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      buildFreeExploreChatProductionDataApi(
+        readyFreeExploreChatInput({ sendHandlerAvailable: true }),
+      ),
+    );
+
+    expect(sendReadyHybridApi.freeExploreSendHandlerAvailable).toBe(true);
   });
 
-  it("does not mount production write handlers at the workbench root", () => {
+  it("mounts production explore handlers at the workbench root when session send is ready", () => {
     const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
     const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
 
     expect(workbenchSource).toContain("OrvekPageHandlersProvider");
-    expect(shellSource).toContain("handlers={{}}");
-    expect(shellSource).not.toContain("onSend");
-    expect(shellSource).not.toContain("sendMessage");
+    expect(shellSource).toContain("handlers={handlers}");
+    expect(shellSource).not.toContain("handlers={{}}");
+    expect(hookSource).toContain("sendMessage");
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
-    expect(hookSource).not.toContain("sendMessage");
   });
 
   it("does not display raw stream chunks in FreeExplore", () => {
@@ -245,8 +260,15 @@ describe("free explore chat tab alignment", () => {
       explorePageSource.match(/function FreeExplore\(\) \{([\s\S]*?)\n\}\n\nfunction Bubble/)?.[1] ??
       "";
 
-    expect(freeExploreBlock).toContain("message.content.trim().length > 0");
-    expect(freeExploreBlock).not.toContain("stream");
+    expect(explorePageSource).toContain("Thinking…");
+    expect(explorePageSource).not.toContain("Orvek is thinking…");
+    expect(explorePageSource).toContain("o-breathe");
+    expect(explorePageSource).toContain('role="status"');
+    expect(freeExploreBlock).toContain("showThinkingRow");
+    expect(freeExploreBlock).toContain("bubbleMessages");
+    expect(freeExploreBlock).toContain("{message.content}");
+    expect(freeExploreBlock).not.toContain("isStreamingAssistant");
+    expect(freeExploreBlock).toMatch(/\{showThinkingRow \? \([\s\S]*<ThinkingIndicator/);
     expect(freeExploreBlock).not.toContain("chunk");
   });
 
