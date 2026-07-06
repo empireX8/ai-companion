@@ -1112,12 +1112,13 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.getObject("pc-fw-2")?.inspectorObjectType).toBe("pattern_claim");
   });
 
-  it("does not wire root Active Questions fetch into the hybrid hook yet", () => {
+  it("wires bounded Active Questions fetch into the root hybrid hook", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
-    expect(hookSource).not.toContain("ACTIVE_QUESTIONS_ENDPOINT");
-    expect(hookSource).not.toContain("buildActiveQuestionsProductionDataApi");
-    expect(hookSource).not.toContain("shouldMergeActiveQuestionsProductionApi");
-    expect(hookSource).not.toContain("activeQuestionsApi");
+    expect(hookSource).toContain("fetchActiveQuestionItems");
+    expect(hookSource).toContain("buildActiveQuestionsProductionDataApi");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("activeQuestionsApi");
+    expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/active-questions/);
   });
 });
