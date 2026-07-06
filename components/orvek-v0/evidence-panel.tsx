@@ -7,7 +7,9 @@ import {
   EXPLORE_GROUNDING,
 } from "@/lib/orvek-v0/orvek-data"
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
-import { useOrvekObjectGraph } from "@/lib/orvek-v0/data-provider"
+import { useOrvekData, useOrvekObjectGraph } from "@/lib/orvek-v0/data-provider"
+import { hasLiveExploreChatFromProvider } from "@/lib/orvek-v0/production/free-explore-chat-presentation"
+import { EXPLORE_CONVERSATION_MOVEMENT_EMPTY_COPY } from "@/lib/explore-surface"
 import { useWorkbench, type InspectorTab } from "@/components/orvek-v0/store"
 import { Chip, SectionLabel, TYPE_META, TypeBadge } from "@/components/orvek-v0/primitives"
 import {
@@ -123,11 +125,17 @@ function EmptyState() {
 function MovementView({ obj }: { obj: OrvekObject | undefined }) {
   const { exploreActive, extractions, setExtraction, select, openReport } = useWorkbench()
   const { getObject, getObjects } = useOrvekObjectGraph()
+  const data = useOrvekData()
+  const hasLiveExploreChat = hasLiveExploreChatFromProvider(data)
+  const liveConversationMovement = data.exploreMovement ?? []
+  const showReferenceConversationMovement = exploreActive && !hasLiveExploreChat
+  const showLiveConversationMovementEmpty =
+    exploreActive && hasLiveExploreChat && liveConversationMovement.length === 0
   const recent = getObjects(["mu-1", "mu-2", "mu-3"])
 
   return (
     <div className="pb-6">
-      {exploreActive && (
+      {showReferenceConversationMovement && (
         <section className="mx-4 mt-4 rounded-2xl bg-action-muted/40 px-4 py-3.5 ring-1 ring-inset ring-action/15">
           <div className="flex items-center gap-1.5">
             <Sparkles className="size-4 text-action-foreground" aria-hidden />
@@ -220,6 +228,14 @@ function MovementView({ obj }: { obj: OrvekObject | undefined }) {
           </div>
         </section>
       )}
+
+      {showLiveConversationMovementEmpty ? (
+        <section className="mx-4 mt-4 rounded-2xl bg-muted/30 px-4 py-3.5 ring-1 ring-inset ring-border/40">
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            {EXPLORE_CONVERSATION_MOVEMENT_EMPTY_COPY}
+          </p>
+        </section>
+      ) : null}
 
       {/* selected object movement */}
       {obj && (obj.before || obj.after) ? (

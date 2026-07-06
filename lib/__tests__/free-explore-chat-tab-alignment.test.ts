@@ -278,7 +278,10 @@ describe("free explore chat tab alignment", () => {
       explorePageSource.match(/function FreeExplore\(\) \{([\s\S]*?)\n\}\n\nfunction Bubble/)?.[1] ??
       "";
 
-    expect(freeExploreBlock).toContain("useReferenceGrounding");
+    expect(freeExploreBlock).toMatch(/useReferenceGrounding\s*=\s*!hasLiveExploreChat/);
+    expect(freeExploreBlock).not.toMatch(
+      /useReferenceGrounding\s*=\s*!hasLiveExploreChat\s*\|\|\s*exploreGrounding\.length/,
+    );
     expect(freeExploreBlock).toContain("V0_EXPLORE_LIVE_DETECTION_COPY");
     expect(freeExploreBlock).toContain("Review possible model movement in the inspector.");
     expect(freeExploreBlock).toContain("4 places");
