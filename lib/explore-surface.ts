@@ -40,6 +40,9 @@ export const EXPLORE_MOVEMENT_ERROR_COPY =
   `Could not check for published ${ORVEK_COPY.mindModelMovement.toLowerCase()} right now.`;
 export const EXPLORE_REVIEW_ERROR_COPY = "Could not check proposed updates right now.";
 
+export const EXPLORE_CONVERSATION_MOVEMENT_EMPTY_COPY =
+  "No proposed model movement from this conversation yet. Sending a message does not publish updates until they are reviewed.";
+
 export const EXPLORE_REENTRY_LINKS = [
   { href: "/", label: "Today" },
   { href: "/your-map", label: "Your Map" },

@@ -341,6 +341,9 @@ function mergeFreeExploreChatOverlay(
   return {
     ...baseApi,
     exploreMessages: freeExploreChatApi.exploreMessages,
+    exploreGrounding: freeExploreChatApi.exploreGrounding,
+    exploreMovement: freeExploreChatApi.exploreMovement,
+    exploreLiveDetectionCopy: freeExploreChatApi.exploreLiveDetectionCopy,
     exploreIsLoading: freeExploreChatApi.exploreIsLoading,
     freeExploreChatSessionId: freeExploreChatApi.freeExploreChatSessionId,
     freeExploreSendHandlerAvailable:

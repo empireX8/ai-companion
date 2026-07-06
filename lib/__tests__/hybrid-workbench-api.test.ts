@@ -1522,9 +1522,9 @@ describe("hybrid workbench data api", () => {
         content: "You seem to trust decisions more once the system can express itself visually.",
       },
     ]);
-    expect(hybridApi.exploreGrounding).toEqual(baseApi.exploreGrounding);
-    expect(hybridApi.exploreLiveDetectionCopy).toBe(baseApi.exploreLiveDetectionCopy);
-    expect(hybridApi.exploreMovement).toEqual(baseApi.exploreMovement);
+    expect(hybridApi.exploreGrounding).toEqual([]);
+    expect(hybridApi.exploreLiveDetectionCopy).toBeUndefined();
+    expect(hybridApi.exploreMovement).toEqual([]);
   });
 
   it("merges safe empty-live Free Explore chat overlay when session is ready with no messages", () => {
@@ -1674,9 +1674,9 @@ describe("hybrid workbench data api", () => {
     );
 
     expect(hybridApi.exploreMessages).toBeUndefined();
-    expect(hybridApi.exploreGrounding).toEqual(baseApi.exploreGrounding);
-    expect(hybridApi.exploreLiveDetectionCopy).toBe(baseApi.exploreLiveDetectionCopy);
-    expect(hybridApi.exploreMovement).toEqual(baseApi.exploreMovement);
+    expect(hybridApi.exploreGrounding).toEqual([]);
+    expect(hybridApi.exploreLiveDetectionCopy).toBeUndefined();
+    expect(hybridApi.exploreMovement).toEqual([]);
   });
 
   it("preserves Today, Map, Timeline, Decisions, Experiment, Active Questions, and Investigations merges when Free Explore chat overlay is ready", () => {

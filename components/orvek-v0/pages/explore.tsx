@@ -157,7 +157,7 @@ function FreeExplore() {
   const lastStableLiveMessagesRef = useRef<OrvekExploreMessage[]>([])
   const hasLiveExploreChat = hasLiveExploreChatFromProvider(data)
   const exploreView = data.explore
-  const useReferenceGrounding = !hasLiveExploreChat || exploreGrounding.length === 0
+  const useReferenceGrounding = !hasLiveExploreChat
   const groundingIds = useReferenceGrounding ? EXPLORE_GROUNDING : exploreGrounding
   const grounding = getObjects(groundingIds)
   const composerDraft =
