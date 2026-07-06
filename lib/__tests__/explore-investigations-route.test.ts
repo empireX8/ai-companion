@@ -187,11 +187,12 @@ describe("/api/explore/investigations public list contract", () => {
     );
   });
 
-  it("does not wire Explore Investigations fetch into the root hybrid hook yet", () => {
+  it("wires Explore Investigations fetch into the root hybrid hook", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
-    expect(hookSource).not.toContain("fetchExploreInvestigationItems");
-    expect(hookSource).not.toContain("buildInvestigationsProductionDataApi");
+    expect(hookSource).toContain("fetchExploreInvestigationItems");
+    expect(hookSource).toContain("buildInvestigationsProductionDataApi");
+    expect(hookSource).toContain("investigationsApi");
   });
 
   it("keeps Investigations tab rendering unchanged", () => {

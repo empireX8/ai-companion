@@ -1433,12 +1433,15 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.exploreInvestigationIds).toEqual(["inv-resolved-1", "inv-abandoned-1"]);
   });
 
-  it("does not wire Investigations fetch into the root hybrid hook yet", () => {
+  it("wires bounded Explore Investigations fetch into the root hybrid hook", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
-    expect(hookSource).not.toContain("fetchExploreInvestigationItems");
-    expect(hookSource).not.toContain("buildInvestigationsProductionDataApi");
-    expect(hookSource).not.toContain("investigationsApi");
+    expect(hookSource).toContain("fetchExploreInvestigationItems");
+    expect(hookSource).toContain("buildInvestigationsProductionDataApi");
+    expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
+    expect(hookSource).toContain("investigationsApi");
+    expect(hookSource).not.toContain("/api/investigations");
+    expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/investigations/);
   });
 
   it("keeps Investigations tab reference/mock rendering unchanged", () => {
