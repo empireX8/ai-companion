@@ -97,11 +97,13 @@ export type OrvekDataApi = {
   exploreQuestionIds?: string[];
   exploreQuestionSelectedId?: string | null;
   exploreInvestigationIds?: string[];
+  exploreInvestigationSelectedId?: string | null;
   exploreFieldworkIds?: string[];
   exploreFieldworkSelectedId?: string | null;
   exploreIsLoading?: boolean;
   experimentIsLoading?: boolean;
   activeQuestionsIsLoading?: boolean;
+  investigationsIsLoading?: boolean;
   decisionsHeaderStats?: OrvekDecisionsHeaderStats;
   decisionsSelectedId?: string | null;
   decisionsIsLoading?: boolean;
