@@ -220,12 +220,12 @@ describe("active questions tab alignment", () => {
     expect(explorePageSource).toContain('referenceFieldworkId = "f2"');
   });
 
-  it("leaves Investigations on reference/mock lists", () => {
+  it("leaves Investigations on reference/mock lists with readiness-gated live path", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
 
-    expect(explorePageSource).toContain('["inv-1", "inv-2", "inv-3"]');
+    expect(explorePageSource).toContain('referenceInvestigationIds = ["inv-1", "inv-2", "inv-3"]');
     expect(explorePageSource).toContain("exploreInvestigationIds");
-    expect(explorePageSource).toContain("isProductionDisplay(data)");
+    expect(explorePageSource).toContain("hasLiveInvestigations");
   });
 
   it("keeps Explore chat untouched", () => {

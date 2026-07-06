@@ -477,9 +477,9 @@ describe("investigations presentation readiness gate", () => {
       explorePageSource.match(/function FreeExplore\(\) \{([\s\S]*?)\n\}\n\nfunction Bubble/)?.[1] ??
       "";
 
-    expect(investigationsBlock).toContain('["inv-1", "inv-2", "inv-3"]');
-    expect(investigationsBlock).toContain("isProductionDisplay(data)");
-    expect(investigationsBlock).not.toContain("hasLiveInvestigations");
+    expect(investigationsBlock).toContain('referenceInvestigationIds = ["inv-1", "inv-2", "inv-3"]');
+    expect(investigationsBlock).toContain("hasLiveInvestigations");
+    expect(investigationsBlock).not.toContain("isProductionDisplay");
     expect(explorePageSource).toContain("hasLiveQuestions");
     expect(explorePageSource).toContain("hasLiveFieldwork");
     expect(freeExploreBlock).toContain("exploreHandlers?.onSend");

@@ -195,15 +195,16 @@ describe("/api/explore/investigations public list contract", () => {
     expect(hookSource).toContain("investigationsApi");
   });
 
-  it("keeps Investigations tab rendering unchanged", () => {
+  it("keeps Investigations tab aligned to readiness-gated provider ids", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
     const investigationsBlock =
       explorePageSource.match(/function Investigations\(\) \{([\s\S]*?)\n\}\n\nfunction InvBlock/)?.[1] ??
       "";
 
-    expect(investigationsBlock).toContain('["inv-1", "inv-2", "inv-3"]');
-    expect(investigationsBlock).toContain("isProductionDisplay(data)");
-    expect(investigationsBlock).not.toContain("hasLiveInvestigations");
+    expect(investigationsBlock).toContain('referenceInvestigationIds = ["inv-1", "inv-2", "inv-3"]');
+    expect(investigationsBlock).toContain("hasLiveInvestigations");
+    expect(investigationsBlock).toContain("exploreInvestigationSelectedId");
+    expect(investigationsBlock).not.toContain("isProductionDisplay");
     expect(investigationsBlock).not.toContain("fetchExploreInvestigationItems");
   });
 

@@ -7,6 +7,7 @@ import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
 import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
 import { resolveActiveQuestionsOpenSelectionId } from "@/lib/orvek-v0/production/active-questions-presentation"
+import { resolveInvestigationsOpenSelectionId } from "@/lib/orvek-v0/production/investigations-presentation"
 import { resolveExperimentOpenSelectionId } from "@/lib/orvek-v0/production/experiment-presentation"
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
 import { useWorkbench } from "@/components/orvek-v0/store"
@@ -465,12 +466,35 @@ function Questions() {
 function Investigations() {
   const { select } = useWorkbench()
   const data = useOrvekData()
-  const { getObject, exploreInvestigationIds, emptyCopyBySlot } = data
-  const isProduction = isProductionDisplay(data)
-  const ids = isProduction ? (exploreInvestigationIds ?? []) : ["inv-1", "inv-2", "inv-3"]
-  const [activeId, setActiveId] = useState(ids[0] ?? "inv-2")
+  const { getObject, exploreInvestigationIds, exploreInvestigationSelectedId, emptyCopyBySlot } = data
+  const investigationIds = exploreInvestigationIds ?? []
+  const hasLiveInvestigations = investigationIds.length > 0
+  const referenceInvestigationIds = ["inv-1", "inv-2", "inv-3"] as const
+  const ids = hasLiveInvestigations ? investigationIds : [...referenceInvestigationIds]
+
+  const [activeId, setActiveId] = useState(
+    hasLiveInvestigations
+      ? (exploreInvestigationSelectedId ?? investigationIds[0] ?? referenceInvestigationIds[1])
+      : (referenceInvestigationIds[0] ?? referenceInvestigationIds[1]),
+  )
+
+  useEffect(() => {
+    if (!hasLiveInvestigations) {
+      return
+    }
+
+    const nextId = exploreInvestigationSelectedId ?? investigationIds[0]
+    if (nextId) {
+      setActiveId(nextId)
+    }
+  }, [exploreInvestigationSelectedId, investigationIds, hasLiveInvestigations])
+
   const inv = getObject(activeId)
-  const showSkeleton = isProduction && ids.length === 0
+  const showSkeleton = hasLiveInvestigations && ids.length === 0
+
+  function resolveInspectorSelection(id: string) {
+    return hasLiveInvestigations ? resolveInvestigationsOpenSelectionId(id, getObject) : id
+  }
 
   return (
     <div className="grid gap-5 lg:grid-cols-[230px_1fr]">
@@ -492,7 +516,7 @@ function Investigations() {
                 type="button"
                 onClick={() => {
                   setActiveId(id)
-                  select(id)
+                  select(resolveInspectorSelection(id))
                 }}
                 className={cn(
                   "o-calm w-full rounded-[10px] px-2.5 py-2 text-left text-[13px] leading-snug",
@@ -503,7 +527,9 @@ function Investigations() {
               >
                 {o.title}
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  {o.evidenceCount} linked · {o.status}
+                  {hasLiveInvestigations
+                    ? (o.tags?.[1] ?? o.status ?? "Open")
+                    : `${o.evidenceCount} linked · ${o.status}`}
                 </span>
               </button>
             )
@@ -550,7 +576,11 @@ function Investigations() {
               const o = getObject(id)
               if (!o) return null
               return (
-                <button key={id} type="button" onClick={() => select(id)}>
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => select(resolveInspectorSelection(id))}
+                >
                   <Chip className="cursor-pointer hover:opacity-80">{o.title}</Chip>
                 </button>
               )
@@ -567,10 +597,10 @@ function Investigations() {
               <button
                 key={a}
                 type="button"
-                disabled={isProduction}
+                disabled={hasLiveInvestigations}
                 className={cn(
                   "o-calm rounded-[8px] bg-secondary/70 px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60",
-                  isProduction && ORVEK_DEFERRED_ACTION_CLASS,
+                  hasLiveInvestigations && ORVEK_DEFERRED_ACTION_CLASS,
                 )}
               >
                 {a}

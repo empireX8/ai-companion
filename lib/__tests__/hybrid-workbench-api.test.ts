@@ -1444,14 +1444,15 @@ describe("hybrid workbench data api", () => {
     expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/investigations/);
   });
 
-  it("keeps Investigations tab reference/mock rendering unchanged", () => {
+  it("keeps Investigations tab aligned to readiness-gated provider ids", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
     const investigationsBlock =
       explorePageSource.match(/function Investigations\(\) \{([\s\S]*?)\n\}\n\nfunction InvBlock/)?.[1] ??
       "";
 
-    expect(investigationsBlock).toContain('["inv-1", "inv-2", "inv-3"]');
-    expect(investigationsBlock).toContain("isProductionDisplay(data)");
-    expect(investigationsBlock).not.toContain("hasLiveInvestigations");
+    expect(investigationsBlock).toContain('referenceInvestigationIds = ["inv-1", "inv-2", "inv-3"]');
+    expect(investigationsBlock).toContain("hasLiveInvestigations");
+    expect(investigationsBlock).toContain("resolveInvestigationsOpenSelectionId");
+    expect(investigationsBlock).not.toContain("isProductionDisplay");
   });
 });
