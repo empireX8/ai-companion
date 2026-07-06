@@ -37,6 +37,8 @@ describe("reference shell quarantine", () => {
     const workbench = readSource("components/orvek-v0/workbench.tsx");
 
     expect(workbench).toContain("createMockOrvekDataApi");
+    expect(workbench).toContain("OrvekPageHandlersProvider");
+    expect(workbench).toContain("handlers?: OrvekPageHandlers");
     expect(shell).not.toContain("createMockOrvekDataApi");
   });
 

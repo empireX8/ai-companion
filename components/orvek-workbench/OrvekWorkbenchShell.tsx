@@ -10,5 +10,5 @@ export function OrvekWorkbenchShell({ children }: { children: ReactNode }) {
   // Temporary hard swap: mount the accepted reference workbench directly.
   // Production adapter wiring can be restored after the UI is visually verified.
   const dataApi = useOrvekHybridWorkbenchDataApi();
-  return <Workbench dataApi={dataApi} />;
+  return <Workbench dataApi={dataApi} handlers={{}} />;
 }
