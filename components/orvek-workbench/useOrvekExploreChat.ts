@@ -324,12 +324,18 @@ export function useOrvekExploreChat(options?: {
           : "Could not send message."
       );
 
+      if (overrideContent === undefined) {
+        setDraft(content);
+      }
+
       try {
         const reconciledMessages = await loadMessages(selectedSessionId);
         setMessages(reconciledMessages);
       } catch {
         setMessages((current) =>
-          current.filter((message) => message.id !== assistantTempId)
+          current.filter(
+            (message) => message.id !== userTempId && message.id !== assistantTempId,
+          ),
         );
       }
     } finally {

@@ -129,6 +129,8 @@ export function isFreeExploreChatMessagePresentationReady(
   options: {
     allowStreamingAssistantEmpty?: boolean;
     isStreamingAssistant?: boolean;
+    allowPendingUserMessage?: boolean;
+    isPendingUserMessage?: boolean;
   } = {},
 ): boolean {
   const id = collapseFreeExploreChatWhitespace(message.id);
@@ -136,18 +138,34 @@ export function isFreeExploreChatMessagePresentationReady(
     return false;
   }
 
-  if (
-    isTemporaryFreeExploreChatMessageId(id) &&
-    !options.allowStreamingAssistantEmpty
-  ) {
-    return false;
+  const content = normalizeFreeExploreChatContent(message.content);
+
+  if (isTemporaryFreeExploreChatMessageId(id)) {
+    if (options.isPendingUserMessage && message.role === "user" && content) {
+      return true;
+    }
+
+    if (options.isStreamingAssistant) {
+      return true;
+    }
+
+    if (!options.allowStreamingAssistantEmpty && !options.allowPendingUserMessage) {
+      return false;
+    }
+
+    if (options.allowPendingUserMessage && message.role === "user" && content) {
+      return true;
+    }
+
+    if (!options.allowStreamingAssistantEmpty) {
+      return false;
+    }
   }
 
   if (message.role !== "user" && message.role !== "orvek") {
     return false;
   }
 
-  const content = normalizeFreeExploreChatContent(message.content);
   if (content) {
     return true;
   }
@@ -156,6 +174,37 @@ export function isFreeExploreChatMessagePresentationReady(
     message.role === "orvek" &&
     Boolean(options.allowStreamingAssistantEmpty && options.isStreamingAssistant)
   );
+}
+
+export function areFreeExploreChatMessagesLiveReady(
+  messages: OrvekExploreMessage[],
+  isSending: boolean,
+): boolean {
+  const allowInFlight = Boolean(isSending);
+
+  for (const [index, message] of messages.entries()) {
+    const isStreamingAssistant =
+      allowInFlight &&
+      message.role === "orvek" &&
+      index === messages.length - 1;
+    const isPendingUserMessage =
+      allowInFlight &&
+      message.role === "user" &&
+      isTemporaryFreeExploreChatMessageId(message.id);
+
+    if (
+      !isFreeExploreChatMessagePresentationReady(message, {
+        allowStreamingAssistantEmpty: allowInFlight,
+        isStreamingAssistant,
+        allowPendingUserMessage: allowInFlight,
+        isPendingUserMessage,
+      })
+    ) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function normalizeFreeExploreChatMessage(
@@ -216,6 +265,22 @@ export function isFreeExploreSendHandlerExplicit(
   return typeof api?.freeExploreSendHandlerAvailable === "boolean";
 }
 
+export function isFreeExploreChatSessionSendReady(input: {
+  sessionId: string | null | undefined;
+  isBooting: boolean;
+  errorMessage?: string | null;
+}): boolean {
+  if (input.isBooting) {
+    return false;
+  }
+
+  if (looksLikeAuthOrSessionBootError(input.errorMessage)) {
+    return false;
+  }
+
+  return isSafeFreeExploreChatSessionId(input.sessionId);
+}
+
 export function isSafeEmptyLiveFreeExploreChatState(api: OrvekDataApi | undefined): boolean {
   if (!api || !isSafeFreeExploreChatSessionId(api.freeExploreChatSessionId)) {
     return false;
@@ -268,23 +333,7 @@ export function isFreeExploreChatPresentationReady(api: OrvekDataApi | undefined
     return isSafeEmptyLiveFreeExploreChatState(api);
   }
 
-  for (const [index, message] of messages.entries()) {
-    const isStreamingAssistant =
-      allowStreamingAssistantEmpty &&
-      message.role === "orvek" &&
-      index === messages.length - 1;
-
-    if (
-      !isFreeExploreChatMessagePresentationReady(message, {
-        allowStreamingAssistantEmpty,
-        isStreamingAssistant,
-      })
-    ) {
-      return false;
-    }
-  }
-
-  return true;
+  return areFreeExploreChatMessagesLiveReady(messages, allowStreamingAssistantEmpty);
 }
 
 export function shouldMergeFreeExploreChatProductionApi(
@@ -323,8 +372,9 @@ export function hasLiveExploreChatFromProvider(api: OrvekDataApi | undefined): b
   }
 
   if ((api.exploreMessages.length ?? 0) > 0) {
-    return api.exploreMessages.every((message) =>
-      isFreeExploreChatMessagePresentationReady(message),
+    return areFreeExploreChatMessagesLiveReady(
+      api.exploreMessages,
+      Boolean(api.explore?.isSending),
     );
   }
 

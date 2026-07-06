@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { EXPLORE_GROUNDING } from "@/lib/orvek-v0/orvek-data"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
@@ -99,6 +99,47 @@ const REFERENCE_FREE_EXPLORE_MESSAGES: OrvekExploreMessage[] = [
 const REFERENCE_FREE_EXPLORE_LIVE_DETECTION_COPY =
   "Orvek is reading the model · 1 receipt extracted · 1 question detected"
 
+const PENDING_USER_MESSAGE_ID = "pending-user-local"
+
+function collapseDraft(value: string): string {
+  return value.replace(/\s+/g, " ").trim()
+}
+
+function ThinkingIndicator() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex items-center gap-2 px-1 py-1 text-[12px] text-muted-foreground/85"
+    >
+      <span
+        aria-hidden="true"
+        className="o-breathe h-2 w-2 rounded-full bg-current opacity-70"
+      />
+      <span>Thinking…</span>
+    </div>
+  )
+}
+
+function hasAssistantContentAfterLatestUser(messages: OrvekExploreMessage[]): boolean {
+  let lastUserIndex = -1
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === "user") {
+      lastUserIndex = index
+      break
+    }
+  }
+
+  if (lastUserIndex === -1) {
+    return false
+  }
+
+  return messages
+    .slice(lastUserIndex + 1)
+    .some((message) => message.role === "orvek" && message.content.trim().length > 0)
+}
+
 function FreeExplore() {
   const { select, setInspectorTab } = useWorkbench()
   const data = useOrvekData()
@@ -112,12 +153,17 @@ function FreeExplore() {
     freeExploreSendHandlerAvailable,
   } = data
   const [localDraft, setLocalDraft] = useState("")
+  const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null)
+  const lastStableLiveMessagesRef = useRef<OrvekExploreMessage[]>([])
   const hasLiveExploreChat = hasLiveExploreChatFromProvider(data)
   const exploreView = data.explore
   const useReferenceGrounding = !hasLiveExploreChat || exploreGrounding.length === 0
   const groundingIds = useReferenceGrounding ? EXPLORE_GROUNDING : exploreGrounding
   const grounding = getObjects(groundingIds)
-  const composerDraft = localDraft
+  const composerDraft =
+    freeExploreSendHandlerAvailable === true && exploreView?.composerDraft !== undefined
+      ? exploreView.composerDraft
+      : localDraft
   const isBooting = Boolean(exploreView?.isBooting)
   const isSending = Boolean(exploreView?.isSending)
   const composerDisabled = isBooting || isSending
@@ -132,8 +178,103 @@ function FreeExplore() {
     "Start an investigation",
     "Inspect a conflict",
   ]
-  const liveMessages = (exploreMessages ?? []).filter((message) => message.content.trim().length > 0)
-  const messages = hasLiveExploreChat ? liveMessages : REFERENCE_FREE_EXPLORE_MESSAGES
+  const rawLiveMessages = exploreMessages ?? []
+  const liveMessages = rawLiveMessages.filter((message) => message.content.trim().length > 0)
+
+  if (hasLiveExploreChat && liveMessages.length > 0) {
+    lastStableLiveMessagesRef.current = liveMessages
+  }
+
+  const preservedLiveMessages =
+    hasLiveExploreChat
+      ? liveMessages
+      : freeExploreSendHandlerAvailable === true &&
+          (isSending || lastStableLiveMessagesRef.current.length > 0)
+        ? lastStableLiveMessagesRef.current
+        : []
+
+  const baseMessages = hasLiveExploreChat || preservedLiveMessages.length > 0
+    ? preservedLiveMessages
+    : REFERENCE_FREE_EXPLORE_MESSAGES
+
+  const pendingTrimmed = pendingUserMessage ? collapseDraft(pendingUserMessage) : ""
+  const pendingAlreadyVisible =
+    pendingTrimmed.length > 0 &&
+    baseMessages.some(
+      (message) => message.role === "user" && collapseDraft(message.content) === pendingTrimmed,
+    )
+
+  const messages =
+    pendingTrimmed.length > 0 && !pendingAlreadyVisible
+      ? [
+          ...baseMessages,
+          {
+            id: PENDING_USER_MESSAGE_ID,
+            role: "user" as const,
+            content: pendingUserMessage ?? "",
+          },
+        ]
+      : baseMessages
+
+  const bubbleMessages = messages.filter(
+    (message) => message.id === PENDING_USER_MESSAGE_ID || message.content.trim().length > 0,
+  )
+  const showThinkingRow =
+    isSending && !hasAssistantContentAfterLatestUser(bubbleMessages)
+
+  const showLiveEmptyState =
+    (hasLiveExploreChat || freeExploreSendHandlerAvailable === true) &&
+    messages.length === 0 &&
+    !isSending &&
+    !pendingTrimmed
+
+  const handleSend = useCallback(() => {
+    if (!canSend) {
+      return
+    }
+
+    const outgoing = collapseDraft(composerDraft)
+    if (!outgoing) {
+      return
+    }
+
+    setPendingUserMessage(outgoing)
+    exploreHandlers?.onSend?.()
+  }, [canSend, composerDraft, exploreHandlers])
+
+  useEffect(() => {
+    if (!pendingTrimmed) {
+      return
+    }
+
+    if (pendingAlreadyVisible) {
+      setPendingUserMessage(null)
+    }
+  }, [pendingAlreadyVisible, pendingTrimmed])
+
+  useEffect(() => {
+    if (!pendingTrimmed || !hasLiveExploreChat) {
+      return
+    }
+
+    if (
+      exploreView?.errorMessage &&
+      freeExploreSendHandlerAvailable === true &&
+      exploreHandlers?.onDraftChange &&
+      !collapseDraft(composerDraft)
+    ) {
+      exploreHandlers.onDraftChange(pendingUserMessage ?? "")
+      setPendingUserMessage(null)
+    }
+  }, [
+    composerDraft,
+    exploreHandlers,
+    exploreView?.errorMessage,
+    freeExploreSendHandlerAvailable,
+    hasLiveExploreChat,
+    pendingTrimmed,
+    pendingUserMessage,
+  ])
   const liveDetectionCopy = hasLiveExploreChat
     ? V0_EXPLORE_LIVE_DETECTION_COPY
     : (exploreLiveDetectionCopy ?? REFERENCE_FREE_EXPLORE_LIVE_DETECTION_COPY)
@@ -141,18 +282,33 @@ function FreeExplore() {
   return (
     <div>
       <div className="space-y-3">
-        {messages.length === 0 && hasLiveExploreChat ? (
+        {showLiveEmptyState ? (
           <div className="o-material rounded-[14px] p-4 text-[13px] leading-relaxed text-muted-foreground">
             {isBooting
               ? (exploreView?.chatLoadingCopy ?? "Loading conversation…")
               : (emptyCopyBySlot?.exploreChatEmpty ?? "Ask the model anything to begin.")}
           </div>
         ) : (
-          messages.map((message) => (
-            <Bubble key={message.id} role={message.role}>
-              {message.content}
-            </Bubble>
-          ))
+          <>
+            {bubbleMessages.map((message) => {
+              const isPendingUserBubble = message.id === PENDING_USER_MESSAGE_ID
+
+              return (
+                <Bubble
+                  key={message.id}
+                  role={message.role}
+                  pending={isPendingUserBubble}
+                >
+                  {message.content}
+                </Bubble>
+              )
+            })}
+            {showThinkingRow ? (
+              <div className="flex justify-start">
+                <ThinkingIndicator />
+              </div>
+            ) : null}
+          </>
         )}
       </div>
 
@@ -229,16 +385,23 @@ function FreeExplore() {
               exploreHandlers?.onComposerFocus?.()
             }
           }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || event.shiftKey) {
+              return
+            }
+            event.preventDefault()
+            if (!canSend) {
+              return
+            }
+            handleSend()
+          }}
           disabled={composerDisabled}
           className="flex-1 bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50"
         />
         <button
           type="button"
           onClick={() => {
-            if (!canSend) {
-              return
-            }
-            exploreHandlers?.onSend?.()
+            handleSend()
           }}
           disabled={!canSend}
           className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
@@ -262,6 +425,7 @@ function FreeExplore() {
                 return
               }
               if (freeExploreSendHandlerAvailable === true && exploreHandlers?.onQuickPrompt) {
+                setPendingUserMessage(collapseDraft(q))
                 exploreHandlers.onQuickPrompt(q)
                 return
               }
@@ -278,7 +442,15 @@ function FreeExplore() {
   )
 }
 
-function Bubble({ role, children }: { role: "user" | "orvek"; children: React.ReactNode }) {
+function Bubble({
+  role,
+  children,
+  pending = false,
+}: {
+  role: "user" | "orvek"
+  children: React.ReactNode
+  pending?: boolean
+}) {
   const isUser = role === "user"
   return (
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
@@ -286,7 +458,10 @@ function Bubble({ role, children }: { role: "user" | "orvek"; children: React.Re
         className={cn(
           "max-w-[85%] px-3.5 py-2.5 text-sm leading-relaxed",
           isUser
-            ? "rounded-[14px] rounded-br-[5px] bg-primary text-primary-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.25)]"
+            ? cn(
+                "rounded-[14px] rounded-br-[5px] bg-primary text-primary-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.25)]",
+                pending && "opacity-90",
+              )
             : "o-material rounded-[14px] rounded-bl-[5px] text-foreground",
         )}
       >

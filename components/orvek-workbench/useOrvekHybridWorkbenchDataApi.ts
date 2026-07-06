@@ -23,7 +23,9 @@ import { buildActiveQuestionsProductionDataApi } from "@/lib/orvek-v0/production
 import { buildExperimentProductionDataApi } from "@/lib/orvek-v0/production/experiment-api";
 import { buildTodayProductionDataApi } from "@/lib/orvek-v0/production/today-api";
 import { buildFreeExploreChatProductionDataApi } from "@/lib/orvek-v0/production/free-explore-chat-api";
+import { isFreeExploreChatSessionSendReady } from "@/lib/orvek-v0/production/free-explore-chat-presentation";
 import { buildHybridWorkbenchDataApi } from "@/lib/orvek-v0/production/hybrid-workbench-api";
+import type { OrvekPageHandlers } from "@/lib/orvek-v0/page-handlers";
 import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
 import { buildTimelineProductionDataApi } from "@/lib/orvek-v0/production/timeline-api";
 import { resolveMapWorkbenchSelectedId } from "@/lib/orvek-v0/production/map-selection";
@@ -89,9 +91,11 @@ export function useOrvekHybridWorkbenchDataApi() {
     selectedSessionId: exploreChatSessionId,
     messages: exploreChatMessages,
     draft: exploreChatDraft,
+    setDraft: setExploreChatDraft,
     isBooting: isExploreChatBooting,
     isSending: isExploreChatSending,
     errorMessage: exploreChatErrorMessage,
+    sendMessage,
   } = useOrvekExploreChat({});
   const [snapshot, setSnapshot] = useState<TodayReentrySnapshot>(EMPTY_SNAPSHOT);
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(true);
@@ -533,7 +537,36 @@ export function useOrvekHybridWorkbenchDataApi() {
     return [...actionsData.stabilizeNow, ...actionsData.buildForward];
   }, [actionsData]);
 
-  return useMemo(() => {
+  const exploreChatSendReady = useMemo(
+    () =>
+      isFreeExploreChatSessionSendReady({
+        sessionId: exploreChatSessionId,
+        isBooting: isExploreChatBooting,
+        errorMessage: exploreChatErrorMessage,
+      }),
+    [exploreChatSessionId, isExploreChatBooting, exploreChatErrorMessage],
+  );
+
+  const handlers = useMemo((): OrvekPageHandlers => {
+    if (!exploreChatSendReady) {
+      return {};
+    }
+
+    return {
+      explore: {
+        onDraftChange: setExploreChatDraft,
+        onSend: () => {
+          void sendMessage();
+        },
+        onQuickPrompt: (prompt: string) => {
+          void sendMessage(prompt);
+        },
+        onComposerFocus: () => {},
+      },
+    };
+  }, [exploreChatSendReady, setExploreChatDraft, sendMessage]);
+
+  const dataApi = useMemo(() => {
     if (isLoadingSnapshot) {
       return baseApi;
     }
@@ -613,7 +646,7 @@ export function useOrvekHybridWorkbenchDataApi() {
       isBooting: isExploreChatBooting,
       isSending: isExploreChatSending,
       errorMessage: exploreChatErrorMessage,
-      sendHandlerAvailable: false,
+      sendHandlerAvailable: exploreChatSendReady,
     });
 
     return buildHybridWorkbenchDataApi(
@@ -667,5 +700,8 @@ export function useOrvekHybridWorkbenchDataApi() {
     isExploreChatBooting,
     isExploreChatSending,
     exploreChatErrorMessage,
+    exploreChatSendReady,
   ]);
+
+  return { dataApi, handlers };
 }

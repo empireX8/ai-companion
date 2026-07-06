@@ -1604,7 +1604,7 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.freeExploreChatSessionId).toBeUndefined();
   });
 
-  it("does not enable send from overlay even when upstream marks handler availability true", () => {
+  it("passes freeExploreSendHandlerAvailable through overlay when upstream marks handler availability true", () => {
     const baseApi = createMockOrvekDataApi();
     const handlerTrueApi = buildFreeExploreChatProductionDataApi(
       readyFreeExploreChatInput({
@@ -1624,7 +1624,7 @@ describe("hybrid workbench data api", () => {
       handlerTrueApi,
     );
 
-    expect(hybridApi.freeExploreSendHandlerAvailable).toBe(false);
+    expect(hybridApi.freeExploreSendHandlerAvailable).toBe(true);
   });
 
   it("rejects displayContract production leaks from Free Explore chat overlay merge", () => {
@@ -1717,7 +1717,7 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.freeExploreSendHandlerAvailable).toBe(false);
   });
 
-  it("keeps root hybrid hook wired for bounded Explore chat session read fetch", () => {
+  it("keeps root hybrid hook wired for bounded Explore chat session read fetch and send handlers", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
     const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
     const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
@@ -1725,10 +1725,10 @@ describe("hybrid workbench data api", () => {
     expect(hookSource).toContain("useOrvekExploreChat");
     expect(hookSource).toContain("buildFreeExploreChatProductionDataApi");
     expect(hookSource).toContain("freeExploreChatApi");
-    expect(hookSource).toContain("sendHandlerAvailable: false");
-    expect(hookSource).not.toContain("sendMessage");
+    expect(hookSource).toContain("sendHandlerAvailable: exploreChatSendReady");
+    expect(hookSource).toContain("sendMessage");
     expect(workbenchSource).toContain("OrvekPageHandlersProvider");
-    expect(shellSource).toContain("handlers={{}}");
+    expect(shellSource).toContain("handlers={handlers}");
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
   });
 
