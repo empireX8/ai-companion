@@ -1,6 +1,15 @@
 import type { V0TodayHeroSlot, V0TodayMovementRow } from "../../orvek-adapters/types";
 import type { OrvekDataApi } from "../data-provider";
 import type { OrvekObject } from "../orvek-types";
+import {
+  buildParitySafeEvidencePointerObjects,
+  canUseLiveTodayEvidencePointer,
+  canUseLiveTodayEvidencePointerList,
+  filterInspectableEvidencePointerIds,
+  getInspectableEvidencePointers,
+  hasInspectableEvidencePointerContent,
+  type LiveEvidencePointerTarget,
+} from "./today-evidence-pointer-parity";
 
 export const REFERENCE_WEEKLY_REPORT_ID = "rep-weekly";
 
@@ -9,6 +18,7 @@ export type LiveTodayGraphParity = {
   evidencePointerListReady: boolean;
   inspectableEvidencePointerIds: string[];
   blockedEvidencePointerIds: string[];
+  paritySafeEvidencePointers: LiveEvidencePointerTarget[];
   heroReady: boolean;
   heroBlockers: string[];
   seeWhyMovedReady: boolean;
@@ -21,6 +31,19 @@ export type LiveTodayGraphParity = {
   /** Any parity-safe object may be merged into the hybrid graph without UI flip. */
   paritySafeObjectCount: number;
 };
+
+export {
+  buildParitySafeEvidencePointerObjects,
+  canUseLiveTodayEvidencePointer,
+  canUseLiveTodayEvidencePointerList,
+  filterInspectableEvidencePointerIds,
+  getInspectableEvidencePointers,
+  hasInspectableEvidencePointerContent,
+  isBlockedAsEvidencePointer,
+  isReceiptEvidencePointerObject,
+  resolveLiveEvidencePointerTarget,
+  type LiveEvidencePointerTarget,
+} from "./today-evidence-pointer-parity";
 
 function normalizeIds(ids: string[] | undefined): string[] {
   const seen = new Set<string>();
@@ -49,47 +72,14 @@ export function hasRecordedBeforeAfterMovement(
 }
 
 export function hasInspectableEvidenceContent(object: OrvekObject | undefined): boolean {
-  if (!object) {
-    return false;
-  }
-
-  const text = object.sourceText?.trim() || object.title?.trim();
-  return Boolean(text);
+  return hasInspectableEvidencePointerContent(object);
 }
 
 export function isEvidencePointerInspectable(
   api: OrvekDataApi,
   objectId: string | null | undefined,
 ): boolean {
-  if (!objectId) {
-    return false;
-  }
-
-  const object = api.getObject(objectId);
-  if (!object || object.type !== "receipt") {
-    return false;
-  }
-
-  return hasInspectableEvidenceContent(object);
-}
-
-export function filterInspectableEvidencePointerIds(
-  api: OrvekDataApi,
-  ids: string[] | undefined,
-): string[] {
-  return normalizeIds(ids).filter((id) => isEvidencePointerInspectable(api, id));
-}
-
-export function canUseLiveTodayEvidencePointerList(
-  api: OrvekDataApi,
-  ids: string[] | undefined,
-): boolean {
-  const normalized = normalizeIds(ids);
-  if (normalized.length === 0) {
-    return false;
-  }
-
-  return normalized.every((id) => isEvidencePointerInspectable(api, id));
+  return canUseLiveTodayEvidencePointer(api, objectId);
 }
 
 export function canUseLiveTodaySeeWhyMoved(
@@ -188,6 +178,7 @@ export function assessLiveTodayObjectGraphParity(api: OrvekDataApi): LiveTodayGr
   const blockedEvidencePointerIds = resurfacedIds.filter(
     (id) => !inspectableEvidencePointerIds.includes(id),
   );
+  const paritySafeEvidencePointers = getInspectableEvidencePointers(api, resurfacedIds);
 
   const hero = api.today?.hero;
   const heroBlockers: string[] = [];
@@ -210,6 +201,7 @@ export function assessLiveTodayObjectGraphParity(api: OrvekDataApi): LiveTodayGr
     evidencePointerListReady: canUseLiveTodayEvidencePointerList(api, resurfacedIds),
     inspectableEvidencePointerIds,
     blockedEvidencePointerIds,
+    paritySafeEvidencePointers,
     heroReady: canUseLiveTodayHero(api),
     heroBlockers,
     seeWhyMovedReady: canUseLiveTodaySeeWhyMoved(api, hero?.movementId),
@@ -222,14 +214,7 @@ export function assessLiveTodayObjectGraphParity(api: OrvekDataApi): LiveTodayGr
 }
 
 export function buildParitySafeTodayObjectMap(api: OrvekDataApi): Map<string, OrvekObject> {
-  const objects = new Map<string, OrvekObject>();
-
-  for (const id of filterInspectableEvidencePointerIds(api, api.todayResurfacedIds)) {
-    const object = api.getObject(id);
-    if (object) {
-      objects.set(id, object);
-    }
-  }
+  const objects = buildParitySafeEvidencePointerObjects(api);
 
   for (const row of api.today?.movements ?? []) {
     if (!canUseLiveTodayMovementRow(api, row)) {

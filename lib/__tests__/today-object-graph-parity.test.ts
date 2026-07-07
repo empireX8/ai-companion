@@ -104,6 +104,8 @@ describe("live Today object graph parity", () => {
             type: "receipt" as const,
             title: "Grounded capture.",
             sourceText: "Grounded capture.",
+            sourceOrigin: "Pattern",
+            date: "recently",
           };
         }
         return undefined;

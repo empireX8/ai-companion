@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { buildHybridWorkbenchDataApi } from "../../lib/orvek-v0/production/hybrid-workbench-api";
+import { buildTodayProductionDataApi } from "../../lib/orvek-v0/production/today-api";
 import { createMockOrvekDataApi } from "../../lib/orvek-v0/mock-api";
 import {
   resolveOrvekObjectFromGraph,
@@ -154,6 +156,42 @@ describe("evidence panel provider lookup", () => {
     expect(hybridApi.getObject("conclusion-c-1")?.title).toBe("Scope reopening under uncertainty");
     expect(resolveOrvekObjectFromGraph(hybridApi, "conclusion-c-1")?.summary).toBe(
       "The most active loop; directly raises decision pressure.",
+    );
+  });
+
+  it("resolves parity-safe live Today receipts through the provider graph when merged", () => {
+    const baseApi = createMockOrvekDataApi();
+    const productionTodayApi = buildTodayProductionDataApi({
+      snapshot: {
+        surfacingCards: [
+          {
+            kind: "Recent Pattern",
+            title: "Evening stress",
+            body: "Grounded capture.",
+            meta: "recently",
+            detailHref: "/patterns/pattern-1",
+            receiptHref: "/patterns/pattern-1",
+          },
+        ],
+        intelligenceUpdates: [],
+        userMapConclusions: [],
+        watchForItems: [],
+        investigations: [],
+        actions: [],
+        timelineMovements: [],
+      },
+      isLoading: false,
+      briefingDate: "Tuesday · 24 June",
+    });
+    const hybridApi = buildHybridWorkbenchDataApi(baseApi, productionTodayApi);
+    const receiptId = productionTodayApi.todayResurfacedIds?.[0];
+
+    expect(receiptId).toBeTruthy();
+    expect(resolveOrvekObjectFromGraph(hybridApi, receiptId)?.sourceText).toBe(
+      "Grounded capture.",
+    );
+    expect(hybridApi.todayObjectGraphParity?.paritySafeEvidencePointers[0]?.inspectorTab).toBe(
+      "evidence",
     );
   });
 
