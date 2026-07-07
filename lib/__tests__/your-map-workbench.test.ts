@@ -7,37 +7,44 @@ function readSource(relativePath: string): string {
 }
 
 describe("your-map workbench", () => {
-  it("renders master-detail layout on /your-map", () => {
+  it("renders master-detail layout through the active hybrid workbench path", () => {
     const pageSource = readSource("app/(root)/(routes)/your-map/page.tsx");
-    const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
+    const quarantinedMapPageSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
+    const hybridHookSource = readSource(
+      "components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts",
+    );
     const viewSource = readSource("components/orvek-v0/pages/map.tsx");
     const adapterSource = readSource("lib/orvek-adapters/map.ts");
     const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
     const mindContextSource = readSource("components/your-map/YourMapMindContextPanel.tsx");
 
     expect(pageSource).toContain("OrvekMapPage");
-    expect(workbenchSource).toContain("buildMapProductionDataApi");
-    expect(workbenchSource).toContain("fetchInspectorUserMapDetail");
-    expect(workbenchSource).toContain("fetchMindContextSnapshot");
+    expect(quarantinedMapPageSource).toContain("OrvekV0PageShell");
+    expect(quarantinedMapPageSource).not.toContain("useOrvekHybridWorkbenchDataApi");
+    expect(hybridHookSource).toContain("buildMapProductionDataApi");
+    expect(hybridHookSource).toContain("fetchInspectorUserMapDetail");
+    expect(hybridHookSource).toContain("fetchMindContextSnapshot");
     expect(adapterSource).toContain("buildOntologyRailGroups");
     expect(adapterSource).toContain("V0_MAP_ONTOLOGY_RAIL_LABELS");
     expect(viewSource).toContain("mapHasContent");
     expect(viewSource).toContain("mapIsLoading");
     expect(mapApiSource).toContain("mapHasContent");
     expect(mapApiSource).toContain("resolveMapSelectedId");
-    expect(workbenchSource).toContain("isMindContextLoading");
+    expect(hybridHookSource).toContain("isMindContextLoading");
     const appShellSource = readSource("components/layout/AppShell.tsx");
     const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
     const referenceWorkbenchSource = readSource("components/orvek-v0/workbench.tsx");
 
     expect(appShellSource).toContain("OrvekWorkbenchShell");
     expect(shellSource).toContain("Workbench");
+    expect(shellSource).toContain("useOrvekHybridWorkbenchDataApi");
     expect(shellSource).toContain("Temporary hard swap");
     expect(shellSource).toContain("mount the accepted reference workbench directly");
     expect(shellSource).not.toContain("RouteTopBar");
     expect(shellSource).not.toContain("RouteSidebar");
     expect(shellSource).not.toContain("ProductionInspectorAside");
     expect(shellSource).not.toContain("OrvekShellLayout");
+    expect(shellSource).not.toContain("OrvekMapPage");
     expect(referenceWorkbenchSource).toContain("OrvekShellLayout");
     expect(referenceWorkbenchSource).toContain("<EvidencePanel />");
     expect(referenceWorkbenchSource).toContain("<Sidebar />");
@@ -130,18 +137,21 @@ describe("your-map workbench", () => {
   });
 
   it("loads conclusions from the public API and shows honest empty state copy", () => {
-    const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
+    const hybridHookSource = readSource(
+      "components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts",
+    );
     const adapterSource = readSource("lib/orvek-adapters/map.ts");
     const viewSource = readSource("components/orvek-v0/pages/map.tsx");
     const surfaceSource = readSource("lib/your-map-surface.ts");
 
-    expect(workbenchSource).toContain("fetchYourMapConclusions");
+    expect(hybridHookSource).toContain("fetchYourMapConclusions");
     expect(adapterSource).toContain("YOUR_MAP_EMPTY_PRIMARY");
     expect(adapterSource).toContain("YOUR_MAP_EMPTY_SECONDARY");
     expect(adapterSource).toContain("buildOntologyRailGroups");
     expect(adapterSource).toContain("V0_MAP_ONTOLOGY_RAIL_LABELS");
     expect(surfaceSource).toContain("journal, explore, import, decisions");
-    expect(workbenchSource).not.toContain("mock");
+    expect(hybridHookSource).toContain("createMockOrvekDataApi");
+    expect(hybridHookSource).not.toContain("mock-orvek-data");
     expect(viewSource).not.toContain("mock");
   });
 

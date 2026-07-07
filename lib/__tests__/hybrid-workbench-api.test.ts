@@ -1574,9 +1574,11 @@ describe("hybrid workbench data api", () => {
       unsafeChatApi,
     );
 
-    expect(hybridApi).toBe(baseApi);
     expect(hybridApi.exploreMessages).toBeUndefined();
     expect(hybridApi.freeExploreChatSessionId).toBeUndefined();
+    expect(hybridApi.exploreGrounding).toEqual([]);
+    expect(hybridApi.exploreMovement).toEqual([]);
+    expect(hybridApi.exploreLiveDetectionCopy).toBeUndefined();
   });
 
   it("falls back when Free Explore chat overlay has auth/session boot errors", () => {
@@ -1602,6 +1604,9 @@ describe("hybrid workbench data api", () => {
 
     expect(hybridApi.exploreMessages).toBeUndefined();
     expect(hybridApi.freeExploreChatSessionId).toBeUndefined();
+    expect(hybridApi.exploreGrounding).toEqual([]);
+    expect(hybridApi.exploreMovement).toEqual([]);
+    expect(hybridApi.exploreLiveDetectionCopy).toBeUndefined();
   });
 
   it("passes freeExploreSendHandlerAvailable through overlay when upstream marks handler availability true", () => {
@@ -1677,6 +1682,38 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.exploreGrounding).toEqual([]);
     expect(hybridApi.exploreLiveDetectionCopy).toBeUndefined();
     expect(hybridApi.exploreMovement).toEqual([]);
+  });
+
+  it("strips mock explore bleed when a rejected chat overlay is paired with other ready merges", () => {
+    const baseApi = createMockOrvekDataApi();
+    const readyMapApi = buildMapProductionDataApi(READY_MAP_INPUT);
+    const freeExploreChatApi = buildFreeExploreChatProductionDataApi(readyFreeExploreChatInput());
+    const leakedOverlay = {
+      ...freeExploreChatApi,
+      exploreGrounding: ["r6"],
+      exploreLiveDetectionCopy: "1 receipt extracted",
+      exploreMovement: [{ id: "ex1", kind: "Receipt extracted", text: "Unsafe" }],
+    };
+
+    const hybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      readyMapApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      leakedOverlay,
+    );
+
+    expect(shouldMergeMapProductionApi(readyMapApi)).toBe(true);
+    expect(shouldMergeFreeExploreChatProductionApi(leakedOverlay)).toBe(false);
+    expect(hybridApi.mapHasContent).toBe(true);
+    expect(hybridApi.exploreMessages).toBeUndefined();
+    expect(hybridApi.exploreGrounding).toEqual([]);
+    expect(hybridApi.exploreMovement).toEqual([]);
+    expect(hybridApi.exploreLiveDetectionCopy).toBeUndefined();
   });
 
   it("preserves Today, Map, Timeline, Decisions, Experiment, Active Questions, and Investigations merges when Free Explore chat overlay is ready", () => {

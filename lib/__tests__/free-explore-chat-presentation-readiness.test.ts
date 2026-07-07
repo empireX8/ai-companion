@@ -411,7 +411,9 @@ describe("free explore chat hybrid overlay merge", () => {
       bootingApi,
     );
 
-    expect(hybridApi).toBe(baseApi);
     expect(hybridApi.exploreMessages).toBeUndefined();
+    expect(hybridApi.exploreGrounding).toEqual([]);
+    expect(hybridApi.exploreMovement).toEqual([]);
+    expect(hybridApi.exploreLiveDetectionCopy).toBeUndefined();
   });
 });

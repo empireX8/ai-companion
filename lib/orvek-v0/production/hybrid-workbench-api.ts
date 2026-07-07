@@ -361,6 +361,16 @@ function mergeFreeExploreChatOverlay(
   };
 }
 
+function stripRejectedFreeExploreChatMockBleed(api: OrvekDataApi): OrvekDataApi {
+  return {
+    ...api,
+    exploreMessages: undefined,
+    exploreGrounding: [],
+    exploreMovement: [],
+    exploreLiveDetectionCopy: undefined,
+  };
+}
+
 export function buildHybridWorkbenchDataApi(
   baseApi: OrvekDataApi,
   todayApi?: OrvekDataApi,
@@ -391,6 +401,9 @@ export function buildHybridWorkbenchDataApi(
     !mergeInvestigations &&
     !mergeFreeExploreChat
   ) {
+    if (freeExploreChatApi) {
+      return stripRejectedFreeExploreChatMockBleed(baseApi);
+    }
     return baseApi;
   }
 
@@ -435,6 +448,8 @@ export function buildHybridWorkbenchDataApi(
       api,
       normalizeFreeExploreChatProductionDataApi(freeExploreChatApi),
     );
+  } else if (freeExploreChatApi) {
+    api = stripRejectedFreeExploreChatMockBleed(api);
   }
 
   return api;
