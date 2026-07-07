@@ -359,6 +359,10 @@ describe("hybrid workbench data api", () => {
     ]);
     expect(hybridApi.getObject("r6")).toMatchObject(baseApi.getObject("r6") ?? {});
     expect(hybridApi.getObject("d1")).toMatchObject(baseApi.getObject("d1") ?? {});
+    expect(hybridApi.today).toBeUndefined();
+    expect(hybridApi.todayObjectGraphParity?.inspectableEvidencePointerIds.length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("falls back to the reference baseline when production Today has no surfaced receipts", () => {

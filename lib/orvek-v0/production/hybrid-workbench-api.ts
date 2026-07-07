@@ -25,85 +25,53 @@ import {
   shouldMergeFreeExploreChatProductionApi,
   normalizeFreeExploreChatProductionDataApi,
 } from "./free-explore-chat-presentation";
-
-function normalizeIds(ids: string[] | undefined): string[] {
-  const seen = new Set<string>();
-  const normalized: string[] = [];
-
-  for (const id of ids ?? []) {
-    const trimmed = id?.trim();
-    if (!trimmed || seen.has(trimmed)) {
-      continue;
-    }
-    seen.add(trimmed);
-    normalized.push(trimmed);
-  }
-
-  return normalized;
-}
-
-function buildLiveReceiptObjectMap(
-  todayApi: OrvekDataApi,
-  receiptIds: string[],
-): Map<string, OrvekObject> {
-  const liveObjects = new Map<string, OrvekObject>();
-
-  for (const object of todayApi.getObjects(receiptIds)) {
-    liveObjects.set(object.id, object);
-  }
-
-  for (const id of receiptIds) {
-    if (liveObjects.has(id)) {
-      continue;
-    }
-    const object = todayApi.getObject(id);
-    if (object) {
-      liveObjects.set(id, object);
-    }
-  }
-
-  return liveObjects;
-}
+import {
+  assessLiveTodayObjectGraphParity,
+  buildParitySafeTodayObjectMap,
+  shouldMergeTodayObjectGraph,
+  withTodayObjectGraphParity,
+} from "./today-object-graph-parity";
 
 function mergeTodayOverlay(baseApi: OrvekDataApi, todayApi: OrvekDataApi): OrvekDataApi {
-  const liveReceiptIds = normalizeIds(todayApi.todayResurfacedIds);
-  if (liveReceiptIds.length === 0) {
+  const paritySafeObjects = buildParitySafeTodayObjectMap(todayApi);
+  if (paritySafeObjects.size === 0) {
     return baseApi;
   }
 
-  const liveReceiptObjects = buildLiveReceiptObjectMap(todayApi, liveReceiptIds);
+  const parity = assessLiveTodayObjectGraphParity(todayApi);
   const baseGetObject = baseApi.getObject.bind(baseApi);
 
-  return {
-    ...baseApi,
-    getObject: (id) => {
-      if (!id) {
-        return undefined;
-      }
-      return liveReceiptObjects.get(id) ?? baseGetObject(id);
-    },
-    getObjects: (ids) => {
-      const resolved: OrvekObject[] = [];
-
-      for (const id of ids ?? []) {
+  return withTodayObjectGraphParity(
+    {
+      ...baseApi,
+      getObject: (id) => {
         if (!id) {
-          continue;
+          return undefined;
         }
-        const object = liveReceiptObjects.get(id) ?? baseGetObject(id);
-        if (object) {
-          resolved.push(object);
-        }
-      }
+        return paritySafeObjects.get(id) ?? baseGetObject(id);
+      },
+      getObjects: (ids) => {
+        const resolved: OrvekObject[] = [];
 
-      return resolved;
+        for (const id of ids ?? []) {
+          if (!id) {
+            continue;
+          }
+          const object = paritySafeObjects.get(id) ?? baseGetObject(id);
+          if (object) {
+            resolved.push(object);
+          }
+        }
+
+        return resolved;
+      },
+      emptyCopyBySlot: {
+        ...baseApi.emptyCopyBySlot,
+        ...todayApi.emptyCopyBySlot,
+      },
     },
-    today: todayApi.today ?? baseApi.today,
-    todayIsLoading: todayApi.todayIsLoading ?? baseApi.todayIsLoading,
-    emptyCopyBySlot: {
-      ...baseApi.emptyCopyBySlot,
-      ...todayApi.emptyCopyBySlot,
-    },
-  };
+    parity,
+  );
 }
 
 function mergeMapOverlay(baseApi: OrvekDataApi, mapApi: OrvekDataApi): OrvekDataApi {
@@ -382,7 +350,7 @@ export function buildHybridWorkbenchDataApi(
   investigationsApi?: OrvekDataApi,
   freeExploreChatApi?: OrvekDataApi,
 ): OrvekDataApi {
-  const mergeToday = !!todayApi && normalizeIds(todayApi.todayResurfacedIds).length > 0;
+  const mergeToday = shouldMergeTodayObjectGraph(todayApi);
   const mergeMap = shouldMergeMapProductionApi(mapApi);
   const mergeTimeline = shouldMergeTimelineProductionApi(timelineApi);
   const mergeDecisions = shouldMergeDecisionsProductionApi(decisionsApi);
