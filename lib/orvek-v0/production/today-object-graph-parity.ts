@@ -1,4 +1,4 @@
-import type { V0TodayHeroSlot, V0TodayMovementRow } from "../../orvek-adapters/types";
+import type { V0TodayHeroSlot } from "../../orvek-adapters/types";
 import type { OrvekDataApi } from "../data-provider";
 import type { OrvekObject } from "../orvek-types";
 import {
@@ -10,8 +10,22 @@ import {
   hasInspectableEvidencePointerContent,
   type LiveEvidencePointerTarget,
 } from "./today-evidence-pointer-parity";
+import {
+  buildParitySafeMovementObjects,
+  buildParitySafeReportObjects,
+  canUseLiveTodayMovementRow,
+  canUseLiveTodayReport,
+  canUseLiveTodaySeeWhyMoved,
+  getParitySafeMovementTargets,
+  hasOpenableReportObject,
+  hasRecordedBeforeAfterMovement,
+  REFERENCE_WEEKLY_REPORT_ID,
+  resolveLiveReportTarget,
+  type LiveMovementTarget,
+  type LiveReportTarget,
+} from "./today-movement-report-parity";
 
-export const REFERENCE_WEEKLY_REPORT_ID = "rep-weekly";
+export { REFERENCE_WEEKLY_REPORT_ID } from "./today-movement-report-parity";
 
 export type LiveTodayGraphParity = {
   /** True only when every resurfaced id is an inspectable evidence-pointer row. */
@@ -23,8 +37,10 @@ export type LiveTodayGraphParity = {
   heroBlockers: string[];
   seeWhyMovedReady: boolean;
   seeWhyMovementId: string | null;
+  paritySafeMovementTargets: LiveMovementTarget[];
   reportReady: boolean;
   reportId: string | null;
+  paritySafeReportTarget: LiveReportTarget | null;
   movementRowsReady: boolean;
   readyMovementRowIds: string[];
   blockedMovementRowIds: string[];
@@ -45,6 +61,29 @@ export {
   type LiveEvidencePointerTarget,
 } from "./today-evidence-pointer-parity";
 
+export {
+  buildParitySafeMovementObjects,
+  buildParitySafeReportObjects,
+  canUseLiveTodayMovementRow,
+  canUseLiveTodayReport,
+  canUseLiveTodaySeeWhyMoved,
+  getParitySafeMovementTargets,
+  hasInspectableMovementDelta,
+  hasMeaningfulReportContent,
+  hasOpenableReportObject,
+  hasRecordedBeforeAfterMovement,
+  isBlockedAsMovementTarget,
+  isMovementObject,
+  isReferenceReportSlotWithoutLiveObject,
+  isReportObject,
+  mustNotSubstituteGlobalMovementForSelectedObject,
+  resolveLiveMovementTarget,
+  resolveLiveReportTarget,
+  resolveSelectedObjectMovementTarget,
+  type LiveMovementTarget,
+  type LiveReportTarget,
+} from "./today-movement-report-parity";
+
 function normalizeIds(ids: string[] | undefined): string[] {
   const seen = new Set<string>();
   const normalized: string[] = [];
@@ -61,16 +100,6 @@ function normalizeIds(ids: string[] | undefined): string[] {
   return normalized;
 }
 
-export function hasRecordedBeforeAfterMovement(
-  object: OrvekObject | undefined,
-): boolean {
-  if (!object) {
-    return false;
-  }
-
-  return Boolean(object.before?.trim() || object.after?.trim());
-}
-
 export function hasInspectableEvidenceContent(object: OrvekObject | undefined): boolean {
   return hasInspectableEvidencePointerContent(object);
 }
@@ -80,29 +109,6 @@ export function isEvidencePointerInspectable(
   objectId: string | null | undefined,
 ): boolean {
   return canUseLiveTodayEvidencePointer(api, objectId);
-}
-
-export function canUseLiveTodaySeeWhyMoved(
-  api: OrvekDataApi,
-  movementId: string | null | undefined,
-): boolean {
-  if (!movementId) {
-    return false;
-  }
-
-  return hasRecordedBeforeAfterMovement(api.getObject(movementId));
-}
-
-export function hasOpenableReportObject(
-  api: OrvekDataApi,
-  reportId: string | null | undefined,
-): boolean {
-  if (!reportId) {
-    return false;
-  }
-
-  const report = api.getObject(reportId);
-  return report?.type === "report" && Boolean(report.title?.trim());
 }
 
 function hasInspectableHeroTarget(api: OrvekDataApi, hero: V0TodayHeroSlot): boolean {
@@ -130,21 +136,6 @@ export function canUseLiveTodayHero(api: OrvekDataApi): boolean {
   }
 
   return true;
-}
-
-export function canUseLiveTodayMovementRow(
-  api: OrvekDataApi,
-  row: V0TodayMovementRow,
-): boolean {
-  if (!row.id || !row.updated?.trim()) {
-    return false;
-  }
-
-  if (row.previous?.trim()) {
-    return canUseLiveTodaySeeWhyMoved(api, row.id);
-  }
-
-  return hasRecordedBeforeAfterMovement(api.getObject(row.id));
 }
 
 function assessMovementRows(api: OrvekDataApi): Pick<
@@ -179,6 +170,7 @@ export function assessLiveTodayObjectGraphParity(api: OrvekDataApi): LiveTodayGr
     (id) => !inspectableEvidencePointerIds.includes(id),
   );
   const paritySafeEvidencePointers = getInspectableEvidencePointers(api, resurfacedIds);
+  const paritySafeMovementTargets = getParitySafeMovementTargets(api);
 
   const hero = api.today?.hero;
   const heroBlockers: string[] = [];
@@ -206,44 +198,28 @@ export function assessLiveTodayObjectGraphParity(api: OrvekDataApi): LiveTodayGr
     heroBlockers,
     seeWhyMovedReady: canUseLiveTodaySeeWhyMoved(api, hero?.movementId),
     seeWhyMovementId: hero?.movementId ?? null,
-    reportReady: hasOpenableReportObject(api, reportId),
+    paritySafeMovementTargets,
+    reportReady: canUseLiveTodayReport(api, reportId),
     reportId,
+    paritySafeReportTarget: resolveLiveReportTarget(api, reportId),
     ...movementAssessment,
     paritySafeObjectCount: paritySafeObjects.size,
   };
 }
 
 export function buildParitySafeTodayObjectMap(api: OrvekDataApi): Map<string, OrvekObject> {
-  const objects = buildParitySafeEvidencePointerObjects(api);
+  const objects = new Map<string, OrvekObject>();
 
-  for (const row of api.today?.movements ?? []) {
-    if (!canUseLiveTodayMovementRow(api, row)) {
-      continue;
-    }
-    const object = api.getObject(row.id);
-    if (object) {
-      objects.set(row.id, object);
-    }
+  for (const [id, object] of buildParitySafeEvidencePointerObjects(api)) {
+    objects.set(id, object);
   }
 
-  const hero = api.today?.hero;
-  if (hero && canUseLiveTodayHero(api)) {
-    for (const id of [hero.inspectSelectId, hero.movementId, hero.selectionId]) {
-      if (!id) {
-        continue;
-      }
-      const object = api.getObject(id);
-      if (object) {
-        objects.set(id, object);
-      }
-    }
+  for (const [id, object] of buildParitySafeMovementObjects(api)) {
+    objects.set(id, object);
   }
 
-  if (hero?.showSeeWhyMoved && hero.movementId) {
-    const movement = api.getObject(hero.movementId);
-    if (movement && hasRecordedBeforeAfterMovement(movement)) {
-      objects.set(hero.movementId, movement);
-    }
+  for (const [id, object] of buildParitySafeReportObjects(api)) {
+    objects.set(id, object);
   }
 
   return objects;
