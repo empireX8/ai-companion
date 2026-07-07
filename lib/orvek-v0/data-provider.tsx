@@ -111,6 +111,8 @@ export type OrvekDataApi = {
   decisionsHeaderStats?: OrvekDecisionsHeaderStats;
   decisionsSelectedId?: string | null;
   decisionsIsLoading?: boolean;
+  /** Parity assessment for live Today object graph — does not flip presentation. */
+  todayObjectGraphParity?: import("./production/today-object-graph-parity").LiveTodayGraphParity;
 };
 
 const OrvekDataContext = createContext<OrvekDataApi | null>(null);
