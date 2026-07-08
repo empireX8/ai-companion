@@ -114,7 +114,8 @@ describe("today production data bridge", () => {
       inspectorObjectType: "model_update",
       inspectorObjectId: "mu-1",
     });
-    expect(api.today?.report?.primaryMovement?.inspectSelectId).toBe("mu-1");
+    expect(api.today?.report).toBeNull();
+    expect(api.today?.hero?.showSeeWhyMoved).toBe(false);
   });
 
   it("registers receipt inspector targets when href maps to a selectable object", () => {
@@ -210,16 +211,17 @@ describe("today production data bridge", () => {
     });
 
     expect(api.today).toMatchObject({
-      report: {
-        reportId: "rep-weekly",
-        primaryMovement: {
-          selectionId: "mu-1",
-          inspectSelectId: "mu-1",
-          movementId: "mu-1",
-          inspectorTab: "movement",
-        },
+      report: null,
+      hero: {
+        selectionId: "mu-1",
+        inspectSelectId: "mu-1",
+        movementId: "mu-1",
+        pageId: "timeline",
+        inspectorTab: "movement",
+        showSeeWhyMoved: false,
       },
     });
+    expect(api.today?.movements).toEqual([]);
 
     const byLabel = Object.fromEntries(
       api.today?.primaryActions.map((action) => [action.label, action]) ?? []
@@ -227,8 +229,8 @@ describe("today production data bridge", () => {
 
     expect(byLabel["Continue from what changed"]).toMatchObject({
       href: "/what-changed",
-      reportId: "rep-weekly",
     });
+    expect(byLabel["Continue from what changed"]?.reportId).toBeUndefined();
     expect(byLabel["Add what happened"]).toMatchObject({
       href: "/journal-chat",
       overlayId: "capture",
@@ -249,6 +251,7 @@ describe("today production data bridge", () => {
       movementId: "mu-1",
       pageId: "timeline",
       inspectorTab: "movement",
+      showSeeWhyMoved: false,
     });
     expect(api.today?.nowRows).toEqual(
       expect.arrayContaining([

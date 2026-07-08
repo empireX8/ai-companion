@@ -74,14 +74,15 @@ describe("live Today object graph parity", () => {
 
     const movementId = api.today?.hero?.movementId;
     expect(movementId).toBe("iu-1");
-    expect(api.today?.hero?.showSeeWhyMoved).toBe(true);
+    expect(api.today?.hero?.showSeeWhyMoved).toBe(false);
     expect(hasRecordedBeforeAfterMovement(api.getObject(movementId ?? ""))).toBe(false);
     expect(canUseLiveTodaySeeWhyMoved(api, movementId)).toBe(false);
-    expect(canUseLiveTodayHero(api)).toBe(false);
+    expect(api.today?.hero?.showSeeWhyMoved).toBe(false);
+    expect(canUseLiveTodayHero(api)).toBe(true);
 
     const parity = assessLiveTodayObjectGraphParity(api);
     expect(parity.seeWhyMovedReady).toBe(false);
-    expect(parity.heroBlockers).toContain("see_why_without_before_after");
+    expect(parity.heroBlockers).not.toContain("see_why_without_before_after");
     expect(buildParitySafeTodayObjectMap(api).has("iu-1")).toBe(false);
   });
 
@@ -185,7 +186,7 @@ describe("live Today object graph parity", () => {
       briefingDate: "Tuesday · 24 June",
     });
 
-    expect(hasOpenableReportObject(api, "rep-weekly")).toBe(false);
+    expect(api.today?.report).toBeNull();
     expect(assessLiveTodayObjectGraphParity(api).reportReady).toBe(false);
   });
 

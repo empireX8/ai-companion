@@ -21,6 +21,7 @@ import type { OrvekDataApi } from "../data-provider";
 import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import type { OrvekObject } from "../orvek-types";
+import { withTodayAdapterHonesty } from "./today-adapter-honesty";
 
 function selectionToOrvekObject(
   objectId: string,
@@ -169,26 +170,28 @@ export function buildTodayProductionDataApi(input: MapTodayDataInput): OrvekData
 
   const todayResurfacedIds = today.receipts.map((receipt) => receipt.id);
 
-  return withProductionContract({
-    ...EMPTY_ORVEK_DATA_API,
-    getObject: (id) => (id ? objects[id] : undefined),
-    getObjects: (ids) =>
-      filterDefined((ids ?? []).map((id) => (id ? objects[id] : undefined))),
-    todayCopy: {
-      briefingLine: `${today.briefingDate} · since your last visit`,
-      briefingTitle: today.briefingTitle,
-      briefingMeta: today.briefingMeta,
-    },
-    today,
-    todayResurfacedIds,
-    todayIsLoading: input.isLoading,
-    emptyCopyBySlot: {
-      todayHeroEmpty: today.heroEmptyCopy,
-      todayNowEmpty: today.nowEmptyCopy,
-      todayMovementEmpty: today.movementEmptyCopy,
-      todayPriorReadEmpty: today.priorReadEmptyCopy,
-      todayResurfacedEmpty: "No receipts resurfaced in this window yet.",
-      todayReportEmpty: TODAY_REPORT_EMPTY_COPY,
-    },
-  });
+  return withTodayAdapterHonesty(
+    withProductionContract({
+      ...EMPTY_ORVEK_DATA_API,
+      getObject: (id) => (id ? objects[id] : undefined),
+      getObjects: (ids) =>
+        filterDefined((ids ?? []).map((id) => (id ? objects[id] : undefined))),
+      todayCopy: {
+        briefingLine: `${today.briefingDate} · since your last visit`,
+        briefingTitle: today.briefingTitle,
+        briefingMeta: today.briefingMeta,
+      },
+      today,
+      todayResurfacedIds,
+      todayIsLoading: input.isLoading,
+      emptyCopyBySlot: {
+        todayHeroEmpty: today.heroEmptyCopy,
+        todayNowEmpty: today.nowEmptyCopy,
+        todayMovementEmpty: today.movementEmptyCopy,
+        todayPriorReadEmpty: today.priorReadEmptyCopy,
+        todayResurfacedEmpty: "No receipts resurfaced in this window yet.",
+        todayReportEmpty: TODAY_REPORT_EMPTY_COPY,
+      },
+    }),
+  );
 }
