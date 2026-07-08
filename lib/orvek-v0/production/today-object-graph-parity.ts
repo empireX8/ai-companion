@@ -11,6 +11,10 @@ import {
   type LiveEvidencePointerTarget,
 } from "./today-evidence-pointer-parity";
 import {
+  canUseLiveEvidenceInspectorDepthList,
+  filterInspectorDepthSafeEvidencePointerIds,
+} from "./evidence-inspector-depth-parity";
+import {
   buildParitySafeMovementObjects,
   buildParitySafeReportObjects,
   canUseLiveTodayMovementRow,
@@ -28,11 +32,24 @@ import {
 export { REFERENCE_WEEKLY_REPORT_ID } from "./today-movement-report-parity";
 
 export type LiveTodayGraphParity = {
-  /** True only when every resurfaced id is an inspectable evidence-pointer row. */
+  /**
+   * True only when every resurfaced id is a SOURCE-SAFE evidence-pointer row
+   * (receipt type + sourceText + provenance). Source-safe is enough for
+   * graph merge, NOT for reference-depth UI consumption — future Today UI
+   * consumption must check `evidencePointerInspectorDepthReady` instead.
+   */
   evidencePointerListReady: boolean;
   inspectableEvidencePointerIds: string[];
   blockedEvidencePointerIds: string[];
   paritySafeEvidencePointers: LiveEvidencePointerTarget[];
+  /**
+   * True only when every resurfaced id is INSPECTOR-DEPTH-SAFE per
+   * evidence-inspector-depth-parity.ts (source-safe + whyItMatters +
+   * resolvable non-near-empty context/related targets). Strictly narrower
+   * than `evidencePointerListReady`.
+   */
+  evidencePointerInspectorDepthReady: boolean;
+  inspectorDepthSafeEvidencePointerIds: string[];
   heroReady: boolean;
   heroBlockers: string[];
   seeWhyMovedReady: boolean;
@@ -60,6 +77,19 @@ export {
   resolveLiveEvidencePointerTarget,
   type LiveEvidencePointerTarget,
 } from "./today-evidence-pointer-parity";
+
+export {
+  assessEvidenceInspectorDepth,
+  canUseLiveEvidenceInspectorDepth,
+  canUseLiveEvidenceInspectorDepthList,
+  filterInspectorDepthSafeEvidencePointerIds,
+  hasReferenceDepthEvidenceShape,
+  isNearEmptyInspectorObject,
+  resolveEvidenceInspectorDepthTarget,
+  type EvidenceInspectorDepthAssessment,
+  type EvidenceInspectorDepthBlocker,
+  type LiveEvidenceInspectorDepthTarget,
+} from "./evidence-inspector-depth-parity";
 
 export {
   buildParitySafeMovementObjects,
@@ -194,6 +224,11 @@ export function assessLiveTodayObjectGraphParity(api: OrvekDataApi): LiveTodayGr
     inspectableEvidencePointerIds,
     blockedEvidencePointerIds,
     paritySafeEvidencePointers,
+    evidencePointerInspectorDepthReady: canUseLiveEvidenceInspectorDepthList(api, resurfacedIds),
+    inspectorDepthSafeEvidencePointerIds: filterInspectorDepthSafeEvidencePointerIds(
+      api,
+      resurfacedIds,
+    ),
     heroReady: canUseLiveTodayHero(api),
     heroBlockers,
     seeWhyMovedReady: canUseLiveTodaySeeWhyMoved(api, hero?.movementId),
