@@ -571,6 +571,23 @@ enum SurfacedActionStatus {
   didnt_help
 }
 
+enum SurfacedEvidencePointerKind {
+  pattern
+  tension
+  journal
+}
+
+enum SurfacedEvidencePointerSurface {
+  today_evidence_pointer
+}
+
+enum SurfacedEvidencePointerStatus {
+  active
+  expired
+  dismissed
+  hidden
+}
+
 model PatternClaim {
   id                     String                 @id @default(cuid())
   userId                 String
@@ -639,6 +656,37 @@ model SurfacedAction {
   @@index([userId, bucket, updatedAt])
   @@index([userId, linkedClaimId])
   @@index([userId, linkedGoalRefId])
+}
+
+// Persisted Today Evidence Pointer surfacing record (write contract #113).
+// Durable receipt→object edges remain on UnderstandingEvidenceLink keyed by
+// sourceObjectType/sourceObjectId with graphSlot in meta — not duplicated here.
+model SurfacedEvidencePointer {
+  id               String                         @id
+  userId           String
+  pointerKind      SurfacedEvidencePointerKind
+  surface          SurfacedEvidencePointerSurface @default(today_evidence_pointer)
+  sourceObjectType UnderstandingLinkSourceType
+  sourceObjectId   String
+  sourceEvidenceId String?
+  sourceText       String
+  sourceOrigin     String
+  whyItMatters     String
+  whyResurfaced    String?
+  libraryReceiptId String?
+  detailHref       String?
+  publicEligible   Boolean                        @default(false)
+  status           SurfacedEvidencePointerStatus  @default(active)
+  materializedFrom String?
+  meta             Json?
+  surfacedAt       DateTime                       @default(now())
+  createdAt        DateTime                       @default(now())
+  updatedAt        DateTime                       @updatedAt
+
+  @@unique([userId, sourceObjectType, sourceObjectId])
+  @@index([userId, status, surfacedAt])
+  @@index([userId, publicEligible, status])
+  @@index([userId, sourceObjectType, sourceObjectId])
 }
 
 // Mirrors ContradictionEvidence — reuse shape, not a third evidence concept.
