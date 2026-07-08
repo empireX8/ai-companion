@@ -238,7 +238,7 @@ describe("live Today movement/report parity", () => {
       briefingDate: "Tuesday · 24 June",
     });
 
-    expect(api.today?.report?.reportId).toBe(REFERENCE_WEEKLY_REPORT_ID);
+    expect(api.today?.report).toBeNull();
     expect(hasOpenableReportObject(api, REFERENCE_WEEKLY_REPORT_ID)).toBe(false);
     expect(isReferenceReportSlotWithoutLiveObject(api, REFERENCE_WEEKLY_REPORT_ID)).toBe(
       true,
