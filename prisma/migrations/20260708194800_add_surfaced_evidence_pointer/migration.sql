@@ -34,13 +34,13 @@ CREATE TABLE "SurfacedEvidencePointer" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "SurfacedEvidencePointer_userId_sourceObjectType_sourceObjectId_key" ON "SurfacedEvidencePointer"("userId", "sourceObjectType", "sourceObjectId");
+CREATE UNIQUE INDEX "sep_user_src_uniq" ON "SurfacedEvidencePointer"("userId", "sourceObjectType", "sourceObjectId");
 
 -- CreateIndex
-CREATE INDEX "SurfacedEvidencePointer_userId_status_surfacedAt_idx" ON "SurfacedEvidencePointer"("userId", "status", "surfacedAt");
+CREATE INDEX "sep_user_status_surfaced_idx" ON "SurfacedEvidencePointer"("userId", "status", "surfacedAt");
 
 -- CreateIndex
-CREATE INDEX "SurfacedEvidencePointer_userId_publicEligible_status_idx" ON "SurfacedEvidencePointer"("userId", "publicEligible", "status");
+CREATE INDEX "sep_user_pub_elig_status_idx" ON "SurfacedEvidencePointer"("userId", "publicEligible", "status");
 
 -- CreateIndex
-CREATE INDEX "SurfacedEvidencePointer_userId_sourceObjectType_sourceObjectId_idx" ON "SurfacedEvidencePointer"("userId", "sourceObjectType", "sourceObjectId");
+CREATE INDEX "sep_user_src_idx" ON "SurfacedEvidencePointer"("userId", "sourceObjectType", "sourceObjectId");

@@ -16,7 +16,7 @@ CREATE TABLE "EvidencePointerSurfacingRationale" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "EvidencePointerSurfacingRationale_userId_sourceObjectType_sourceObjectId_key" ON "EvidencePointerSurfacingRationale"("userId", "sourceObjectType", "sourceObjectId");
+CREATE UNIQUE INDEX "epsr_user_src_uniq" ON "EvidencePointerSurfacingRationale"("userId", "sourceObjectType", "sourceObjectId");
 
 -- CreateIndex
-CREATE INDEX "EvidencePointerSurfacingRationale_userId_sourceObjectType_sourceObjectId_idx" ON "EvidencePointerSurfacingRationale"("userId", "sourceObjectType", "sourceObjectId");
+CREATE INDEX "epsr_user_src_idx" ON "EvidencePointerSurfacingRationale"("userId", "sourceObjectType", "sourceObjectId");

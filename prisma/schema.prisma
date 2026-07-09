@@ -683,10 +683,10 @@ model SurfacedEvidencePointer {
   createdAt        DateTime                       @default(now())
   updatedAt        DateTime                       @updatedAt
 
-  @@unique([userId, sourceObjectType, sourceObjectId])
-  @@index([userId, status, surfacedAt])
-  @@index([userId, publicEligible, status])
-  @@index([userId, sourceObjectType, sourceObjectId])
+  @@unique([userId, sourceObjectType, sourceObjectId], map: "sep_user_src_uniq")
+  @@index([userId, status, surfacedAt], map: "sep_user_status_surfaced_idx")
+  @@index([userId, publicEligible, status], map: "sep_user_pub_elig_status_idx")
+  @@index([userId, sourceObjectType, sourceObjectId], map: "sep_user_src_idx")
 }
 
 // Upstream stored surfacing rationale for Evidence Pointer depth (#119).
@@ -705,8 +705,8 @@ model EvidencePointerSurfacingRationale {
   createdAt        DateTime                    @default(now())
   updatedAt        DateTime                    @updatedAt
 
-  @@unique([userId, sourceObjectType, sourceObjectId])
-  @@index([userId, sourceObjectType, sourceObjectId])
+  @@unique([userId, sourceObjectType, sourceObjectId], map: "epsr_user_src_uniq")
+  @@index([userId, sourceObjectType, sourceObjectId], map: "epsr_user_src_idx")
 }
 
 // Mirrors ContradictionEvidence — reuse shape, not a third evidence concept.
