@@ -25,6 +25,11 @@ import { buildTodayProductionDataApi } from "@/lib/orvek-v0/production/today-api
 import { buildFreeExploreChatProductionDataApi } from "@/lib/orvek-v0/production/free-explore-chat-api";
 import { isFreeExploreChatSessionSendReady } from "@/lib/orvek-v0/production/free-explore-chat-presentation";
 import { buildHybridWorkbenchDataApi } from "@/lib/orvek-v0/production/hybrid-workbench-api";
+import type { OrvekObject } from "@/lib/orvek-v0/orvek-types";
+import {
+  applySurfacedEvidenceDepthGate,
+  type SurfacedEvidenceDepthOverlay,
+} from "@/lib/orvek-v0/production/today-evidence-pointer-depth-gate";
 import type { OrvekPageHandlers } from "@/lib/orvek-v0/page-handlers";
 import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
 import { buildTimelineProductionDataApi } from "@/lib/orvek-v0/production/timeline-api";
@@ -85,6 +90,14 @@ const DISPLAY_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
 }).format(new Date());
 
+type SurfacedEvidenceDepthApiResponse = {
+  pointerObjects: OrvekObject[];
+  linkedObjects: OrvekObject[];
+  depthSafePointerIds: string[];
+  rejectedPointers: { pointerId: string; blockers: string[] }[];
+  inspectorDepthListReady: boolean;
+};
+
 export function useOrvekHybridWorkbenchDataApi() {
   const baseApi = useMemo(() => createMockOrvekDataApi(), []);
   const {
@@ -142,6 +155,9 @@ export function useOrvekHybridWorkbenchDataApi() {
   >([]);
   const [isLoadingInvestigations, setIsLoadingInvestigations] = useState(true);
 
+  const [surfacedEvidenceDepth, setSurfacedEvidenceDepth] =
+    useState<SurfacedEvidenceDepthOverlay | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -167,6 +183,59 @@ export function useOrvekHybridWorkbenchDataApi() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      // Do not fetch until the base Today snapshot is available (keeps boot stable).
+      if (isLoadingSnapshot) {
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/today/evidence-pointers", {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error("Could not load evidence pointers.");
+        }
+
+        const payload = (await response.json()) as Partial<SurfacedEvidenceDepthApiResponse>;
+        const inspectorDepthListReady = payload.inspectorDepthListReady === true;
+        const depthSafePointerIds = Array.isArray(payload.depthSafePointerIds)
+          ? payload.depthSafePointerIds
+          : [];
+        const pointerObjects = Array.isArray(payload.pointerObjects) ? payload.pointerObjects : [];
+        const linkedObjects = Array.isArray(payload.linkedObjects) ? payload.linkedObjects : [];
+
+        // Strict gate: only keep payload when it is explicitly depth-ready and non-empty.
+        if (!inspectorDepthListReady || depthSafePointerIds.length === 0) {
+          if (!cancelled) {
+            setSurfacedEvidenceDepth(null);
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setSurfacedEvidenceDepth({
+            pointerObjects,
+            linkedObjects,
+            depthSafePointerIds,
+            inspectorDepthListReady,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setSurfacedEvidenceDepth(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoadingSnapshot]);
 
   useEffect(() => {
     let cancelled = false;
@@ -649,7 +718,7 @@ export function useOrvekHybridWorkbenchDataApi() {
       sendHandlerAvailable: exploreChatSendReady,
     });
 
-    return buildHybridWorkbenchDataApi(
+    const hybridApi = buildHybridWorkbenchDataApi(
       baseApi,
       todayApi,
       mapApi,
@@ -660,6 +729,8 @@ export function useOrvekHybridWorkbenchDataApi() {
       investigationsApi,
       freeExploreChatApi,
     );
+
+    return applySurfacedEvidenceDepthGate({ api: hybridApi, overlay: surfacedEvidenceDepth });
   }, [
     baseApi,
     isLoadingSnapshot,
@@ -701,6 +772,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     isExploreChatSending,
     exploreChatErrorMessage,
     exploreChatSendReady,
+    surfacedEvidenceDepth,
   ]);
 
   return { dataApi, handlers };
