@@ -7,6 +7,10 @@ import {
 } from "@prisma/client";
 
 import prismadb from "./prismadb";
+import {
+  uelMetaWithGraphSlot,
+  type EvidencePointerGraphSlot,
+} from "./live-evidence-depth-write-contract";
 
 export type UnderstandingEvidenceLinkWriteInput = {
   targetType: UnderstandingLinkTargetType;
@@ -19,6 +23,8 @@ export type UnderstandingEvidenceLinkWriteInput = {
   quote?: string;
   weight?: number | null;
   confidenceContribution?: number | null;
+  /** When set, persisted in meta via uelMetaWithGraphSlot — never inferred from role. */
+  graphSlot?: EvidencePointerGraphSlot;
   meta?: Record<string, unknown>;
 };
 
@@ -287,6 +293,11 @@ export async function createUnderstandingEvidenceLinkForUser(args: {
   }
 
   try {
+    const meta =
+      args.input.graphSlot !== undefined
+        ? uelMetaWithGraphSlot(args.input.graphSlot, args.input.meta)
+        : args.input.meta;
+
     const createData: Prisma.UnderstandingEvidenceLinkUncheckedCreateInput = {
       userId: args.userId,
       targetType: args.input.targetType,
@@ -299,7 +310,7 @@ export async function createUnderstandingEvidenceLinkForUser(args: {
       quote: args.input.quote,
       weight: args.input.weight ?? null,
       confidenceContribution: args.input.confidenceContribution ?? null,
-      meta: args.input.meta as Prisma.InputJsonValue | undefined,
+      meta: meta as Prisma.InputJsonValue | undefined,
     };
 
     return await db.understandingEvidenceLink.create({
