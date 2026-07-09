@@ -353,7 +353,7 @@ describe("live evidence depth rationale source", () => {
 
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
-    expect(outcome.blockers).toContain("movement_copy_rationale");
+    expect(outcome.blockers).toContain("missing_stored_rationale");
   });
 
   it("blocks upsert when movement summary would be persisted as rationale", async () => {

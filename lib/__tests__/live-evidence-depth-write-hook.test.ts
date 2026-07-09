@@ -340,6 +340,31 @@ describe("live evidence depth write hook", () => {
     expect(todaySource.includes("SurfacedEvidencePointer")).toBe(false);
   });
 
+  it("blocks model-update publish when stored rationale resolver returns null", async () => {
+    const outcome = await maybeMaterializeSurfacedEvidencePointerFromModelUpdatePublish(
+      {
+        userId: "user-1",
+        modelUpdateId: "mu-1",
+        affectedObjectType: "pattern_claim",
+        affectedObjectId: "claim-1",
+        userFacingSummary: "There is early evidence that energy drops after meetings.",
+        publishedAt: NOW,
+      },
+      {
+        findSourceEvidence: async () => ({
+          sourceText: SOURCE_TEXT,
+          sourceOrigin: "Recent Pattern",
+        }),
+        findEligibleLinks: async () => [ELIGIBLE_LINK],
+        resolveStoredSurfacingRationale: async () => null,
+      },
+    );
+
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.blockers).toContain("missing_stored_rationale");
+  });
+
   it("blocks model-update publish when only movement copy rationale exists", async () => {
     expect(
       isModelUpdateMovementRationale(

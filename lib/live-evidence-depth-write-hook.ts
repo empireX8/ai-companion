@@ -98,7 +98,7 @@ export type EvidenceDepthWriteHookDeps = SurfacedEvidencePointerMaterializationD
   }) => Promise<EvidenceDepthWriteHookLinkCandidate[]>;
   /**
    * Returns a stored surfacing rationale when one exists upstream.
-   * When absent, model-update publish falls back to userFacingSummary (usually movement copy).
+   * When injected and null, publish does not fall back to userFacingSummary.
    */
   resolveStoredSurfacingRationale?: (args: {
     input: ModelUpdatePublishEvidenceDepthInput;
@@ -311,6 +311,10 @@ export async function maybeMaterializeSurfacedEvidencePointerFromModelUpdatePubl
   const storedRationale = deps.resolveStoredSurfacingRationale
     ? await deps.resolveStoredSurfacingRationale({ input })
     : null;
+
+  if (deps.resolveStoredSurfacingRationale && !storedRationale?.trim()) {
+    return { ok: false, blockers: ["missing_stored_rationale"] };
+  }
 
   const rationale = storedRationale ?? input.userFacingSummary;
 
