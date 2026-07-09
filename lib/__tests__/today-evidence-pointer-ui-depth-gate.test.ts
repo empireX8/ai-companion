@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createMockOrvekDataApi } from "../orvek-v0/mock-api";
 import { EMPTY_ORVEK_DATA_API } from "../orvek-v0/empty-api";
+import type { OrvekDataApi } from "../orvek-v0/data-provider";
 import type { OrvekObject } from "../orvek-v0/orvek-types";
 import { mergeSurfacedEvidenceDepthObjects } from "../live-evidence-depth-linkage";
 import {
@@ -36,13 +37,13 @@ describe("Today evidence pointer UI depth gate", () => {
   });
 
   it("does not surface thin production todayResurfacedIds when no depth-safe overlay is present", () => {
-    const api = {
+    const api: OrvekDataApi = {
       ...EMPTY_ORVEK_DATA_API,
       todayResurfacedIds: ["receipt-0-thin-live"],
     };
 
     const gated = applySurfacedEvidenceDepthGate({
-      api: api as any,
+      api,
       overlay: null,
     });
     expect(gated.todayResurfacedIds).toEqual([...REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS]);
@@ -70,14 +71,14 @@ describe("Today evidence pointer UI depth gate", () => {
   });
 
   it("surfaces stored depth-safe pointer ids only when inspectorDepthListReady is true", () => {
-    const base = {
+    const base: OrvekDataApi = {
       ...EMPTY_ORVEK_DATA_API,
       todayResurfacedIds: ["receipt-0-thin-live"],
       getObject: () => undefined,
     };
 
     const gated = applySurfacedEvidenceDepthGate({
-      api: base as any,
+      api: base,
       overlay: {
         pointerObjects: [STORED_POINTER],
         linkedObjects: [LINKED_TARGET],
