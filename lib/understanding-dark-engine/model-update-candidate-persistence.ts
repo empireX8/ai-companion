@@ -39,6 +39,11 @@ import {
   buildPersistableEvidenceLinksFromPacket,
   curatePersistableEvidenceLinksForCandidate,
 } from "./user-map-candidate-persistence";
+import {
+  maybePersistEvidenceDepthAuthoringFromModelUpdateCandidate,
+  type EvidenceDepthAuthoringInput,
+  type EvidenceDepthAuthoringPathDb,
+} from "../live-evidence-depth-authoring-path";
 
 const DEFAULT_PROCESSOR_VERSION = "understanding-dark-engine-v1";
 const USER_FACING_SUMMARY_MAX_LENGTH = 600;
@@ -46,6 +51,9 @@ const USER_FACING_SUMMARY_MAX_LENGTH = 600;
 type ModelUpdatePersistenceDb = PrismaClient &
   NonNullable<AssembleEvidencePacketInput["db"]> &
   UnderstandingEvidenceLinkWriterDb & {
+    evidencePointerSurfacingRationale: {
+      upsert: (args: unknown) => Promise<{ id: string }>;
+    };
     modelUpdate: {
       findMany: (args: unknown) => Promise<
         Array<{
@@ -68,6 +76,8 @@ export type PersistInternalModelUpdateCandidateInput = {
   processorVersion?: string;
   packet?: EvidencePacket;
   abstainReasons?: RejectionReasonCode[];
+  /** Explicit depth authoring — never derived from proposal.userFacingSummary. */
+  evidenceDepthAuthoring?: EvidenceDepthAuthoringInput;
 };
 
 export type ModelUpdateCandidatePersistencePayload = {
@@ -477,6 +487,34 @@ export async function persistInternalModelUpdateCandidate(
 
     persistedAt = new Date();
     const notes = [...diagnostics.notes];
+
+    if (
+      createdCandidate &&
+      input.evidenceDepthAuthoring &&
+      isUnderstandingLinkTargetType(affectedObjectType)
+    ) {
+      const authoringOutcome = await maybePersistEvidenceDepthAuthoringFromModelUpdateCandidate(
+        {
+          userId: input.userId,
+          affectedObjectType,
+          affectedObjectId,
+          userFacingSummary,
+          authoring: input.evidenceDepthAuthoring,
+        },
+        { db: db as unknown as EvidenceDepthAuthoringPathDb, now },
+      );
+
+      if ("skipped" in authoringOutcome) {
+        notes.push(`evidenceDepthAuthoringSkipped:${authoringOutcome.reason}`);
+      } else if (authoringOutcome.ready) {
+        notes.push("evidenceDepthAuthoringReady:true");
+      } else {
+        notes.push(
+          `evidenceDepthAuthoringBlockers:${authoringOutcome.blockers.join(",")}`,
+        );
+      }
+    }
+
     if (blockedWriteReasons.length > 0) {
       notes.push(`blockedWriteReasons:${blockedWriteReasons.join(",")}`);
     }
