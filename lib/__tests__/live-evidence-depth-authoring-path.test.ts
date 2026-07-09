@@ -542,7 +542,7 @@ describe("live evidence depth authoring path", () => {
 
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
-    expect(outcome.blockers).toContain("movement_copy_rationale");
+    expect(outcome.blockers).toContain("missing_stored_rationale");
   });
 
   it("does not use ModelUpdate.userFacingSummary as authored rationale", async () => {

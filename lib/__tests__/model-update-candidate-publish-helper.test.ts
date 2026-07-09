@@ -191,6 +191,17 @@ function makePublishDbMock(
   return db;
 }
 
+function publishOptions(
+  db: ReturnType<typeof makePublishDbMock>,
+  extra?: Record<string, unknown>,
+) {
+  return {
+    db: db as never,
+    skipEvidenceDepthMaterialization: true,
+    ...extra,
+  };
+}
+
 describe("ModelUpdate candidate publish helper", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -200,7 +211,7 @@ describe("ModelUpdate candidate publish helper", () => {
     const db = makePublishDbMock([]);
 
     await expect(
-      publishModelUpdateCandidate("user-1", "missing-id", { db: db as never })
+      publishModelUpdateCandidate("user-1", "missing-id", publishOptions(db))
     ).rejects.toMatchObject({ code: "MODEL_UPDATE_NOT_FOUND" });
 
     expect(db.$transaction).not.toHaveBeenCalled();
@@ -211,9 +222,7 @@ describe("ModelUpdate candidate publish helper", () => {
     const db = makePublishDbMock();
 
     await expect(
-      publishModelUpdateCandidate("other-user", "mu-candidate-1", {
-        db: db as never,
-      })
+      publishModelUpdateCandidate("other-user", "mu-candidate-1",       publishOptions(db))
     ).rejects.toMatchObject({ code: "MODEL_UPDATE_NOT_FOUND" });
 
     expect(db.$transaction).not.toHaveBeenCalled();
@@ -223,9 +232,7 @@ describe("ModelUpdate candidate publish helper", () => {
     const db = makePublishDbMock([buildCandidateRow()], []);
 
     await expect(
-      publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-        db: db as never,
-      })
+      publishModelUpdateCandidate("user-1", "mu-candidate-1",       publishOptions(db))
     ).rejects.toMatchObject({ code: "MODEL_UPDATE_MISSING_EVIDENCE" });
 
     expect(db.$transaction).not.toHaveBeenCalled();
@@ -238,9 +245,7 @@ describe("ModelUpdate candidate publish helper", () => {
   it("publishes internal_only/isMeaningful false row with at least one evidence link", async () => {
     const db = makePublishDbMock([buildCandidateRow()], [buildEvidenceLink()]);
 
-    const result = await publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-      db: db as never,
-    });
+    const result = await publishModelUpdateCandidate("user-1", "mu-candidate-1", publishOptions(db));
 
     expect(result.newVisibility).toBe(ModelUpdateVisibility.user_visible);
     expect(result.newIsMeaningful).toBe(true);
@@ -258,9 +263,7 @@ describe("ModelUpdate candidate publish helper", () => {
     const db = makePublishDbMock([buildCandidateRow()], []);
 
     await expect(
-      publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-        db: db as never,
-      })
+      publishModelUpdateCandidate("user-1", "mu-candidate-1",       publishOptions(db))
     ).rejects.toMatchObject({ code: "MODEL_UPDATE_MISSING_EVIDENCE" });
 
     expect(db.modelUpdate.updateMany).not.toHaveBeenCalled();
@@ -273,9 +276,7 @@ describe("ModelUpdate candidate publish helper", () => {
   it("publishes internal_only + isMeaningful false rows", async () => {
     const db = makePublishDbMock();
 
-    const result = await publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-      db: db as never,
-    });
+    const result = await publishModelUpdateCandidate("user-1", "mu-candidate-1", publishOptions(db));
 
     expect(result).toEqual({
       id: "mu-candidate-1",
@@ -294,9 +295,7 @@ describe("ModelUpdate candidate publish helper", () => {
   it("sets visibility to user_visible", async () => {
     const db = makePublishDbMock();
 
-    await publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-      db: db as never,
-    });
+    await publishModelUpdateCandidate("user-1", "mu-candidate-1", publishOptions(db));
 
     expect(db.rows[0]?.visibility).toBe(ModelUpdateVisibility.user_visible);
   });
@@ -304,9 +303,7 @@ describe("ModelUpdate candidate publish helper", () => {
   it("sets isMeaningful to true", async () => {
     const db = makePublishDbMock();
 
-    await publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-      db: db as never,
-    });
+    await publishModelUpdateCandidate("user-1", "mu-candidate-1", publishOptions(db));
 
     expect(db.rows[0]?.isMeaningful).toBe(true);
   });
@@ -315,9 +312,7 @@ describe("ModelUpdate candidate publish helper", () => {
     const seed = buildCandidateRow();
     const db = makePublishDbMock([seed]);
 
-    await publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-      db: db as never,
-    });
+    await publishModelUpdateCandidate("user-1", "mu-candidate-1", publishOptions(db));
 
     expect(db.rows[0]).toMatchObject({
       updateType: ModelUpdateType.link_detected,
@@ -342,9 +337,7 @@ describe("ModelUpdate candidate publish helper", () => {
     ]);
 
     await expect(
-      publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-        db: db as never,
-      })
+      publishModelUpdateCandidate("user-1", "mu-candidate-1",       publishOptions(db))
     ).rejects.toMatchObject({ code: "ALREADY_VISIBLE" });
 
     expect(db.$transaction).not.toHaveBeenCalled();
@@ -359,9 +352,7 @@ describe("ModelUpdate candidate publish helper", () => {
     ]);
 
     await expect(
-      publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-        db: db as never,
-      })
+      publishModelUpdateCandidate("user-1", "mu-candidate-1",       publishOptions(db))
     ).rejects.toMatchObject({ code: "ALREADY_VISIBLE" });
   });
 
@@ -373,9 +364,7 @@ describe("ModelUpdate candidate publish helper", () => {
     ]);
 
     await expect(
-      publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-        db: db as never,
-      })
+      publishModelUpdateCandidate("user-1", "mu-candidate-1",       publishOptions(db))
     ).rejects.toMatchObject({ code: "ALREADY_MEANINGFUL" });
 
     expect(db.$transaction).not.toHaveBeenCalled();
@@ -384,9 +373,7 @@ describe("ModelUpdate candidate publish helper", () => {
   it("does not create another ModelUpdate", async () => {
     const db = makePublishDbMock();
 
-    await publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-      db: db as never,
-    });
+    await publishModelUpdateCandidate("user-1", "mu-candidate-1", publishOptions(db));
 
     expect(db.modelUpdate.create).not.toHaveBeenCalled();
     expect(db.rows).toHaveLength(1);
@@ -397,9 +384,7 @@ describe("ModelUpdate candidate publish helper", () => {
     db.setFailUpdateAfterApply(true);
 
     await expect(
-      publishModelUpdateCandidate("user-1", "mu-candidate-1", {
-        db: db as never,
-      })
+      publishModelUpdateCandidate("user-1", "mu-candidate-1",       publishOptions(db))
     ).rejects.toThrow("ModelUpdate update failed");
 
     expect(db.rows[0]).toMatchObject({
@@ -420,12 +405,8 @@ describe("ModelUpdate candidate publish helper", () => {
     );
 
     const results = await Promise.allSettled([
-      publishModelUpdateCandidate("user-1", "concurrent-race-id", {
-        db: db as never,
-      }),
-      publishModelUpdateCandidate("user-1", "concurrent-race-id", {
-        db: db as never,
-      }),
+      publishModelUpdateCandidate("user-1", "concurrent-race-id",       publishOptions(db)),
+      publishModelUpdateCandidate("user-1", "concurrent-race-id",       publishOptions(db)),
     ]);
 
     const fulfilled = results.filter((result) => result.status === "fulfilled");
@@ -446,7 +427,7 @@ describe("ModelUpdate candidate publish helper", () => {
     const db = makePublishDbMock([]);
 
     await expect(
-      publishModelUpdateCandidate("user-1", "missing-id", { db: db as never })
+      publishModelUpdateCandidate("user-1", "missing-id", publishOptions(db))
     ).rejects.toBeInstanceOf(PublishModelUpdateCandidateError);
   });
 });

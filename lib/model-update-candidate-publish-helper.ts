@@ -12,6 +12,10 @@ import {
   UnderstandingLinkTargetType,
 } from "@prisma/client";
 
+import {
+  maybeMaterializeEvidenceDepthForPublishedModelUpdate,
+  type EvidenceDepthPublishMaterializationResult,
+} from "./live-evidence-depth-publish-route-wiring";
 import prismadb from "./prismadb";
 
 export type PublishModelUpdateCandidateResult = {
@@ -21,6 +25,7 @@ export type PublishModelUpdateCandidateResult = {
   newVisibility: ModelUpdateVisibility;
   previousIsMeaningful: boolean;
   newIsMeaningful: boolean;
+  evidenceDepthMaterialization?: EvidenceDepthPublishMaterializationResult;
 };
 
 export class PublishModelUpdateCandidateError extends Error {
@@ -38,6 +43,12 @@ export async function publishModelUpdateCandidate(
   modelUpdateId: string,
   options?: {
     db?: PrismaClient;
+    now?: () => Date;
+    skipEvidenceDepthMaterialization?: boolean;
+    materializeEvidenceDepthForPublish?: typeof maybeMaterializeEvidenceDepthForPublishedModelUpdate;
+    checkPublicTargetEligibility?: Parameters<
+      typeof maybeMaterializeEvidenceDepthForPublishedModelUpdate
+    >[0]["deps"]["checkPublicTargetEligibility"];
   }
 ): Promise<PublishModelUpdateCandidateResult> {
   const db = options?.db ?? prismadb;
@@ -137,6 +148,32 @@ export async function publishModelUpdateCandidate(
     return updated;
   });
 
+  let evidenceDepthMaterialization: EvidenceDepthPublishMaterializationResult | undefined;
+
+  if (!options?.skipEvidenceDepthMaterialization) {
+    try {
+      const materialize =
+        options?.materializeEvidenceDepthForPublish ??
+        maybeMaterializeEvidenceDepthForPublishedModelUpdate;
+      evidenceDepthMaterialization = await materialize({
+        userId: published.userId,
+        modelUpdateId: published.id,
+        publishedAt: options?.now?.() ?? new Date(),
+        deps: {
+          db: db as never,
+          checkPublicTargetEligibility: options?.checkPublicTargetEligibility,
+        },
+      });
+    } catch (error) {
+      console.error("[EVIDENCE_DEPTH_PUBLISH_MATERIALIZATION_ERROR]", error);
+      evidenceDepthMaterialization = {
+        status: "failed_unexpected",
+        pointerId: null,
+        blockers: [error instanceof Error ? error.message : "unknown_error"],
+      };
+    }
+  }
+
   return {
     id: published.id,
     userId: published.userId,
@@ -144,5 +181,6 @@ export async function publishModelUpdateCandidate(
     newVisibility: published.visibility,
     previousIsMeaningful: false,
     newIsMeaningful: published.isMeaningful,
+    evidenceDepthMaterialization,
   };
 }
