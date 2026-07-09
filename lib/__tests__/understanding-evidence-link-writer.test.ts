@@ -64,6 +64,36 @@ describe("understanding-evidence-link-writer", () => {
     );
   });
 
+  it("persists explicit graphSlot in UEL meta when provided", async () => {
+    const db = createWriterDbMock();
+    db.userMapConclusion.findFirst = vi.fn().mockResolvedValue({ id: "umc-1" });
+    db.patternClaim.findFirst = vi.fn().mockResolvedValue({ id: "claim-1" });
+    db.understandingEvidenceLink.create = vi
+      .fn()
+      .mockResolvedValue({ id: "link-1", userId: "user-1" });
+
+    await createUnderstandingEvidenceLinkForUser({
+      userId: "user-1",
+      input: {
+        targetType: "usermap_conclusion",
+        targetId: "umc-1",
+        sourceType: "pattern_claim",
+        sourceId: "claim-1",
+        role: "supports",
+        graphSlot: "related",
+      },
+      db,
+    });
+
+    expect(db.understandingEvidenceLink.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          meta: expect.objectContaining({ graphSlot: "related" }),
+        }),
+      }),
+    );
+  });
+
   it("rejects target not owned by authenticated user", async () => {
     const db = createWriterDbMock();
     db.userMapConclusion.findFirst = vi.fn().mockResolvedValue(null);
