@@ -689,6 +689,26 @@ model SurfacedEvidencePointer {
   @@index([userId, sourceObjectType, sourceObjectId])
 }
 
+// Upstream stored surfacing rationale for Evidence Pointer depth (#119).
+// Authored at/before publish — distinct from ModelUpdate.userFacingSummary movement copy
+// and from SurfacedEvidencePointer materialized output.
+model EvidencePointerSurfacingRationale {
+  id               String                      @id @default(cuid())
+  userId           String
+  sourceObjectType UnderstandingLinkSourceType
+  sourceObjectId   String
+  rationale        String
+  whyResurfaced    String?
+  sourceEvidenceId String?
+  authoredFrom     String?
+  meta             Json?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+
+  @@unique([userId, sourceObjectType, sourceObjectId])
+  @@index([userId, sourceObjectType, sourceObjectId])
+}
+
 // Mirrors ContradictionEvidence — reuse shape, not a third evidence concept.
 // Fields: claimId (≙ nodeId), source, sessionId, messageId, quote, createdAt
 model PatternClaimEvidence {

@@ -17,7 +17,6 @@ import { UnderstandingLinkTargetType } from "@prisma/client";
 import type { UnderstandingEvidenceLinkRow } from "./live-evidence-depth-linkage";
 import {
   graphSlotFromUelMeta,
-  isGenericSurfacingRationale,
   type EvidencePointerGraphSlot,
 } from "./live-evidence-depth-write-contract";
 import {
@@ -26,8 +25,13 @@ import {
   type SurfacedEvidencePointerMaterializationInput,
   type SurfacedEvidencePointerMaterializationResult,
 } from "./live-evidence-depth-write-path";
-import { MODEL_UPDATE_CANDIDATE_SAFE_SUMMARY_PATTERNS } from "./understanding-dark-engine/model-update-candidate-proposal";
+import {
+  assessStoredPublishRationaleForEvidencePointer,
+  isModelUpdateMovementRationale,
+} from "./live-evidence-depth-rationale-source";
 import { isEvidenceLinkTargetPublicEligible } from "./understanding-evidence-link-public-eligibility";
+
+export { assessStoredPublishRationaleForEvidencePointer, isModelUpdateMovementRationale };
 
 export const EVIDENCE_DEPTH_WRITE_HOOK_MATERIALIZED_FROM = {
   modelUpdatePublish: "model_update_publish",
@@ -109,45 +113,6 @@ export type EvidenceDepthWriteHookDeps = SurfacedEvidencePointerMaterializationD
     sourceEvidenceId?: string;
   } | null>;
 };
-
-const CONCLUSION_PUBLISH_MOVEMENT_PATTERN = /^New conclusion:/i;
-
-export function isModelUpdateMovementRationale(value: string | undefined): boolean {
-  const collapsed = value?.trim();
-  if (!collapsed) {
-    return true;
-  }
-
-  if (CONCLUSION_PUBLISH_MOVEMENT_PATTERN.test(collapsed)) {
-    return true;
-  }
-
-  return MODEL_UPDATE_CANDIDATE_SAFE_SUMMARY_PATTERNS.some((pattern) =>
-    pattern.test(collapsed),
-  );
-}
-
-export function assessStoredPublishRationaleForEvidencePointer(args: {
-  storedRationale: string | undefined;
-  sourceText: string | undefined;
-}): EvidenceDepthWriteHookAssessment {
-  const blockers: EvidenceDepthWriteHookBlocker[] = [];
-
-  if (!args.storedRationale?.trim()) {
-    blockers.push("missing_stored_rationale");
-  } else if (isGenericSurfacingRationale(args.storedRationale)) {
-    blockers.push("generic_stored_rationale");
-  } else if (isModelUpdateMovementRationale(args.storedRationale)) {
-    blockers.push("movement_copy_rationale");
-  } else if (
-    args.sourceText?.trim() &&
-    args.storedRationale.trim() === args.sourceText.trim()
-  ) {
-    blockers.push("rationale_equals_source_text");
-  }
-
-  return { hookReady: blockers.length === 0, blockers };
-}
 
 export function assessEvidenceDepthWriteHookInput(
   event: EvidenceDepthWriteHookPublishEvent,
