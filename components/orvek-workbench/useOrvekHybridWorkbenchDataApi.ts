@@ -39,6 +39,11 @@ import {
   fetchTodayReentrySnapshot,
   type TodayReentrySnapshot,
 } from "@/lib/today-reentry";
+import {
+  buildModelMovementDepthIndex,
+  type ModelMovementDepthById,
+} from "@/lib/model-movement-report-contract";
+import { fetchTodayMovementDepth } from "@/lib/today-movement-depth";
 import type { UserMapConclusionPublicApiDetailItem } from "@/lib/public-intelligence-safe-slice";
 import type { UserMapConclusionPublicApiListItem } from "@/lib/public-intelligence-safe-slice";
 import {
@@ -111,6 +116,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     sendMessage,
   } = useOrvekExploreChat({});
   const [snapshot, setSnapshot] = useState<TodayReentrySnapshot>(EMPTY_SNAPSHOT);
+  const [movementDepthById, setMovementDepthById] = useState<ModelMovementDepthById>({});
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(true);
 
   const [mapItems, setMapItems] = useState<UserMapConclusionPublicApiListItem[]>([]);
@@ -164,13 +170,18 @@ export function useOrvekHybridWorkbenchDataApi() {
     void (async () => {
       setIsLoadingSnapshot(true);
       try {
-        const next = await fetchTodayReentrySnapshot();
+        const [next, movementDepth] = await Promise.all([
+          fetchTodayReentrySnapshot(),
+          fetchTodayMovementDepth(),
+        ]);
         if (!cancelled) {
           setSnapshot(next);
+          setMovementDepthById(buildModelMovementDepthIndex(movementDepth));
         }
       } catch {
         if (!cancelled) {
           setSnapshot(EMPTY_SNAPSHOT);
+          setMovementDepthById({});
         }
       } finally {
         if (!cancelled) {
@@ -644,6 +655,7 @@ export function useOrvekHybridWorkbenchDataApi() {
       snapshot,
       isLoading: isLoadingSnapshot,
       briefingDate: DISPLAY_DATE,
+      movementDepthById,
     });
 
     const mapApi = buildMapProductionDataApi({
@@ -681,6 +693,7 @@ export function useOrvekHybridWorkbenchDataApi() {
       activityError: timelineActivityError,
       modelLayerError: timelineModelLayerError,
       selectedObjectId: null,
+      movementDepthById,
     });
 
     const decisionsApi = {
@@ -735,6 +748,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     baseApi,
     isLoadingSnapshot,
     snapshot,
+    movementDepthById,
     mapItems,
     mapIsLoading,
     mapLoadError,

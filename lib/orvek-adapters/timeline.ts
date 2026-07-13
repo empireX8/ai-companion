@@ -1,5 +1,6 @@
 import { parseSelectableObjectFromHref } from "../inspector-selection";
 import type { InspectorSelectableObjectType } from "../inspector-selection";
+import type { ModelMovementDepthById } from "../model-movement-report-contract";
 import {
   buildTimelineStreamItems,
   TIMELINE_ACTIVITY_EMPTY_COPY,
@@ -309,7 +310,10 @@ function resolveInspectorTarget(item: TimelineStreamItem): V0TimelineInspectorTa
   };
 }
 
-function mapStreamItemToRow(item: TimelineStreamItem): V0TimelineStreamRow {
+function mapStreamItemToRow(
+  item: TimelineStreamItem,
+  movementDepthById: ModelMovementDepthById = {},
+): V0TimelineStreamRow {
   const laneKey =
     item.kind === "model_change" ? laneFromModelChange() : laneFromEntry(item.entry);
   const occurredAt = item.occurredAt;
@@ -320,6 +324,12 @@ function mapStreamItemToRow(item: TimelineStreamItem): V0TimelineStreamRow {
   const summary =
     item.kind === "model_change" ? item.item.userFacingSummary : item.entry.body ?? null;
   const inspectorTarget = resolveInspectorTarget(item);
+  const movementDepth =
+    item.kind === "model_change" ? movementDepthById[item.item.id] : undefined;
+  const beforeSummary = movementDepth?.before ?? null;
+  const afterSummary =
+    movementDepth?.after ??
+    (item.kind === "model_change" ? null : null);
 
   const href =
     item.kind === "activity" && item.entry.href && !inspectorTarget ? item.entry.href : null;
@@ -342,9 +352,12 @@ function mapStreamItemToRow(item: TimelineStreamItem): V0TimelineStreamRow {
         : item.entry.selectableObjectId ?? inspectorTarget?.objectId ?? null,
     isModelChange: item.kind === "model_change",
     showBeforeAfterBlock: item.kind === "model_change",
-    beforeSummary: null,
-    afterSummary: item.kind === "model_change" ? item.item.userFacingSummary : null,
-    priorReadUnavailableCopy: V0_TIMELINE_PRIOR_READ_UNAVAILABLE_COPY,
+    beforeSummary,
+    afterSummary,
+    priorReadUnavailableCopy:
+      item.kind === "model_change" && !beforeSummary
+        ? V0_TIMELINE_PRIOR_READ_UNAVAILABLE_COPY
+        : V0_TIMELINE_PRIOR_READ_UNAVAILABLE_COPY,
     affectedObjectType:
       item.kind === "model_change" ? item.item.affectedObjectType : undefined,
     affectedObjectId: item.kind === "model_change" ? item.item.affectedObjectId : undefined,
@@ -364,6 +377,7 @@ export type MapTimelineDataInput = {
   modelLayerError: string | null;
   selectedObjectId: string | null;
   now?: Date;
+  movementDepthById?: ModelMovementDepthById;
 };
 
 export function mapTimelineDataToV0Props(input: MapTimelineDataInput): V0TimelineViewProps {
@@ -379,6 +393,7 @@ export function mapTimelineDataToV0Props(input: MapTimelineDataInput): V0Timelin
     modelLayerError,
     selectedObjectId,
     now = new Date(),
+    movementDepthById = {},
   } = input;
 
   const streamItems = buildTimelineStreamItems({
@@ -422,7 +437,7 @@ export function mapTimelineDataToV0Props(input: MapTimelineDataInput): V0Timelin
     emptyStreamHeading: "Earlier",
     groups: grouped.map((group) => ({
       heading: group.heading,
-      rows: group.items.map(mapStreamItemToRow),
+      rows: group.items.map((item) => mapStreamItemToRow(item, movementDepthById)),
     })),
     selectedObjectId,
   };

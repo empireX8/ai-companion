@@ -77,6 +77,7 @@ function makePublishDbMock() {
           visibility,
           candidateLifecycleStatus: lifecycleStatus,
           title: "I value autonomy over stability",
+          summary: "Autonomy shows up when tradeoffs are explicit.",
           updatedAt,
         };
       }
@@ -208,6 +209,9 @@ describe("Phase 2T candidate publish helper", () => {
         affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
         affectedObjectId: "candidate-1",
         userFacingSummary: "New conclusion: I value autonomy over stability",
+        beforeSummary: "No prior published conclusion on this map item.",
+        afterSummary:
+          "I value autonomy over stability — Autonomy shows up when tradeoffs are explicit.",
         isMeaningful: true,
       },
     });

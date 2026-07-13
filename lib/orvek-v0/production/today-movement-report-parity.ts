@@ -1,6 +1,11 @@
 import type { V0TodayMovementRow } from "../../orvek-adapters/types";
 import type { OrvekDataApi } from "../data-provider";
 import type { OrvekObject } from "../orvek-types";
+import {
+  isCanonicalMovementReportObject,
+  resolveSelectedMovementReportId,
+} from "../../model-movement-report-contract";
+import { TODAY_RESULT_STATE_UNAVAILABLE_COPY } from "../../orvek-adapters/today";
 
 export const REFERENCE_WEEKLY_REPORT_ID = "rep-weekly";
 
@@ -61,6 +66,10 @@ export function canUseLiveTodayMovementRow(
   row: V0TodayMovementRow,
 ): boolean {
   if (!row.id || !row.updated?.trim()) {
+    return false;
+  }
+
+  if (row.updated.trim() === TODAY_RESULT_STATE_UNAVAILABLE_COPY) {
     return false;
   }
 
@@ -161,6 +170,14 @@ export function isReportObject(
 }
 
 export function hasMeaningfulReportContent(object: OrvekObject | undefined): boolean {
+  if (!object) {
+    return false;
+  }
+
+  if (isCanonicalMovementReportObject(object)) {
+    return Boolean(object.title?.trim() && object.reportSummary?.trim());
+  }
+
   if (!isReportObject(object)) {
     return false;
   }
@@ -224,10 +241,10 @@ export function resolveLiveReportTarget(
     report.period?.trim() ||
     report.reportType?.trim() ||
     report.lastUpdated?.trim() ||
-    "Report";
+    "What Changed report";
 
   return {
-    reportId: resolvedId,
+    reportId: resolveSelectedMovementReportId(report) ?? resolvedId,
     openable: true,
     title: report.title.trim(),
     provenanceLabel,

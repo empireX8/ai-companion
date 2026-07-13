@@ -37,9 +37,14 @@ import type {
   V0TodayInspectorTab,
   V0TodayPageId,
 } from "./types";
+import type { ModelMovementDepthById } from "../model-movement-report-contract";
+import { resolveCanonicalMovementReportFromDepth } from "../model-movement-report-contract";
 
 const PRIOR_READ_EMPTY =
   "Prior read is not shown in this feed — open movement in the inspector.";
+
+export const TODAY_RESULT_STATE_UNAVAILABLE_COPY =
+  "Updated read is not available yet — open movement in the inspector.";
 
 const PRIMARY_ACTIONS: V0PrimaryAction[] = [
   { label: "Continue from what changed", href: "/what-changed", primary: true },
@@ -290,10 +295,11 @@ export type MapTodayDataInput = {
   snapshot: TodayReentrySnapshot;
   isLoading: boolean;
   briefingDate: string;
+  movementDepthById?: ModelMovementDepthById;
 };
 
 export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProps {
-  const { snapshot, isLoading, briefingDate } = input;
+  const { snapshot, isLoading, briefingDate, movementDepthById = {} } = input;
   const hero = pickTodayHeroItem(snapshot);
   const attentionRows = buildTodayAttentionRows(snapshot, hero);
   const fieldworkRows = buildTodayFieldworkRows(snapshot, hero);
@@ -305,25 +311,31 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
   );
   const movementSource = hero?.movement ? [hero.movement, ...changeRows] : changeRows;
   const movements: V0TodayMovementRow[] = filterDefined(
-    movementSource.slice(0, 3).map((m) => ({
-      id: m.id,
-      previous: null,
-      updated: m.userFacingSummary,
-      evidence: `${m.updateTypeLabel} · ${m.affectedObjectTypeLabel}`,
-    }))
+    movementSource.slice(0, 3).map((m) => {
+      const depth = movementDepthById[m.id];
+      const afterRecorded = Boolean(depth?.after?.trim());
+      return {
+        id: m.id,
+        previous: depth?.before ?? null,
+        updated: afterRecorded ? depth!.after!.trim() : TODAY_RESULT_STATE_UNAVAILABLE_COPY,
+        evidence: `${m.updateTypeLabel} · ${m.affectedObjectTypeLabel}`,
+      };
+    })
   );
 
   let report: V0TodayReportSlot | null = null;
   if (snapshot.intelligenceUpdates.length > 0) {
     const latest = snapshot.intelligenceUpdates[0]!;
+    const latestDepth = movementDepthById[latest.id];
+    const canonical = resolveCanonicalMovementReportFromDepth(latestDepth);
     const count = snapshot.intelligenceUpdates.length;
     report = {
       title: TODAY_REPORT_OUTPUT_TITLE,
       meta: `${count} published movement${count === 1 ? "" : "s"} in this window`,
       href: TODAY_CHANGES_VIEW_ALL_HREF,
-      reportId: "rep-weekly",
+      reportId: canonical?.reportReady ? latest.id : null,
       fullReportLabel: TODAY_REPORT_FULL_LABEL,
-      fullReportAvailable: isTodayReentryHref(TODAY_CHANGES_VIEW_ALL_HREF),
+      fullReportAvailable: Boolean(canonical?.reportReady),
       fullReportDeferredCopy: TODAY_REPORT_FULL_DEFERRED_COPY,
       primaryMovement: {
         id: latest.id,

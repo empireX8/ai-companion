@@ -42,6 +42,7 @@ function makePacket(
       before: "Previous model read",
       after: "Current model read",
       confidenceShift: 0.2,
+      movementRationale: null,
     },
     affectedObject: {
       type: "usermap_conclusion",
@@ -235,6 +236,7 @@ describe("what-changed reality report", () => {
           before: "Earlier model read",
           after: "I am a people pleaser.",
           confidenceShift: 0.3,
+          movementRationale: null,
         },
       }
     );
@@ -287,6 +289,7 @@ describe("what-changed reality report", () => {
         before: "Earlier model read",
         after: identityFixture,
         confidenceShift: null,
+        movementRationale: null,
       },
       affectedObject: {
         type: "usermap_conclusion",
@@ -356,6 +359,7 @@ describe("what-changed reality report", () => {
         before: null,
         after: null,
         confidenceShift: null,
+        movementRationale: null,
       },
     });
 

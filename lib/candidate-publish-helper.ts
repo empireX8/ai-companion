@@ -23,6 +23,7 @@ import {
 } from "@prisma/client";
 
 import prismadb from "./prismadb";
+import { resolveConclusionAddedSnapshotPair } from "./model-movement-snapshot";
 
 /**
  * Result of a successful publish operation.
@@ -94,6 +95,7 @@ export async function publishCandidate(
       visibility: true,
       candidateLifecycleStatus: true,
       title: true,
+      summary: true,
     },
   });
 
@@ -177,6 +179,11 @@ export async function publishCandidate(
       );
     }
 
+    const snapshotPair = resolveConclusionAddedSnapshotPair({
+      conclusionTitle: conclusion.title,
+      conclusionSummary: conclusion.summary,
+    });
+
     await tx.modelUpdate.create({
       data: {
         userId,
@@ -185,6 +192,8 @@ export async function publishCandidate(
         affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
         affectedObjectId: conclusionId,
         userFacingSummary,
+        beforeSummary: snapshotPair.beforeSummary,
+        afterSummary: snapshotPair.afterSummary,
         isMeaningful: true,
       },
     });

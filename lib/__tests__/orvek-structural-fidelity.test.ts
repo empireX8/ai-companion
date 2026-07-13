@@ -175,7 +175,7 @@ describe("orvek structural fidelity", () => {
     const row = props.groups.flatMap((group) => group.rows)[0];
     expect(row?.showBeforeAfterBlock).toBe(true);
     expect(row?.beforeSummary).toBeNull();
-    expect(row?.afterSummary).toBe("Updated summary");
+    expect(row?.afterSummary).toBeNull();
     expect(row?.priorReadUnavailableCopy).toBe(V0_TIMELINE_PRIOR_READ_UNAVAILABLE_COPY);
     expect(props.emptyStreamHeading).toBe("Earlier");
   });

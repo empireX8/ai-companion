@@ -16,6 +16,7 @@ import {
   maybeMaterializeEvidenceDepthForPublishedModelUpdate,
   type EvidenceDepthPublishMaterializationResult,
 } from "./live-evidence-depth-publish-route-wiring";
+import { materializePublishedModelUpdateSnapshots, resolveMovementRationaleForPublishedModelUpdate } from "./model-movement-snapshot";
 import prismadb from "./prismadb";
 
 export type PublishModelUpdateCandidateResult = {
@@ -147,6 +148,23 @@ export async function publishModelUpdateCandidate(
 
     return updated;
   });
+
+  try {
+    const movementRationale = await resolveMovementRationaleForPublishedModelUpdate({
+      userId: published.userId,
+      modelUpdateId: published.id,
+      db: db as never,
+    });
+
+    await materializePublishedModelUpdateSnapshots({
+      userId: published.userId,
+      modelUpdateId: published.id,
+      db: db as never,
+      movementRationale,
+    });
+  } catch (error) {
+    console.error("[MODEL_UPDATE_SNAPSHOT_MATERIALIZATION_ERROR]", error);
+  }
 
   let evidenceDepthMaterialization: EvidenceDepthPublishMaterializationResult | undefined;
 
