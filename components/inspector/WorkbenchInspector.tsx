@@ -9,6 +9,7 @@ import {
   MobileInspectorDrawer,
   useInspectorContextFromPathname,
 } from "./MemoryInspectorDrawer";
+import { useProductionInspectorTab } from "@/components/orvek-v0/useProductionInspectorTab";
 import { useInspector } from "./InspectorContext";
 
 const INSPECTOR_TABS = [
@@ -17,7 +18,8 @@ const INSPECTOR_TABS = [
 ] as const;
 
 function InspectorChrome({ className }: { className?: string }) {
-  const { isOpen, close, tab, setTab, selection } = useInspector();
+  const { isOpen, close, selection } = useInspector();
+  const { tab, setTab } = useProductionInspectorTab();
   const { label } = useInspectorContextFromPathname();
 
   if (!isOpen) {

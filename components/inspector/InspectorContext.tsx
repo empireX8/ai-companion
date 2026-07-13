@@ -15,6 +15,7 @@ import {
   type InspectorSourceSurface,
   type SelectObjectInput,
 } from "@/lib/inspector-selection";
+import { resolveInspectorTabForInput } from "@/lib/inspector-navigation-state";
 
 import { InspectorNavigationSync } from "./InspectorNavigationSync";
 
@@ -62,7 +63,13 @@ const InspectorContext = createContext<InspectorContextValue>({
   goBack: () => {},
 });
 
-export function InspectorProvider({ children }: { children: ReactNode }) {
+export function InspectorProvider({
+  children,
+  syncNavigation = true,
+}: {
+  children: ReactNode;
+  syncNavigation?: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(true);
   const [tab, setTab] = useState<InspectorTab>("evidence");
   const [selection, setSelection] = useState<InspectorSelection | null>(null);
@@ -93,7 +100,7 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
       setHistory([]);
       setSelection(nextSelection);
       setIsOpen(true);
-      setTab(input.tab ?? (input.objectType === "model_update" ? "movement" : "evidence"));
+      setTab(resolveInspectorTabForInput(input));
     },
     []
   );
@@ -121,7 +128,7 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
       });
       setSelection(nextSelection);
       setIsOpen(true);
-      setTab(input.tab ?? (input.objectType === "model_update" ? "movement" : "evidence"));
+      setTab(resolveInspectorTabForInput(input));
     },
     [selection, tab]
   );
@@ -175,7 +182,7 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
 
   return (
     <InspectorContext.Provider value={value}>
-      <InspectorNavigationSync />
+      {syncNavigation ? <InspectorNavigationSync /> : null}
       {children}
     </InspectorContext.Provider>
   );

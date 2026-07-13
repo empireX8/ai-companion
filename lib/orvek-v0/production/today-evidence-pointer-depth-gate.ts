@@ -2,6 +2,10 @@ import type { OrvekDataApi } from "../data-provider";
 import type { OrvekObject } from "../orvek-types";
 
 import { mergeSurfacedEvidenceDepthObjects } from "../../live-evidence-depth-linkage";
+import {
+  assessLiveTodayObjectGraphParity,
+  withTodayObjectGraphParity,
+} from "./today-object-graph-parity";
 
 /**
  * Accepted reference fallback Evidence Pointer receipt ids (product law).
@@ -20,6 +24,21 @@ export type SurfacedEvidenceDepthOverlay = {
   depthSafePointerIds: string[];
   inspectorDepthListReady: boolean;
 };
+
+/** Explicit live-object metadata for depth-overlay objects merged after parity assessment. */
+export type SurfacedEvidenceDepthProvenance = {
+  depthSafePointerIds: string[];
+  linkedObjectIds: string[];
+};
+
+export function buildSurfacedEvidenceDepthProvenance(
+  overlay: SurfacedEvidenceDepthOverlay,
+): SurfacedEvidenceDepthProvenance {
+  return {
+    depthSafePointerIds: [...overlay.depthSafePointerIds],
+    linkedObjectIds: overlay.linkedObjects.map((object) => object.id),
+  };
+}
 
 /**
  * Depth-gated override for Today resurfaced evidence pointers.
@@ -42,10 +61,15 @@ export function applySurfacedEvidenceDepthGate(args: {
       rejectedPointers: [],
       inspectorDepthListReady: true,
     });
-    return {
+    const gatedApi: OrvekDataApi = {
       ...merged,
       todayResurfacedIds: args.overlay.depthSafePointerIds,
+      surfacedEvidenceDepthProvenance: buildSurfacedEvidenceDepthProvenance(args.overlay),
     };
+    return withTodayObjectGraphParity(
+      gatedApi,
+      assessLiveTodayObjectGraphParity(gatedApi),
+    );
   }
 
   return {

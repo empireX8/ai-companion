@@ -1,66 +1,132 @@
 "use client";
 
-import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 import { useInspector } from "@/components/inspector/InspectorContext";
 import {
-  resolveInspectorSourceSurfaceFromPathname,
-  type InspectorSelectableObjectType,
+  resolveInspectorObjectType,
+  buildProductionInspectorBridgeSignature,
 } from "@/lib/inspector-selection";
-import { useOrvekData } from "@/lib/orvek-v0/data-provider";
-import type { OrvekObject } from "@/lib/orvek-v0/orvek-types";
+import { resolveBridgedInspectorTab, shouldSyncWorkbenchTabToInspector } from "@/lib/inspector-tab-contract";
+import {
+  resolveOrvekObjectProvenance,
+  useOrvekData,
+} from "@/lib/orvek-v0/data-provider";
 
 import { useWorkbench } from "../store";
 
-function resolveInspectorType(obj: OrvekObject): InspectorSelectableObjectType | null {
-  if (obj.inspectorObjectType) {
-    return obj.inspectorObjectType as InspectorSelectableObjectType;
-  }
-  if (obj.type === "context") {
-    return "context_profile";
-  }
-  if (obj.type === "model-goal") {
-    return "model_goal";
-  }
-  if (obj.type === "map-object") {
-    return "usermap_conclusion";
-  }
-  if (obj.type === "model-update") {
-    return "model_update";
-  }
-  return null;
-}
-
 export function ProductionInspectorBridge({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const { selectedId, inspectorTab } = useWorkbench();
-  const { getObject } = useOrvekData();
-  const { selectObject, setTab, openInspector } = useInspector();
+  const { page, selectedId, inspectorTab, inspectorTabExplicit, setInspectorTab } = useWorkbench();
+  const data = useOrvekData();
+  const { selectObject, clearSelection, setTab } = useInspector();
+  const lastBridgeSignature = useRef<string | null>(null);
+  const previousSelectedId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (shouldSyncWorkbenchTabToInspector({
+      previousSelectedId: previousSelectedId.current,
+      nextSelectedId: selectedId,
+    })) {
+      setTab(inspectorTab);
+    }
+    previousSelectedId.current = selectedId;
+  }, [inspectorTab, selectedId, setTab]);
 
   useEffect(() => {
     if (!selectedId) {
+      if (lastBridgeSignature.current !== "none") {
+        lastBridgeSignature.current = "none";
+        clearSelection();
+      }
       return;
     }
-    const obj = getObject(selectedId);
+    const obj = data.getObject(selectedId);
     if (!obj) {
+      const signature = buildProductionInspectorBridgeSignature({
+        selectedId,
+        page,
+      });
+      if (lastBridgeSignature.current === signature) {
+        return;
+      }
+      lastBridgeSignature.current = signature;
+      selectObject({
+        objectType: "unsupported",
+        objectId: selectedId,
+        title: `Unavailable selection · ${selectedId}`,
+        tab: inspectorTab,
+        availability: "missing",
+        sourceSurface: page,
+      });
       return;
     }
-    const objectType = resolveInspectorType(obj);
+    const objectType = resolveInspectorObjectType(obj);
     if (!objectType) {
+      const signature = buildProductionInspectorBridgeSignature({
+        selectedId,
+        objectType: "unsupported",
+        page,
+      });
+      if (lastBridgeSignature.current === signature) {
+        return;
+      }
+      lastBridgeSignature.current = signature;
+      selectObject({
+        objectType: "unsupported",
+        objectId: selectedId,
+        title: obj.title,
+        tab: inspectorTab,
+        availability: "unsupported",
+        sourceSurface: page,
+      });
       return;
+    }
+    const provenance = resolveOrvekObjectProvenance(data, obj);
+    const availability =
+      objectType === "reference_decision" || objectType === "reference_report"
+        ? provenance === "live"
+          ? "unsupported"
+          : "reference_fallback"
+        : provenance;
+    const inspectorObjectId = obj.inspectorObjectId ?? obj.id;
+    const signature = buildProductionInspectorBridgeSignature({
+      selectedId,
+      inspectorObjectId,
+      objectType,
+      availability,
+      page,
+    });
+    if (lastBridgeSignature.current === signature) {
+      return;
+    }
+    lastBridgeSignature.current = signature;
+    const bridgedTab = resolveBridgedInspectorTab({
+      objectType,
+      workbenchTab: inspectorTab,
+      explicitWorkbenchTab: inspectorTabExplicit,
+    });
+    if (bridgedTab !== inspectorTab) {
+      setInspectorTab(bridgedTab);
     }
     selectObject({
       objectType,
-      objectId: obj.inspectorObjectId ?? obj.id,
+      objectId: inspectorObjectId,
       title: obj.title,
-      modelUpdateId: objectType === "model_update" ? obj.inspectorObjectId ?? obj.id : undefined,
-      tab: inspectorTab,
-      sourceSurface: resolveInspectorSourceSurfaceFromPathname(pathname),
+      modelUpdateId: objectType === "model_update" ? inspectorObjectId : undefined,
+      tab: bridgedTab,
+      availability,
+      sourceSurface: page,
     });
-    setTab(inspectorTab);
-    openInspector(inspectorTab);
-  }, [getObject, inspectorTab, openInspector, pathname, selectObject, selectedId, setTab]);
+  }, [
+    clearSelection,
+    data,
+    inspectorTab,
+    inspectorTabExplicit,
+    page,
+    selectObject,
+    selectedId,
+    setInspectorTab,
+  ]);
 
   return children;
 }

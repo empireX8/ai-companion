@@ -13,6 +13,9 @@ import {
 import { OrvekShellLayout } from "./OrvekShellLayout";
 import { EvidencePanel } from "./evidence-panel";
 import { Overlays } from "./overlays";
+import { InspectorProvider } from "@/components/inspector/InspectorContext";
+import { WorkbenchInspector } from "@/components/inspector/WorkbenchInspector";
+import { ProductionInspectorBridge } from "./production/ProductionInspectorBridge";
 import { DecisionsPage } from "@/components/orvek-v0/pages/decisions";
 import { ExplorePage } from "@/components/orvek-v0/pages/explore";
 import { MapPage } from "@/components/orvek-v0/pages/map";
@@ -40,12 +43,12 @@ function PageContent() {
   }
 }
 
-function Layout() {
+function Layout({ productionInspector }: { productionInspector: boolean }) {
   return (
     <OrvekShellLayout
       topBar={<TopBar />}
       sidebar={<Sidebar />}
-      inspector={<EvidencePanel />}
+      inspector={productionInspector ? <WorkbenchInspector /> : <EvidencePanel />}
     >
       <PageContent />
     </OrvekShellLayout>
@@ -62,12 +65,24 @@ export function Workbench({
   const mockApi = useMemo(() => createMockOrvekDataApi(), []);
   const api = dataApi ?? mockApi;
   const pageHandlers = handlers ?? {};
+  const productionInspector = Boolean(dataApi);
+  const workbenchContent = (
+    <>
+      <Layout productionInspector={productionInspector} />
+      <Overlays />
+    </>
+  );
   return (
     <WorkbenchProvider>
       <OrvekDataProvider value={api}>
         <OrvekPageHandlersProvider value={pageHandlers}>
-          <Layout />
-          <Overlays />
+          {productionInspector ? (
+            <InspectorProvider syncNavigation={false}>
+              <ProductionInspectorBridge>{workbenchContent}</ProductionInspectorBridge>
+            </InspectorProvider>
+          ) : (
+            workbenchContent
+          )}
         </OrvekPageHandlersProvider>
       </OrvekDataProvider>
     </WorkbenchProvider>

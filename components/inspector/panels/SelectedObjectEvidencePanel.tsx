@@ -3,13 +3,16 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { Chip, SectionLabel, TYPE_META } from "@/components/orvek-v0/primitives";
 import { useWorkbench } from "@/components/orvek-v0/store";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { PUBLIC_EVIDENCE_FALLBACK_COPY } from "@/lib/public-continuity-registry";
-import { useOptionalOrvekData } from "@/lib/orvek-v0/data-provider";
+import {
+  resolveOrvekObjectProvenance,
+  useOptionalOrvekData,
+} from "@/lib/orvek-v0/data-provider";
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types";
 import {
   fetchInspectorContradiction,
@@ -23,7 +26,10 @@ import {
   type InspectorEvidenceLinkItem,
   type InspectorModelUpdateDetail,
 } from "@/lib/inspector-object-api";
-import type { InspectorSelection } from "@/lib/inspector-selection";
+import {
+  resolveInspectorObjectType,
+  type InspectorSelection,
+} from "@/lib/inspector-selection";
 import { getActionGateReason } from "@/lib/pattern-claim-action";
 import { PATTERN_FAMILY_SECTIONS, STRENGTH_LABELS, type PatternClaimView } from "@/lib/patterns-api";
 import type {
@@ -57,14 +63,6 @@ import { InspectorEvidenceSelectionControl } from "../InspectorEvidenceSelection
 const TODAY_HANDOFF_KEY = "mindlabs:today-capture-handoff";
 const MODEL_GOAL_CORRECTION_DEFERRED_COPY =
   "To correct this model goal, capture contradicting evidence in Capture Life Data. Correction controls are deferred here.";
-const CORRECTION_ACTIONS = [
-  "Confirm",
-  "This is wrong",
-  "Missing context",
-  "Only true here",
-  "Used to be true",
-  "Don't use this",
-] as const;
 
 function formatDateTime(value: string): string {
   const date = new Date(value);
@@ -249,6 +247,7 @@ function LinkedObjectsSection({
   emptyCopy: string;
 }) {
   const orvekData = useOptionalOrvekData();
+  const { pushObject } = useInspector();
   const safeIds = (ids ?? []).filter((id): id is string => typeof id === "string" && id.trim().length > 0);
 
   if (safeIds.length === 0) {
@@ -263,11 +262,37 @@ function LinkedObjectsSection({
         <p className="text-[12px] leading-relaxed text-muted-foreground">{emptyCopy}</p>
       ) : (
         <ul className="space-y-1.5">
-          {objects.map((object) => (
-            <li
-              key={object.id}
-              className="o-calm rounded-[9px] bg-secondary/50 px-2.5 py-2 hover:bg-accent/60"
-            >
+          {objects.map((object) => {
+            const objectType = resolveInspectorObjectType(object);
+            return (
+            <li key={object.id}>
+              <button
+                type="button"
+                disabled={!objectType}
+                onClick={() => {
+                  if (!objectType || !orvekData) {
+                    return;
+                  }
+                  const provenance = resolveOrvekObjectProvenance(orvekData, object);
+                  pushObject({
+                    objectType,
+                    objectId: object.inspectorObjectId ?? object.id,
+                    modelUpdateId:
+                      objectType === "model_update"
+                        ? object.inspectorObjectId ?? object.id
+                        : undefined,
+                    title: object.title,
+                    availability:
+                      objectType === "reference_decision" || objectType === "reference_report"
+                        ? provenance === "live"
+                          ? "unsupported"
+                          : "reference_fallback"
+                        : provenance,
+                    trailLabel: `Viewing ${label.toLowerCase()}`,
+                  });
+                }}
+                className="o-calm w-full rounded-[9px] bg-secondary/50 px-2.5 py-2 text-left hover:bg-accent/60 disabled:cursor-default"
+              >
               <div className="flex items-center gap-2">
                 {(() => {
                   const Icon = TYPE_META[object.type].icon;
@@ -287,49 +312,38 @@ function LinkedObjectsSection({
                   <ReadoutText value={object.whyItMatters} muted />
                 </div>
               ) : null}
+              </button>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </SectionBlock>
   );
 }
 
-function CorrectionActionsSection({ objectId }: { objectId: string }) {
-  const { applyCorrection, corrections } = useWorkbench();
-  const correction = corrections[objectId];
-
+function DeferredActionsSection() {
   return (
     <section className="mx-4 mt-5 rounded-2xl bg-secondary/40 px-4 py-3.5">
       <SectionLabel>Correct the model</SectionLabel>
       <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
-        Choose the closest correction. This keeps weak or missing evidence visible while you
-        correct the read.
+        Correction controls are deferred here until a durable evidence-backed write path is
+        available.
       </p>
-      {correction ? (
-        <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-evidence-muted px-2 py-1 text-xs font-medium text-primary">
-          <Check className="size-3.5" aria-hidden />
-          Selected here: “{correction}”
-        </p>
-      ) : null}
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {CORRECTION_ACTIONS.map((label) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => applyCorrection(objectId, label)}
-            className={
-              label === "Confirm"
-                ? "o-calm rounded-full bg-evidence-muted px-2.5 py-1 text-xs font-medium text-primary hover:brightness-[0.97]"
-                : label === "This is wrong" || label === "Don't use this"
-                  ? "o-calm rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/15"
-                  : "o-calm rounded-full bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.12)] hover:bg-accent/60"
-            }
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <button
+        type="button"
+        disabled
+        className="mt-3 rounded-md bg-secondary px-2.5 py-1.5 text-xs font-medium text-muted-foreground opacity-70"
+      >
+        Correct the model · deferred
+      </button>
+      <button
+        type="button"
+        disabled
+        className="ml-2 mt-3 rounded-md bg-secondary px-2.5 py-1.5 text-xs font-medium text-muted-foreground opacity-70"
+      >
+        Ask in Explore · deferred
+      </button>
     </section>
   );
 }
@@ -594,7 +608,7 @@ function SourceObjectSections({
         </SectionBlock>
       ) : null}
 
-      <CorrectionActionsSection objectId={object.id} />
+      <DeferredActionsSection />
     </>
   );
 }
@@ -1634,6 +1648,132 @@ function ModelUpdateEvidencePanel({
   );
 }
 
+function SelectionAvailabilityPanel({
+  selection,
+}: {
+  selection: InspectorSelection;
+}) {
+  const kind =
+    selection.selectedObjectType === "reference_decision"
+      ? "Decision"
+      : selection.selectedObjectType === "reference_report"
+        ? "Report"
+        : "Object";
+  const isMissing = selection.availability === "missing";
+  const isFallback = selection.availability === "reference_fallback";
+
+  return (
+    <>
+      <ObjectHeader
+        typeLabel={isFallback ? `${kind} · reference fallback` : `${kind} · unsupported`}
+        title={selection.selectedTitle ?? selection.selectedObjectId}
+        meta={
+          isMissing
+            ? "No object resolved from the active production graph"
+            : isFallback
+              ? "Reference-only object; authenticated production detail is unavailable"
+              : "The active production Inspector does not support this object family"
+        }
+      />
+      <section className="px-5 pt-4">
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
+          {isMissing
+            ? "Nothing has been substituted for this missing selection."
+            : isFallback
+              ? "This selection is identified as fallback and is not being presented as live data."
+              : "No fixture content or unrelated live object has been substituted."}
+        </p>
+        {selection.selectedObjectType === "reference_report" ? (
+          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+            Opening or generating this report is deferred. The reference report route remains
+            isolated.
+          </p>
+        ) : null}
+        {selection.selectedObjectType === "reference_decision" ? (
+          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+            Decision outcome and correction controls are deferred until a complete write path is
+            mounted here.
+          </p>
+        ) : null}
+      </section>
+      <DeferredActionsSection />
+    </>
+  );
+}
+
+function LiveProvenanceNotice() {
+  return (
+    <div className="mx-4 mt-4 rounded-[10px] bg-evidence-muted/55 px-3 py-2 text-[11px] text-primary">
+      Authenticated live object · no reference fixture substitution
+    </div>
+  );
+}
+
+function ReceiptEvidencePanel({
+  selection,
+  sourceObject,
+}: {
+  selection: InspectorSelection;
+  sourceObject: OrvekObject | undefined;
+}) {
+  if (!sourceObject) {
+    return <UnavailableState objectTypeLabel="Evidence pointer" />;
+  }
+
+  return (
+    <>
+      <ObjectHeader
+        typeLabel="Evidence pointer"
+        title={selection.selectedTitle ?? sourceObject.title}
+        meta={[
+          sourceObject.sourceOrigin ?? "Source recorded",
+          sourceObject.date,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      />
+      <SourceObjectSections object={sourceObject} />
+    </>
+  );
+}
+
+function QuestionEvidencePanel({
+  selection,
+  sourceObject,
+}: {
+  selection: InspectorSelection;
+  sourceObject: OrvekObject | undefined;
+}) {
+  if (!sourceObject) {
+    return <UnavailableState objectTypeLabel="Active question" />;
+  }
+
+  return (
+    <>
+      <ObjectHeader
+        typeLabel={
+          selection.selectedObjectType === "investigation"
+            ? "Investigation"
+            : "Active question"
+        }
+        title={selection.selectedTitle ?? sourceObject.title}
+        meta={[
+          sourceObject.status ?? "Open",
+          sourceObject.lastUpdated ? `Updated ${formatDateTime(sourceObject.lastUpdated)}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      />
+      <SourceObjectSections object={sourceObject} />
+      <SectionBlock label="Actions">
+        <p className="text-[12px] leading-relaxed text-muted-foreground">
+          Resolve, create fieldwork, report and check-in controls are deferred in this Inspector.
+        </p>
+      </SectionBlock>
+    </>
+  );
+}
+
 export function SelectedObjectEvidencePanel({
   selection,
 }: {
@@ -1647,25 +1787,50 @@ export function SelectedObjectEvidencePanel({
     getObject: orvekData?.getObject ?? (() => undefined),
   });
 
+  if (selection.availability && selection.availability !== "live") {
+    return <SelectionAvailabilityPanel selection={selection} />;
+  }
+
+  let panel: ReactNode;
   switch (selection.selectedObjectType) {
     case "usermap_conclusion":
-      return <UserMapEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      panel = <UserMapEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      break;
     case "pattern_claim":
-      return <PatternEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      panel = <PatternEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      break;
     case "context_profile":
-      return <ContextEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      panel = <ContextEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      break;
     case "model_goal":
-      return <ModelGoalEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      panel = <ModelGoalEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      break;
     case "contradiction_node":
-      return <ContradictionEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      panel = <ContradictionEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      break;
     case "model_update":
-      return (
+      panel = (
         <ModelUpdateEvidencePanel
           selection={selection}
           resolveOrvekObject={(id) => orvekData?.getObject(id)}
         />
       );
+      break;
+    case "receipt":
+      panel = <ReceiptEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      break;
+    case "active_question":
+    case "investigation":
+      panel = <QuestionEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      break;
     default:
-      return <UnavailableState objectTypeLabel="Object" />;
+      return <SelectionAvailabilityPanel selection={{ ...selection, availability: "unsupported" }} />;
   }
+
+  return (
+    <>
+      <LiveProvenanceNotice />
+      {panel}
+    </>
+  );
 }

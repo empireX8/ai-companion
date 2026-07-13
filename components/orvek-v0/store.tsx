@@ -20,6 +20,8 @@ interface WorkbenchValue {
   /** select an object; optional tab defaults to evidence */
   select: (id: string | null, tab?: InspectorTab) => void
   inspectorTab: InspectorTab
+  /** True when the current tab came from select(id, tab) or an explicit Inspector UI click. */
+  inspectorTabExplicit: boolean
   setInspectorTab: (t: InspectorTab) => void
   overlay: OrvekOverlay
   setOverlay: (o: OrvekOverlay) => void
@@ -40,16 +42,23 @@ const WorkbenchContext = createContext<WorkbenchValue | null>(null)
 export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [page, setPageState] = useState<OrvekPage>("today")
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("evidence")
+  const [inspectorTab, setInspectorTabState] = useState<InspectorTab>("evidence")
+  const [inspectorTabExplicit, setInspectorTabExplicit] = useState(false)
   const [overlay, setOverlay] = useState<OrvekOverlay>(null)
   const [reportId, setReportId] = useState<string | null>(null)
   const [corrections, setCorrections] = useState<Record<string, string>>({})
   const [extractions, setExtractions] = useState<Record<string, string>>({})
   const [exploreActive, setExploreActive] = useState(false)
 
+  const setInspectorTab = useCallback((tab: InspectorTab) => {
+    setInspectorTabState(tab)
+    setInspectorTabExplicit(true)
+  }, [])
+
   const select = useCallback((id: string | null, tab?: InspectorTab) => {
     setSelectedId(id)
-    setInspectorTab(tab ?? "evidence")
+    setInspectorTabExplicit(tab !== undefined)
+    setInspectorTabState(tab ?? "evidence")
   }, [])
   const setPage = useCallback((p: OrvekPage) => setPageState(p), [])
   const openReport = useCallback((id: string | null) => setReportId(id), [])
@@ -67,6 +76,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       selectedId,
       select,
       inspectorTab,
+      inspectorTabExplicit,
       setInspectorTab,
       overlay,
       setOverlay,
@@ -85,6 +95,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       selectedId,
       select,
       inspectorTab,
+      inspectorTabExplicit,
       overlay,
       reportId,
       openReport,
@@ -103,4 +114,8 @@ export function useWorkbench() {
   const ctx = useContext(WorkbenchContext)
   if (!ctx) throw new Error("useWorkbench must be used within WorkbenchProvider")
   return ctx
+}
+
+export function useOptionalWorkbench() {
+  return useContext(WorkbenchContext)
 }
