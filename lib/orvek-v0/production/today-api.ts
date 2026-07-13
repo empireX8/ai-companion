@@ -5,6 +5,12 @@ import {
 } from "../../orvek-adapters/today";
 import type { V0TodayReceiptRow } from "../../orvek-adapters/types";
 import {
+  buildMovementReportOrvekObject,
+  enrichOrvekObjectWithMovementDepth,
+  mergeOrvekObjectPreservingMovementDepth,
+  type ModelMovementDepthById,
+} from "../../model-movement-report-contract";
+import {
   parseSelectableObjectFromHref,
   type InspectorSelectableObjectType,
 } from "../../inspector-selection";
@@ -58,13 +64,17 @@ function registerSelectableTarget(
   summary?: string
 ): void {
   const entry = selectionToOrvekObject(objectId, selection, title, summary);
-  objects[objectId] = entry;
+  objects[objectId] = mergeOrvekObjectPreservingMovementDepth(objects[objectId], entry);
 
   if (selection.objectType === "model_update" && selection.objectId !== objectId) {
-    objects[selection.objectId] = {
+    const aliasShell = {
       ...entry,
       id: selection.objectId,
     };
+    objects[selection.objectId] = mergeOrvekObjectPreservingMovementDepth(
+      objects[selection.objectId],
+      aliasShell,
+    );
   }
 }
 
@@ -132,16 +142,18 @@ function receiptRowToOrvekObject(row: V0TodayReceiptRow): OrvekObject {
 export function buildTodayProductionDataApi(input: MapTodayDataInput): OrvekDataApi {
   const today = mapTodayDataToV0Props(input);
   const objects: Record<string, OrvekObject> = {};
+  const movementDepthById: ModelMovementDepthById = input.movementDepthById ?? {};
 
   for (const receipt of today.receipts) {
     objects[receipt.id] = receiptRowToOrvekObject(receipt);
   }
 
   for (const update of input.snapshot.intelligenceUpdates) {
+    const depth = movementDepthById[update.id];
     const title =
       update.userFacingSummary.trim() ||
       `${update.updateTypeLabel} · ${update.affectedObjectTypeLabel}`;
-    objects[update.id] = {
+    const base: OrvekObject = {
       id: update.id,
       type: "model-update",
       title,
@@ -151,10 +163,12 @@ export function buildTodayProductionDataApi(input: MapTodayDataInput): OrvekData
       inspectorObjectType: "model_update",
       inspectorObjectId: update.id,
     };
+    objects[update.id] = enrichOrvekObjectWithMovementDepth(base, depth);
   }
 
   for (const movement of today.movements) {
-    objects[movement.id] = {
+    const depth = movementDepthById[movement.id];
+    const base: OrvekObject = {
       id: movement.id,
       type: "model-update",
       title: movement.updated,
@@ -163,7 +177,20 @@ export function buildTodayProductionDataApi(input: MapTodayDataInput): OrvekData
       tags: ["Model update"],
       inspectorObjectType: "model_update",
       inspectorObjectId: movement.id,
+      before: movement.previous?.trim() ? movement.previous : undefined,
+      after: depth?.after?.trim() ? depth.after : undefined,
     };
+    objects[movement.id] = enrichOrvekObjectWithMovementDepth(base, depth);
+  }
+
+  for (const depth of Object.values(movementDepthById)) {
+    const reportObject = buildMovementReportOrvekObject(depth);
+    if (reportObject) {
+      objects[depth.id] = {
+        ...(objects[depth.id] ?? reportObject),
+        ...reportObject,
+      };
+    }
   }
 
   registerTodayAttentionObjects(objects, input);

@@ -402,19 +402,40 @@ function ReportOverlay({ id, onClose }: { id: string; onClose: () => void }) {
 
   const related = (report.relatedIds ?? []).map(getObject).filter(Boolean) as OrvekObject[]
   const receipts = (report.receiptIds ?? []).map(getObject).filter(Boolean) as OrvekObject[]
+  const reportSubtitle =
+    report.reportSummary ?? report.summary ?? report.movementRationale ?? undefined
+  const reportBody =
+    report.summary ??
+    (report.before && report.after
+      ? `Previously: ${report.before}\n\nUpdated: ${report.after}`
+      : report.reportSummary)
 
   return (
     <OverlayShell
       title={report.title}
-      subtitle={report.reportSummary}
+      subtitle={reportSubtitle}
       onClose={onClose}
       wide
-      footer={<GhostButton onClick={onClose}>Close report</GhostButton>}
+      footer={
+        <div className="flex flex-wrap gap-2">
+          {report.inspectorObjectId ? (
+            <GhostButton
+              onClick={() => {
+                select(report.inspectorObjectId ?? report.id, "movement")
+                onClose()
+              }}
+            >
+              Open in Inspector
+            </GhostButton>
+          ) : null}
+          <GhostButton onClick={onClose}>Close report</GhostButton>
+        </div>
+      }
     >
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-evidence-muted px-2.5 py-1 text-xs font-medium text-primary">
           <FileText className="size-3.5" />
-          {report.reportType}
+          {report.reportType ?? "Report"}
         </span>
         {report.period && <Chip>{report.period}</Chip>}
         <Chip>{report.evidenceCount ?? related.length} pieces of evidence</Chip>
@@ -425,7 +446,16 @@ function ReportOverlay({ id, onClose }: { id: string; onClose: () => void }) {
         )}
       </div>
 
-      <p className="mt-3 text-sm leading-relaxed text-foreground text-pretty">{report.summary}</p>
+      {reportBody ? (
+        <p className="mt-3 text-sm leading-relaxed text-foreground text-pretty">{reportBody}</p>
+      ) : null}
+
+      {report.movementRationale ? (
+        <div className="mt-4 rounded-md bg-secondary/50 px-3 py-2">
+          <SectionLabel>Why it changed</SectionLabel>
+          <p className="mt-1 text-sm leading-relaxed text-foreground">{report.movementRationale}</p>
+        </div>
+      ) : null}
 
       {receipts.length > 0 && (
         <div className="mt-4">

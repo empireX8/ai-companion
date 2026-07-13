@@ -9,6 +9,8 @@ import {
   PublishModelUpdateCandidateError,
   publishModelUpdateCandidate,
 } from "../model-update-candidate-publish-helper";
+import { decodeMovementRationaleFromInternalNotes } from "../model-movement-rationale";
+import type { EvidencePointerSurfacingRationaleRecord } from "../live-evidence-depth-rationale-source";
 
 type InMemoryModelUpdate = {
   id: string;
@@ -126,12 +128,15 @@ function makePublishDbMock(
         where: {
           id: string;
           userId: string;
-          visibility: ModelUpdateVisibility;
-          isMeaningful: boolean;
+          visibility?: ModelUpdateVisibility;
+          isMeaningful?: boolean;
         };
         data: {
-          visibility: ModelUpdateVisibility;
-          isMeaningful: boolean;
+          visibility?: ModelUpdateVisibility;
+          isMeaningful?: boolean;
+          beforeSummary?: string | null;
+          afterSummary?: string | null;
+          internalNotes?: string;
         };
       }) => {
         if (where.id === "concurrent-race-id") {
@@ -143,33 +148,64 @@ function makePublishDbMock(
 
         const row = rows.find(
           (candidate) =>
-            candidate.id === where.id &&
-            candidate.userId === where.userId &&
-            candidate.visibility === where.visibility &&
-            candidate.isMeaningful === where.isMeaningful
+            candidate.id === where.id && candidate.userId === where.userId,
         );
 
         if (!row) {
           return { count: 0 };
         }
 
-        row.visibility = data.visibility;
-        row.isMeaningful = data.isMeaningful;
+        if (
+          where.visibility !== undefined &&
+          where.isMeaningful !== undefined
+        ) {
+          if (
+            row.visibility !== where.visibility ||
+            row.isMeaningful !== where.isMeaningful
+          ) {
+            return { count: 0 };
+          }
 
-        if (failUpdateAfterApply) {
-          throw new Error("ModelUpdate update failed");
+          row.visibility = data.visibility!;
+          row.isMeaningful = data.isMeaningful!;
+
+          if (failUpdateAfterApply) {
+            throw new Error("ModelUpdate update failed");
+          }
+
+          return { count: 1 };
+        }
+
+        if (data.beforeSummary !== undefined) {
+          row.beforeSummary = data.beforeSummary;
+        }
+        if (data.afterSummary !== undefined) {
+          row.afterSummary = data.afterSummary;
+        }
+        if (data.internalNotes !== undefined) {
+          row.internalNotes = data.internalNotes;
         }
 
         return { count: 1 };
-      }
+      },
     ),
     create: vi.fn(),
   };
 
   const tx = { modelUpdate };
+  const evidencePointerSurfacingRationale = {
+    findFirst: vi.fn(
+      async (): Promise<EvidencePointerSurfacingRationaleRecord | null> => null,
+    ),
+  };
+  const patternClaim = {
+    findFirst: vi.fn(async () => ({ summary: "After summary" })),
+  };
   const db = {
     modelUpdate,
     understandingEvidenceLink,
+    evidencePointerSurfacingRationale,
+    patternClaim,
     rows,
     links,
     setFailUpdateAfterApply: (value: boolean) => {
@@ -429,5 +465,30 @@ describe("ModelUpdate candidate publish helper", () => {
     await expect(
       publishModelUpdateCandidate("user-1", "missing-id", publishOptions(db))
     ).rejects.toBeInstanceOf(PublishModelUpdateCandidateError);
+  });
+
+  it("materializes stored movement rationale through the normal publish path", async () => {
+    const db = makePublishDbMock([
+      buildCandidateRow({
+        beforeSummary: "Before summary",
+        afterSummary: null,
+        internalNotes: "candidateLane:internal_only;processorVersion:v1",
+      }),
+    ]);
+
+    db.evidencePointerSurfacingRationale.findFirst.mockResolvedValue({
+      rationale: "Receipts tie reopening to deadline slips.",
+      whyResurfaced: null,
+      sourceEvidenceId: null,
+      authoredFrom: "internal_model_update_candidate_create",
+    });
+
+    await publishModelUpdateCandidate("user-1", "mu-candidate-1", publishOptions(db));
+
+    expect(db.rows[0]?.afterSummary).toBe("After summary");
+    expect(decodeMovementRationaleFromInternalNotes(db.rows[0]?.internalNotes)).toBe(
+      "Receipts tie reopening to deadline slips.",
+    );
+    expect(db.understandingEvidenceLink.findFirst).toHaveBeenCalled();
   });
 });

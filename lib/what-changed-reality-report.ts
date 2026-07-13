@@ -21,6 +21,7 @@ import {
   type RealityTrackingEvidenceStatus,
   type RealityTrackingModelMovementReport,
 } from "./reality-tracking-output-contract";
+import { decodeMovementRationaleFromInternalNotes } from "./model-movement-rationale";
 import {
   buildPublicObjectHref,
   formatPublicEvidenceSourceTypeLabel,
@@ -48,6 +49,7 @@ type ModelUpdateDetailRow = {
   beforeSummary: string | null;
   afterSummary: string | null;
   confidenceDelta: number | null;
+  internalNotes: string | null;
 };
 
 type UnderstandingEvidenceLinkRow = {
@@ -271,6 +273,7 @@ export type ModelMovementRealityPacket = {
     before: string | null;
     after: string | null;
     confidenceShift: number | null;
+    movementRationale: string | null;
   };
   affectedObject: ModelMovementAffectedObject;
   evidence: ModelMovementRealityPacketEvidence[];
@@ -1131,6 +1134,17 @@ function buildDeterministicSections(packet: ModelMovementRealityPacket) {
     })
   );
 
+  if (packet.modelUpdate.movementRationale?.trim()) {
+    pushUniqueClaim(
+      inferences,
+      makeClaim({
+        text: `Stored movement rationale: ${packet.modelUpdate.movementRationale.trim()}`,
+        classification: "inference",
+        evidence: topEvidence,
+      })
+    );
+  }
+
   if (packet.modelUpdate.confidenceShift !== null) {
     pushUniqueClaim(
       movement,
@@ -1449,6 +1463,7 @@ export async function buildWhatChangedInspectorDetail(args: {
       beforeSummary: true,
       afterSummary: true,
       confidenceDelta: true,
+      internalNotes: true,
     },
   });
 
@@ -1843,6 +1858,7 @@ export async function buildWhatChangedInspectorDetail(args: {
       before: row.beforeSummary,
       after: row.afterSummary,
       confidenceShift: row.confidenceDelta,
+      movementRationale: decodeMovementRationaleFromInternalNotes(row.internalNotes),
     },
     affectedObject,
     evidence,

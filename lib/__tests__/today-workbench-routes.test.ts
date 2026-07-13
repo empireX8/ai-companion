@@ -115,12 +115,26 @@ describe("today primary action routing", () => {
           },
         ],
       },
+      movementDepthById: {
+        "mu-1": {
+          id: "mu-1",
+          before: "Previously tentative.",
+          after: "Updated summary",
+          movementSummary: "Updated summary",
+          movementRationale: "Receipts align across two weeks.",
+          affectedObjectType: "pattern_claim",
+          affectedObjectId: "p-1",
+          createdAt: "2026-06-24T10:00:00.000Z",
+          evidenceLinkCount: 2,
+        },
+      },
       isLoading: false,
       briefingDate: "Tuesday",
     });
 
     expect(props.report?.primaryMovement?.summary).toBe("Updated summary");
     expect(props.report?.primaryMovement?.inspectSelectId).toBe("mu-1");
+    expect(props.report?.reportId).toBe("mu-1");
     expect(props.report?.fullReportAvailable).toBe(true);
     expect(props.hero?.whyItMatters).toContain("evidence");
     const continueAction = props.primaryActions.find(

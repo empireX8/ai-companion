@@ -3,6 +3,11 @@ import {
 } from "../../timeline-semantic-layers";
 import { mapTimelineDataToV0Props } from "../../orvek-adapters/timeline";
 import type { MapTimelineDataInput } from "../../orvek-adapters/timeline";
+import {
+  buildMovementReportOrvekObject,
+  enrichOrvekObjectWithMovementDepth,
+  type ModelMovementDepthById,
+} from "../../model-movement-report-contract";
 import type { OrvekDataApi, OrvekTimelineGroup } from "../data-provider";
 import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
@@ -20,13 +25,20 @@ const TIMELINE_SHELL_GROUP_HEADINGS = [
 export function buildTimelineProductionDataApi(input: MapTimelineDataInput): OrvekDataApi {
   const view = mapTimelineDataToV0Props(input);
   const objects: Record<string, OrvekObject> = {};
+  const movementDepthById: ModelMovementDepthById = input.movementDepthById ?? {};
 
   for (const group of view.groups) {
     for (const row of group.rows) {
       const dateLabel =
         row.time && row.date ? `${row.date} · ${row.time}` : row.date ?? undefined;
 
-      objects[row.id] = {
+      const inspectorObjectId = row.inspectorTarget?.objectId;
+      const movementDepth =
+        row.isModelChange && inspectorObjectId
+          ? movementDepthById[inspectorObjectId]
+          : movementDepthById[row.selectableObjectId ?? ""];
+
+      const base: OrvekObject = {
         id: row.id,
         type: "timeline-event",
         title: row.title,
@@ -41,13 +53,32 @@ export function buildTimelineProductionDataApi(input: MapTimelineDataInput): Orv
         inspectorObjectId: row.inspectorTarget?.objectId,
       };
 
-      const inspectorObjectId = row.inspectorTarget?.objectId;
+      objects[row.id] = movementDepth
+        ? enrichOrvekObjectWithMovementDepth(base, movementDepth)
+        : base;
+
       if (inspectorObjectId && inspectorObjectId !== row.id) {
-        objects[inspectorObjectId] = {
+        const movementObject: OrvekObject = {
           ...objects[row.id],
           id: inspectorObjectId,
+          type: "model-update",
+          inspectorObjectType: "model_update",
+          inspectorObjectId,
         };
+        objects[inspectorObjectId] = movementDepth
+          ? enrichOrvekObjectWithMovementDepth(movementObject, movementDepth)
+          : movementObject;
       }
+    }
+  }
+
+  for (const depth of Object.values(movementDepthById)) {
+    const reportObject = buildMovementReportOrvekObject(depth);
+    if (reportObject) {
+      objects[depth.id] = {
+        ...(objects[depth.id] ?? reportObject),
+        ...reportObject,
+      };
     }
   }
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { mapDecisionsDataToV0Props } from "../orvek-adapters/decisions";
 import { mapExploreDataToV0Props } from "../orvek-adapters/explore";
 import { mapMapDataToV0Props } from "../orvek-adapters/map";
-import { mapTodayDataToV0Props } from "../orvek-adapters/today";
+import { mapTodayDataToV0Props, TODAY_RESULT_STATE_UNAVAILABLE_COPY } from "../orvek-adapters/today";
 import {
   mapTimelineDataToV0Props,
   resolveTimelineOpenTarget,
@@ -40,7 +40,91 @@ describe("orvek adapters", () => {
     expect(props.checkIns.length).toBe(5);
   });
 
-  it("mapTodayDataToV0Props maps movement without fabricating previous read", () => {
+  it("mapTodayDataToV0Props uses movement depth for delta log and live report id", () => {
+    const props = mapTodayDataToV0Props({
+      snapshot: {
+        ...EMPTY_SNAPSHOT,
+        intelligenceUpdates: [
+          {
+            id: "mu-live",
+            updateTypeLabel: "Pattern shift",
+            affectedObjectTypeLabel: "Pattern",
+            userFacingSummary: "Headline movement summary",
+            createdAt: "2026-06-24T10:00:00.000Z",
+            affectedObjectType: "pattern_claim",
+            affectedObjectId: "p-1",
+            affectedObjectHref: "/patterns/p-1",
+          },
+        ],
+      },
+      movementDepthById: {
+        "mu-live": {
+          id: "mu-live",
+          before: "Previously tentative.",
+          after: "Now supported by receipts.",
+          movementSummary: "Headline movement summary",
+          movementRationale: "Receipts align across two weeks.",
+          affectedObjectType: "pattern_claim",
+          affectedObjectId: "p-1",
+          createdAt: "2026-06-24T10:00:00.000Z",
+          evidenceLinkCount: 2,
+        },
+      },
+      isLoading: false,
+      briefingDate: "Tuesday",
+    });
+
+    expect(props.movements[0]).toMatchObject({
+      id: "mu-live",
+      previous: "Previously tentative.",
+      updated: "Now supported by receipts.",
+    });
+    expect(props.report).toMatchObject({
+      reportId: "mu-live",
+      fullReportAvailable: true,
+    });
+  });
+
+  it("does not use movement summary as after state when depth after is missing", () => {
+    const props = mapTodayDataToV0Props({
+      snapshot: {
+        ...EMPTY_SNAPSHOT,
+        intelligenceUpdates: [
+          {
+            id: "mu-sparse",
+            updateTypeLabel: "Pattern shift",
+            affectedObjectTypeLabel: "Pattern",
+            userFacingSummary: "Headline only",
+            createdAt: "2026-06-24T10:00:00.000Z",
+            affectedObjectType: "pattern_claim",
+            affectedObjectId: "p-1",
+            affectedObjectHref: "/patterns/p-1",
+          },
+        ],
+      },
+      movementDepthById: {
+        "mu-sparse": {
+          id: "mu-sparse",
+          before: "Previously tentative.",
+          after: null,
+          movementSummary: "Headline only",
+          movementRationale: null,
+          affectedObjectType: "pattern_claim",
+          affectedObjectId: "p-1",
+          createdAt: "2026-06-24T10:00:00.000Z",
+          evidenceLinkCount: 1,
+        },
+      },
+      isLoading: false,
+      briefingDate: "Tuesday",
+    });
+
+    expect(props.movements[0]?.updated).not.toBe("Headline only");
+    expect(props.report?.reportId).toBeNull();
+    expect(props.report?.fullReportAvailable).toBe(false);
+  });
+
+  it("mapTodayDataToV0Props maps movement without fabricating previous read or after state", () => {
     const props = mapTodayDataToV0Props({
       snapshot: {
         ...EMPTY_SNAPSHOT,
@@ -63,8 +147,10 @@ describe("orvek adapters", () => {
 
     expect(props.movements).toHaveLength(1);
     expect(props.movements[0]?.previous).toBeNull();
-    expect(props.movements[0]?.updated).toBe("Updated summary");
+    expect(props.movements[0]?.updated).toBe(TODAY_RESULT_STATE_UNAVAILABLE_COPY);
+    expect(props.movements[0]?.updated).not.toBe("Updated summary");
     expect(props.report?.href).toBe("/what-changed");
+    expect(props.report?.fullReportAvailable).toBe(false);
   });
 
   it("mapTodayDataToV0Props adds workbench-native intent metadata while keeping href fallbacks", () => {
@@ -158,7 +244,8 @@ describe("orvek adapters", () => {
       inspectorTab: "movement",
     });
     expect(props.report).toMatchObject({
-      reportId: "rep-weekly",
+      reportId: null,
+      fullReportAvailable: false,
       primaryMovement: {
         selectionId: "mu-1",
         inspectSelectId: "mu-1",

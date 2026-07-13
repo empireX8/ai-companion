@@ -89,6 +89,10 @@ export interface OrvekObject {
   affectedObject?: string
   before?: string
   after?: string
+  /** Stored movement rationale — distinct from summary and evidence text. */
+  movementRationale?: string
+  /** Shared production report identity (ModelUpdate id). */
+  canonicalReportId?: string
 
   // investigation
   hypotheses?: string[]

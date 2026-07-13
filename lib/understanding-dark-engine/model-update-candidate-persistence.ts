@@ -44,6 +44,7 @@ import {
   type EvidenceDepthAuthoringInput,
   type EvidenceDepthAuthoringPathDb,
 } from "../live-evidence-depth-authoring-path";
+import { captureBeforeSnapshotForCandidate } from "../model-movement-snapshot";
 
 const DEFAULT_PROCESSOR_VERSION = "understanding-dark-engine-v1";
 const USER_FACING_SUMMARY_MAX_LENGTH = 600;
@@ -417,6 +418,13 @@ export async function persistInternalModelUpdateCandidate(
             return;
           }
 
+          const beforeSummary = await captureBeforeSnapshotForCandidate({
+            userId: input.userId,
+            affectedObjectType,
+            affectedObjectId,
+            db: transactionalDb as never,
+          });
+
           const created = await transactionalDb.modelUpdate.create({
             data: {
               userId: input.userId,
@@ -428,6 +436,7 @@ export async function persistInternalModelUpdateCandidate(
                 userFacingSummary,
                 USER_FACING_SUMMARY_MAX_LENGTH
               ),
+              beforeSummary,
               isMeaningful: false,
               sourceRunId: run.id,
               internalNotes: `candidateLane:internal_only;processorVersion:${processorVersion}`,
