@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ORVEK_COPY } from "@/lib/trust-language";
 import { PanelBar } from "@/components/ui/PanelBar";
+import { useProductionInspectorTab } from "@/components/orvek-v0/useProductionInspectorTab";
 import { useInspector } from "./InspectorContext";
 import { InspectorPanelRouter } from "./InspectorPanelRouter";
 
@@ -58,7 +59,8 @@ export function InspectorPanelBody() {
 
 /** Mobile-only slide-over drawer with tabs. */
 export function MobileInspectorDrawer() {
-  const { isOpen, close, tab, setTab, selection } = useInspector();
+  const { isOpen, close, selection } = useInspector();
+  const { tab, setTab } = useProductionInspectorTab();
   const { label } = useInspectorContextFromPathname();
 
   return (

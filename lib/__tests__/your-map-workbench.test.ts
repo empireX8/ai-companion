@@ -83,7 +83,7 @@ describe("your-map workbench", () => {
 
   it("surfaces model goals as first-class selectable objects in the production workspace", () => {
     const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
-    const bridgeSource = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
+    const selectionSource = readSource("lib/inspector-selection.ts");
     const inspectorSource = readSource("components/inspector/panels/SelectedObjectEvidencePanel.tsx");
     const viewSource = readSource("components/orvek-v0/pages/map.tsx");
     const adapterSource = readSource("lib/orvek-adapters/map.ts");
@@ -95,7 +95,7 @@ describe("your-map workbench", () => {
     expect(mapApiSource).toContain('type = "model-goal"');
     expect(mapApiSource).toContain('inspectorObjectType = "model_goal"');
     expect(mapApiSource).toContain("Capture correction in Capture Life Data");
-    expect(bridgeSource).toContain('return "model_goal"');
+    expect(selectionSource).toContain('return "model_goal"');
     expect(inspectorSource).toContain('case "model_goal"');
     expect(inspectorSource).toContain("Correct this model goal.");
     expect(inspectorSource).toContain("Capture Life Data");
@@ -104,11 +104,11 @@ describe("your-map workbench", () => {
   it("selects map rows into inspector evidence context without full navigation", () => {
     const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
     const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
-    const bridgeSource = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
+    const selectionSource = readSource("lib/inspector-selection.ts");
     const mindContextSource = readSource("components/your-map/YourMapMindContextPanel.tsx");
 
     expect(mapApiSource).toContain('inspectorObjectType: "usermap_conclusion"');
-    expect(bridgeSource).toContain('return "usermap_conclusion"');
+    expect(selectionSource).toContain('return "usermap_conclusion"');
     expect(workbenchSource).toContain("OrvekV0PageShell");
     expect(mindContextSource).toContain('objectType: "pattern_claim"');
     expect(mindContextSource).not.toContain("personality");
@@ -118,7 +118,7 @@ describe("your-map workbench", () => {
   it("shows mind context detail copy and capture correction handoff in the production workspace", () => {
     const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
     const viewSource = readSource("components/orvek-v0/pages/map.tsx");
-    const bridgeSource = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
+    const selectionSource = readSource("lib/inspector-selection.ts");
     const inspectorSource = readSource("components/inspector/panels/SelectedObjectEvidencePanel.tsx");
     const contextPageSource = readSource("app/(root)/(routes)/context/page.tsx");
 
@@ -126,7 +126,7 @@ describe("your-map workbench", () => {
     expect(viewSource).toContain("Mind Context");
     expect(viewSource).toContain("Linked path");
     expect(viewSource).toContain("Missing evidence");
-    expect(bridgeSource).toContain('return "context_profile"');
+    expect(selectionSource).toContain('return "context_profile"');
     expect(inspectorSource).toContain('case "context_profile"');
     expect(inspectorSource).toContain("Capture correction");
     expect(inspectorSource).toContain("mindlabs:today-capture-handoff");

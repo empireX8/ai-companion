@@ -113,7 +113,81 @@ export type OrvekDataApi = {
   decisionsIsLoading?: boolean;
   /** Parity assessment for live Today object graph — does not flip presentation. */
   todayObjectGraphParity?: import("./production/today-object-graph-parity").LiveTodayGraphParity;
+  /** Live depth-overlay ids merged after parity assessment — authoritative for Inspector provenance. */
+  surfacedEvidenceDepthProvenance?: import("./production/today-evidence-pointer-depth-gate").SurfacedEvidenceDepthProvenance;
 };
+
+export type OrvekObjectProvenance = "live" | "reference_fallback";
+
+function includesObjectId(ids: string[] | undefined, object: OrvekObject): boolean {
+  const candidates = [object.id, object.inspectorObjectId].filter(
+    (id): id is string => typeof id === "string" && id.length > 0,
+  );
+  return candidates.some((id) => ids?.includes(id));
+}
+
+/**
+ * Classifies objects already present in the hybrid graph without changing the
+ * graph or claiming that the whole workbench is production-backed.
+ */
+export function resolveOrvekObjectProvenance(
+  data: OrvekDataApi,
+  object: OrvekObject,
+): OrvekObjectProvenance {
+  const depthOverlay = data.surfacedEvidenceDepthProvenance;
+  if (
+    object.type === "receipt" &&
+    depthOverlay?.depthSafePointerIds.includes(object.id)
+  ) {
+    return "live";
+  }
+
+  if (depthOverlay?.linkedObjectIds.includes(object.id)) {
+    return "live";
+  }
+
+  const linkedFromDepthOverlay = depthOverlay?.depthSafePointerIds.some((pointerId) => {
+    const pointer = data.getObject(pointerId);
+    return [...(pointer?.contextIds ?? []), ...(pointer?.relatedIds ?? [])].includes(object.id);
+  });
+  if (linkedFromDepthOverlay) {
+    return "live";
+  }
+
+  const depthParity = data.todayObjectGraphParity;
+  if (
+    object.type === "receipt" &&
+    depthParity?.inspectorDepthSafeEvidencePointerIds.includes(object.id)
+  ) {
+    return "live";
+  }
+
+  const linkedFromLivePointer = depthParity?.inspectorDepthSafeEvidencePointerIds.some(
+    (pointerId) => {
+      const pointer = data.getObject(pointerId);
+      return [...(pointer?.contextIds ?? []), ...(pointer?.relatedIds ?? [])].includes(object.id);
+    },
+  );
+  if (linkedFromLivePointer) {
+    return "live";
+  }
+
+  const productionIds = [
+    ...data.mapCategories.flatMap((category) => category.ids),
+    ...data.timelineGroups.flatMap((group) => group.ids),
+    ...data.decisionListGroups.flatMap((group) => group.ids),
+    ...(data.exploreQuestionIds ?? []),
+    ...(data.exploreInvestigationIds ?? []),
+    ...(data.exploreFieldworkIds ?? []),
+    ...(depthParity?.readyMovementRowIds ?? []),
+  ];
+
+  if (includesObjectId(productionIds, object)) {
+    return "live";
+  }
+
+  return "reference_fallback";
+}
 
 const OrvekDataContext = createContext<OrvekDataApi | null>(null);
 

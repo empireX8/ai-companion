@@ -88,6 +88,10 @@ describe("Today evidence pointer UI depth gate", () => {
     });
 
     expect(gated.todayResurfacedIds).toEqual([STORED_POINTER.id]);
+    expect(gated.surfacedEvidenceDepthProvenance).toEqual({
+      depthSafePointerIds: [STORED_POINTER.id],
+      linkedObjectIds: [LINKED_TARGET.id],
+    });
     expect(gated.getObject(STORED_POINTER.id)?.whyItMatters).toBe(STORED_POINTER.whyItMatters);
     expect(gated.getObject(LINKED_TARGET.id)?.summary).toBe(LINKED_TARGET.summary);
   });

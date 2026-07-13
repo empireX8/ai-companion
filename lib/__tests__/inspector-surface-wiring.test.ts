@@ -33,19 +33,29 @@ describe("inspector surface wiring", () => {
     const container = readSource("components/orvek-workbench/OrvekTodayPage.tsx");
     const view = readSource("components/orvek-v0/pages/today.tsx");
     const bridge = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
-    const source = `${container}\n${view}\n${bridge}`;
+    const selection = readSource("lib/inspector-selection.ts");
+    const source = `${container}\n${view}\n${bridge}\n${selection}`;
     expect(source).toContain("ProductionInspectorBridge");
-    expect(bridge).toContain('return "model_update"');
-    expect(bridge).toContain("resolveInspectorSourceSurfaceFromPathname");
+    expect(selection).toContain('return "model_update"');
+    expect(bridge).toContain("resolveInspectorObjectType");
     expect(bridge).toContain("sourceSurface:");
     expect(source).toContain("openInspectorSelection");
     expect(source).toContain('"movement"');
     expect(source).toContain("See why it moved");
   });
 
-  it("tags Today bridge selections with the today surface so navigation sync does not clear them", () => {
+  it("tags embedded workbench selections with the active workbench page without route races", () => {
     const bridge = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
-    expect(bridge).toContain("sourceSurface: resolveInspectorSourceSurfaceFromPathname(pathname)");
+    const workbench = readSource("components/orvek-v0/workbench.tsx");
+    expect(bridge).toContain("sourceSurface: page");
+    expect(bridge).toContain("lastBridgeSignature");
+    expect(bridge).toContain("resolveBridgedInspectorTab");
+    expect(bridge).toContain("shouldSyncWorkbenchTabToInspector");
+    expect(bridge).toContain("setTab(inspectorTab)");
+    expect(bridge).not.toContain("openInspector(inspectorTab)");
+    const selection = readSource("lib/inspector-selection.ts");
+    expect(selection).not.toContain("inspectorTab?:");
+    expect(workbench).toContain("<InspectorProvider syncNavigation={false}>");
 
     const bridged = buildInspectorSelection({
       objectType: "model_update",
@@ -74,6 +84,18 @@ describe("inspector surface wiring", () => {
     ).toBe(true);
   });
 
+  it("mounts one production Inspector while preserving the isolated reference Inspector", () => {
+    const workbench = readSource("components/orvek-v0/workbench.tsx");
+    const referenceRoute = readSource("app/dev/orvek-v0-reference/page.tsx");
+
+    expect(workbench).toContain(
+      "inspector={productionInspector ? <WorkbenchInspector /> : <EvidencePanel />}"
+    );
+    expect(workbench).toContain("<ProductionInspectorBridge>");
+    expect(referenceRoute).toContain("<Workbench />");
+    expect(referenceRoute).not.toContain("dataApi=");
+  });
+
   it("wires Your Map workbench list selection to usermap_conclusion inspector context", () => {
     const pageSource = readSource("app/(root)/(routes)/your-map/page.tsx");
     const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
@@ -89,12 +111,13 @@ describe("inspector surface wiring", () => {
   it("wires model goal selections to model_goal inspector context and capture handoff copy", () => {
     const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
     const bridge = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
+    const selection = readSource("lib/inspector-selection.ts");
     const panel = readSource("components/inspector/panels/SelectedObjectEvidencePanel.tsx");
-    const source = `${mapApiSource}\n${bridge}\n${panel}`;
+    const source = `${mapApiSource}\n${bridge}\n${selection}\n${panel}`;
 
     expect(source).toContain('model_goal');
     expect(mapApiSource).toContain('type = "model-goal"');
-    expect(bridge).toContain('return "model_goal"');
+    expect(selection).toContain('return "model_goal"');
     expect(panel).toContain('case "model_goal"');
     expect(panel).toContain("Correct this model goal.");
     expect(panel).toContain("User correction is first-class evidence");
@@ -136,10 +159,11 @@ describe("inspector surface wiring", () => {
     const adapter = readSource("lib/orvek-adapters/timeline.ts");
     const timelineApi = readSource("lib/orvek-v0/production/timeline-api.ts");
     const bridge = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
-    const source = `${container}\n${view}\n${adapter}\n${timelineApi}\n${bridge}`;
+    const selection = readSource("lib/inspector-selection.ts");
+    const source = `${container}\n${view}\n${adapter}\n${timelineApi}\n${bridge}\n${selection}`;
     const inspectorSource = readSource("components/timeline/TimelineInspectorAction.tsx");
     expect(timelineApi).toContain("inspectorObjectType");
-    expect(bridge).toContain('return "model_update"');
+    expect(selection).toContain('return "model_update"');
     expect(adapter).toContain('objectType: "model_update"');
     expect(inspectorSource).toContain('objectType === "model_update"');
     expect(inspectorSource).toContain('sourceSurface: "timeline"');
@@ -152,9 +176,7 @@ describe("inspector surface wiring", () => {
     const source = readSource("components/inspector/InspectorContext.tsx");
     expect(source).toContain("buildInspectorSelection");
     expect(source).not.toContain("setSelection(input");
-    expect(source).toContain(
-      'input.tab ?? (input.objectType === "model_update" ? "movement" : "evidence")'
-    );
+    expect(source).toContain("resolveInspectorTabForInput");
     expect(source).toContain("pushObject");
     expect(source).toContain("goBack");
   });

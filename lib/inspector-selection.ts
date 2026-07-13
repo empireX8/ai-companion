@@ -1,5 +1,6 @@
 import type { PublicObjectLinkType } from "./public-continuity-registry";
 import { PUBLIC_OBJECT_LINK_HREF_PREFIXES } from "./public-continuity-registry";
+import type { OrvekObject } from "./orvek-v0/orvek-types";
 
 export const INSPECTOR_SELECTABLE_OBJECT_TYPES = [
   "usermap_conclusion",
@@ -10,8 +11,20 @@ export const INSPECTOR_SELECTABLE_OBJECT_TYPES = [
   "model_goal",
 ] as const;
 
+export const INSPECTOR_EMBEDDED_OBJECT_TYPES = [
+  "receipt",
+  "active_question",
+  "investigation",
+  "reference_decision",
+  "reference_report",
+  "unsupported",
+] as const;
+
 export type InspectorSelectableObjectType =
   (typeof INSPECTOR_SELECTABLE_OBJECT_TYPES)[number];
+export type InspectorSelectionObjectType =
+  | InspectorSelectableObjectType
+  | (typeof INSPECTOR_EMBEDDED_OBJECT_TYPES)[number];
 
 export type InspectorSourceSurface =
   | "today"
@@ -21,20 +34,28 @@ export type InspectorSourceSurface =
   | "decisions"
   | "unknown";
 
+export type InspectorSelectionAvailability =
+  | "live"
+  | "reference_fallback"
+  | "unsupported"
+  | "missing";
+
 export type InspectorSelection = {
-  selectedObjectType: InspectorSelectableObjectType;
+  selectedObjectType: InspectorSelectionObjectType;
   selectedObjectId: string;
   selectedModelUpdateId: string | null;
   selectedTitle: string | null;
   sourceSurface: InspectorSourceSurface;
+  availability?: InspectorSelectionAvailability;
 };
 
 export type SelectObjectInput = {
-  objectType: InspectorSelectableObjectType;
+  objectType: InspectorSelectionObjectType;
   objectId: string;
   modelUpdateId?: string | null;
   title?: string | null;
   sourceSurface?: InspectorSourceSurface;
+  availability?: InspectorSelectionAvailability;
 };
 
 export function isInspectorSelectableObjectType(
@@ -42,6 +63,17 @@ export function isInspectorSelectableObjectType(
 ): value is InspectorSelectableObjectType {
   return INSPECTOR_SELECTABLE_OBJECT_TYPES.includes(
     value as InspectorSelectableObjectType
+  );
+}
+
+export function isInspectorSelectionObjectType(
+  value: string | null | undefined
+): value is InspectorSelectionObjectType {
+  return (
+    isInspectorSelectableObjectType(value) ||
+    INSPECTOR_EMBEDDED_OBJECT_TYPES.includes(
+      value as (typeof INSPECTOR_EMBEDDED_OBJECT_TYPES)[number]
+    )
   );
 }
 
@@ -55,7 +87,7 @@ export function normalizeInspectorObjectId(value: string | null | undefined): st
 
 export function buildInspectorSelection(input: SelectObjectInput): InspectorSelection | null {
   const objectId = normalizeInspectorObjectId(input.objectId);
-  if (!objectId || !isInspectorSelectableObjectType(input.objectType)) {
+  if (!objectId || !isInspectorSelectionObjectType(input.objectType)) {
     return null;
   }
 
@@ -70,7 +102,39 @@ export function buildInspectorSelection(input: SelectObjectInput): InspectorSele
     selectedModelUpdateId: modelUpdateId,
     selectedTitle: input.title?.trim() ? input.title.trim() : null,
     sourceSurface: input.sourceSurface ?? "unknown",
+    availability: input.availability ?? "live",
   };
+}
+
+export function resolveInspectorObjectType(
+  object: OrvekObject,
+): InspectorSelectionObjectType | null {
+  if (isInspectorSelectableObjectType(object.inspectorObjectType)) {
+    return object.inspectorObjectType;
+  }
+
+  switch (object.type) {
+    case "context":
+      return "context_profile";
+    case "model-goal":
+      return "model_goal";
+    case "map-object":
+      return "usermap_conclusion";
+    case "model-update":
+      return "model_update";
+    case "receipt":
+      return "receipt";
+    case "active-question":
+      return "active_question";
+    case "investigation":
+      return "investigation";
+    case "decision":
+      return "reference_decision";
+    case "report":
+      return "reference_report";
+    default:
+      return null;
+  }
 }
 
 const HREF_PREFIX_TO_TYPE = Object.entries(PUBLIC_OBJECT_LINK_HREF_PREFIXES).reduce(
@@ -84,7 +148,7 @@ const HREF_PREFIX_TO_TYPE = Object.entries(PUBLIC_OBJECT_LINK_HREF_PREFIXES).red
 /** Map a public detail href to a selectable inspector object when supported. */
 export function parseSelectableObjectFromHref(
   href: string | null | undefined
-): Pick<SelectObjectInput, "objectType" | "objectId"> | null {
+): { objectType: InspectorSelectableObjectType; objectId: string } | null {
   if (!href) {
     return null;
   }
@@ -154,6 +218,23 @@ export function resolveInspectorSourceSurfaceFromPathname(
   return "unknown";
 }
 
+export function buildProductionInspectorBridgeSignature(input: {
+  selectedId: string;
+  inspectorObjectId?: string;
+  objectType?: InspectorSelectionObjectType | "missing" | "unsupported";
+  availability?: InspectorSelectionAvailability;
+  page: string;
+}): string {
+  if (!input.objectType) {
+    return `${input.selectedId}:missing:${input.page}`;
+  }
+  if (input.objectType === "unsupported" && !input.availability) {
+    return `${input.selectedId}:unsupported:${input.page}`;
+  }
+  return `${input.selectedId}:${input.inspectorObjectId ?? input.selectedId}:${input.objectType}:${input.availability}:${input.page}`;
+}
+
+/** Clear cross-surface inspector selection when navigating away from the owning surface. */
 export function shouldClearInspectorSelectionOnNavigation(input: {
   pathname: string;
   selection: InspectorSelection | null;

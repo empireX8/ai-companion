@@ -559,6 +559,15 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
         collapseWhenEmpty
         showPerCardRefs={!isThinPacket}
       />
+      {!detail.report.modelMovement.before && !detail.report.modelMovement.after ? (
+        <section className="px-5 pt-4">
+          <SectionLabel>Before / after</SectionLabel>
+          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+            No before/after state was recorded for this selected movement. Global recent movement
+            is not substituted here.
+          </p>
+        </section>
+      ) : null}
       <MovementSection
         label="What changed"
         section={detail.report.modelMovement}
@@ -722,8 +731,38 @@ export function ModelMovementInspectorPanel() {
   const { selection } = useInspector();
   const activeModelUpdateId = resolveActiveModelUpdateId(selection);
 
+  if (selection?.availability && selection.availability !== "live") {
+    return (
+      <div className="px-5 py-8">
+        <InspectorReturnBanner />
+        <p className="text-sm font-medium text-foreground">
+          {selection.selectedTitle ?? "Selected object"}
+        </p>
+        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+          This selection is {selection.availability.replace("_", " ")}. No selected movement was
+          loaded and global recent movement is not being substituted.
+        </p>
+      </div>
+    );
+  }
+
   if (activeModelUpdateId) {
     return <SelectedModelMovementDetail modelUpdateId={activeModelUpdateId} />;
+  }
+
+  if (selection) {
+    return (
+      <div className="px-5 py-8">
+        <InspectorReturnBanner />
+        <p className="text-sm font-medium text-foreground">
+          {selection.selectedTitle ?? "Selected object"}
+        </p>
+        <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+          No before/after movement is recorded for this selected object. Global recent movement is
+          separate and is not substituted here.
+        </p>
+      </div>
+    );
   }
 
   if (pathname.startsWith("/explore")) {

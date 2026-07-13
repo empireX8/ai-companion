@@ -5,6 +5,7 @@ import {
   isInspectorSelectableObjectType,
   parseSelectableObjectFromHref,
   resolveActiveModelUpdateId,
+  resolveInspectorObjectType,
   resolveInspectorSourceSurfaceFromPathname,
   shouldClearInspectorSelectionOnNavigation,
 } from "../inspector-selection";
@@ -24,6 +25,7 @@ describe("inspector-selection helpers", () => {
       selectedModelUpdateId: null,
       selectedTitle: "Recovery pattern",
       sourceSurface: "map",
+      availability: "live",
     });
   });
 
@@ -52,14 +54,30 @@ describe("inspector-selection helpers", () => {
       selectedModelUpdateId: null,
       selectedTitle: "Build Orvek into a private intelligence system",
       sourceSurface: "map",
+      availability: "live",
     });
     expect(isInspectorSelectableObjectType("model_goal")).toBe(true);
   });
 
-  it("rejects unsupported object types and blank ids", () => {
+  it("maps workbench-only families into honest inspector selection types", () => {
+    expect(
+      resolveInspectorObjectType({ id: "r-live", type: "receipt", title: "Receipt" })
+    ).toBe("receipt");
+    expect(
+      resolveInspectorObjectType({ id: "aq-live", type: "active-question", title: "Question" })
+    ).toBe("active_question");
+    expect(
+      resolveInspectorObjectType({ id: "d1", type: "decision", title: "Decision" })
+    ).toBe("reference_decision");
+    expect(
+      resolveInspectorObjectType({ id: "rep-weekly", type: "report", title: "Report" })
+    ).toBe("reference_report");
+  });
+
+  it("rejects unknown object types and blank ids", () => {
     expect(
       buildInspectorSelection({
-        objectType: "investigation" as "usermap_conclusion",
+        objectType: "candidate" as "usermap_conclusion",
         objectId: "inv-1",
       })
     ).toBeNull();
