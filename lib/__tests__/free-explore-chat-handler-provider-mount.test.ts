@@ -52,7 +52,7 @@ describe("free explore chat handler provider mount (E1 + E2/E3)", () => {
     expect(hookSource).toContain("sendMessage");
     expect(hookSource).toContain("exploreChatSendReady");
     expect(hookSource).toContain("sendHandlerAvailable: exploreChatSendReady");
-    expect(hookSource).toContain("return { dataApi, handlers }");
+    expect(hookSource).toContain("refreshAfterDurableWrite");
   });
 
   it("keeps FreeExplore dual gate requiring onSend handler and availability flag", () => {

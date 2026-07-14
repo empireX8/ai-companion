@@ -33,6 +33,9 @@ const USER_MAP_CONCLUSION_PUBLIC_LIST_SELECT = {
   confidenceLevel: true,
   evidenceCount: true,
   updatedAt: true,
+  lastUserCorrectionLabel: true,
+  lastUserCorrectionAt: true,
+  correctionCount: true,
 } as const;
 
 const USER_MAP_CONCLUSION_PUBLIC_DETAIL_SELECT = {

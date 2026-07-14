@@ -24,6 +24,9 @@ const USER_MAP_CONCLUSION_PUBLIC_DETAIL_SELECT = {
   timeSpreadDays: true,
   createdAt: true,
   updatedAt: true,
+  lastUserCorrectionAt: true,
+  lastUserCorrectionLabel: true,
+  correctionCount: true,
 } as const;
 
 export const dynamic = "force-dynamic";

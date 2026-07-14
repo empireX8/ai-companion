@@ -16,6 +16,9 @@ type WatchForRecord = Pick<
   | "linkedObjectId"
   | "createdAt"
   | "updatedAt"
+  | "observationNote"
+  | "observationOutcome"
+  | "completedAt"
 >;
 
 type WatchForDetailRecord = Pick<
@@ -39,6 +42,9 @@ export type WatchForItem = {
   linkedObjectType: string;
   linkedObjectId: string | null;
   linkedObjectHref: string | null;
+  observationNote?: string | null;
+  observationOutcome?: string | null;
+  completedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -96,6 +102,9 @@ export function toWatchForItem(row: WatchForRecord): WatchForItem | null {
     linkedObjectType: row.linkedObjectType,
     linkedObjectId: toNonEmptyPublicId(row.linkedObjectId),
     linkedObjectHref: null,
+    observationNote: row.observationNote ?? null,
+    observationOutcome: row.observationOutcome ?? null,
+    completedAt: row.completedAt ? row.completedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

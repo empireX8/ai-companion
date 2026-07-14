@@ -155,6 +155,29 @@ function railItemToOrvekObject(
     whatWouldChange = ["Capture correction in Capture Life Data"];
   } else if (item.kind === "conclusion") {
     inspectorObjectType = "usermap_conclusion";
+    if (listItem) {
+      return {
+        id: item.id,
+        type,
+        title: item.title,
+        summary,
+        whyItMatters,
+        supporting,
+        conflicting,
+        confidence,
+        lastUpdated,
+        evidenceCount,
+        detailHref,
+        missingEvidence,
+        whatWouldChange,
+        tags: [item.statusLabel],
+        inspectorObjectType,
+        inspectorObjectId,
+        userCorrectionLabel: listItem.lastUserCorrectionLabel ?? undefined,
+        userCorrectionAt: listItem.lastUserCorrectionAt ?? undefined,
+        correctionCount: listItem.correctionCount ?? 0,
+      };
+    }
   }
 
   return {
@@ -214,6 +237,9 @@ function buildDetailOrvekObject(view: V0MapViewProps, objectId: string): OrvekOb
     evidenceCount: detail.evidenceCount,
     inspectorObjectType: "usermap_conclusion",
     inspectorObjectId: detail.id,
+    userCorrectionLabel: detail.lastUserCorrectionLabel ?? undefined,
+    userCorrectionAt: detail.lastUserCorrectionAt ?? undefined,
+    correctionCount: detail.correctionCount ?? 0,
     relatedIds,
   };
 }

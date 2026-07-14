@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   fetchInspectorEvidenceLinks,
@@ -33,7 +33,10 @@ import {
 import type { OrvekPageHandlers } from "@/lib/orvek-v0/page-handlers";
 import { buildMapProductionDataApi } from "@/lib/orvek-v0/production/map-api";
 import { buildTimelineProductionDataApi } from "@/lib/orvek-v0/production/timeline-api";
-import { resolveMapWorkbenchSelectedId } from "@/lib/orvek-v0/production/map-selection";
+import {
+  normalizeMapConclusionSelectionId,
+  resolveMapWorkbenchSelectedId,
+} from "@/lib/orvek-v0/production/map-selection";
 import { createMockOrvekDataApi } from "@/lib/orvek-v0/mock-api";
 import {
   fetchTodayReentrySnapshot,
@@ -168,6 +171,11 @@ export function useOrvekHybridWorkbenchDataApi() {
 
   const [surfacedEvidenceDepth, setSurfacedEvidenceDepth] =
     useState<SurfacedEvidenceDepthOverlay | null>(null);
+  const [durableActionsRevision, setDurableActionsRevision] = useState(0);
+
+  const refreshAfterDurableWrite = useCallback(() => {
+    setDurableActionsRevision((current) => current + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -258,15 +266,38 @@ export function useOrvekHybridWorkbenchDataApi() {
 
     void (async () => {
       setIsLoadingActions(true);
-      try {
-        const next = await fetchActionsPageData();
-        if (!cancelled) {
+
+      async function loadActions(attempt = 0): Promise<void> {
+        try {
+          const next = await fetchActionsPageData();
+          if (!cancelled && next) {
+            setActionsData(next);
+            return;
+          }
+          if (cancelled) {
+            return;
+          }
+          if (attempt < 3) {
+            await new Promise((resolve) => window.setTimeout(resolve, 1_000 * (attempt + 1)));
+            await loadActions(attempt + 1);
+            return;
+          }
           setActionsData(next);
-        }
-      } catch {
-        if (!cancelled) {
+        } catch {
+          if (cancelled) {
+            return;
+          }
+          if (attempt < 3) {
+            await new Promise((resolve) => window.setTimeout(resolve, 1_000 * (attempt + 1)));
+            await loadActions(attempt + 1);
+            return;
+          }
           setActionsData(null);
         }
+      }
+
+      try {
+        await loadActions();
       } finally {
         if (!cancelled) {
           setIsLoadingActions(false);
@@ -277,22 +308,41 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [durableActionsRevision]);
 
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
       setIsLoadingWatchFor(true);
-      try {
-        const nextItems = await fetchWatchForItems();
-        if (!cancelled) {
-          setWatchForItems(nextItems);
-        }
-      } catch {
-        if (!cancelled) {
+
+      async function loadWatchFor(attempt = 0): Promise<void> {
+        try {
+          const nextItems = await fetchWatchForItems();
+          if (cancelled) {
+            return;
+          }
+          if (nextItems.length > 0 || attempt >= 3) {
+            setWatchForItems(nextItems);
+            return;
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 1_000 * (attempt + 1)));
+          await loadWatchFor(attempt + 1);
+        } catch {
+          if (cancelled) {
+            return;
+          }
+          if (attempt < 3) {
+            await new Promise((resolve) => window.setTimeout(resolve, 1_000 * (attempt + 1)));
+            await loadWatchFor(attempt + 1);
+            return;
+          }
           setWatchForItems([]);
         }
+      }
+
+      try {
+        await loadWatchFor();
       } finally {
         if (!cancelled) {
           setIsLoadingWatchFor(false);
@@ -303,7 +353,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [durableActionsRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -363,16 +413,30 @@ export function useOrvekHybridWorkbenchDataApi() {
     void (async () => {
       setIsLoadingMapList(true);
       setMapLoadError(null);
-      try {
-        const nextItems = await fetchYourMapConclusions();
-        if (!cancelled) {
-          setMapItems(nextItems);
-        }
-      } catch {
-        if (!cancelled) {
+
+      async function loadMapList(attempt = 0): Promise<void> {
+        try {
+          const nextItems = await fetchYourMapConclusions();
+          if (!cancelled) {
+            setMapItems(nextItems);
+            setMapLoadError(null);
+          }
+        } catch {
+          if (cancelled) {
+            return;
+          }
+          if (attempt < 3) {
+            await new Promise((resolve) => window.setTimeout(resolve, 1_000 * (attempt + 1)));
+            await loadMapList(attempt + 1);
+            return;
+          }
           setMapItems([]);
           setMapLoadError("Could not load your map.");
         }
+      }
+
+      try {
+        await loadMapList();
       } finally {
         if (!cancelled) {
           setIsLoadingMapList(false);
@@ -383,7 +447,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [durableActionsRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -479,7 +543,8 @@ export function useOrvekHybridWorkbenchDataApi() {
       return;
     }
 
-    if (!mapItems.some((item) => item.id === mapSelectedId)) {
+    const normalizedSelectedId = normalizeMapConclusionSelectionId(mapSelectedId);
+    if (!normalizedSelectedId) {
       setMapDetail(null);
       setMapEvidence([]);
       setIsMapDetailLoading(false);
@@ -491,8 +556,10 @@ export function useOrvekHybridWorkbenchDataApi() {
 
     void (async () => {
       const [nextDetail, nextEvidence] = await Promise.all([
-        fetchInspectorUserMapDetail(mapSelectedId),
-        fetchInspectorEvidenceLinks(INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT(mapSelectedId)),
+        fetchInspectorUserMapDetail(normalizedSelectedId),
+        fetchInspectorEvidenceLinks(
+          INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT(normalizedSelectedId)
+        ),
       ]);
       if (!cancelled) {
         setMapDetail(nextDetail);
@@ -504,7 +571,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, [mapItems, mapSelectedId]);
+  }, [mapItems, mapSelectedId, durableActionsRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -797,5 +864,5 @@ export function useOrvekHybridWorkbenchDataApi() {
     surfacedEvidenceDepth,
   ]);
 
-  return { dataApi, handlers };
+  return { dataApi, handlers, durableActionsRevision, refreshAfterDurableWrite };
 }

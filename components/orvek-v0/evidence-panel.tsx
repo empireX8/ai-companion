@@ -8,6 +8,13 @@ import {
 } from "@/lib/orvek-v0/orvek-data"
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
 import { useOrvekData, useOrvekObjectGraph } from "@/lib/orvek-v0/data-provider"
+import { isProductionDisplay } from "@/lib/orvek-v0/display-contract"
+import {
+  DurableCorrectionControls,
+  DurableDecisionOutcomeControls,
+  DurableFieldworkCheckInControls,
+  supportsDurableCorrection,
+} from "@/components/orvek-v0/durable-user-action-controls"
 import { hasLiveExploreChatFromProvider } from "@/lib/orvek-v0/production/free-explore-chat-presentation"
 import { EXPLORE_CONVERSATION_MOVEMENT_EMPTY_COPY } from "@/lib/explore-surface"
 import { useWorkbench, type InspectorTab } from "@/components/orvek-v0/store"
@@ -354,6 +361,8 @@ function ObjectDetail({ obj }: { obj: OrvekObject }) {
   const { select, openReport, setPage, setInspectorTab, applyCorrection, corrections } =
     useWorkbench()
   const { getObjects } = useOrvekObjectGraph()
+  const data = useOrvekData()
+  const isProduction = isProductionDisplay(data)
   const [outcomeAdded, setOutcomeAdded] = useState(false)
   const [checkin, setCheckin] = useState("")
   const [checkedIn, setCheckedIn] = useState(false)
@@ -490,15 +499,19 @@ function ObjectDetail({ obj }: { obj: OrvekObject }) {
             </p>
           )}
           {obj.outcomeState !== "recorded" && !obj.actualOutcome && (
-            <button
-              type="button"
-              onClick={() => setOutcomeAdded(true)}
-              disabled={outcomeAdded}
-              className="mt-2.5 inline-flex items-center gap-1.5 rounded-md bg-action px-2.5 py-1.5 text-xs font-semibold text-action-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
-            >
-              {outcomeAdded ? <Check className="size-3.5" /> : null}
-              {outcomeAdded ? "Outcome recorded" : "Add outcome"}
-            </button>
+            isProduction ? (
+              <DurableDecisionOutcomeControls object={obj} className="mt-2.5" />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setOutcomeAdded(true)}
+                disabled={outcomeAdded}
+                className="mt-2.5 inline-flex items-center gap-1.5 rounded-md bg-action px-2.5 py-1.5 text-xs font-semibold text-action-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+              >
+                {outcomeAdded ? <Check className="size-3.5" /> : null}
+                {outcomeAdded ? "Outcome recorded" : "Add outcome"}
+              </button>
+            )
           )}
         </Block>
       )}
@@ -544,7 +557,9 @@ function ObjectDetail({ obj }: { obj: OrvekObject }) {
             </Block>
           )}
           <Block label="Check in">
-            {checkedIn ? (
+            {isProduction ? (
+              <DurableFieldworkCheckInControls object={obj} />
+            ) : checkedIn ? (
               <p className="inline-flex items-center gap-1.5 text-[13px] text-primary">
                 <Check className="size-4" /> Check-in saved as a receipt.
               </p>
@@ -710,36 +725,39 @@ function ObjectDetail({ obj }: { obj: OrvekObject }) {
       )}
 
       {/* corrections */}
-      {showCorrections && (
-        <section className="mx-4 mt-5 rounded-2xl bg-secondary/40 px-4 py-3.5">
-          <SectionLabel>Correct the model</SectionLabel>
-          {correction && (
-            <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-evidence-muted px-2 py-1 text-xs font-medium text-primary">
-              <Check className="size-3.5" />
-              Recorded: “{correction}”
-            </p>
-          )}
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {CORRECTIONS.map((label) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => applyCorrection(obj.id, label)}
-                className={cn(
-                  "o-calm rounded-full px-2.5 py-1 text-xs font-medium",
-                  label === "Confirm"
-                    ? "bg-evidence-muted text-primary hover:brightness-[0.97]"
-                    : label === "This is wrong" || label === "Do not use this assumption"
-                      ? "bg-destructive/10 text-destructive hover:bg-destructive/15"
-                      : "bg-card text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.12)] hover:bg-accent/60",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
+      {showCorrections &&
+        (isProduction && supportsDurableCorrection(obj) ? (
+          <DurableCorrectionControls object={obj} />
+        ) : (
+          <section className="mx-4 mt-5 rounded-2xl bg-secondary/40 px-4 py-3.5">
+            <SectionLabel>Correct the model</SectionLabel>
+            {correction && (
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-evidence-muted px-2 py-1 text-xs font-medium text-primary">
+                <Check className="size-3.5" />
+                Recorded: “{correction}”
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {CORRECTIONS.map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => applyCorrection(obj.id, label)}
+                  className={cn(
+                    "o-calm rounded-full px-2.5 py-1 text-xs font-medium",
+                    label === "Confirm"
+                      ? "bg-evidence-muted text-primary hover:brightness-[0.97]"
+                      : label === "This is wrong" || label === "Do not use this assumption"
+                        ? "bg-destructive/10 text-destructive hover:bg-destructive/15"
+                        : "bg-card text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.12)] hover:bg-accent/60",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
+        ))}
     </div>
   )
 }

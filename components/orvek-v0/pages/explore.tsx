@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils"
 import { EXPLORE_GROUNDING } from "@/lib/orvek-v0/orvek-data"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
-import { ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
+import { ORVEK_DEFERRED_ACTION_CLASS, isProductionDisplay } from "@/lib/orvek-v0/display-contract"
+import { DurableFieldworkCheckInControls } from "@/components/orvek-v0/durable-user-action-controls"
 import { V0_EXPLORE_LIVE_DETECTION_COPY } from "@/lib/orvek-adapters/explore"
 import { resolveActiveQuestionsOpenSelectionId } from "@/lib/orvek-v0/production/active-questions-presentation"
 import { resolveInvestigationsOpenSelectionId } from "@/lib/orvek-v0/production/investigations-presentation"
@@ -37,7 +38,7 @@ export function ExplorePage() {
   }, [setExploreActive])
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col" data-testid="orvek-v0-explore-page">
       <div className="px-6 pt-5 pb-4 lg:px-8">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Explore</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
@@ -851,6 +852,7 @@ function InvBlock({ label, children }: { label: string; children: React.ReactNod
 
 function FieldworkBridge({ onSelect }: { onSelect: (id: string) => void }) {
   const data = useOrvekData()
+  const isProduction = isProductionDisplay(data)
   const { getObject, exploreFieldworkIds, exploreFieldworkSelectedId, emptyCopyBySlot } = data
   const fieldworkIds = exploreFieldworkIds ?? []
   const hasLiveFieldwork = fieldworkIds.length > 0
@@ -877,11 +879,19 @@ function FieldworkBridge({ onSelect }: { onSelect: (id: string) => void }) {
       return
     }
 
-    const nextId = exploreFieldworkSelectedId ?? fieldworkIds[0]
-    if (nextId) {
-      setActiveId(nextId)
+    const preferred =
+      (exploreFieldworkSelectedId && fieldworkIds.includes(exploreFieldworkSelectedId)
+        ? exploreFieldworkSelectedId
+        : null) ?? fieldworkIds[0]
+    if (!preferred) {
+      return
     }
-  }, [exploreFieldworkSelectedId, fieldworkIds, hasLiveFieldwork])
+
+    // Always leave the reference shell id ("f2") once production rows exist.
+    if (activeId === referenceFieldworkId || !fieldworkIds.includes(activeId)) {
+      setActiveId(preferred)
+    }
+  }, [activeId, exploreFieldworkSelectedId, fieldworkIds, hasLiveFieldwork, referenceFieldworkId])
 
   const fieldwork = getObject(activeId)
   const showLiveDetail = hasLiveFieldwork && fieldwork?.type === "fieldwork"
@@ -1012,6 +1022,14 @@ function FieldworkBridge({ onSelect }: { onSelect: (id: string) => void }) {
           {showLiveDetail ? "Linked context" : "Linked question"}
         </button>
       </div>
+      {showLiveDetail && fieldwork?.type === "fieldwork" ? (
+        <div className="mt-5">
+          <SectionLabel>Check in</SectionLabel>
+          {isProduction ? (
+            <DurableFieldworkCheckInControls object={fieldwork} className="mt-2" />
+          ) : null}
+        </div>
+      ) : null}
       {showLiveDetail && !fieldwork.summary && !fieldwork.title ? (
         <p className="mt-3 text-[13px] text-muted-foreground">
           {emptyCopyBySlot?.exploreFieldworkEmpty ?? "No fieldwork bridge is active yet."}

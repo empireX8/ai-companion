@@ -50,7 +50,8 @@ describe("free explore chat send/draft/stream wiring (E2/E3)", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
     const referencePageSource = readSource("app/dev/orvek-v0-reference/page.tsx");
 
-    expect(shellSource).toContain("const { dataApi, handlers } = useOrvekHybridWorkbenchDataApi()");
+    expect(shellSource).toContain("useOrvekHybridWorkbenchDataApi()");
+    expect(shellSource).toContain("dataApi, handlers");
     expect(shellSource).toContain("handlers={handlers}");
     expect(shellSource).not.toContain("handlers={{}}");
     expect(hookSource).toContain("sendMessage");
@@ -264,7 +265,7 @@ describe("free explore chat send/draft/stream wiring (E2/E3)", () => {
     expect(hookSource).toContain("exploreChatSendReady");
     expect(hookSource).toContain("sendHandlerAvailable: exploreChatSendReady");
     expect(hookSource).toContain("void sendMessage()");
-    expect(hookSource).toContain("return { dataApi, handlers }");
+    expect(hookSource).toContain("return { dataApi, handlers, durableActionsRevision, refreshAfterDurableWrite }");
   });
 
   it("keeps legacy /explore UI and old production shell quarantined", () => {
