@@ -3,12 +3,22 @@
 import { type ReactNode } from "react";
 
 import { Workbench } from "@/components/orvek-v0/workbench";
+import { DurableActionsRefreshProvider } from "@/lib/orvek-v0/durable-actions-context";
 import { useOrvekHybridWorkbenchDataApi } from "./useOrvekHybridWorkbenchDataApi";
 
 export function OrvekWorkbenchShell({ children }: { children: ReactNode }) {
   void children;
-  // Temporary hard swap: mount the accepted reference workbench directly.
-  // Production adapter wiring can be restored after the UI is visually verified.
-  const { dataApi, handlers } = useOrvekHybridWorkbenchDataApi();
-  return <Workbench dataApi={dataApi} handlers={handlers} />;
+  const { dataApi, handlers, durableActionsRevision, refreshAfterDurableWrite } =
+    useOrvekHybridWorkbenchDataApi();
+
+  return (
+    <DurableActionsRefreshProvider
+      value={{
+        revision: durableActionsRevision,
+        refreshAfterDurableWrite,
+      }}
+    >
+      <Workbench dataApi={dataApi} handlers={handlers} />
+    </DurableActionsRefreshProvider>
+  );
 }

@@ -5,6 +5,10 @@ import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { isProductionDisplay } from "@/lib/orvek-v0/display-contract"
+import {
+  DurableCorrectionControls,
+  supportsDurableCorrection,
+} from "@/components/orvek-v0/durable-user-action-controls"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
 import {
   V0_MAP_ONTOLOGY_RAIL_LABELS,
@@ -510,6 +514,9 @@ export function MapPage() {
             </button>
 
             {/* corrections */}
+            {isProduction && obj && supportsDurableCorrection(obj) ? (
+              <DurableCorrectionControls object={obj} className="mx-0 mt-6" />
+            ) : (
             <div className="mt-6 rounded-2xl bg-secondary/40 px-4 py-4">
               <SectionLabel>Correct the model</SectionLabel>
               {correction && (
@@ -538,6 +545,7 @@ export function MapPage() {
                 ))}
               </div>
             </div>
+            )}
           </div>
         </div>
       </div>

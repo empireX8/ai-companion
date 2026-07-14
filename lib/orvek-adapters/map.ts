@@ -141,6 +141,9 @@ export type V0MapDetailSlot = {
   beforeSummary: string | null;
   afterSummary: string | null;
   isDisputed: boolean;
+  lastUserCorrectionLabel?: string | null;
+  lastUserCorrectionAt?: string | null;
+  correctionCount?: number;
 };
 
 export type V0MapMovementRow = {
@@ -470,6 +473,9 @@ function mapDetailSlot(
     beforeSummary: showBeforeAfter ? beforeCandidate : null,
     afterSummary: showBeforeAfter ? afterSummary : null,
     isDisputed: detail.status === "disputed",
+    lastUserCorrectionLabel: detail.lastUserCorrectionLabel ?? null,
+    lastUserCorrectionAt: detail.lastUserCorrectionAt ?? null,
+    correctionCount: detail.correctionCount ?? 0,
   };
 }
 

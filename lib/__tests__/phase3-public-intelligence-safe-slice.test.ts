@@ -196,6 +196,9 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
       confidenceLevel: "medium",
       evidenceCount: 50,
       updatedAt: "2026-05-17T10:00:00.000Z",
+      correctionCount: 0,
+      lastUserCorrectionAt: null,
+      lastUserCorrectionLabel: null,
     });
     for (const field of USER_MAP_CONCLUSION_PUBLIC_API_INTERNAL_FIELDS) {
       expect(item).not.toHaveProperty(field);
@@ -229,6 +232,9 @@ describe("Phase 3 public intelligence safe-slice helpers", () => {
       timeSpreadDays: 14,
       createdAt: "2026-05-10T08:00:00.000Z",
       updatedAt: "2026-05-17T10:00:00.000Z",
+      correctionCount: 0,
+      lastUserCorrectionAt: null,
+      lastUserCorrectionLabel: null,
     });
     for (const field of USER_MAP_CONCLUSION_PUBLIC_API_INTERNAL_FIELDS) {
       expect(item).not.toHaveProperty(field);

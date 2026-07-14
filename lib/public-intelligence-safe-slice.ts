@@ -86,7 +86,10 @@ type UserMapListRecord = Pick<
   | "confidenceLevel"
   | "evidenceCount"
   | "updatedAt"
->;
+> &
+  Partial<
+    Pick<UserMapConclusion, "lastUserCorrectionAt" | "lastUserCorrectionLabel" | "correctionCount">
+  >;
 
 type UserMapDetailRecord = Pick<
   UserMapConclusion,
@@ -101,7 +104,10 @@ type UserMapDetailRecord = Pick<
   | "timeSpreadDays"
   | "createdAt"
   | "updatedAt"
->;
+> &
+  Partial<
+    Pick<UserMapConclusion, "lastUserCorrectionAt" | "lastUserCorrectionLabel" | "correctionCount">
+  >;
 
 function toNonEmptyId(value: string | null | undefined): string | null {
   return toNonEmptyPublicId(value);
@@ -358,12 +364,18 @@ export type UserMapConclusionPublicApiListItem = {
   confidenceLevel: UserMapConfidenceLevel;
   evidenceCount: number;
   updatedAt: string;
+  lastUserCorrectionLabel?: string | null;
+  lastUserCorrectionAt?: string | null;
+  correctionCount?: number;
 };
 
 export type UserMapConclusionPublicApiDetailItem = UserMapConclusionPublicApiListItem & {
   sourceDiversity: number;
   timeSpreadDays: number;
   createdAt: string;
+  lastUserCorrectionLabel?: string | null;
+  lastUserCorrectionAt?: string | null;
+  correctionCount?: number;
 };
 
 export type WhatChangedListItem = {
@@ -435,6 +447,11 @@ export function toUserMapConclusionPublicApiListItem(
     confidenceLevel: row.confidenceLevel,
     evidenceCount: row.evidenceCount,
     updatedAt: row.updatedAt.toISOString(),
+    lastUserCorrectionLabel: row.lastUserCorrectionLabel ?? null,
+    lastUserCorrectionAt: row.lastUserCorrectionAt
+      ? row.lastUserCorrectionAt.toISOString()
+      : null,
+    correctionCount: row.correctionCount ?? 0,
   };
 }
 
@@ -451,6 +468,11 @@ export function toUserMapConclusionPublicApiDetailItem(
     sourceDiversity: row.sourceDiversity,
     timeSpreadDays: row.timeSpreadDays,
     createdAt: row.createdAt.toISOString(),
+    lastUserCorrectionLabel: row.lastUserCorrectionLabel ?? null,
+    lastUserCorrectionAt: row.lastUserCorrectionAt
+      ? row.lastUserCorrectionAt.toISOString()
+      : null,
+    correctionCount: row.correctionCount ?? 0,
   };
 }
 

@@ -5,7 +5,10 @@ export const ORVEK_DISPLAY_CONTRACT_PRODUCTION = "production" as const;
 export type OrvekDisplayContract = typeof ORVEK_DISPLAY_CONTRACT_PRODUCTION;
 
 export function isProductionDisplay(api: OrvekDataApi): boolean {
-  return api.displayContract === ORVEK_DISPLAY_CONTRACT_PRODUCTION;
+  return (
+    api.displayContract === ORVEK_DISPLAY_CONTRACT_PRODUCTION ||
+    api.referenceSurface === false
+  );
 }
 
 export function withProductionContract(api: OrvekDataApi): OrvekDataApi {

@@ -9,6 +9,25 @@ export type MapWorkbenchSelectionInput = {
   mindContextItems: MindContextDisplayItem[];
 };
 
+export function normalizeMapConclusionSelectionId(
+  selectionId: string | null | undefined
+): string | null {
+  const normalized = selectionId?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized.startsWith("conclusion-")) {
+    return normalized.slice("conclusion-".length);
+  }
+
+  if (normalized.startsWith("goal-")) {
+    return normalized.slice("goal-".length);
+  }
+
+  return normalized;
+}
+
 export function resolveMapWorkbenchSelectedId(
   input: MapWorkbenchSelectionInput
 ): string | null {

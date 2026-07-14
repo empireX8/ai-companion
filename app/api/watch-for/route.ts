@@ -31,6 +31,9 @@ export async function GET() {
         linkedObjectId: true,
         createdAt: true,
         updatedAt: true,
+        observationNote: true,
+        observationOutcome: true,
+        completedAt: true,
       },
     });
 
@@ -67,6 +70,9 @@ export async function GET() {
       status: item.status,
       statusLabel: item.statusLabel,
       linkedObjectHref: item.linkedObjectHref,
+      observationNote: item.observationNote,
+      observationOutcome: item.observationOutcome,
+      completedAt: item.completedAt,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     }));

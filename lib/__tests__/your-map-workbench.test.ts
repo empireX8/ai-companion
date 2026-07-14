@@ -38,8 +38,8 @@ describe("your-map workbench", () => {
     expect(appShellSource).toContain("OrvekWorkbenchShell");
     expect(shellSource).toContain("Workbench");
     expect(shellSource).toContain("useOrvekHybridWorkbenchDataApi");
-    expect(shellSource).toContain("Temporary hard swap");
-    expect(shellSource).toContain("mount the accepted reference workbench directly");
+    expect(shellSource).toContain("DurableActionsRefreshProvider");
+    expect(shellSource).toContain("useOrvekHybridWorkbenchDataApi");
     expect(shellSource).not.toContain("RouteTopBar");
     expect(shellSource).not.toContain("RouteSidebar");
     expect(shellSource).not.toContain("ProductionInspectorAside");

@@ -443,6 +443,9 @@ describe("Understanding Engine Phase 1B API routes", () => {
       evidenceCount: 0,
       sourceDiversity: 0,
       timeSpreadDays: 0,
+      lastUserCorrectionLabel: null,
+      lastUserCorrectionAt: null,
+      correctionCount: 0,
       createdAt: "2026-05-14T10:00:00.000Z",
       updatedAt: "2026-05-14T10:00:00.000Z",
     });
@@ -580,6 +583,9 @@ describe("Understanding Engine Phase 1B API routes", () => {
           status: "emerging",
           confidenceLevel: "medium",
           evidenceCount: 4,
+          lastUserCorrectionLabel: null,
+          lastUserCorrectionAt: null,
+          correctionCount: 0,
           updatedAt: "2026-05-14T12:00:00.000Z",
         },
       ],
@@ -626,6 +632,9 @@ describe("Understanding Engine Phase 1B API routes", () => {
       status: "emerging",
       confidenceLevel: "low",
       evidenceCount: 50,
+      lastUserCorrectionLabel: null,
+      lastUserCorrectionAt: null,
+      correctionCount: 0,
       updatedAt: "2026-05-15T10:00:00.000Z",
     });
   });
@@ -691,6 +700,9 @@ describe("Understanding Engine Phase 1B API routes", () => {
       evidenceCount: 6,
       sourceDiversity: 3,
       timeSpreadDays: 10,
+      lastUserCorrectionLabel: null,
+      lastUserCorrectionAt: null,
+      correctionCount: 0,
       createdAt: "2026-05-10T08:00:00.000Z",
       updatedAt: "2026-05-16T10:00:00.000Z",
     });
@@ -749,6 +761,9 @@ describe("Understanding Engine Phase 1B API routes", () => {
       evidenceCount: 50,
       sourceDiversity: 8,
       timeSpreadDays: 14,
+      lastUserCorrectionLabel: null,
+      lastUserCorrectionAt: null,
+      correctionCount: 0,
       createdAt: "2026-05-10T08:00:00.000Z",
       updatedAt: "2026-05-15T10:00:00.000Z",
     });

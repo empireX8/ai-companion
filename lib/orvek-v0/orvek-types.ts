@@ -70,6 +70,16 @@ export interface OrvekObject {
   expectedOutcome?: string
   actualOutcome?: string
 
+  /** Durable user correction — distinct from summary (original assertion). */
+  userCorrectionLabel?: string
+  userCorrectionAt?: string
+  correctionCount?: number
+
+  /** Durable fieldwork check-in observation. */
+  checkInNote?: string
+  checkInOutcome?: string
+  checkInCompletedAt?: string
+
   // report
   reportType?: string
   period?: string

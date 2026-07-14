@@ -6,6 +6,7 @@ import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
 import { resolveDecisionsOpenSelectionId } from "@/lib/orvek-v0/production/decisions-presentation"
 import { useWorkbench } from "@/components/orvek-v0/store"
+import { DurableDecisionOutcomeControls } from "@/components/orvek-v0/durable-user-action-controls"
 import { Chip, SectionLabel } from "@/components/orvek-v0/primitives"
 import { ArrowRight, Check, GitBranch, MessageSquare, Scale, Send } from "lucide-react"
 
@@ -50,13 +51,16 @@ export function DecisionsPage() {
       : LISTS
 
   useEffect(() => {
-    if (decisionsSelectedId) {
-      setWorkspaceId(decisionsSelectedId)
-      return
-    }
-    if (decisionListGroups.length === 0) return
-    const firstId = decisionListGroups.flatMap((group) => group.ids)[0]
-    if (firstId) setWorkspaceId(firstId)
+    const allIds = decisionListGroups.flatMap((group) => group.ids)
+    setWorkspaceId((current) => {
+      if (current && allIds.includes(current)) {
+        return current
+      }
+      if (decisionsSelectedId && allIds.includes(decisionsSelectedId)) {
+        return decisionsSelectedId
+      }
+      return allIds[0] ?? current
+    })
   }, [decisionListGroups, decisionsSelectedId])
 
   const decision = getObject(workspaceId)
@@ -86,7 +90,7 @@ export function DecisionsPage() {
         : 0
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col" data-testid="orvek-v0-decisions-page">
       {/* header + entry module */}
       <div className="px-6 pt-5 pb-4 lg:px-8">
         <div className="mb-3 flex items-center justify-between">
@@ -386,14 +390,14 @@ export function DecisionsPage() {
               <p className="mt-1.5 text-[13px] text-muted-foreground">
                 {decision.outcomeWindow ?? "Reviewed."}
               </p>
-              {decision.actualOutcome && (
-                <p className="mt-1.5 text-[13px]">
+              {isProduction ? (
+                <DurableDecisionOutcomeControls object={decision} className="mt-2" />
+              ) : decision.actualOutcome ? (
+                <p className="mt-1.5 text-[13px]" data-testid="durable-outcome-recorded">
                   <span className="text-muted-foreground">What happened: </span>
                   {decision.actualOutcome}
                 </p>
-              )}
-              {!decision.actualOutcome &&
-                (outcomeAdded[workspaceId] ? (
+              ) : outcomeAdded[workspaceId] ? (
                   <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-primary">
                     <Check className="size-4" /> Outcome recorded — Orvek will fold it into the
                     model.
@@ -406,7 +410,7 @@ export function DecisionsPage() {
                   >
                     Add outcome
                   </button>
-                ))}
+                )}
             </div>
 
             {/* actions */}

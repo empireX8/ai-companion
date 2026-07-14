@@ -374,6 +374,9 @@ export function watchForItemToFieldworkObject(item: WatchForItem): OrvekObject {
     relatedIds: relatedIds.length > 0 ? relatedIds : undefined,
     inspectorObjectType,
     inspectorObjectId: inspectorObjectId ?? item.id,
+    checkInNote: item.observationNote ?? undefined,
+    checkInOutcome: item.observationOutcome ?? undefined,
+    checkInCompletedAt: item.completedAt ?? undefined,
     lastUpdated: item.updatedAt,
   };
 }

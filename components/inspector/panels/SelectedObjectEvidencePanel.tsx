@@ -6,6 +6,12 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { Chip, SectionLabel, TYPE_META } from "@/components/orvek-v0/primitives";
+import {
+  DurableCorrectionControls,
+  DurableDecisionOutcomeControls,
+  DurableFieldworkCheckInControls,
+  supportsDurableCorrection,
+} from "@/components/orvek-v0/durable-user-action-controls";
 import { useWorkbench } from "@/components/orvek-v0/store";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { PUBLIC_EVIDENCE_FALLBACK_COPY } from "@/lib/public-continuity-registry";
@@ -496,6 +502,15 @@ function SourceObjectSections({
               {object.actualOutcome}
             </p>
           ) : null}
+          {object.type === "decision" && !object.actualOutcome ? (
+            <DurableDecisionOutcomeControls object={object} className="mt-2.5" />
+          ) : null}
+        </SectionBlock>
+      ) : null}
+
+      {object.type === "fieldwork" ? (
+        <SectionBlock label="Check in">
+          <DurableFieldworkCheckInControls object={object} />
         </SectionBlock>
       ) : null}
 
@@ -608,7 +623,11 @@ function SourceObjectSections({
         </SectionBlock>
       ) : null}
 
-      <DeferredActionsSection />
+      {supportsDurableCorrection(object) ? (
+        <DurableCorrectionControls object={object} className="mx-0" />
+      ) : (
+        <DeferredActionsSection />
+      )}
     </>
   );
 }

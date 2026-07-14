@@ -45,7 +45,7 @@ describe("desktop hard-swap regression sweep", () => {
     expect(appLayout).toContain("AppShell");
     expect(appShell).toContain("OrvekWorkbenchShell");
     expect(shell).toContain("void children");
-    expect(shell).toContain("Temporary hard swap");
+    expect(shell).toContain("DurableActionsRefreshProvider");
     expect(shell).toContain("<Workbench dataApi={dataApi} handlers={handlers} />");
     expect(shell).toContain("useOrvekHybridWorkbenchDataApi");
     expect(workbench).toContain("OrvekShellLayout");
