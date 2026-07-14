@@ -105,6 +105,11 @@ type SurfacedEvidenceDepthApiResponse = {
 
 export function useOrvekHybridWorkbenchDataApi() {
   const baseApi = useMemo(() => createMockOrvekDataApi(), []);
+
+  const asHybridShell = (api: typeof baseApi) => ({
+    ...api,
+    referenceSurface: false as const,
+  });
   const {
     selectedSessionId: exploreChatSessionId,
     messages: exploreChatMessages,
@@ -648,7 +653,7 @@ export function useOrvekHybridWorkbenchDataApi() {
 
   const dataApi = useMemo(() => {
     if (isLoadingSnapshot) {
-      return baseApi;
+      return asHybridShell(baseApi);
     }
 
     const todayApi = buildTodayProductionDataApi({
@@ -743,7 +748,10 @@ export function useOrvekHybridWorkbenchDataApi() {
       freeExploreChatApi,
     );
 
-    return applySurfacedEvidenceDepthGate({ api: hybridApi, overlay: surfacedEvidenceDepth });
+    return applySurfacedEvidenceDepthGate({
+      api: asHybridShell(hybridApi),
+      overlay: surfacedEvidenceDepth,
+    });
   }, [
     baseApi,
     isLoadingSnapshot,

@@ -62,7 +62,13 @@ export function Workbench({
   dataApi?: OrvekDataApi;
   handlers?: OrvekPageHandlers;
 } = {}) {
-  const mockApi = useMemo(() => createMockOrvekDataApi(), []);
+  const mockApi = useMemo(
+    () => ({
+      ...createMockOrvekDataApi(),
+      referenceSurface: true,
+    }),
+    [],
+  );
   const api = dataApi ?? mockApi;
   const pageHandlers = handlers ?? {};
   const productionInspector = Boolean(dataApi);

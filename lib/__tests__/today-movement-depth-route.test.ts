@@ -10,6 +10,7 @@ const prismaMock = {
   },
   understandingEvidenceLink: {
     count: vi.fn(),
+    findMany: vi.fn(),
   },
 };
 
@@ -41,6 +42,7 @@ describe("/api/today/movement-depth", () => {
     authMock.mockResolvedValue({ userId: "user_test" });
     prismaMock.modelUpdate.findMany.mockResolvedValue([]);
     prismaMock.understandingEvidenceLink.count.mockResolvedValue(0);
+    prismaMock.understandingEvidenceLink.findMany.mockResolvedValue([]);
   });
 
   it("requires auth", async () => {
@@ -65,6 +67,12 @@ describe("/api/today/movement-depth", () => {
       },
     ]);
     prismaMock.understandingEvidenceLink.count.mockResolvedValue(2);
+    prismaMock.understandingEvidenceLink.findMany.mockResolvedValue([
+      {
+        targetId: "mu-1",
+        summary: "I keep working past the stop point.",
+      },
+    ]);
 
     const route = await import("../../app/api/today/movement-depth/route");
     const response = await route.GET(new Request("http://localhost/api/today/movement-depth"));
@@ -73,6 +81,7 @@ describe("/api/today/movement-depth", () => {
         before: string | null;
         after: string | null;
         movementRationale: string | null;
+        evidenceQuotes?: string[];
       }>;
     };
 
@@ -81,6 +90,7 @@ describe("/api/today/movement-depth", () => {
     expect(payload.items[0]?.before).toBe("Tentative only.");
     expect(payload.items[0]?.after).toBe("Supported by three receipts.");
     expect(payload.items[0]?.movementRationale).toBe("Receipts align across two weeks.");
+    expect(payload.items[0]?.evidenceQuotes).toEqual(["I keep working past the stop point."]);
   });
 
   it("returns fixture user depth only for the authenticated owner", async () => {

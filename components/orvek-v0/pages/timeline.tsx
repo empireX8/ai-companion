@@ -4,6 +4,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
+import { hasLiveTodayPresentation } from "@/lib/orvek-v0/production/today-presentation"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { SectionLabel } from "@/components/orvek-v0/primitives"
 import { TIMELINE_SEMANTIC_FILTERS } from "@/lib/timeline-semantic-layers"
@@ -69,7 +70,12 @@ function matches(filter: string, eventType: string, tags: string[]) {
 export function TimelinePage() {
   const data = useOrvekData()
   const { getObject, timelineGroups, timelineFilters, emptyCopyBySlot, timelineIsLoading } = data
-  const isProduction = isProductionDisplay(data)
+  const useLiveTimeline =
+    isProductionDisplay(data) ||
+    hasLiveTodayPresentation(data) ||
+    (data.referenceSurface !== true &&
+      (timelineGroups?.some((group) => group.ids.length > 0) ?? false))
+  const isProduction = useLiveTimeline
   const { selectedId, select, setInspectorTab } = useWorkbench()
   const [filter, setFilter] = useState("All")
   const [query, setQuery] = useState("")
@@ -82,7 +88,9 @@ export function TimelinePage() {
       ? timelineGroups
       : GROUPS
   const filters = isProduction
-    ? TIMELINE_SEMANTIC_FILTERS.map((entry) => entry.label)
+    ? timelineFilters.length > 0
+      ? timelineFilters
+      : TIMELINE_SEMANTIC_FILTERS.map((entry) => entry.label)
     : timelineFilters.length > 0
       ? timelineFilters
       : FILTERS
@@ -196,6 +204,13 @@ export function TimelinePage() {
                             key={e.id}
                             type="button"
                             onClick={() => openEvent(e.id)}
+                            data-testid="timeline-movement-row"
+                            data-movement-id={
+                              e.inspectorObjectType === "model_update"
+                                ? (e.inspectorObjectId ?? e.canonicalReportId ?? e.id)
+                                : (e.canonicalReportId ?? e.id)
+                            }
+                            data-canonical-report-id={e.canonicalReportId ?? e.inspectorObjectId ?? e.id}
                             className={cn(
                               "o-calm relative flex w-full gap-3 px-4 py-3 pl-5 text-left",
                               "before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-r",

@@ -5,6 +5,7 @@ import {
 } from "../../orvek-adapters/today";
 import type { V0TodayReceiptRow } from "../../orvek-adapters/types";
 import {
+  buildMovementReportCitedEvidenceObjects,
   buildMovementReportOrvekObject,
   enrichOrvekObjectWithMovementDepth,
   mergeOrvekObjectPreservingMovementDepth,
@@ -190,6 +191,9 @@ export function buildTodayProductionDataApi(input: MapTodayDataInput): OrvekData
         ...(objects[depth.id] ?? reportObject),
         ...reportObject,
       };
+      for (const cited of buildMovementReportCitedEvidenceObjects(depth)) {
+        objects[cited.id] = cited;
+      }
     }
   }
 

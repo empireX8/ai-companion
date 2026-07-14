@@ -2,6 +2,8 @@
 
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
+import { hasLiveTodayPresentation } from "@/lib/orvek-v0/production/today-presentation"
+import { REFERENCE_SAMPLE_REPORT_PROVENANCE_LABEL } from "@/lib/model-movement-report-provenance"
 import {
   resolveTodayWorkbenchCommands,
   runTodayWorkbenchCommands,
@@ -140,7 +142,8 @@ export function TodayPage() {
   const data = useOrvekData()
   const { getObject, getObjects, todayCopy, todayResurfacedIds, today, emptyCopyBySlot, todayIsLoading } =
     data
-  const isProduction = isProductionDisplay(data)
+  const isProduction = isProductionDisplay(data) || hasLiveTodayPresentation(data)
+  const allowReferenceSampleReport = data.referenceSurface === true && !isProduction
   const { select, openReport, setPage, setOverlay } = useWorkbench()
 
   const productionHero = isProduction ? today?.hero ?? null : null
@@ -345,6 +348,8 @@ export function TodayPage() {
                             <button
                               type="button"
                               onClick={() => seeWhy(productionHero.movementId!)}
+                              data-testid="today-see-why"
+                              data-movement-id={productionHero.movementId}
                               className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-card px-3 py-2 text-sm font-medium text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.14)] hover:bg-accent/60"
                             >
                               <GitCompareArrows className="size-4 text-primary" aria-hidden />
@@ -655,6 +660,8 @@ export function TodayPage() {
                         <button
                           type="button"
                           onClick={() => runProductionIntent(productionReport)}
+                          data-testid="today-full-report"
+                          data-report-id={productionReport.reportId ?? undefined}
                           className="o-calm inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
                         >
                           {productionReport.fullReportLabel}
@@ -691,13 +698,21 @@ export function TodayPage() {
               {isProduction ? (
                 additionalMovements.length ? (
                   additionalMovements.map((m) => (
-                    <div key={m.id} className="o-material rounded-[10px] p-4">
+                    <div
+                      key={m.id}
+                      className="o-material rounded-[10px] p-4"
+                      data-testid="today-movement-row"
+                      data-movement-id={m.id}
+                    >
                       <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
                         <div className="rounded-[10px] bg-muted/70 px-3 py-2">
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                             Previously
                           </p>
-                          <p className="mt-0.5 text-[13px] leading-relaxed text-foreground">
+                          <p
+                            className="mt-0.5 text-[13px] leading-relaxed text-foreground"
+                            data-testid="today-movement-before"
+                          >
                             {m.previous ??
                               emptyCopyBySlot?.todayPriorReadEmpty ??
                               "Prior read unavailable."}
@@ -710,7 +725,10 @@ export function TodayPage() {
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">
                             Updated understanding
                           </p>
-                          <p className="mt-0.5 text-[13px] leading-relaxed text-foreground">
+                          <p
+                            className="mt-0.5 text-[13px] leading-relaxed text-foreground"
+                            data-testid="today-movement-after"
+                          >
                             {m.updated}
                           </p>
                         </div>
@@ -723,6 +741,8 @@ export function TodayPage() {
                         <button
                           type="button"
                           onClick={() => seeWhy(m.id)}
+                          data-testid="today-see-why"
+                          data-movement-id={m.id}
                           className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-primary hover:underline"
                         >
                           See why
@@ -805,21 +825,26 @@ export function TodayPage() {
           </div>
 
           <aside className="min-w-0 lg:sticky lg:top-2 lg:self-start">
-            {!isProduction ? (
+            {allowReferenceSampleReport ? (
               <button
                 type="button"
                 onClick={() => openReport("rep-weekly")}
+                data-testid="reference-sample-report-control"
+                data-report-provenance="reference_sample"
                 className="o-calm flex w-full items-center gap-3 rounded-2xl bg-evidence-muted/60 px-4 py-3 text-left ring-1 ring-inset ring-primary/15 hover:bg-evidence-muted"
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary">
                   <FileText className="size-4" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {REFERENCE_SAMPLE_REPORT_PROVENANCE_LABEL}
+                  </span>
                   <span className="block text-[13px] font-semibold text-foreground">
                     Weekly Model Movement report
                   </span>
                   <span className="block text-[12px] text-muted-foreground">
-                    Ready · 3 loops, 2 decisions, 1 context update
+                    Reference sample · not a live ModelUpdate report
                   </span>
                 </span>
                 <ArrowRight className="size-4 shrink-0 text-primary" aria-hidden />

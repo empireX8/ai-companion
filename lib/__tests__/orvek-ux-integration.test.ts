@@ -106,7 +106,9 @@ describe("orvek ux integration — today what-changed output", () => {
     expect(todayView).toContain('data-testid="today-what-changed-output"');
     expect(todayView).toContain("openInspectorSelection");
     expect(todayView).toContain('data-testid="today-full-report-deferred"');
-    expect(todayView).toContain("fullReportAvailable");
+    expect(todayView).toContain("reportCommands");
+    expect(todayView).toContain('data-testid="today-full-report"');
+    expect(adapter).toContain("fullReportAvailable");
   });
 
   it("keeps Map movement preview linked to What Changed", () => {

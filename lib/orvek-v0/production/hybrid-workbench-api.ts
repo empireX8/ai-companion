@@ -1,5 +1,6 @@
-import type { OrvekDataApi } from "../data-provider";
+import type { OrvekDataApi, OrvekTimelineGroup } from "../data-provider";
 import type { OrvekObject } from "../orvek-types";
+import { TIMELINE_SEMANTIC_FILTERS } from "../../timeline-semantic-layers";
 import {
   shouldMergeDecisionsProductionApi,
   normalizeDecisionsProductionDataApi,
@@ -30,7 +31,40 @@ import {
   buildParitySafeTodayObjectMap,
   shouldMergeTodayObjectGraph,
   withTodayObjectGraphParity,
+  type LiveTodayGraphParity,
 } from "./today-object-graph-parity";
+
+const TIMELINE_SHELL_GROUP_HEADINGS = [
+  "Today",
+  "This week",
+  "Last week",
+  "Earlier",
+  "Imported history",
+] as const;
+
+/**
+ * When full Timeline overlay is not merged yet, still surface depth-ready
+ * ModelUpdate ids in the Today lane so Timeline shares Today report identity.
+ */
+export function injectLiveMovementIdsIntoTimelineGroups(
+  parity: LiveTodayGraphParity,
+): OrvekTimelineGroup[] {
+  const ids = Array.from(
+    new Set(
+      [
+        ...parity.readyMovementRowIds,
+        parity.seeWhyMovementId,
+        parity.reportId,
+        parity.paritySafeReportTarget?.reportId,
+      ].filter((id): id is string => Boolean(id?.trim())),
+    ),
+  );
+
+  return TIMELINE_SHELL_GROUP_HEADINGS.map((heading) => ({
+    heading,
+    ids: heading === "Today" ? ids : [],
+  }));
+}
 
 function mergeTodayOverlay(baseApi: OrvekDataApi, todayApi: OrvekDataApi): OrvekDataApi {
   const paritySafeObjects = buildParitySafeTodayObjectMap(todayApi);
@@ -40,10 +74,18 @@ function mergeTodayOverlay(baseApi: OrvekDataApi, todayApi: OrvekDataApi): Orvek
 
   const parity = assessLiveTodayObjectGraphParity(todayApi);
   const baseGetObject = baseApi.getObject.bind(baseApi);
+  const liveTodayReady =
+    parity.movementRowsReady ||
+    parity.reportReady ||
+    parity.readyMovementRowIds.length > 0 ||
+    parity.seeWhyMovedReady ||
+    Boolean(parity.paritySafeReportTarget);
 
   return withTodayObjectGraphParity(
     {
       ...baseApi,
+      // Never leak standalone production displayContract onto the hybrid root.
+      displayContract: undefined,
       getObject: (id) => {
         if (!id) {
           return undefined;
@@ -65,6 +107,20 @@ function mergeTodayOverlay(baseApi: OrvekDataApi, todayApi: OrvekDataApi): Orvek
 
         return resolved;
       },
+      // When movement/report depth is ready, surface live Today view props so the
+      // production Today branch can render without a global displayContract flip.
+      // Also bootstrap Timeline Today-lane ids so hybrid does not keep showing
+      // reference t1…t14 while waiting on full Timeline readiness merge.
+      ...(liveTodayReady
+        ? {
+            today: todayApi.today,
+            todayCopy: todayApi.todayCopy,
+            todayIsLoading: todayApi.todayIsLoading,
+            todayResurfacedIds: todayApi.todayResurfacedIds,
+            timelineGroups: injectLiveMovementIdsIntoTimelineGroups(parity),
+            timelineFilters: TIMELINE_SEMANTIC_FILTERS.map((entry) => entry.label),
+          }
+        : {}),
       emptyCopyBySlot: {
         ...baseApi.emptyCopyBySlot,
         ...todayApi.emptyCopyBySlot,

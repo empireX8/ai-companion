@@ -79,14 +79,39 @@ export function buildTimelineProductionDataApi(input: MapTimelineDataInput): Orv
         ...(objects[depth.id] ?? reportObject),
         ...reportObject,
       };
+    } else if (!objects[depth.id]) {
+      objects[depth.id] = enrichOrvekObjectWithMovementDepth(
+        {
+          id: depth.id,
+          type: "model-update",
+          title: depth.movementSummary,
+          summary: depth.movementSummary,
+          eventType: "Model update",
+          inspectorObjectType: "model_update",
+          inspectorObjectId: depth.id,
+        },
+        depth,
+      );
     }
   }
 
+  const depthIdsReadyForTimeline = Object.values(movementDepthById)
+    .filter((depth) => Boolean(depth.before?.trim() && depth.after?.trim()))
+    .map((depth) => depth.id);
+
   const timelineGroups: OrvekTimelineGroup[] = TIMELINE_SHELL_GROUP_HEADINGS.map((heading) => {
     const populated = view.groups.find((group) => group.heading === heading);
+    const ids = populated?.rows.map((row) => row.id) ?? [];
+    if (heading === "Today") {
+      for (const depthId of depthIdsReadyForTimeline) {
+        if (!ids.includes(depthId)) {
+          ids.unshift(depthId);
+        }
+      }
+    }
     return {
       heading,
-      ids: populated?.rows.map((row) => row.id) ?? [],
+      ids,
     };
   });
 

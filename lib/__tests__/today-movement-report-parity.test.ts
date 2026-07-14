@@ -248,14 +248,15 @@ describe("live Today movement/report parity", () => {
     expect(buildParitySafeReportObjects(api).size).toBe(0);
   });
 
-  it("preserves reference Today UI and avoids global production displayContract", () => {
+  it("keeps reference sample report control isolated and avoids global production displayContract", () => {
     const todayPage = readSource("components/orvek-v0/pages/today.tsx");
     const hybridSource = readSource("lib/orvek-v0/production/hybrid-workbench-api.ts");
     const referenceRoute = readSource("app/dev/orvek-v0-reference/page.tsx");
 
     expect(todayPage).toContain("isProductionDisplay(data)");
+    expect(todayPage).toContain("hasLiveTodayPresentation");
     expect(todayPage).toContain('openReport("rep-weekly")');
-    expect(todayPage).not.toContain("isTodayLiveReady");
+    expect(todayPage).toContain("REFERENCE_SAMPLE_REPORT_PROVENANCE_LABEL");
     expect(hybridSource).not.toMatch(/displayContract:\s*["']production["']/);
     expect(referenceRoute).not.toContain("useOrvekHybridWorkbenchDataApi");
   });

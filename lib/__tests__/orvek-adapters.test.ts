@@ -221,8 +221,8 @@ describe("orvek adapters", () => {
 
     expect(byLabel["Continue from what changed"]).toMatchObject({
       href: "/what-changed",
-      reportId: "rep-weekly",
     });
+    expect(byLabel["Continue from what changed"]?.reportId).toBeUndefined();
     expect(byLabel["Add what happened"]).toMatchObject({
       href: "/journal-chat",
       overlayId: "capture",

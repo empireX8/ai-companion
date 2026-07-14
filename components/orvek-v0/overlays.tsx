@@ -1,8 +1,13 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { getObject, OBJECTS } from "@/lib/orvek-v0/orvek-data"
+import { OBJECTS } from "@/lib/orvek-v0/orvek-data"
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
+import { useOrvekObjectGraph } from "@/lib/orvek-v0/data-provider"
+import {
+  reportOverlayProvenanceLabel,
+  resolveReportOverlayProvenance,
+} from "@/lib/model-movement-report-provenance"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { Chip, SectionLabel, TypeBadge, TYPE_META } from "@/components/orvek-v0/primitives"
 import {
@@ -209,6 +214,7 @@ const IMPORT_CANDIDATES: {
 ]
 
 function ImportOverlay({ onClose }: { onClose: () => void }) {
+  const { getObject } = useOrvekObjectGraph()
   const source = getObject("imp-1")
   const [decisions, setDecisions] = useState<Record<string, "accept" | "reject">>({})
 
@@ -397,11 +403,19 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
 
 function ReportOverlay({ id, onClose }: { id: string; onClose: () => void }) {
   const { select } = useWorkbench()
+  const { getObject } = useOrvekObjectGraph()
   const report = getObject(id)
   if (!report) return null
 
-  const related = (report.relatedIds ?? []).map(getObject).filter(Boolean) as OrvekObject[]
-  const receipts = (report.receiptIds ?? []).map(getObject).filter(Boolean) as OrvekObject[]
+  const related = (report.relatedIds ?? [])
+    .map((relatedId) => getObject(relatedId))
+    .filter(Boolean) as OrvekObject[]
+  const receipts = (report.receiptIds ?? [])
+    .map((receiptId) => getObject(receiptId))
+    .filter(Boolean) as OrvekObject[]
+  const provenance = resolveReportOverlayProvenance(report)
+  const provenanceLabel = reportOverlayProvenanceLabel(provenance)
+  const canonicalId = report.canonicalReportId?.trim() || (provenance === "live_model_update" ? report.id : null)
   const reportSubtitle =
     report.reportSummary ?? report.summary ?? report.movementRationale ?? undefined
   const reportBody =
@@ -433,12 +447,31 @@ function ReportOverlay({ id, onClose }: { id: string; onClose: () => void }) {
       }
     >
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-evidence-muted px-2.5 py-1 text-xs font-medium text-primary">
-          <FileText className="size-3.5" />
-          {report.reportType ?? "Report"}
-        </span>
+        {provenanceLabel ? (
+          <span
+            data-testid="report-overlay-provenance"
+            data-report-provenance={provenance ?? undefined}
+            className="inline-flex items-center gap-1.5 rounded-full bg-evidence-muted px-2.5 py-1 text-xs font-semibold tracking-wide text-primary"
+          >
+            <FileText className="size-3.5" />
+            {provenanceLabel}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-evidence-muted px-2.5 py-1 text-xs font-medium text-primary">
+            <FileText className="size-3.5" />
+            {report.reportType ?? "Report"}
+          </span>
+        )}
         {report.period && <Chip>{report.period}</Chip>}
         <Chip>{report.evidenceCount ?? related.length} pieces of evidence</Chip>
+        {canonicalId ? (
+          <span
+            data-testid="report-overlay-canonical-id"
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground"
+          >
+            {canonicalId}
+          </span>
+        ) : null}
         {report.lastUpdated && (
           <span className="ml-auto text-xs text-muted-foreground">
             Updated {report.lastUpdated}
@@ -446,32 +479,58 @@ function ReportOverlay({ id, onClose }: { id: string; onClose: () => void }) {
         )}
       </div>
 
-      {reportBody ? (
+      {report.before ? (
+        <div className="mt-4 rounded-md bg-muted/70 px-3 py-2" data-testid="report-overlay-before">
+          <SectionLabel>Before</SectionLabel>
+          <p className="mt-1 text-sm leading-relaxed text-foreground">{report.before}</p>
+        </div>
+      ) : null}
+
+      {report.after ? (
+        <div
+          className="mt-3 rounded-md bg-evidence-muted/70 px-3 py-2 ring-1 ring-inset ring-primary/15"
+          data-testid="report-overlay-after"
+        >
+          <SectionLabel>After</SectionLabel>
+          <p className="mt-1 text-sm leading-relaxed text-foreground">{report.after}</p>
+        </div>
+      ) : null}
+
+      {reportBody && !report.before && !report.after ? (
         <p className="mt-3 text-sm leading-relaxed text-foreground text-pretty">{reportBody}</p>
       ) : null}
 
       {report.movementRationale ? (
-        <div className="mt-4 rounded-md bg-secondary/50 px-3 py-2">
+        <div className="mt-4 rounded-md bg-secondary/50 px-3 py-2" data-testid="report-overlay-rationale">
           <SectionLabel>Why it changed</SectionLabel>
           <p className="mt-1 text-sm leading-relaxed text-foreground">{report.movementRationale}</p>
         </div>
       ) : null}
 
-      {receipts.length > 0 && (
-        <div className="mt-4">
+      {receipts.length > 0 || (report.evidenceQuotes?.length ?? 0) > 0 ? (
+        <div className="mt-4" data-testid="report-overlay-evidence">
           <SectionLabel>Receipts cited</SectionLabel>
           <div className="mt-2 flex flex-col gap-1.5">
-            {receipts.map((r) => (
-              <blockquote
-                key={r.id}
-                className="rounded-md border-l-2 border-primary/50 bg-secondary/50 px-3 py-2 text-sm italic leading-relaxed text-foreground"
-              >
-                &ldquo;{r.sourceText ?? r.title}&rdquo;
-              </blockquote>
-            ))}
+            {receipts.length > 0
+              ? receipts.map((r) => (
+                  <blockquote
+                    key={r.id}
+                    className="rounded-md border-l-2 border-primary/50 bg-secondary/50 px-3 py-2 text-sm italic leading-relaxed text-foreground"
+                  >
+                    &ldquo;{r.sourceText ?? r.title}&rdquo;
+                  </blockquote>
+                ))
+              : (report.evidenceQuotes ?? []).map((quote, index) => (
+                  <blockquote
+                    key={`${report.id}-quote-${index}`}
+                    className="rounded-md border-l-2 border-primary/50 bg-secondary/50 px-3 py-2 text-sm italic leading-relaxed text-foreground"
+                  >
+                    &ldquo;{quote}&rdquo;
+                  </blockquote>
+                ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {related.length > 0 && (
         <div className="mt-4">

@@ -423,8 +423,17 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
 
   if (notFound || !detail) {
     return (
-      <div className="px-5 py-8 text-center">
+      <div
+        className="px-5 py-8 text-center"
+        data-testid="inspector-model-movement"
+        data-model-update-id={modelUpdateId}
+        data-detail-available="false"
+      >
+        <InspectorReturnBanner />
         <p className="text-sm font-medium text-foreground">This movement is recorded.</p>
+        <p className="mt-1 text-[11px] text-muted-foreground" data-testid="inspector-model-update-id">
+          {modelUpdateId}
+        </p>
         <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
           Detail for this movement is not available in this view yet.
         </p>
@@ -443,12 +452,15 @@ function SelectedModelMovementDetail({ modelUpdateId }: { modelUpdateId: string 
     detail.item.affectedObjectTypeLabel;
 
   return (
-    <div className="pb-6">
+    <div className="pb-6" data-testid="inspector-model-movement" data-model-update-id={modelUpdateId}>
       <header className="px-5 pt-4">
         <InspectorReturnBanner />
         <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {ORVEK_COPY.mindModelMovement}
         </div>
+        <p className="mt-1 text-[11px] text-muted-foreground" data-testid="inspector-model-update-id">
+          {modelUpdateId}
+        </p>
         <h3 className="mt-2 text-base font-semibold leading-snug text-foreground text-pretty">
           {detail.item.updateTypeLabel} · {detail.item.affectedObjectTypeLabel}
         </h3>

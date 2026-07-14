@@ -205,6 +205,7 @@ describe("live Today evidence pointer parity", () => {
     const referenceRoute = readSource("app/dev/orvek-v0-reference/page.tsx");
 
     expect(todayPage).toContain("isProductionDisplay(data)");
+    expect(todayPage).toContain("hasLiveTodayPresentation");
     expect(todayPage).toContain('REFERENCE_RESURFACED = ["r6", "r5", "r2"]');
     expect(todayPage).not.toContain("isTodayLiveReady");
     expect(todayPage).not.toContain("getInspectableEvidencePointers");
