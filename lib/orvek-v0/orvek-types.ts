@@ -74,6 +74,10 @@ export interface OrvekObject {
   reportType?: string
   period?: string
   reportSummary?: string
+  /** Explicit overlay provenance — never infer live from styling alone. */
+  reportProvenance?: "live_model_update" | "reference_sample"
+  /** Cited evidence quotes for live ModelUpdate reports. */
+  evidenceQuotes?: string[]
 
   // fieldwork
   purpose?: string

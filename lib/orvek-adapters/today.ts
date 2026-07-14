@@ -58,7 +58,9 @@ function routeIntentForHref(
   href: string
 ): Pick<V0TodayIntentMetadata, "reportId" | "pageId" | "overlayId"> {
   if (href === "/what-changed") {
-    return { reportId: "rep-weekly" };
+    // Production never embeds rep-weekly. Full report opens only via a live
+    // ModelUpdate reportId stamped on the report slot when reportReady.
+    return {};
   }
   if (href === "/journal-chat") {
     return { overlayId: "capture" };

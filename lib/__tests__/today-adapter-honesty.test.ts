@@ -266,7 +266,7 @@ describe("live Today adapter honesty", () => {
     expect(api.today?.receipts).toHaveLength(1);
   });
 
-  it("keeps hybrid root from overlaying live Today view props", () => {
+  it("keeps hybrid root from overlaying incomplete live Today view props", () => {
     const hybridSource = readSource("lib/orvek-v0/production/hybrid-workbench-api.ts");
     const baseApi = createMockOrvekDataApi();
     const productionTodayApi = buildTodayProductionDataApi({
@@ -276,7 +276,8 @@ describe("live Today adapter honesty", () => {
     });
     const hybridApi = buildHybridWorkbenchDataApi(baseApi, productionTodayApi);
 
-    expect(hybridSource).not.toContain("today: todayApi.today");
+    expect(hybridSource).toContain("liveTodayReady");
+    expect(hybridSource).not.toMatch(/displayContract:\s*["']production["']/);
     expect(hybridApi.today).toBeUndefined();
     expect(productionTodayApi.today?.hero?.showSeeWhyMoved).toBe(false);
   });
@@ -286,6 +287,7 @@ describe("live Today adapter honesty", () => {
     const referenceRoute = readSource("app/dev/orvek-v0-reference/page.tsx");
 
     expect(todayPage).toContain("isProductionDisplay(data)");
+    expect(todayPage).toContain("hasLiveTodayPresentation");
     expect(todayPage).not.toContain("isTodayLiveReady");
     expect(referenceRoute).not.toContain("useOrvekHybridWorkbenchDataApi");
   });

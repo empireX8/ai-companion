@@ -66,6 +66,8 @@ export type ModelMovementDepthRecord = {
   affectedObjectHref?: string | null;
   createdAt: string;
   evidenceLinkCount: number;
+  /** User-visible evidence quotes cited by this update (for report overlay). */
+  evidenceQuotes?: string[];
 };
 
 export type ModelMovementDepthById = Record<string, ModelMovementDepthRecord>;
@@ -165,8 +167,11 @@ export function enrichOrvekObjectWithMovementDepth(
     after: depth.after?.trim() ? depth.after : undefined,
     reportSummary: depth.movementSummary,
     reportType: "What Changed",
+    reportProvenance: canonical?.reportReady ? "live_model_update" : object.reportProvenance,
     movementRationale: depth.movementRationale ?? undefined,
     canonicalReportId: depth.id,
+    evidenceCount: depth.evidenceLinkCount,
+    evidenceQuotes: depth.evidenceQuotes?.filter((quote) => quote.trim()) ?? [],
   };
 
   if (canonical?.reportReady) {
@@ -191,6 +196,7 @@ export function buildMovementReportOrvekObject(
     summary: `${depth.affectedObjectTypeLabel ?? depth.affectedObjectType} movement`,
     reportSummary: depth.movementSummary,
     reportType: "What Changed",
+    reportProvenance: "live_model_update",
     before: depth.before ?? undefined,
     after: depth.after ?? undefined,
     movementRationale: depth.movementRationale ?? undefined,
@@ -200,7 +206,35 @@ export function buildMovementReportOrvekObject(
     inspectorObjectType: "model_update",
     inspectorObjectId: depth.id,
     lastUpdated: new Date(depth.createdAt).toISOString(),
+    evidenceCount: depth.evidenceLinkCount,
+    evidenceQuotes: depth.evidenceQuotes?.filter((quote) => quote.trim()) ?? [],
+    receiptIds: (depth.evidenceQuotes ?? []).map(
+      (_, index) => `${depth.id}::cited-evidence::${index}`,
+    ),
   };
+}
+
+/** Synthetic receipt objects for live report overlay evidence citations. */
+export function buildMovementReportCitedEvidenceObjects(
+  depth: ModelMovementDepthRecord,
+): OrvekObject[] {
+  const objects: OrvekObject[] = [];
+
+  for (const [index, quote] of (depth.evidenceQuotes ?? []).entries()) {
+    const trimmed = quote.trim();
+    if (!trimmed) {
+      continue;
+    }
+    objects.push({
+      id: `${depth.id}::cited-evidence::${index}`,
+      type: "receipt",
+      title: trimmed,
+      sourceText: trimmed,
+      tags: ["Cited evidence"],
+    });
+  }
+
+  return objects;
 }
 
 export function isCanonicalMovementReportObject(
@@ -281,6 +315,10 @@ export function mergeOrvekObjectPreservingMovementDepth(
     canonicalReportId: existing.canonicalReportId,
     reportSummary: existing.reportSummary ?? shell.reportSummary,
     reportType: existing.reportType ?? shell.reportType,
+    reportProvenance: existing.reportProvenance ?? shell.reportProvenance,
+    evidenceCount: existing.evidenceCount ?? shell.evidenceCount,
+    evidenceQuotes: existing.evidenceQuotes ?? shell.evidenceQuotes,
+    receiptIds: existing.receiptIds ?? shell.receiptIds,
     summary:
       existing.reportSummary?.trim() && existing.canonicalReportId
         ? (existing.summary ?? shell.summary)

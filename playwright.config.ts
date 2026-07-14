@@ -2,10 +2,10 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./scripts",
-  testMatch: /v0-route-smoke\.playwright\.ts/,
-  timeout: 60_000,
+  testMatch: /(?:v0-route-smoke|movement-report-completion)\.playwright\.ts/,
+  timeout: 120_000,
   expect: {
-    timeout: 15_000,
+    timeout: 20_000,
   },
   use: {
     baseURL: "http://localhost:3000",

@@ -111,6 +111,8 @@ export type OrvekDataApi = {
   decisionsHeaderStats?: OrvekDecisionsHeaderStats;
   decisionsSelectedId?: string | null;
   decisionsIsLoading?: boolean;
+  /** True only for the explicit /dev reference workbench — never hybrid production shell. */
+  referenceSurface?: boolean;
   /** Parity assessment for live Today object graph — does not flip presentation. */
   todayObjectGraphParity?: import("./production/today-object-graph-parity").LiveTodayGraphParity;
   /** Live depth-overlay ids merged after parity assessment — authoritative for Inspector provenance. */

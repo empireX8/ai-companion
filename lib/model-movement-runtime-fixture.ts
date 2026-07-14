@@ -52,8 +52,10 @@ export async function seedMovementAssaultRuntimeFixture(args: {
   userId: string;
   db: PrismaClient;
   now?: Date;
+  includeSparse?: boolean;
 }): Promise<MovementAssaultFixtureSeedResult> {
   const now = args.now ?? new Date();
+  const includeSparse = args.includeSparse !== false;
   const claimSummary = "Energy drops after meetings without a stop point.";
 
   await args.db.userMapConclusion.upsert({
@@ -138,12 +140,13 @@ export async function seedMovementAssaultRuntimeFixture(args: {
       targetType: UnderstandingLinkTargetType.model_update,
       targetId: claimCandidate.id,
       role: UnderstandingLinkRole.supports,
-      summary: "Fixture evidence link for claim movement publish",
+      summary: FIXTURE_SOURCE_TEXT,
     },
   });
 
-  const conclusionUpdate = await args.db.modelUpdate.create({
-    data: {
+  const conclusionUpdate = await args.db.modelUpdate.upsert({
+    where: { id: `${MOVEMENT_ASSAULT_FIXTURE_PREFIX}-conclusion-update` },
+    create: {
       id: `${MOVEMENT_ASSAULT_FIXTURE_PREFIX}-conclusion-update`,
       userId: args.userId,
       updateType: ModelUpdateType.conclusion_added,
@@ -159,8 +162,30 @@ export async function seedMovementAssaultRuntimeFixture(args: {
         MOVEMENT_ASSAULT_FIXTURE_MARKER,
         "Three receipts show commitments locking before the body signals stop.",
       ),
+      createdAt: now,
+    },
+    update: {
+      userId: args.userId,
+      visibility: ModelUpdateVisibility.user_visible,
+      userFacingSummary: FIXTURE_CONCLUSION_UPDATE_SUMMARY,
+      beforeSummary: "No prior published conclusion on this map item.",
+      afterSummary:
+        "Evening stop point matters — Commitments lock before the body signals a stop.",
+      isMeaningful: true,
+      internalNotes: encodeMovementRationaleInInternalNotes(
+        MOVEMENT_ASSAULT_FIXTURE_MARKER,
+        "Three receipts show commitments locking before the body signals stop.",
+      ),
     },
     select: { id: true },
+  });
+
+  await args.db.understandingEvidenceLink.deleteMany({
+    where: {
+      userId: args.userId,
+      targetType: UnderstandingLinkTargetType.model_update,
+      targetId: conclusionUpdate.id,
+    },
   });
 
   await args.db.understandingEvidenceLink.create({
@@ -171,31 +196,46 @@ export async function seedMovementAssaultRuntimeFixture(args: {
       targetType: UnderstandingLinkTargetType.model_update,
       targetId: conclusionUpdate.id,
       role: UnderstandingLinkRole.supports,
-      summary: "Fixture journal receipt for conclusion movement",
+      summary: FIXTURE_SOURCE_TEXT,
     },
   });
 
-  const sparseUpdate = await args.db.modelUpdate.create({
-    data: {
-      id: FIXTURE_SPARSE_UPDATE_ID,
-      userId: args.userId,
-      updateType: ModelUpdateType.conclusion_strengthened,
-      visibility: ModelUpdateVisibility.user_visible,
-      affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
-      affectedObjectId: FIXTURE_CONCLUSION_ID,
-      userFacingSummary: "Confidence increased without a stored prior read.",
-      beforeSummary: null,
-      afterSummary: "Confidence increased without a stored prior read.",
-      isMeaningful: true,
-      internalNotes: MOVEMENT_ASSAULT_FIXTURE_MARKER,
-    },
-    select: { id: true },
-  });
+  let sparseModelUpdateId = FIXTURE_SPARSE_UPDATE_ID;
+  if (includeSparse) {
+    const sparseUpdate = await args.db.modelUpdate.upsert({
+      where: { id: FIXTURE_SPARSE_UPDATE_ID },
+      create: {
+        id: FIXTURE_SPARSE_UPDATE_ID,
+        userId: args.userId,
+        updateType: ModelUpdateType.conclusion_strengthened,
+        visibility: ModelUpdateVisibility.user_visible,
+        affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
+        affectedObjectId: FIXTURE_CONCLUSION_ID,
+        userFacingSummary: "Confidence increased without a stored prior read.",
+        beforeSummary: null,
+        afterSummary: "Confidence increased without a stored prior read.",
+        isMeaningful: true,
+        internalNotes: MOVEMENT_ASSAULT_FIXTURE_MARKER,
+        createdAt: now,
+      },
+      update: {
+        userId: args.userId,
+        visibility: ModelUpdateVisibility.user_visible,
+        beforeSummary: null,
+        afterSummary: "Confidence increased without a stored prior read.",
+        userFacingSummary: "Confidence increased without a stored prior read.",
+        isMeaningful: true,
+        internalNotes: MOVEMENT_ASSAULT_FIXTURE_MARKER,
+      },
+      select: { id: true },
+    });
+    sparseModelUpdateId = sparseUpdate.id;
+  }
 
   return {
     claimModelUpdateId: claimCandidate.id,
     conclusionModelUpdateId: conclusionUpdate.id,
-    sparseModelUpdateId: sparseUpdate.id,
+    sparseModelUpdateId,
   };
 }
 
@@ -216,6 +256,12 @@ export async function publishMovementAssaultClaimFixture(args: {
     movementRationale: FIXTURE_AUTHORED_RATIONALE,
     force: true,
   });
+
+  // Ensure the published claim is the newest intelligence row for Today.
+  await args.db.modelUpdate.update({
+    where: { id: args.modelUpdateId },
+    data: { createdAt: new Date() },
+  });
 }
 
 export function assessMovementAssaultFixtureSafety(
@@ -228,9 +274,199 @@ export function movementAssaultFixtureUserId(env: NodeJS.ProcessEnv = process.en
   return env[EVIDENCE_DEPTH_FIXTURE_USER_ENV]?.trim() || null;
 }
 
+export async function seedSparseOnlyMovementAssaultFixture(args: {
+  userId: string;
+  db: PrismaClient;
+  now?: Date;
+}): Promise<{ sparseModelUpdateId: string }> {
+  const now = args.now ?? new Date();
+
+  await args.db.userMapConclusion.upsert({
+    where: { id: FIXTURE_CONCLUSION_ID },
+    create: {
+      id: FIXTURE_CONCLUSION_ID,
+      userId: args.userId,
+      area: UserMapConclusionArea.recovery_architecture,
+      status: UserMapConclusionStatus.supported,
+      visibility: UserMapConclusionVisibility.user_visible,
+      title: "Evening stop point matters",
+      summary: "Commitments lock before the body signals a stop.",
+      confidenceScore: 0.72,
+      confidenceLevel: UserMapConfidenceLevel.medium,
+      evidenceCount: 1,
+      sourceDiversity: 1,
+      timeSpreadDays: 3,
+      notes: MOVEMENT_ASSAULT_FIXTURE_MARKER,
+      createdAt: now,
+      updatedAt: now,
+    },
+    update: {
+      visibility: UserMapConclusionVisibility.user_visible,
+      notes: MOVEMENT_ASSAULT_FIXTURE_MARKER,
+      updatedAt: now,
+    },
+  });
+
+  const sparseUpdate = await args.db.modelUpdate.upsert({
+    where: { id: FIXTURE_SPARSE_UPDATE_ID },
+    create: {
+      id: FIXTURE_SPARSE_UPDATE_ID,
+      userId: args.userId,
+      updateType: ModelUpdateType.conclusion_strengthened,
+      visibility: ModelUpdateVisibility.user_visible,
+      affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
+      affectedObjectId: FIXTURE_CONCLUSION_ID,
+      userFacingSummary: "Confidence increased without a stored prior read.",
+      beforeSummary: null,
+      afterSummary: "Confidence increased without a stored prior read.",
+      isMeaningful: true,
+      internalNotes: MOVEMENT_ASSAULT_FIXTURE_MARKER,
+      createdAt: now,
+    },
+    update: {
+      visibility: ModelUpdateVisibility.user_visible,
+      beforeSummary: null,
+      afterSummary: "Confidence increased without a stored prior read.",
+      userFacingSummary: "Confidence increased without a stored prior read.",
+      isMeaningful: true,
+      internalNotes: MOVEMENT_ASSAULT_FIXTURE_MARKER,
+    },
+    select: { id: true },
+  });
+
+  return { sparseModelUpdateId: sparseUpdate.id };
+}
+
 export function movementAssaultFixtureAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
   return (
     assessMovementAssaultFixtureSafety(env).allowed &&
     env[EVIDENCE_DEPTH_FIXTURE_ALLOW_ENV] === "1"
   );
+}
+
+export type MovementAssaultFixtureCleanupResult = {
+  deletedLinks: number;
+  deletedModelUpdates: number;
+  deletedEvidence: number;
+  deletedClaims: number;
+  deletedConclusions: number;
+  remainingModelUpdates: number;
+  remainingLinks: number;
+};
+
+/**
+ * User-scoped, marker-scoped cleanup for movement/report fixtures.
+ * Local-database safety must be checked by the caller via movementAssaultFixtureAllowed.
+ * Idempotent: safe to call when no fixture rows exist.
+ */
+export async function cleanupMovementAssaultRuntimeFixture(args: {
+  userId: string;
+  db: PrismaClient;
+  modelUpdateIds?: string[];
+}): Promise<MovementAssaultFixtureCleanupResult> {
+  const knownUpdateIds = [
+    ...(args.modelUpdateIds ?? []),
+    `${MOVEMENT_ASSAULT_FIXTURE_PREFIX}-conclusion-update`,
+    FIXTURE_SPARSE_UPDATE_ID,
+  ];
+
+  const markedUpdates = await args.db.modelUpdate.findMany({
+    where: {
+      userId: args.userId,
+      OR: [
+        { internalNotes: { contains: MOVEMENT_ASSAULT_FIXTURE_MARKER } },
+        { id: { in: knownUpdateIds } },
+        { id: { startsWith: MOVEMENT_ASSAULT_FIXTURE_PREFIX } },
+      ],
+    },
+    select: { id: true },
+  });
+
+  const updateIds = [...new Set(markedUpdates.map((row) => row.id))];
+
+  const deletedLinks =
+    updateIds.length > 0
+      ? (
+          await args.db.understandingEvidenceLink.deleteMany({
+            where: {
+              userId: args.userId,
+              OR: [
+                { targetId: { in: updateIds } },
+                { sourceId: { in: [FIXTURE_CLAIM_ID, FIXTURE_EVIDENCE_ID] } },
+              ],
+            },
+          })
+        ).count
+      : (
+          await args.db.understandingEvidenceLink.deleteMany({
+            where: {
+              userId: args.userId,
+              OR: [
+                { sourceId: { in: [FIXTURE_CLAIM_ID, FIXTURE_EVIDENCE_ID] } },
+                { targetId: { in: knownUpdateIds } },
+              ],
+            },
+          })
+        ).count;
+
+  const deletedModelUpdates = (
+    await args.db.modelUpdate.deleteMany({
+      where: {
+        userId: args.userId,
+        OR: [
+          { internalNotes: { contains: MOVEMENT_ASSAULT_FIXTURE_MARKER } },
+          { id: { in: knownUpdateIds } },
+          { id: { startsWith: MOVEMENT_ASSAULT_FIXTURE_PREFIX } },
+        ],
+      },
+    })
+  ).count;
+
+  const deletedEvidence = (
+    await args.db.patternClaimEvidence.deleteMany({
+      where: { id: FIXTURE_EVIDENCE_ID },
+    })
+  ).count;
+
+  const deletedClaims = (
+    await args.db.patternClaim.deleteMany({
+      where: { id: FIXTURE_CLAIM_ID, userId: args.userId },
+    })
+  ).count;
+
+  const deletedConclusions = (
+    await args.db.userMapConclusion.deleteMany({
+      where: { id: FIXTURE_CONCLUSION_ID, userId: args.userId },
+    })
+  ).count;
+
+  const remainingModelUpdates = await args.db.modelUpdate.count({
+    where: {
+      userId: args.userId,
+      OR: [
+        { internalNotes: { contains: MOVEMENT_ASSAULT_FIXTURE_MARKER } },
+        { id: { startsWith: MOVEMENT_ASSAULT_FIXTURE_PREFIX } },
+      ],
+    },
+  });
+
+  const remainingLinks = await args.db.understandingEvidenceLink.count({
+    where: {
+      userId: args.userId,
+      OR: [
+        { sourceId: { in: [FIXTURE_CLAIM_ID, FIXTURE_EVIDENCE_ID] } },
+        { targetId: { startsWith: MOVEMENT_ASSAULT_FIXTURE_PREFIX } },
+      ],
+    },
+  });
+
+  return {
+    deletedLinks,
+    deletedModelUpdates,
+    deletedEvidence,
+    deletedClaims,
+    deletedConclusions,
+    remainingModelUpdates,
+    remainingLinks,
+  };
 }

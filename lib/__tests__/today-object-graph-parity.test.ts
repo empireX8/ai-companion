@@ -190,16 +190,17 @@ describe("live Today object graph parity", () => {
     expect(assessLiveTodayObjectGraphParity(api).reportReady).toBe(false);
   });
 
-  it("does not flip Today UI via surface live gating or global production display", () => {
+  it("does not flip Today via global production displayContract; live props merge only when ready", () => {
     const todayPage = readSource("components/orvek-v0/pages/today.tsx");
     const hybridApi = readSource("lib/orvek-v0/production/hybrid-workbench-api.ts");
     const referenceRoute = readSource("app/dev/orvek-v0-reference/page.tsx");
 
     expect(todayPage).toContain("isProductionDisplay(data)");
+    expect(todayPage).toContain("hasLiveTodayPresentation");
     expect(todayPage).not.toContain("isTodayLiveReady");
     expect(todayPage).not.toContain("surfaceReadiness");
     expect(hybridApi).not.toMatch(/displayContract:\s*["']production["']/);
-    expect(hybridApi).not.toContain("today: todayApi.today");
+    expect(hybridApi).toContain("liveTodayReady");
     expect(referenceRoute).not.toContain("useOrvekHybridWorkbenchDataApi");
     expect(referenceRoute).not.toContain("buildHybridWorkbenchDataApi");
   });

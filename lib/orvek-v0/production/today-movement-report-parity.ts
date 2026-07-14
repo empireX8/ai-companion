@@ -175,7 +175,16 @@ export function hasMeaningfulReportContent(object: OrvekObject | undefined): boo
   }
 
   if (isCanonicalMovementReportObject(object)) {
-    return Boolean(object.title?.trim() && object.reportSummary?.trim());
+    // Live ModelUpdate reports must carry full readiness ingredients — never open
+    // a thin enriched movement shell as a full report.
+    return Boolean(
+      object.reportProvenance === "live_model_update" &&
+        object.title?.trim() &&
+        object.reportSummary?.trim() &&
+        object.movementRationale?.trim() &&
+        (object.evidenceCount ?? 0) > 0 &&
+        hasRecordedBeforeAfterMovement(object),
+    );
   }
 
   if (!isReportObject(object)) {
@@ -264,6 +273,12 @@ export function buildParitySafeReportObjects(api: OrvekDataApi): Map<string, Orv
     const report = api.getObject(reportId);
     if (report && hasMeaningfulReportContent(report)) {
       objects.set(reportId, report);
+      for (const receiptId of report.receiptIds ?? []) {
+        const receipt = api.getObject(receiptId);
+        if (receipt) {
+          objects.set(receiptId, receipt);
+        }
+      }
     }
   }
 

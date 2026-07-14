@@ -86,6 +86,35 @@ export async function GET(req: Request) {
       ),
     );
 
+    const linksByTarget =
+      rows.length === 0
+        ? []
+        : await prismadb.understandingEvidenceLink.findMany({
+            where: {
+              userId,
+              targetType: "model_update",
+              targetId: { in: rows.map((row) => row.id) },
+            },
+            select: {
+              targetId: true,
+              summary: true,
+            },
+            orderBy: { createdAt: "asc" },
+          });
+
+    const quotesByTarget = new Map<string, string[]>();
+    for (const link of linksByTarget) {
+      const quote = link.summary?.trim();
+      if (!quote) {
+        continue;
+      }
+      const existing = quotesByTarget.get(link.targetId) ?? [];
+      if (!existing.includes(quote)) {
+        existing.push(quote);
+      }
+      quotesByTarget.set(link.targetId, existing);
+    }
+
     const items: ModelMovementDepthRecord[] = rows.map((row, index) => {
       const verified = verifiedById.get(row.id);
       return {
@@ -102,6 +131,7 @@ export async function GET(req: Request) {
         affectedObjectHref: verified?.affectedObjectHref ?? null,
         createdAt: row.createdAt.toISOString(),
         evidenceLinkCount: linkCounts[index] ?? 0,
+        evidenceQuotes: quotesByTarget.get(row.id) ?? [],
       };
     });
 
