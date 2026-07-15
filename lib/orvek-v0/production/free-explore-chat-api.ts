@@ -19,6 +19,7 @@ export type FreeExploreChatMessageInput = {
   role: FreeExploreChatProductionRole;
   content: string;
   createdAt?: string;
+  grounding?: import("@/lib/explore-grounding-contract").ExploreGroundingPayload | null;
 };
 
 export type BuildFreeExploreChatProductionDataApiInput = {
@@ -76,6 +77,7 @@ function mapInputMessagesToExploreMessages(
       id: message.id.trim(),
       role,
       content: content ?? "",
+      grounding: message.grounding ?? null,
     });
   }
 
@@ -88,6 +90,18 @@ export function buildFreeExploreChatProductionDataApi(
   const exploreMessages = mapInputMessagesToExploreMessages(input.messages, {
     allowStreamingAssistantEmpty: input.isSending,
   });
+
+  // Live grounding chips are carried on exploreLatestGrounding / message payloads.
+  // Keep exploreGrounding empty so the hybrid merge leak gate does not treat real
+  // evidence IDs as reference EXPLORE_GROUNDING bleed.
+  const latestGroundedAssistant = [...exploreMessages]
+    .reverse()
+    .find(
+      (message) =>
+        message.role === "orvek" &&
+        message.grounding &&
+        message.grounding.sources.length > 0
+    );
 
   const adapterMessages = input.messages
     .map((message) => {
@@ -144,5 +158,6 @@ export function buildFreeExploreChatProductionDataApi(
       exploreChatEmpty: EXPLORE_CHAT_EMPTY_PROMPT,
       exploreGroundingEmpty: EXPLORE_GROUNDING_SECTION_INTRO,
     },
+    exploreLatestGrounding: latestGroundedAssistant?.grounding ?? null,
   };
 }

@@ -16,10 +16,13 @@ import {
   buildExploreReviewItemsMeta,
   confirmExploreReferenceReviewItem,
   fetchExploreSessionReviewItems,
+  publishExploreMovementProposalReviewItem,
+  rejectExploreMovementProposalReviewItem,
   rejectExploreReferenceReviewItem,
   type ExploreConversationReviewItem,
 } from "@/lib/explore-conversation-review";
 import { EXPLORE_REVIEW_ERROR_COPY } from "@/lib/explore-surface";
+import { refreshExploreSessionMovement } from "@/lib/explore-session-bridge";
 
 function useExploreSessionReviewItems(): {
   items: ExploreConversationReviewItem[];
@@ -80,10 +83,12 @@ function useExploreSessionReviewItems(): {
 
 function ExploreConversationReviewCard({
   item,
+  sessionId,
   onActionComplete,
   surface = "default",
 }: {
   item: ExploreConversationReviewItem;
+  sessionId: string | null;
   onActionComplete: () => void;
   surface?: "default" | "orvek";
 }) {
@@ -107,12 +112,24 @@ function ExploreConversationReviewCard({
     : "ml-calm ml-material rounded-md px-2.5 py-1 text-[11px] font-medium disabled:opacity-45";
 
   const handleConfirm = async () => {
-    if (!item.referenceAction?.referenceId || !item.actions.canConfirm) {
-      return;
-    }
     setIsActing(true);
     setActionError(null);
     try {
+      if (item.movementProposalAction?.proposalId) {
+        if (!sessionId) {
+          throw new Error("Missing session");
+        }
+        await publishExploreMovementProposalReviewItem({
+          sessionId,
+          proposalId: item.movementProposalAction.proposalId,
+        });
+        refreshExploreSessionMovement();
+        onActionComplete();
+        return;
+      }
+      if (!item.referenceAction?.referenceId || !item.actions.canConfirm) {
+        return;
+      }
       await confirmExploreReferenceReviewItem(item.referenceAction.referenceId);
       onActionComplete();
     } catch {
@@ -123,12 +140,24 @@ function ExploreConversationReviewCard({
   };
 
   const handleReject = async () => {
-    if (!item.referenceAction?.referenceId || !item.actions.canReject) {
-      return;
-    }
     setIsActing(true);
     setActionError(null);
     try {
+      if (item.movementProposalAction?.proposalId) {
+        if (!sessionId) {
+          throw new Error("Missing session");
+        }
+        await rejectExploreMovementProposalReviewItem({
+          sessionId,
+          proposalId: item.movementProposalAction.proposalId,
+        });
+        refreshExploreSessionMovement();
+        onActionComplete();
+        return;
+      }
+      if (!item.referenceAction?.referenceId || !item.actions.canReject) {
+        return;
+      }
       await rejectExploreReferenceReviewItem(item.referenceAction.referenceId);
       onActionComplete();
     } catch {
@@ -284,6 +313,7 @@ export function ExploreConversationReviewStrip({
           <ExploreConversationReviewCard
             key={item.id}
             item={item}
+            sessionId={sessionId}
             onActionComplete={refresh}
             surface={surface}
           />
@@ -337,7 +367,12 @@ export function ExploreConversationReviewInspectorList() {
         {EXPLORE_REVIEW_HAS_ITEMS_SUBCOPY}
       </p>
       {items.map((item) => (
-        <ExploreConversationReviewCard key={item.id} item={item} onActionComplete={refresh} />
+        <ExploreConversationReviewCard
+          key={item.id}
+          item={item}
+          sessionId={sessionId}
+          onActionComplete={refresh}
+        />
       ))}
     </div>
   );

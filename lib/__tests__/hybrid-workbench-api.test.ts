@@ -1519,11 +1519,13 @@ describe("hybrid workbench data api", () => {
         id: "msg-user-1",
         role: "user",
         content: "Why do I need to see the architecture visually before locking design?",
+        grounding: null,
       },
       {
         id: "msg-assistant-1",
         role: "orvek",
         content: "You seem to trust decisions more once the system can express itself visually.",
+        grounding: null,
       },
     ]);
     expect(hybridApi.exploreGrounding).toEqual([]);

@@ -699,6 +699,34 @@ export function useOrvekHybridWorkbenchDataApi() {
     [exploreChatSessionId, isExploreChatBooting, exploreChatErrorMessage],
   );
 
+  const freeExploreChatApi = useMemo(
+    () =>
+      buildFreeExploreChatProductionDataApi({
+        sessionId: exploreChatSessionId,
+        messages: exploreChatMessages.map((message) => ({
+          id: message.id,
+          role: message.role,
+          content: message.content,
+          createdAt: message.createdAt,
+          grounding: message.grounding ?? null,
+        })),
+        composerDraft: exploreChatDraft,
+        isBooting: isExploreChatBooting,
+        isSending: isExploreChatSending,
+        errorMessage: exploreChatErrorMessage,
+        sendHandlerAvailable: exploreChatSendReady,
+      }),
+    [
+      exploreChatSessionId,
+      exploreChatMessages,
+      exploreChatDraft,
+      isExploreChatBooting,
+      isExploreChatSending,
+      exploreChatErrorMessage,
+      exploreChatSendReady,
+    ],
+  );
+
   const handlers = useMemo((): OrvekPageHandlers => {
     if (!exploreChatSendReady) {
       return {};
@@ -720,7 +748,22 @@ export function useOrvekHybridWorkbenchDataApi() {
 
   const dataApi = useMemo(() => {
     if (isLoadingSnapshot) {
-      return asHybridShell(baseApi);
+      return applySurfacedEvidenceDepthGate({
+        api: asHybridShell(
+          buildHybridWorkbenchDataApi(
+            baseApi,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            freeExploreChatApi,
+          ),
+        ),
+        overlay: surfacedEvidenceDepth,
+      });
     }
 
     const todayApi = buildTodayProductionDataApi({
@@ -788,21 +831,6 @@ export function useOrvekHybridWorkbenchDataApi() {
       investigationsIsLoading: isLoadingInvestigations,
     };
 
-    const freeExploreChatApi = buildFreeExploreChatProductionDataApi({
-      sessionId: exploreChatSessionId,
-      messages: exploreChatMessages.map((message) => ({
-        id: message.id,
-        role: message.role,
-        content: message.content,
-        createdAt: message.createdAt,
-      })),
-      composerDraft: exploreChatDraft,
-      isBooting: isExploreChatBooting,
-      isSending: isExploreChatSending,
-      errorMessage: exploreChatErrorMessage,
-      sendHandlerAvailable: exploreChatSendReady,
-    });
-
     const hybridApi = buildHybridWorkbenchDataApi(
       baseApi,
       todayApi,
@@ -854,13 +882,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     isLoadingActiveQuestions,
     exploreInvestigationItems,
     isLoadingInvestigations,
-    exploreChatSessionId,
-    exploreChatMessages,
-    exploreChatDraft,
-    isExploreChatBooting,
-    isExploreChatSending,
-    exploreChatErrorMessage,
-    exploreChatSendReady,
+    freeExploreChatApi,
     surfacedEvidenceDepth,
   ]);
 

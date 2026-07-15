@@ -265,7 +265,55 @@ describe("free explore chat send/draft/stream wiring (E2/E3)", () => {
     expect(hookSource).toContain("exploreChatSendReady");
     expect(hookSource).toContain("sendHandlerAvailable: exploreChatSendReady");
     expect(hookSource).toContain("void sendMessage()");
-    expect(hookSource).toContain("return { dataApi, handlers, durableActionsRevision, refreshAfterDurableWrite }");
+    expect(hookSource).toContain(
+      "return { dataApi, handlers, durableActionsRevision, refreshAfterDurableWrite }",
+    );
+    expect(hookSource).toContain("if (isLoadingSnapshot) {");
+    expect(hookSource).toContain("freeExploreChatApi");
+  });
+
+  it("merges free explore send readiness while Today snapshot is still loading", () => {
+    const hybridApi = buildHybridWorkbenchDataApi(
+      createMockOrvekDataApi(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      buildFreeExploreChatProductionDataApi(
+        readyFreeExploreChatInput({
+          sendHandlerAvailable: true,
+          messages: [],
+        }),
+      ),
+    );
+
+    expect(hybridApi.freeExploreSendHandlerAvailable).toBe(true);
+    expect(hybridApi.exploreGrounding).toEqual([]);
+    expect(hybridApi.exploreLiveDetectionCopy).toBeUndefined();
+  });
+
+  it("withholds reference grounding and sample transcript when production send is unavailable", () => {
+    const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
+    const block = freeExploreBlock(explorePageSource);
+
+    expect(block).toContain("allowReferenceSample = referenceSurface === true");
+    expect(block).toContain(
+      "useReferenceGrounding = allowReferenceSample && !hasLiveExploreChat",
+    );
+    expect(block).toContain("allowReferenceSample && !hasLiveExploreChat && preservedLiveMessages");
+    expect(block).toContain('data-testid="explore-grounding-empty"');
+  });
+
+  it("keeps labelled reference grounding only on explicit referenceSurface", () => {
+    const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
+    const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
+
+    expect(workbenchSource).toContain("referenceSurface: true");
+    expect(explorePageSource).toContain("REFERENCE_FREE_EXPLORE_MESSAGES");
+    expect(explorePageSource).toContain("allowReferenceSample = referenceSurface === true");
   });
 
   it("keeps legacy /explore UI and old production shell quarantined", () => {

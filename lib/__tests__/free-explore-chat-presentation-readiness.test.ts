@@ -64,11 +64,13 @@ describe("free explore chat presentation readiness", () => {
         id: "msg-user-1",
         role: "user",
         content: "Why do I need to see the architecture visually before locking design?",
+        grounding: null,
       },
       {
         id: "msg-assistant-1",
         role: "orvek",
         content: "You seem to trust decisions more once the system can express itself visually.",
+        grounding: null,
       },
     ]);
     expect(mapFreeExploreChatRoleToReference("assistant")).toBe("orvek");
@@ -162,6 +164,7 @@ describe("free explore chat presentation readiness", () => {
       id: "tmp-assistant-2",
       role: "orvek",
       content: "",
+      grounding: null,
     });
   });
 

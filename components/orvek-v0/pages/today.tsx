@@ -248,7 +248,17 @@ export function TodayPage() {
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
           <div className="min-w-0">
             {(productionHero || referenceLead || isProduction) ? (
-              <div className="o-raised overflow-hidden rounded-2xl ring-1 ring-inset ring-action/20">
+              <div
+                className="o-raised overflow-hidden rounded-2xl ring-1 ring-inset ring-action/20"
+                data-testid={
+                  isProduction && productionHero?.movementId
+                    ? "today-hero-movement"
+                    : undefined
+                }
+                data-model-update-id={
+                  isProduction ? productionHero?.movementId ?? undefined : undefined
+                }
+              >
                 <div className="bg-action-muted/50 px-5 py-2.5">
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-action-foreground">
                     <BellRing className="size-3.5" aria-hidden />

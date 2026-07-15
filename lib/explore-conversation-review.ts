@@ -30,6 +30,10 @@ export type ExploreConversationReviewReferenceAction = {
   referenceId: string;
 };
 
+export type ExploreConversationReviewMovementProposalAction = {
+  proposalId: string;
+};
+
 export type ExploreConversationReviewItem = {
   id: string;
   kind: ExploreConversationReviewItemKind;
@@ -44,6 +48,7 @@ export type ExploreConversationReviewItem = {
   statusLabel: string;
   selectableObject: ExploreConversationReviewSelectableObject | null;
   referenceAction: ExploreConversationReviewReferenceAction | null;
+  movementProposalAction?: ExploreConversationReviewMovementProposalAction | null;
   actions: {
     canConfirm: boolean;
     canEdit: boolean;
@@ -121,5 +126,36 @@ export async function rejectExploreReferenceReviewItem(referenceId: string): Pro
 
   if (!response.ok) {
     throw new Error("Could not dismiss this receipt.");
+  }
+}
+
+export async function publishExploreMovementProposalReviewItem(args: {
+  sessionId: string;
+  proposalId: string;
+}): Promise<{ modelUpdateId: string }> {
+  const response = await fetch(
+    `/api/explore/sessions/${encodeURIComponent(args.sessionId)}/movement-proposals/${encodeURIComponent(args.proposalId)}/publish`,
+    { method: "POST" }
+  );
+  if (!response.ok) {
+    throw new Error("Could not publish this proposal.");
+  }
+  const payload = (await response.json()) as { modelUpdateId?: string };
+  if (!payload.modelUpdateId) {
+    throw new Error("Publication did not return a ModelUpdate id.");
+  }
+  return { modelUpdateId: payload.modelUpdateId };
+}
+
+export async function rejectExploreMovementProposalReviewItem(args: {
+  sessionId: string;
+  proposalId: string;
+}): Promise<void> {
+  const response = await fetch(
+    `/api/explore/sessions/${encodeURIComponent(args.sessionId)}/movement-proposals/${encodeURIComponent(args.proposalId)}/reject`,
+    { method: "POST" }
+  );
+  if (!response.ok) {
+    throw new Error("Could not reject this proposal.");
   }
 }

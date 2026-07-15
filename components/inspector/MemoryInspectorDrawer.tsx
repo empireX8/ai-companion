@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ORVEK_COPY } from "@/lib/trust-language";
 import { PanelBar } from "@/components/ui/PanelBar";
 import { useProductionInspectorTab } from "@/components/orvek-v0/useProductionInspectorTab";
+import { useOptionalWorkbench } from "@/components/orvek-v0/store";
 import { useInspector } from "./InspectorContext";
 import { InspectorPanelRouter } from "./InspectorPanelRouter";
 
@@ -23,8 +24,14 @@ export function useInspectorContextFromPathname(): {
   label: string;
 } {
   const pathname = usePathname();
+  const workbench = useOptionalWorkbench();
+  const exploreActive = workbench?.exploreActive === true;
+  const page = workbench?.page;
+
+  if (exploreActive || page === "explore" || pathname.startsWith("/explore")) {
+    return { domain: "chat", label: "Explore" };
+  }
   if (pathname.startsWith("/chat")) return { domain: "chat", label: "Chat" };
-  if (pathname.startsWith("/explore")) return { domain: "chat", label: "Explore" };
   if (pathname.startsWith("/contradictions"))
     return { domain: "contradictions", label: "Contradictions" };
   if (pathname.startsWith("/memories"))
@@ -33,10 +40,16 @@ export function useInspectorContextFromPathname(): {
     return { domain: "references", label: "Memories" };
   if (pathname.startsWith("/audit")) return { domain: "audit", label: "Audit" };
   if (pathname.startsWith("/import")) return { domain: "import", label: "Import" };
-  if (pathname.startsWith("/your-map")) return { domain: "default", label: "Map" };
-  if (pathname.startsWith("/actions")) return { domain: "default", label: "Decisions" };
-  if (pathname === "/") return { domain: "default", label: "Today" };
-  if (pathname.startsWith("/timeline")) return { domain: "default", label: "Timeline" };
+  if (pathname.startsWith("/your-map") || page === "map") {
+    return { domain: "default", label: "Map" };
+  }
+  if (pathname.startsWith("/actions") || page === "decisions") {
+    return { domain: "default", label: "Decisions" };
+  }
+  if (pathname === "/" || page === "today") return { domain: "default", label: "Today" };
+  if (pathname.startsWith("/timeline") || page === "timeline") {
+    return { domain: "default", label: "Timeline" };
+  }
   if (pathname.startsWith("/what-changed")) return { domain: "default", label: "Reports" };
   if (pathname.startsWith("/watch-for")) return { domain: "default", label: "Fieldwork" };
   if (pathname.startsWith("/context")) return { domain: "default", label: "Context" };

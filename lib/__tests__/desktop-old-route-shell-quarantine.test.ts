@@ -229,7 +229,7 @@ describe("desktop old-route / old-shell quarantine audit", () => {
     const evidencePanel = readSource("components/orvek-v0/evidence-panel.tsx");
     const hybridApi = readSource("lib/orvek-v0/production/hybrid-workbench-api.ts");
 
-    expect(explorePage).toContain("useReferenceGrounding = !hasLiveExploreChat");
+    expect(explorePage).toContain("allowReferenceSample = referenceSurface === true");
     expect(explorePage).toContain("freeExploreSendHandlerAvailable");
     expect(evidencePanel).toContain("showReferenceConversationMovement = exploreActive && !hasLiveExploreChat");
     expect(evidencePanel).toContain("showLiveConversationMovementEmpty");

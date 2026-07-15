@@ -127,7 +127,7 @@ describe("desktop hard-swap regression sweep", () => {
     const evidencePanel = readSource("components/orvek-v0/evidence-panel.tsx");
 
     expect(explorePage).toContain("freeExploreSendHandlerAvailable");
-    expect(explorePage).toContain("useReferenceGrounding = !hasLiveExploreChat");
+    expect(explorePage).toContain("allowReferenceSample = referenceSurface === true");
     expect(explorePage).toContain("Thinking…");
     expect(explorePage).toContain("border-b border-border/40");
     expect(hybridHook).toContain("exploreChatSendReady");

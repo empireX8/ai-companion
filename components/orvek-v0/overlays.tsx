@@ -467,6 +467,7 @@ function ReportOverlay({ id, onClose }: { id: string; onClose: () => void }) {
         {canonicalId ? (
           <span
             data-testid="report-overlay-canonical-id"
+            data-model-update-id={canonicalId}
             className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground"
           >
             {canonicalId}

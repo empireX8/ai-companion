@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   CandidateLifecycleStatus,
+  ExploreMovementProposalStatus,
   FieldworkAssignmentVisibility,
   InvestigationVisibility,
   ModelUpdateVisibility,
@@ -21,6 +22,8 @@ import {
   type ExploreConversationReviewItemKind,
   type ExploreConversationReviewStatus,
 } from "./explore-conversation-review";
+import { EXPLORE_PROPOSED_MOVEMENT_LABEL } from "./explore-grounding-contract";
+import { isExploreProposalNotes, isExploreProposalRejected } from "./explore-movement-proposal";
 import {
   buildPublicObjectHref,
   formatPublicObjectLinkTypeLabel,
@@ -263,7 +266,7 @@ export async function listExploreSessionConversationReviewItems(args: {
   const fieldworkIds = [...(groupedTargets.get(UnderstandingLinkTargetType.fieldwork_assignment) ?? [])];
   const modelUpdateIds = [...(groupedTargets.get(UnderstandingLinkTargetType.model_update) ?? [])];
 
-  const [usermapRows, investigationRows, fieldworkRows, modelUpdateRows] =
+  const [usermapRows, investigationRows, fieldworkRows, modelUpdateRows, exploreProposalRows] =
     await Promise.all([
       usermapIds.length > 0
         ? prismadb.userMapConclusion.findMany({
@@ -334,9 +337,24 @@ export async function listExploreSessionConversationReviewItems(args: {
               userFacingSummary: true,
               affectedObjectType: true,
               createdAt: true,
+              internalNotes: true,
             },
           })
         : Promise.resolve([]),
+      prismadb.exploreMovementProposal.findMany({
+        where: {
+          userId: args.userId,
+          conversationId: args.sessionId,
+          status: ExploreMovementProposalStatus.proposed,
+        },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        select: {
+          id: true,
+          userFacingSummary: true,
+          affectedObjectType: true,
+        },
+      }),
     ]);
 
   const items: ExploreConversationReviewItem[] = [];
@@ -426,21 +444,57 @@ export async function listExploreSessionConversationReviewItems(args: {
     });
   }
 
+  for (const row of exploreProposalRows) {
+    items.push({
+      id: `explore-movement-proposal:${row.id}`,
+      kind: "model_update_candidate",
+      kindLabel: EXPLORE_REVIEW_KIND_LABELS.model_update_candidate,
+      title: `${EXPLORE_PROPOSED_MOVEMENT_LABEL} · ${formatPublicObjectLinkTypeLabel(row.affectedObjectType)}`,
+      summary: clampText(row.userFacingSummary, SUMMARY_MAX),
+      sourceLabel: EXPLORE_PROPOSED_MOVEMENT_LABEL,
+      status: "draft",
+      statusLabel: "PROPOSED MODEL MOVEMENT",
+      linkedObjectLabel: "Not published yet",
+      linkedObjectHref: null,
+      selectableObject: null,
+      referenceAction: null,
+      movementProposalAction: { proposalId: row.id },
+      actions: {
+        canConfirm: true,
+        canEdit: false,
+        canReject: true,
+      },
+    });
+  }
+
   for (const row of modelUpdateRows) {
+    if (isExploreProposalRejected(row.internalNotes) || isExploreProposalNotes(row.internalNotes)) {
+      continue;
+    }
+
     items.push({
       id: `model-update:${row.id}`,
       kind: "model_update_candidate",
       kindLabel: EXPLORE_REVIEW_KIND_LABELS.model_update_candidate,
       title: `${formatModelUpdateType(row.updateType)} · ${formatPublicObjectLinkTypeLabel(row.affectedObjectType)}`,
       summary: clampText(row.userFacingSummary, SUMMARY_MAX),
-      sourceLabel: "Draft model change",
+      sourceLabel: "Model update draft",
       status: "draft",
-      statusLabel: "Draft · not published",
-      linkedObjectLabel: "Not on your Map yet",
+      statusLabel: "Draft",
+      linkedObjectLabel: "Not published yet",
       linkedObjectHref: null,
-      selectableObject: null,
+      selectableObject: {
+        objectType: "model_update",
+        objectId: row.id,
+        selectedModelUpdateId: row.id,
+        title: row.userFacingSummary,
+      },
       referenceAction: null,
-      actions: readOnlyActions(),
+      actions: {
+        canConfirm: true,
+        canEdit: false,
+        canReject: true,
+      },
     });
   }
 

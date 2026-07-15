@@ -53,6 +53,7 @@ export type OrvekExploreMessage = {
   id: string;
   role: "user" | "orvek";
   content: string;
+  grounding?: import("@/lib/explore-grounding-contract").ExploreGroundingPayload | null;
 };
 
 export type OrvekMapHeader = {
@@ -105,6 +106,8 @@ export type OrvekDataApi = {
   freeExploreChatSessionId?: string | null;
   /** Explicit send-handler availability for session/handler gate checks. */
   freeExploreSendHandlerAvailable?: boolean;
+  /** Latest grounded assistant payload for live Explore chips / Inspector. */
+  exploreLatestGrounding?: import("@/lib/explore-grounding-contract").ExploreGroundingPayload | null;
   experimentIsLoading?: boolean;
   activeQuestionsIsLoading?: boolean;
   investigationsIsLoading?: boolean;
