@@ -62,6 +62,8 @@ model Message {
   userId                    String
   role                      Role
   content                   String
+  /// Explore reply grounding + reality-tracking payload (null for ungounded / non-Explore).
+  groundingPayload          Json?
   createdAt                 DateTime            @default(now())
   updatedAt                 DateTime            @updatedAt
   companionId               String?
@@ -956,6 +958,38 @@ model ModelUpdate {
   @@index([userId, visibility, createdAt])
   @@index([userId, updateType, createdAt])
   @@index([userId, affectedObjectType, affectedObjectId])
+}
+
+/// Explore proposed model movement under review — NOT a ModelUpdate.
+/// A ModelUpdate row is created only on explicit publication.
+enum ExploreMovementProposalStatus {
+  proposed
+  published
+  rejected
+}
+
+model ExploreMovementProposal {
+  id                 String                         @id @default(cuid())
+  userId             String
+  conversationId     String
+  assistantMessageId String
+  userMessageId      String
+  status             ExploreMovementProposalStatus  @default(proposed)
+  affectedObjectType UnderstandingLinkTargetType
+  affectedObjectId   String
+  beforeSummary      String
+  afterSummary       String
+  rationale          String
+  userFacingSummary  String
+  /// Owned grounding sources snapshotted at proposal creation (used to materialize evidence links on publish).
+  sourcesJson        Json
+  /// Set only after publication — distinct ModelUpdate.id (never equals this row's id by contract).
+  modelUpdateId      String?                        @unique
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
+
+  @@index([userId, conversationId, status, createdAt])
+  @@index([userId, status, createdAt])
 }
 
 model FieldworkAssignment {

@@ -7,7 +7,16 @@ import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
 import { ORVEK_DEFERRED_ACTION_CLASS, isProductionDisplay } from "@/lib/orvek-v0/display-contract"
 import { DurableFieldworkCheckInControls } from "@/components/orvek-v0/durable-user-action-controls"
+import { ExploreConversationReviewStrip } from "@/components/explore/ExploreConversationReviewStrip"
+import { ExploreModelMovementStrip } from "@/components/explore/ExploreModelMovementStrip"
+import { ExploreMovementProposalCard } from "@/components/explore/ExploreMovementProposalCard"
 import { V0_EXPLORE_LIVE_DETECTION_COPY } from "@/lib/orvek-adapters/explore"
+import {
+  EXPLORE_GROUNDING_EMPTY_COPY,
+  EXPLORE_NO_MOVEMENT_LABEL,
+  type ExploreGroundingPayload,
+} from "@/lib/explore-grounding-contract"
+import { setExploreSelectedMessageGrounding } from "@/lib/explore-message-grounding-bridge"
 import { resolveActiveQuestionsOpenSelectionId } from "@/lib/orvek-v0/production/active-questions-presentation"
 import { resolveInvestigationsOpenSelectionId } from "@/lib/orvek-v0/production/investigations-presentation"
 import { resolveExperimentOpenSelectionId } from "@/lib/orvek-v0/production/experiment-presentation"
@@ -152,15 +161,57 @@ function FreeExplore() {
     exploreLiveDetectionCopy,
     emptyCopyBySlot,
     freeExploreSendHandlerAvailable,
+    exploreLatestGrounding,
+    freeExploreChatSessionId,
+    referenceSurface,
   } = data
   const [localDraft, setLocalDraft] = useState("")
   const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null)
+  const [selectedAssistantMessageId, setSelectedAssistantMessageId] = useState<string | null>(null)
+  const [publishedModelUpdateId, setPublishedModelUpdateId] = useState<string | null>(null)
   const lastStableLiveMessagesRef = useRef<OrvekExploreMessage[]>([])
   const hasLiveExploreChat = hasLiveExploreChatFromProvider(data)
+  const allowReferenceSample = referenceSurface === true
+  const useReferenceGrounding = allowReferenceSample && !hasLiveExploreChat
   const exploreView = data.explore
-  const useReferenceGrounding = !hasLiveExploreChat
+
+  const selectedLiveGroundingRaw: ExploreGroundingPayload | null = (() => {
+    if (!hasLiveExploreChat) return null
+    if (selectedAssistantMessageId) {
+      const selected = (exploreMessages ?? []).find(
+        (message) => message.id === selectedAssistantMessageId,
+      )
+      if (selected?.grounding) return selected.grounding
+    }
+    return exploreLatestGrounding ?? null
+  })()
+
+  const selectedLiveGrounding: ExploreGroundingPayload | null =
+    selectedLiveGroundingRaw && publishedModelUpdateId
+      ? {
+          ...selectedLiveGroundingRaw,
+          movementProposal: {
+            ...selectedLiveGroundingRaw.movementProposal,
+            status: "published",
+            modelUpdateId: publishedModelUpdateId,
+          },
+        }
+      : selectedLiveGroundingRaw
+
+  useEffect(() => {
+    if (!hasLiveExploreChat) {
+      setExploreSelectedMessageGrounding({ messageId: null, grounding: null })
+      return
+    }
+    setExploreSelectedMessageGrounding({
+      messageId: selectedLiveGrounding?.assistantMessageId ?? selectedAssistantMessageId,
+      grounding: selectedLiveGrounding,
+    })
+  }, [hasLiveExploreChat, selectedAssistantMessageId, selectedLiveGrounding])
+
   const groundingIds = useReferenceGrounding ? EXPLORE_GROUNDING : exploreGrounding
-  const grounding = getObjects(groundingIds)
+  const grounding = useReferenceGrounding ? getObjects(groundingIds) : []
+  const liveGroundingSources = selectedLiveGrounding?.sources ?? []
   const composerDraft =
     freeExploreSendHandlerAvailable === true && exploreView?.composerDraft !== undefined
       ? exploreView.composerDraft
@@ -194,9 +245,12 @@ function FreeExplore() {
         ? lastStableLiveMessagesRef.current
         : []
 
-  const baseMessages = hasLiveExploreChat || preservedLiveMessages.length > 0
-    ? preservedLiveMessages
-    : REFERENCE_FREE_EXPLORE_MESSAGES
+  const baseMessages =
+    allowReferenceSample && !hasLiveExploreChat && preservedLiveMessages.length === 0
+      ? REFERENCE_FREE_EXPLORE_MESSAGES
+      : hasLiveExploreChat || preservedLiveMessages.length > 0
+        ? preservedLiveMessages
+        : []
 
   const pendingTrimmed = pendingUserMessage ? collapseDraft(pendingUserMessage) : ""
   const pendingAlreadyVisible =
@@ -278,7 +332,13 @@ function FreeExplore() {
   ])
   const liveDetectionCopy = hasLiveExploreChat
     ? V0_EXPLORE_LIVE_DETECTION_COPY
-    : (exploreLiveDetectionCopy ?? REFERENCE_FREE_EXPLORE_LIVE_DETECTION_COPY)
+    : allowReferenceSample
+      ? (exploreLiveDetectionCopy ?? REFERENCE_FREE_EXPLORE_LIVE_DETECTION_COPY)
+      : isBooting
+        ? (exploreView?.chatLoadingCopy ?? "Loading conversation…")
+        : (exploreView?.errorMessage ??
+          emptyCopyBySlot?.exploreChatEmpty ??
+          "Ask the model anything to begin.")
 
   return (
     <div>
@@ -293,15 +353,38 @@ function FreeExplore() {
           <>
             {bubbleMessages.map((message) => {
               const isPendingUserBubble = message.id === PENDING_USER_MESSAGE_ID
+              const isSelectableAssistant =
+                hasLiveExploreChat && message.role === "orvek" && !isPendingUserBubble
+              const isSelectedAssistant =
+                isSelectableAssistant && selectedAssistantMessageId === message.id
 
               return (
-                <Bubble
+                <button
                   key={message.id}
-                  role={message.role}
-                  pending={isPendingUserBubble}
+                  type="button"
+                  data-testid={
+                    isSelectableAssistant
+                      ? `explore-assistant-message-${message.id}`
+                      : undefined
+                  }
+                  data-message-id={message.id}
+                  data-message-role={message.role === "orvek" ? "assistant" : "user"}
+                  disabled={!isSelectableAssistant}
+                  onClick={() => {
+                    if (!isSelectableAssistant) return
+                    setSelectedAssistantMessageId(message.id)
+                    setInspectorTab("evidence")
+                  }}
+                  className={cn(
+                    "block w-full text-left",
+                    isSelectableAssistant ? "cursor-pointer" : "cursor-default",
+                    isSelectedAssistant ? "ring-1 ring-inset ring-primary/40 rounded-[14px]" : "",
+                  )}
                 >
-                  {message.content}
-                </Bubble>
+                  <Bubble role={message.role} pending={isPendingUserBubble}>
+                    {message.content}
+                  </Bubble>
+                </button>
               )
             })}
             {showThinkingRow ? (
@@ -314,14 +397,35 @@ function FreeExplore() {
       </div>
 
       {/* grounded in */}
-      <div className="mt-3">
+      <div className="mt-3" data-testid="explore-grounding-section">
         <SectionLabel>Grounded in</SectionLabel>
-        {grounding.length === 0 ? (
-          <p className="mt-2 text-[13px] text-muted-foreground">
-            {emptyCopyBySlot?.exploreGroundingEmpty ??
-              "Grounding chips appear when linked evidence is available."}
-          </p>
-        ) : (
+        {hasLiveExploreChat ? (
+          liveGroundingSources.length === 0 ? (
+            <p
+              className="mt-2 text-[13px] text-muted-foreground"
+              data-testid="explore-grounding-empty"
+            >
+              {selectedLiveGrounding?.status === "insufficient_evidence"
+                ? EXPLORE_NO_MOVEMENT_LABEL
+                : (emptyCopyBySlot?.exploreGroundingEmpty ?? EXPLORE_GROUNDING_EMPTY_COPY)}
+            </p>
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {liveGroundingSources.map((source) => (
+                <div
+                  key={source.sourceId}
+                  data-testid={`explore-grounding-chip-${source.sourceId}`}
+                  data-epistemic-status={source.epistemicStatus}
+                  data-source-id={source.sourceId}
+                >
+                  <Chip tone="evidence" className="cursor-default">
+                    {source.epistemicStatus}: {source.title}
+                  </Chip>
+                </div>
+              ))}
+            </div>
+          )
+        ) : useReferenceGrounding && grounding.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {grounding.map((c) => (
             <button key={c.id} type="button" onClick={() => select(c.id)}>
@@ -331,8 +435,33 @@ function FreeExplore() {
             </button>
           ))}
         </div>
+        ) : (
+          <p
+            className="mt-2 text-[13px] text-muted-foreground"
+            data-testid="explore-grounding-empty"
+          >
+            {emptyCopyBySlot?.exploreGroundingEmpty ??
+              "Grounding chips appear when linked evidence is available."}
+          </p>
         )}
       </div>
+
+      {hasLiveExploreChat && selectedLiveGrounding ? (
+        <ExploreMovementProposalCard
+          grounding={selectedLiveGrounding}
+          sessionId={freeExploreChatSessionId ?? null}
+          publishedModelUpdateId={publishedModelUpdateId}
+          onPublished={(modelUpdateId) => setPublishedModelUpdateId(modelUpdateId)}
+          onRejected={() => setPublishedModelUpdateId(null)}
+        />
+      ) : null}
+
+      {hasLiveExploreChat ? (
+        <div className="mt-3 space-y-3">
+          <ExploreConversationReviewStrip />
+          <ExploreModelMovementStrip />
+        </div>
+      ) : null}
 
       {/* live detection line */}
       <div className="mt-3 flex items-center gap-2 text-[12px] text-muted-foreground">
@@ -353,7 +482,7 @@ function FreeExplore() {
       >
         <Sparkles className="size-4 shrink-0 text-action-foreground" aria-hidden />
         <span className="min-w-0 flex-1 text-[13px] leading-relaxed text-foreground">
-          {hasLiveExploreChat ? (
+          {hasLiveExploreChat || !allowReferenceSample ? (
             <>Review possible model movement in the inspector.</>
           ) : (
             <>
@@ -369,7 +498,17 @@ function FreeExplore() {
       </button>
 
       {/* composer */}
-      <div className="o-material mt-4 flex items-center gap-2 rounded-2xl p-2">
+      <div
+        className="o-material mt-4 flex items-center gap-2 rounded-2xl p-2"
+        data-testid="explore-composer"
+        data-free-explore-send-handler={
+          freeExploreSendHandlerAvailable === true ? "true" : "false"
+        }
+        data-has-live-explore-chat={hasLiveExploreChat ? "true" : "false"}
+        data-explore-booting={isBooting ? "true" : "false"}
+        data-has-send-handler={exploreHandlers?.onSend ? "true" : "false"}
+        data-explore-error={exploreView?.errorMessage ?? ""}
+      >
         <input
           value={composerDraft}
           onChange={(event) => {
@@ -401,6 +540,8 @@ function FreeExplore() {
         />
         <button
           type="button"
+          data-testid="explore-ask-button"
+          data-can-send={canSend ? "true" : "false"}
           onClick={() => {
             handleSend()
           }}

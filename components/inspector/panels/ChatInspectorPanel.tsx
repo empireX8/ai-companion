@@ -4,7 +4,72 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { ExploreConversationReviewInspectorList } from "@/components/explore/ExploreConversationReviewStrip";
+import { useOptionalWorkbench } from "@/components/orvek-v0/store";
 import { EXPLORE_REVIEW_INSPECTOR_SECTION_LABEL } from "@/lib/explore-conversation-review";
+import {
+  EXPLORE_GROUNDING_EMPTY_COPY,
+  EXPLORE_PROPOSED_MOVEMENT_LABEL,
+  EXPLORE_PUBLISHED_MOVEMENT_LABEL,
+} from "@/lib/explore-grounding-contract";
+import { useExploreSelectedMessageGrounding } from "@/lib/explore-message-grounding-bridge";
+
+function ExploreSelectedMessageGroundingInspector() {
+  const { selectedMessageId, grounding } = useExploreSelectedMessageGrounding();
+
+  return (
+    <div data-testid="inspector-explore-message-grounding">
+      <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        Selected reply grounding
+      </p>
+      {!selectedMessageId || !grounding || grounding.sources.length === 0 ? (
+        <p
+          className="text-xs text-muted-foreground"
+          data-testid="inspector-explore-grounding-empty"
+        >
+          {EXPLORE_GROUNDING_EMPTY_COPY}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {grounding.sources.map((source) => (
+            <li
+              key={source.sourceId}
+              className="rounded-md border border-border/60 px-2 py-1.5"
+              data-testid={`inspector-grounding-source-${source.sourceId}`}
+              data-source-id={source.sourceId}
+              data-epistemic-status={source.epistemicStatus}
+            >
+              <p className="text-[11px] font-medium text-foreground">
+                {source.epistemicStatus} · {source.title}
+              </p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-2">
+                {source.extract}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {grounding?.movementProposal.status === "proposed" ? (
+        <p
+          className="mt-2 text-[10px] font-medium uppercase tracking-wide text-action-foreground"
+          data-testid="inspector-proposed-movement"
+          data-proposal-id={grounding.movementProposal.proposalId ?? undefined}
+        >
+          {EXPLORE_PROPOSED_MOVEMENT_LABEL}
+        </p>
+      ) : null}
+      {grounding?.movementProposal.status === "published" &&
+      grounding.movementProposal.modelUpdateId ? (
+        <p
+          className="mt-2 text-[10px] font-medium uppercase tracking-wide text-primary"
+          data-testid="inspector-published-movement"
+          data-model-update-id={grounding.movementProposal.modelUpdateId}
+        >
+          {EXPLORE_PUBLISHED_MOVEMENT_LABEL}: {grounding.movementProposal.modelUpdateId}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -53,7 +118,11 @@ function CountCell({ label, value }: { label: string; value: number }) {
 
 export function ChatInspectorPanel() {
   const pathname = usePathname();
-  const isExplore = pathname.startsWith("/explore");
+  const workbench = useOptionalWorkbench();
+  const isExplore =
+    workbench?.exploreActive === true ||
+    workbench?.page === "explore" ||
+    pathname.startsWith("/explore");
   const [topItems, setTopItems] = useState<TopItem[]>([]);
   const [summary, setSummary] = useState<ContradictionSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,11 +172,14 @@ export function ChatInspectorPanel() {
 
   if (isExplore) {
     return (
-      <div className="p-3">
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          {EXPLORE_REVIEW_INSPECTOR_SECTION_LABEL}
-        </p>
-        <ExploreConversationReviewInspectorList />
+      <div className="space-y-3 p-3">
+        <ExploreSelectedMessageGroundingInspector />
+        <div>
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {EXPLORE_REVIEW_INSPECTOR_SECTION_LABEL}
+          </p>
+          <ExploreConversationReviewInspectorList />
+        </div>
       </div>
     );
   }

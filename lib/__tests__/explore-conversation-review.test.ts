@@ -37,6 +37,9 @@ const prismaMock = {
   modelUpdate: {
     findMany: vi.fn(),
   },
+  exploreMovementProposal: {
+    findMany: vi.fn(),
+  },
 };
 
 vi.mock("@clerk/nextjs/server", () => ({
@@ -67,6 +70,7 @@ describe("/api/explore/sessions/[id]/review-items", () => {
     prismaMock.investigation.findMany.mockResolvedValue([]);
     prismaMock.fieldworkAssignment.findMany.mockResolvedValue([]);
     prismaMock.modelUpdate.findMany.mockResolvedValue([]);
+    prismaMock.exploreMovementProposal.findMany.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -133,17 +137,12 @@ describe("/api/explore/sessions/[id]/review-items", () => {
     expect(JSON.stringify(payload)).not.toContain("evidencePacket");
   });
 
-  it("projects internal model update candidates without inspector model_update selection", async () => {
-    prismaMock.understandingEvidenceLink.findMany.mockResolvedValueOnce([
-      { targetType: "model_update", targetId: "mu-internal" },
-    ]);
-    prismaMock.modelUpdate.findMany.mockResolvedValueOnce([
+  it("projects Explore movement proposals as reviewable proposed model movement", async () => {
+    prismaMock.exploreMovementProposal.findMany.mockResolvedValueOnce([
       {
-        id: "mu-internal",
-        updateType: "link_detected",
+        id: "emp-1",
         userFacingSummary: "Possible link between two patterns.",
         affectedObjectType: "pattern_claim",
-        createdAt: new Date("2026-06-20T10:00:00.000Z"),
       },
     ]);
 
@@ -154,8 +153,16 @@ describe("/api/explore/sessions/[id]/review-items", () => {
     const payload = await response.json();
 
     expect(payload.items[0]?.kind).toBe("model_update_candidate");
-    expect(payload.items[0]?.statusLabel).toContain("not published");
+    expect(payload.items[0]?.statusLabel).toBe("PROPOSED MODEL MOVEMENT");
     expect(payload.items[0]?.selectableObject).toBeNull();
+    expect(payload.items[0]?.movementProposalAction).toEqual({
+      proposalId: "emp-1",
+    });
+    expect(payload.items[0]?.actions).toEqual({
+      canConfirm: true,
+      canEdit: false,
+      canReject: true,
+    });
   });
 
   it("excludes internal-only lifecycle names from user-facing labels", async () => {

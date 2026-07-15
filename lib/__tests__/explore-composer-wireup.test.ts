@@ -13,7 +13,7 @@ describe("explore composer wireup", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekExploreChat.ts");
 
     expect(pageSource).toContain("const exploreHandlers = useOrvekPageHandlers().explore");
-    expect(pageSource).toContain("const composerDraft = exploreView?.composerDraft ?? localDraft");
+    expect(pageSource).toContain("freeExploreSendHandlerAvailable === true && exploreView?.composerDraft");
     expect(pageSource).toContain("exploreHandlers?.onSend?.()");
     expect(pageSource).toContain("exploreHandlers.onQuickPrompt(q)");
     expect(pageSource).toMatch(/\/\* composer \*\/[\s\S]*value=\{composerDraft\}/);

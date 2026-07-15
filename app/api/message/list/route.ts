@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 import prismadb from "@/lib/prismadb";
+import { isExploreGroundingPayload } from "@/lib/explore-grounding-contract";
 
 export async function GET(req: Request) {
   try {
@@ -45,10 +46,22 @@ export async function GET(req: Request) {
         role: true,
         content: true,
         createdAt: true,
+        groundingPayload: true,
       },
     });
 
-    return NextResponse.json(messages);
+    return NextResponse.json(
+      messages.map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        createdAt: message.createdAt,
+        grounding:
+          message.groundingPayload && isExploreGroundingPayload(message.groundingPayload)
+            ? message.groundingPayload
+            : null,
+      }))
+    );
   } catch (error) {
     console.log("[MESSAGE_LIST_GET_ERROR]", error);
     return new NextResponse("Internal Error", { status: 500 });

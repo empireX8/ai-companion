@@ -132,7 +132,7 @@ describe("bounded free explore chat hybrid fetch bridge", () => {
     expect(hybridApi.freeExploreChatSessionId).toBe("sess-ready-1");
     expect(hybridApi.freeExploreSendHandlerAvailable).toBe(false);
     expect(hybridApi.exploreMessages?.length).toBe(2);
-    expect(hybridApi.exploreGrounding).toEqual(baseApi.exploreGrounding);
+    expect(hybridApi.exploreGrounding).toEqual([]);
   });
 
   it("merges safe empty-live session when gate passes", () => {

@@ -53,9 +53,9 @@ describe("free explore post-send side-effect audit", () => {
     const explorePageSource = readSource("components/orvek-v0/pages/explore.tsx");
     const block = freeExploreBlock(explorePageSource);
 
-    expect(block).toMatch(/useReferenceGrounding\s*=\s*!hasLiveExploreChat/);
-    expect(block).not.toMatch(
-      /useReferenceGrounding\s*=\s*!hasLiveExploreChat\s*\|\|\s*exploreGrounding\.length/,
+    expect(block).toMatch(/allowReferenceSample\s*=\s*referenceSurface\s*===\s*true/);
+    expect(block).toMatch(
+      /useReferenceGrounding\s*=\s*allowReferenceSample\s*&&\s*!hasLiveExploreChat/,
     );
     expect(block).toContain("exploreGrounding");
   });

@@ -29,6 +29,7 @@ export function WhatChangedHeroMovement({
     <article
       className="ml-raised overflow-hidden rounded-2xl"
       data-testid="what-changed-primary-movement"
+      data-model-update-id={item.id}
     >
       <div
         className="px-5 py-2.5"

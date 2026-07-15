@@ -228,6 +228,7 @@ export function normalizeFreeExploreChatMessage(
     id,
     role: message.role,
     content,
+    grounding: message.grounding ?? null,
   };
 }
 
@@ -423,12 +424,22 @@ export function normalizeFreeExploreChatProductionDataApi(api: OrvekDataApi): Or
 
   const sessionId = api.freeExploreChatSessionId;
 
+  const latestGroundedAssistant = [...normalizedMessages]
+    .reverse()
+    .find(
+      (message) =>
+        message.role === "orvek" &&
+        message.grounding &&
+        message.grounding.sources.length > 0,
+    );
+
   return {
     ...apiWithoutLegacyShell,
     exploreMessages: normalizedMessages,
     exploreGrounding: [],
     exploreMovement: [],
     exploreLiveDetectionCopy: undefined,
+    exploreLatestGrounding: latestGroundedAssistant?.grounding ?? null,
     freeExploreChatSessionId: isSafeFreeExploreChatSessionId(sessionId)
       ? collapseFreeExploreChatWhitespace(sessionId ?? "")
       : null,

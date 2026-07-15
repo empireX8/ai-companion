@@ -372,6 +372,7 @@ function mergeFreeExploreChatOverlay(
     freeExploreChatSessionId: freeExploreChatApi.freeExploreChatSessionId,
     freeExploreSendHandlerAvailable:
       freeExploreChatApi.freeExploreSendHandlerAvailable === true,
+    exploreLatestGrounding: freeExploreChatApi.exploreLatestGrounding ?? null,
     explore: freeExploreChatApi.explore,
     emptyCopyBySlot: {
       ...baseApi.emptyCopyBySlot,
@@ -392,6 +393,7 @@ function stripRejectedFreeExploreChatMockBleed(api: OrvekDataApi): OrvekDataApi 
     exploreGrounding: [],
     exploreMovement: [],
     exploreLiveDetectionCopy: undefined,
+    exploreLatestGrounding: null,
   };
 }
 

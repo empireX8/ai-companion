@@ -29,6 +29,14 @@ import {
   shouldRunAppMessageCandidateBridgeForSession,
   tryCreateInternalUserMapCandidateFromAppMessage,
 } from "@/lib/understanding-dark-engine/app-message-candidate-bridge";
+import {
+  buildExploreAssaultDeterministicReply,
+  exploreAssaultDeterministicReplyAllowed,
+} from "@/lib/explore-assault-test-provider";
+import {
+  orchestrateExploreReplyGrounding,
+  persistExploreGroundingPayload,
+} from "@/lib/explore-grounding-orchestrator";
 
 type GovernedType = "preference" | "goal" | "constraint";
 const NATIVE_PROFILE_SURFACE_TYPES = new Set(["journal_chat", "explore_chat"]);
@@ -193,7 +201,7 @@ export async function POST(req: Request) {
     console.debug(tag, "memory_manager_init_start", Date.now() - tServer);
     const memory = await SessionMemoryManager.getInstance();
     console.debug(tag, "memory_manager_init_done", Date.now() - tServer);
-    const persistAssistantReply = async (text: string) => {
+    const persistAssistantReply = async (text: string, userMessageId: string) => {
       const finalText = text.trim();
       if (!finalText) {
         return;
@@ -215,6 +223,30 @@ export async function POST(req: Request) {
         content: finalText,
         createdAt: assistantDbMessage.createdAt,
       });
+
+      // Explore-only: attach honest grounding + optional proposed (not published) movement.
+      if (session.surfaceType === "explore_chat") {
+        try {
+          const grounding = await orchestrateExploreReplyGrounding({
+            userId,
+            db: prismadb,
+            conversationId: session.id,
+            assistantMessageId: assistantDbMessage.id,
+            userMessageId,
+            userMessageContent: normalizedContent,
+            assistantReplyContent: finalText,
+            createProposalWhenSufficient: true,
+          });
+          await persistExploreGroundingPayload({
+            db: prismadb,
+            messageId: assistantDbMessage.id,
+            userId,
+            payload: grounding.payload,
+          });
+        } catch (groundingError) {
+          console.log("[EXPLORE_GROUNDING_ORCHESTRATION_ERROR]", groundingError);
+        }
+      }
     };
 
     console.debug(tag, "user_message_create_start", Date.now() - tServer);
@@ -227,6 +259,44 @@ export async function POST(req: Request) {
       },
     });
     console.debug(tag, "user_message_create_done", Date.now() - tServer);
+
+    // ── Local/test-only deterministic Explore reply (assault / CI) ───────────
+    if (
+      session.surfaceType === "explore_chat" &&
+      exploreAssaultDeterministicReplyAllowed(process.env)
+    ) {
+      const deterministicText = buildExploreAssaultDeterministicReply(normalizedContent);
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode(deterministicText));
+          controller.close();
+        },
+      });
+
+      after(async () => {
+        try {
+          await memory.appendToTranscript(memoryKey, `Human: ${normalizedContent}`);
+          await memory.upsertVector(memoryKey, {
+            id: userMessage.id,
+            role: "user",
+            content: normalizedContent,
+            createdAt: userMessage.createdAt,
+          });
+        } catch (error) {
+          console.log("[EXPLORE_ASSAULT_DETERMINISTIC_SIDE_EFFECT_ERROR]", error);
+        }
+      });
+
+      // Persist assistant + grounding on the same turn (still real handler path).
+      await persistAssistantReply(deterministicText, userMessage.id);
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Orvek-Explore-Provider": "assault-deterministic-local",
+        },
+      });
+    }
 
     // ── debugFastPath: skip all enrichment, stream immediately ──────────────
     if (debugFastPath === true) {
@@ -246,7 +316,7 @@ export async function POST(req: Request) {
         onFinish: async ({ text }) => {
           console.debug(tag, "FAST_PATH response_complete", Date.now() - tServer);
           const finalText = text.trim();
-          if (finalText) await persistAssistantReply(finalText);
+          if (finalText) await persistAssistantReply(finalText, userMessage.id);
         },
       });
       return resultFp.toTextStreamResponse();
@@ -560,7 +630,7 @@ export async function POST(req: Request) {
           return;
         }
 
-        await persistAssistantReply(finalText);
+        await persistAssistantReply(finalText, userMessage.id);
       },
     });
 

@@ -339,6 +339,19 @@ vi.mock("@/lib/profile-derivation", () => ({
   processMessageForProfile: processMessageForProfileMock,
 }));
 
+vi.mock("@/lib/explore-assault-test-provider", () => ({
+  exploreAssaultDeterministicReplyAllowed: () => false,
+  buildExploreAssaultDeterministicReply: () => "",
+}));
+
+vi.mock("@/lib/explore-grounding-orchestrator", () => ({
+  orchestrateExploreReplyGrounding: vi.fn(async () => ({
+    payload: null,
+    proposalCreated: false,
+  })),
+  persistExploreGroundingPayload: vi.fn(async () => undefined),
+}));
+
 const flushAsyncWork = async () => {
   await Promise.resolve();
   await Promise.resolve();
