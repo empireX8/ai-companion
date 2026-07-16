@@ -146,7 +146,8 @@ describe("desktop old-route / old-shell quarantine audit", () => {
     for (const pagePath of ACTIVE_V0_PAGES) {
       const source = readSource(pagePath);
       expect(source).not.toContain("router.push");
-      expect(source).not.toContain("useRouter");
+      expect(source).not.toMatch(/useRouter\s*\(/);
+      expect(source).not.toMatch(/from ["']next\/navigation["']/);
       expect(source).toContain("useWorkbench");
     }
 

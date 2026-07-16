@@ -25,6 +25,32 @@ export function buildPublicFieldworkCandidateLifecycleOrFilter(): Prisma.Fieldwo
   );
 }
 
+export type PublicFieldworkWhereInput = {
+  userId: string;
+  id?: string;
+  status?: FieldworkStatus | { in: FieldworkStatus[] };
+  linkedObjectType?: Prisma.FieldworkAssignmentWhereInput["linkedObjectType"];
+  linkedObjectId?: string;
+};
+
+export function buildPublicFieldworkWhere(
+  input: PublicFieldworkWhereInput
+): Prisma.FieldworkAssignmentWhereInput {
+  return {
+    userId: input.userId,
+    ...(input.id !== undefined ? { id: input.id } : {}),
+    visibility: PUBLIC_FIELDWORK_ASSIGNMENT_VISIBILITY,
+    ...(input.status !== undefined ? { status: input.status } : {}),
+    ...(input.linkedObjectType !== undefined
+      ? { linkedObjectType: input.linkedObjectType }
+      : {}),
+    ...(input.linkedObjectId !== undefined
+      ? { linkedObjectId: input.linkedObjectId }
+      : {}),
+    OR: buildPublicFieldworkCandidateLifecycleOrFilter(),
+  };
+}
+
 export type PublicWatchForWhereInput = {
   userId: string;
   id?: string;
@@ -39,13 +65,10 @@ export function buildPublicWatchForWhere(
       ? { in: WATCH_FOR_VISIBLE_STATUSES }
       : input.status;
 
-  return {
-    userId: input.userId,
-    ...(input.id !== undefined ? { id: input.id } : {}),
-    visibility: PUBLIC_FIELDWORK_ASSIGNMENT_VISIBILITY,
+  return buildPublicFieldworkWhere({
+    ...input,
     status: statusFilter,
-    OR: buildPublicFieldworkCandidateLifecycleOrFilter(),
-  };
+  });
 }
 
 export function isPublicWatchForCandidateLifecycle(

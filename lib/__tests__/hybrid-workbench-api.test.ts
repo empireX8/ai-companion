@@ -1268,11 +1268,11 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.getObject("inv-1")?.title).toBe(baseApi.getObject("inv-1")?.title);
   });
 
-  it("falls back to reference Investigations when thin public-list-only rows cannot pass readiness", () => {
+  it("merges thin public-list-only Investigations without fabricating rich thread fields", () => {
     const baseApi = createMockOrvekDataApi();
     const thinInvestigationsApi = buildInvestigationsProductionDataApi(READY_INVESTIGATIONS);
 
-    expect(shouldMergeInvestigationsProductionApi(thinInvestigationsApi)).toBe(false);
+    expect(shouldMergeInvestigationsProductionApi(thinInvestigationsApi)).toBe(true);
 
     const hybridApi = buildHybridWorkbenchDataApi(
       baseApi,
@@ -1285,8 +1285,9 @@ describe("hybrid workbench data api", () => {
       thinInvestigationsApi,
     );
 
-    expect(hybridApi.exploreInvestigationIds).toBeUndefined();
-    expect(hybridApi.getObject("inv-1")?.title).toBe(baseApi.getObject("inv-1")?.title);
+    expect(hybridApi.exploreInvestigationIds).toEqual(["inv-resolved-1", "inv-abandoned-1"]);
+    expect(hybridApi.getObject("inv-resolved-1")?.title).toBe(READY_INVESTIGATIONS[0]?.title);
+    expect(hybridApi.getObject("inv-resolved-1")?.hypotheses).toBeUndefined();
   });
 
   it("rejects Active Questions-owned statuses from Investigations overlay merge", () => {

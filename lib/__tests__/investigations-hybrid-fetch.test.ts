@@ -161,13 +161,26 @@ describe("bounded investigations hybrid fetch bridge", () => {
     expect(hybridApi.getObject("inv-1")?.title).toBe(baseApi.getObject("inv-1")?.title);
   });
 
-  it("falls back to reference Investigations when production data is thin or empty", () => {
+  it("keeps empty Investigations honest and merges thin live rows without reference substitution", () => {
     const baseApi = createMockOrvekDataApi();
     const emptyInvestigationsApi = buildInvestigationsProductionDataApi([]);
     const thinInvestigationsApi = buildInvestigationsProductionDataApi(READY_INVESTIGATIONS);
 
     expect(shouldMergeInvestigationsProductionApi(emptyInvestigationsApi)).toBe(false);
-    expect(shouldMergeInvestigationsProductionApi(thinInvestigationsApi)).toBe(false);
+    expect(shouldMergeInvestigationsProductionApi(thinInvestigationsApi)).toBe(true);
+
+    const emptyHybridApi = buildHybridWorkbenchDataApi(
+      baseApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      emptyInvestigationsApi,
+    );
+
+    expect(emptyHybridApi.exploreInvestigationIds).toBeUndefined();
 
     const hybridApi = buildHybridWorkbenchDataApi(
       baseApi,
@@ -180,8 +193,9 @@ describe("bounded investigations hybrid fetch bridge", () => {
       thinInvestigationsApi,
     );
 
-    expect(hybridApi.exploreInvestigationIds).toBeUndefined();
-    expect(hybridApi.getObject("inv-2")?.title).toBe(baseApi.getObject("inv-2")?.title);
+    expect(hybridApi.exploreInvestigationIds).toContain("inv-resolved-1");
+    expect(hybridApi.getObject("inv-resolved-1")?.title).toBe(READY_INVESTIGATIONS[0]?.title);
+    expect(hybridApi.getObject("inv-resolved-1")?.hypotheses).toBeUndefined();
   });
 
   it("falls back to reference Investigations while production data is loading", () => {

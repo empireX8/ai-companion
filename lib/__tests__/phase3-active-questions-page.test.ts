@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { buildPublicActiveInvestigationWhere } from "../investigation-public-visibility";
@@ -8,6 +9,8 @@ const notFoundMock = vi.fn(() => {
   throw new Error("NEXT_NOT_FOUND");
 });
 const resolvePublicLinkedObjectHrefMock = vi.fn();
+const loadProductionInvestigationDetailMock = vi.fn();
+const listAvailableEvidenceSpansForUserMock = vi.fn();
 
 const prismaMock = {
   investigation: {
@@ -25,6 +28,20 @@ vi.mock("@/components/AppShell", () => ({
   SectionLabel: ({ children }: { children: unknown }) => children,
 }));
 
+vi.mock("@/components/investigations/InvestigationCreateCard", () => ({
+  InvestigationCreateCard: () =>
+    React.createElement("div", { "data-testid": "investigation-create-card" }),
+}));
+
+vi.mock("@/components/investigations/InvestigationDetailActions", () => ({
+  InvestigationDetailActions: () =>
+    React.createElement("div", { "data-testid": "investigation-detail-actions" }),
+}));
+
+vi.mock("@/components/investigations/InvestigationDetailInspectorSync", () => ({
+  InvestigationDetailInspectorSync: () => null,
+}));
+
 vi.mock("@/lib/public-intelligence-safe-slice", async () => {
   const actual = await import("../public-intelligence-safe-slice");
   return actual;
@@ -37,6 +54,11 @@ vi.mock("@/lib/active-questions", async () => {
 
 vi.mock("@/lib/public-linked-object-continuity", () => ({
   resolvePublicLinkedObjectHref: resolvePublicLinkedObjectHrefMock,
+}));
+
+vi.mock("@/lib/investigation-production-detail", () => ({
+  loadProductionInvestigationDetail: loadProductionInvestigationDetailMock,
+  listAvailableEvidenceSpansForUser: listAvailableEvidenceSpansForUserMock,
 }));
 
 vi.mock("@/lib/public-continuity-display", async () => {
@@ -63,6 +85,8 @@ describe("Phase 3 Active Questions page", () => {
     prismaMock.investigation.findMany.mockResolvedValue([]);
     prismaMock.investigation.findFirst.mockResolvedValue(null);
     resolvePublicLinkedObjectHrefMock.mockResolvedValue(null);
+    loadProductionInvestigationDetailMock.mockResolvedValue(null);
+    listAvailableEvidenceSpansForUserMock.mockResolvedValue([]);
   });
 
   it("filters to authenticated user-owned investigation records and shows honest empty state", async () => {
@@ -71,6 +95,7 @@ describe("Phase 3 Active Questions page", () => {
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain("No open questions yet.");
+    expect(html).toContain("investigation-create-card");
     expect(prismaMock.investigation.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: buildPublicActiveInvestigationWhere({ userId: "user-1" }),
@@ -106,80 +131,86 @@ describe("Phase 3 Active Questions page", () => {
 
     expect(html).toContain("/active-questions/inv-1");
     expect(html).toContain("Observe shutdown patterns");
+    expect(html).toContain("Investigation ID inv-1");
     expect(html).not.toContain("inv-from-title should never become an ID");
   });
 
-  it("hides detail rows outside first-slice statuses through the same not-found path", async () => {
+  it("uses the durable detail loader and falls through to notFound only when no real record is returned", async () => {
     const page = await import(
       "../../app/(root)/(routes)/active-questions/[id]/page"
     );
+
+    loadProductionInvestigationDetailMock.mockResolvedValueOnce(null);
 
     await expect(
       page.default({ params: Promise.resolve({ id: "inv-resolved" }) })
     ).rejects.toThrow("NEXT_NOT_FOUND");
 
-    expect(prismaMock.investigation.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: buildPublicActiveInvestigationWhere({
-          userId: "user-1",
-          id: "inv-resolved",
-        }),
-      })
-    );
-  });
-
-  it("renders resolved conclusion link only when verified safe", async () => {
-    resolvePublicLinkedObjectHrefMock.mockResolvedValueOnce("/your-map/umc-1");
-    prismaMock.investigation.findFirst.mockResolvedValueOnce({
-      id: "inv-1",
-      title: "Observe shutdown patterns",
-      organizingQuestion: "What precedes shutdown mode?",
-      status: "resolving",
-      seedType: "pattern",
-      priority: 2,
-      createdAt: new Date("2026-05-17T07:00:00.000Z"),
-      updatedAt: new Date("2026-05-17T09:00:00.000Z"),
-      resolutionSummary: "Likely routes through recovery architecture.",
-      resolvedAt: new Date("2026-05-18T09:00:00.000Z"),
-      resolvedIntoUserMapConclusionId: "umc-1",
-      reopenReason: null,
-      competingTheories: [],
-      evidenceNeeded: [],
-    });
-
-    const page = await import("../../app/(root)/(routes)/active-questions/[id]/page");
-    const element = await page.default({
-      params: Promise.resolve({ id: "inv-1" }),
-    });
-    const html = renderToStaticMarkup(element);
-
-    expect(html).toContain("/your-map/umc-1");
-    expect(html).toContain("Related map item");
-    expect(html).not.toMatch(/>umc-1</);
-    expect(resolvePublicLinkedObjectHrefMock).toHaveBeenCalledWith({
+    expect(loadProductionInvestigationDetailMock).toHaveBeenCalledWith({
       userId: "user-1",
-      linkedObjectType: "usermap_conclusion",
-      linkedObjectId: "umc-1",
+      id: "inv-resolved",
+    });
+    expect(listAvailableEvidenceSpansForUserMock).toHaveBeenCalledWith({
+      userId: "user-1",
+      investigationId: "inv-resolved",
     });
   });
 
-  it("falls back when resolved conclusion is missing, hidden, or unowned", async () => {
-    prismaMock.investigation.findFirst.mockResolvedValueOnce({
+  it("renders durable investigation detail, linked evidence, and fieldwork context", async () => {
+    loadProductionInvestigationDetailMock.mockResolvedValueOnce({
       id: "inv-1",
       title: "Observe shutdown patterns",
+      detailHref: "/active-questions/inv-1",
       organizingQuestion: "What precedes shutdown mode?",
       status: "resolving",
+      statusLabel: "Resolving",
       seedType: "pattern",
+      seedTypeLabel: "Pattern",
       priority: 2,
-      createdAt: new Date("2026-05-17T07:00:00.000Z"),
-      updatedAt: new Date("2026-05-17T09:00:00.000Z"),
+      createdAt: "2026-05-17T07:00:00.000Z",
+      updatedAt: "2026-05-17T09:00:00.000Z",
       resolutionSummary: "Likely routes through recovery architecture.",
-      resolvedAt: new Date("2026-05-18T09:00:00.000Z"),
-      resolvedIntoUserMapConclusionId: "umc-hidden",
+      resolvedAt: "2026-05-18T09:00:00.000Z",
+      resolvedConclusionId: "umc-1",
+      resolvedConclusionHref: "/your-map/umc-1",
       reopenReason: null,
-      competingTheories: [],
-      evidenceNeeded: [],
+      competingTheories: ["Theory one"],
+      evidenceNeeded: ["Need one more receipt"],
+      linkedEvidence: [
+        {
+          linkId: "link-1",
+          evidenceId: "es-1",
+          messageId: "msg-1",
+          excerpt: "Direct evidence excerpt",
+          sessionId: "sess-1",
+          sessionLabel: "Evidence session",
+          origin: "APP",
+          role: "supports",
+          createdAt: "2026-05-17T09:30:00.000Z",
+          evidenceHref: "/evidence/es-1",
+        },
+      ],
+      linkedFieldwork: [
+        {
+          id: "fw-1",
+          prompt: "Watch the shutdown pattern",
+          reason: "Check whether the stop point arrives first",
+          status: "active",
+          statusLabel: "Active",
+          linkedObjectType: "investigation",
+          linkedObjectId: "inv-1",
+          observationNote: "Observed one clean stop point.",
+          observationOutcome: "Supports the current investigation.",
+          completedAt: null,
+          createdAt: "2026-05-17T09:15:00.000Z",
+          updatedAt: "2026-05-17T09:45:00.000Z",
+          detailHref: "/watch-for/fw-1",
+        },
+      ],
+      isClosed: false,
+      closureStateLabel: "Open",
     });
+    listAvailableEvidenceSpansForUserMock.mockResolvedValueOnce([]);
 
     const page = await import("../../app/(root)/(routes)/active-questions/[id]/page");
     const element = await page.default({
@@ -187,13 +218,50 @@ describe("Phase 3 Active Questions page", () => {
     });
     const html = renderToStaticMarkup(element);
 
+    expect(html).toContain("Investigation ID inv-1");
+    expect(html).toContain("Lifecycle resolving");
+    expect(html).toContain("Evidence ID es-1");
+    expect(html).toContain("Fieldwork ID fw-1");
+    expect(html).toContain("/your-map/umc-1");
+    expect(html).toContain("investigation-detail-actions");
+  });
+
+  it("keeps the same durable detail URL reviewable after closure", async () => {
+    loadProductionInvestigationDetailMock.mockResolvedValueOnce({
+      id: "inv-1",
+      title: "Observe shutdown patterns",
+      detailHref: "/active-questions/inv-1",
+      organizingQuestion: "What precedes shutdown mode?",
+      status: "resolved",
+      statusLabel: "Resolved",
+      seedType: "pattern",
+      seedTypeLabel: "Pattern",
+      priority: 2,
+      createdAt: "2026-05-17T07:00:00.000Z",
+      updatedAt: "2026-05-17T09:00:00.000Z",
+      resolutionSummary: "Likely routes through recovery architecture.",
+      resolvedAt: "2026-05-18T09:00:00.000Z",
+      resolvedConclusionId: "umc-hidden",
+      resolvedConclusionHref: null,
+      reopenReason: null,
+      competingTheories: [],
+      evidenceNeeded: [],
+      linkedEvidence: [],
+      linkedFieldwork: [],
+      isClosed: true,
+      closureStateLabel: "Closed as resolved",
+    });
+    listAvailableEvidenceSpansForUserMock.mockResolvedValueOnce([]);
+
+    const page = await import("../../app/(root)/(routes)/active-questions/[id]/page");
+    const element = await page.default({
+      params: Promise.resolve({ id: "inv-1" }),
+    });
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Closed as resolved");
+    expect(html).toContain("This investigation remains reviewable");
     expect(html).toContain("Source unavailable.");
     expect(html).not.toContain("/your-map/umc-hidden");
-    expect(html).not.toMatch(/>umc-hidden</);
-    expect(html).not.toContain("/api/internal/user-map/review-candidates");
-    expect(html).not.toContain("<form");
-    expect(html).not.toContain("Promote");
-    expect(html).not.toContain("Edit");
-    expect(html).not.toContain("Delete");
   });
 });

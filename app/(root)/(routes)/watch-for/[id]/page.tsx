@@ -6,6 +6,7 @@ import { UnderstandingLinkTargetType } from "@prisma/client";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
 import { WatchForInspectorAction } from "@/components/watch-for/WatchForInspectorAction";
+import { WatchForCheckInCard } from "@/components/watch-for/WatchForCheckInCard";
 import { PublicLinkedObjectContinuity } from "../../../../../lib/public-continuity-display";
 import { resolvePublicLinkedObjectHref } from "@/lib/public-linked-object-continuity";
 import { listPublicEvidenceContinuityForTarget } from "@/lib/public-evidence-continuity";
@@ -122,6 +123,9 @@ export default async function WatchForDetailPage({
             {formatWatchForListDateTime(item.updatedAt.toISOString())}
             {typeof item.priority === "number" ? ` · Priority ${item.priority}` : ""}
           </div>
+          <div className="label-meta mt-1 text-cyan/70" data-testid="watch-for-id">
+            Fieldwork ID {item.id}
+          </div>
         </section>
 
         <section className="mb-5">
@@ -138,7 +142,12 @@ export default async function WatchForDetailPage({
               linkClassName="text-cyan hover:underline"
               containerClassName="text-[13px] text-muted-foreground"
             />
-            <WatchForInspectorAction linkedObjectHref={linkedObjectHref} title={item.prompt} />
+            <WatchForInspectorAction
+              linkedObjectType={item.linkedObjectType}
+              linkedObjectId={linkedObjectId}
+              linkedObjectHref={linkedObjectHref}
+              title={item.prompt}
+            />
           </div>
         </section>
 
@@ -179,13 +188,22 @@ export default async function WatchForDetailPage({
           <div className="ml-material space-y-3 rounded-2xl p-5 text-[13px] text-muted-foreground">
             <div>
               <div className="label-meta mb-1">Observation note</div>
-              <div>{item.observationNote ?? "No observation note recorded yet."}</div>
+              <div data-testid="watch-for-observation-note">
+                {item.observationNote ?? "No observation note recorded yet."}
+              </div>
             </div>
             <div>
               <div className="label-meta mb-1">Observation outcome</div>
-              <div>{item.observationOutcome ?? "No observation outcome recorded yet."}</div>
+              <div data-testid="watch-for-observation-outcome">
+                {item.observationOutcome ?? "No observation outcome recorded yet."}
+              </div>
             </div>
           </div>
+          <WatchForCheckInCard
+            fieldworkId={item.id}
+            observationNote={item.observationNote}
+            observationOutcome={item.observationOutcome}
+          />
         </section>
 
         <section>

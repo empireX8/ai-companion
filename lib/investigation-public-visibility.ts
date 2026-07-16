@@ -33,6 +33,27 @@ export function buildPublicInvestigationCandidateLifecycleOrFilter(): Prisma.Inv
   );
 }
 
+export type PublicInvestigationWhereInput = {
+  userId: string;
+  id?: string;
+  status?:
+    | InvestigationStatus
+    | { in: InvestigationStatus[] }
+    | { notIn: InvestigationStatus[] };
+};
+
+export function buildPublicInvestigationWhere(
+  input: PublicInvestigationWhereInput
+): Prisma.InvestigationWhereInput {
+  return {
+    userId: input.userId,
+    ...(input.id ? { id: input.id } : {}),
+    visibility: PUBLIC_INVESTIGATION_VISIBILITY,
+    ...(input.status !== undefined ? { status: input.status } : {}),
+    OR: buildPublicInvestigationCandidateLifecycleOrFilter(),
+  };
+}
+
 export type PublicActiveInvestigationWhereInput = {
   userId: string;
   id?: string;
@@ -47,13 +68,10 @@ export function buildPublicActiveInvestigationWhere(
       ? { in: ACTIVE_QUESTION_VISIBLE_STATUSES }
       : input.status;
 
-  return {
-    userId: input.userId,
-    ...(input.id ? { id: input.id } : {}),
-    visibility: PUBLIC_INVESTIGATION_VISIBILITY,
+  return buildPublicInvestigationWhere({
+    ...input,
     status: statusFilter,
-    OR: buildPublicInvestigationCandidateLifecycleOrFilter(),
-  };
+  });
 }
 
 export type PublicExploreInvestigationWhereInput = {
@@ -69,15 +87,13 @@ export type PublicExploreInvestigationWhereInput = {
 export function buildPublicExploreInvestigationWhere(
   input: PublicExploreInvestigationWhereInput
 ): Prisma.InvestigationWhereInput {
-  return {
+  return buildPublicInvestigationWhere({
     userId: input.userId,
-    ...(input.id ? { id: input.id } : {}),
-    visibility: PUBLIC_INVESTIGATION_VISIBILITY,
+    id: input.id,
     status: {
       notIn: [...ACTIVE_QUESTION_VISIBLE_STATUSES],
     },
-    OR: buildPublicInvestigationCandidateLifecycleOrFilter(),
-  };
+  });
 }
 
 export function isPublicActiveInvestigationCandidateLifecycle(

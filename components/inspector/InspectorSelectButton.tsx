@@ -3,7 +3,10 @@
 import { useEffect, type ReactNode } from "react";
 
 import { useInspector } from "@/components/inspector/InspectorContext";
-import type { InspectorSourceSurface } from "@/lib/inspector-selection";
+import type {
+  InspectorSelectionObjectType,
+  InspectorSourceSurface,
+} from "@/lib/inspector-selection";
 import { parseSelectableObjectFromHref } from "@/lib/inspector-selection";
 
 export function MapDetailInspectorSync({
@@ -37,13 +40,7 @@ export function InspectorSelectButton({
   className,
   children,
 }: {
-  objectType:
-    | "usermap_conclusion"
-    | "model_update"
-    | "pattern_claim"
-    | "contradiction_node"
-    | "context_profile"
-    | "model_goal";
+  objectType: InspectorSelectionObjectType;
   objectId: string;
   title?: string | null;
   sourceSurface: InspectorSourceSurface;

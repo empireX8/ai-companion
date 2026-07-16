@@ -7,6 +7,8 @@ import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
 import { ORVEK_DEFERRED_ACTION_CLASS, isProductionDisplay } from "@/lib/orvek-v0/display-contract"
 import { DurableFieldworkCheckInControls } from "@/components/orvek-v0/durable-user-action-controls"
+import { InvestigationCreateCard } from "@/components/investigations/InvestigationCreateCard"
+import { ProductionInvestigationWorkbenchDetail } from "@/components/investigations/ProductionInvestigationWorkbenchDetail"
 import { ExploreConversationReviewStrip } from "@/components/explore/ExploreConversationReviewStrip"
 import { ExploreModelMovementStrip } from "@/components/explore/ExploreModelMovementStrip"
 import { ExploreMovementProposalCard } from "@/components/explore/ExploreMovementProposalCard"
@@ -63,6 +65,7 @@ export function ExplorePage() {
               <button
                 key={t.id}
                 type="button"
+                data-testid={`explore-tab-${t.id}`}
                 onClick={() => setTab(t.id)}
                 aria-current={tab === t.id ? "page" : undefined}
                 className={cn(
@@ -621,20 +624,31 @@ function Bubble({
 function Questions() {
   const { select, setInspectorTab } = useWorkbench()
   const data = useOrvekData()
-  const { getObject, exploreQuestionIds, exploreQuestionSelectedId, emptyCopyBySlot } = data
+  const { getObject, exploreQuestionIds, exploreQuestionSelectedId, emptyCopyBySlot, referenceSurface } = data
   const questionIds = exploreQuestionIds ?? []
   const hasLiveQuestions = questionIds.length > 0
+  const allowReferenceSample = referenceSurface === true
   const referenceQuestionIds = ["aq-1", "aq-2", "aq-3", "aq-4"] as const
-  const ids = hasLiveQuestions ? questionIds : [...referenceQuestionIds]
+  const ids = hasLiveQuestions ? questionIds : allowReferenceSample ? [...referenceQuestionIds] : []
 
   const [activeId, setActiveId] = useState(
     hasLiveQuestions
       ? (exploreQuestionSelectedId ?? questionIds[0] ?? referenceQuestionIds[1])
-      : (referenceQuestionIds[0] ?? referenceQuestionIds[1]),
+      : allowReferenceSample
+        ? (referenceQuestionIds[0] ?? referenceQuestionIds[1])
+        : null,
   )
+  const [createdRow, setCreatedRow] = useState<{
+    id: string
+    title: string
+    organizingQuestion: string
+  } | null>(null)
 
   useEffect(() => {
     if (!hasLiveQuestions) {
+      if (!allowReferenceSample) {
+        setActiveId(null)
+      }
       return
     }
 
@@ -642,168 +656,231 @@ function Questions() {
     if (nextId) {
       setActiveId(nextId)
     }
-  }, [exploreQuestionSelectedId, questionIds, hasLiveQuestions])
+  }, [allowReferenceSample, exploreQuestionSelectedId, questionIds, hasLiveQuestions])
 
-  const q = getObject(activeId)
-  const showSkeleton = hasLiveQuestions && ids.length === 0
+  useEffect(() => {
+    if (!createdRow) {
+      return
+    }
+
+    if (questionIds.includes(createdRow.id)) {
+      setCreatedRow(null)
+    }
+  }, [createdRow, questionIds])
+
+  const q = activeId ? getObject(activeId) : undefined
+  const showEmptyList = ids.length === 0
+  const showProductionDetail = !allowReferenceSample && Boolean(activeId)
 
   function resolveInspectorSelection(id: string) {
     return hasLiveQuestions ? resolveActiveQuestionsOpenSelectionId(id, getObject) : id
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[290px_1fr]">
-      {/* inquiry list */}
-      <div>
-        <SectionLabel>Open questions</SectionLabel>
-        <div className="o-material mt-2 divide-y divide-border overflow-hidden rounded-[10px]">
-          {showSkeleton ? (
-            <p className="px-3 py-2.5 text-[13px] text-muted-foreground">
-              {emptyCopyBySlot?.exploreQuestionsEmptyList ?? "No active questions are open yet."}
-            </p>
-          ) : (
-          ids.map((id) => {
-            const o = getObject(id)
-            if (!o) return null
-            const active = activeId === id
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => {
-                  setActiveId(id)
-                  select(resolveInspectorSelection(id))
-                }}
-                className={cn(
-                  "o-calm flex w-full items-start gap-2.5 px-3 py-2.5 text-left",
-                  active ? "bg-accent/50" : "hover:bg-accent/30",
-                )}
-              >
-                <span
-                  className={cn(
-                    "mt-0.5 size-1.5 shrink-0 rounded-full",
-                    active ? "bg-action" : "bg-muted-foreground/40",
-                  )}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-medium leading-snug text-foreground text-pretty">
-                    {o.title}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                    {hasLiveQuestions
-                      ? (o.tags?.[1] ?? o.status ?? "Open")
-                      : `${o.evidenceCount} receipts · ${o.status}`}
-                  </span>
-                </span>
-              </button>
-            )
-          })
-          )}
-        </div>
-      </div>
+    <div className="space-y-5">
+      <InvestigationCreateCard
+        onCreated={(created) => {
+          setActiveId(created.id)
+          setCreatedRow(created)
+        }}
+        useRouterRefresh={false}
+      />
 
-      {/* selected question detail */}
-      <div className="min-w-0">
-        {q && !showSkeleton ? (
-          <>
-        <Chip tone="action">Active question · {q.status}</Chip>
-        <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
-          {q.title}
-        </h2>
-        <InvBlock label="Why this is open">{q.whyItMatters}</InvBlock>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="o-material rounded-[10px] p-3.5">
-            <SectionLabel className="text-primary">Would resolve toward yes if</SectionLabel>
-            <ul className="mt-2 space-y-1.5">
-              {(q.supporting ?? (hasLiveQuestions ? [] : ["A narrow public test reduces felt uncertainty."])).map((s) => (
-                <li key={s} className="flex gap-2 text-[13px] text-foreground">
-                  <span className="mt-0.5 text-primary">+</span>
-                  {s}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="o-material rounded-[10px] p-3.5">
-            <SectionLabel className="text-destructive/80">Would resolve toward no if</SectionLabel>
-            <ul className="mt-2 space-y-1.5">
-              {(q.conflicting ?? (hasLiveQuestions ? [] : ["Visual output creates false confidence."])).map((c) => (
-                <li key={c} className="flex gap-2 text-[13px] text-muted-foreground">
-                  <span className="mt-0.5 text-destructive">−</span>
-                  {c}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-        {q.relatedIds && q.relatedIds.length > 0 && (
-          <InvBlock label="What this question touches">
-            <div className="flex flex-wrap gap-1.5">
-              {q.relatedIds.map((id) => {
+      <div className="grid gap-5 lg:grid-cols-[290px_1fr]">
+        <div>
+          <SectionLabel>Open questions</SectionLabel>
+          <div className="o-material mt-2 divide-y divide-border overflow-hidden rounded-[10px]">
+            {showEmptyList ? (
+              <p className="px-3 py-2.5 text-[13px] text-muted-foreground">
+                {emptyCopyBySlot?.exploreQuestionsEmptyList ?? "No active questions are open yet."}
+              </p>
+            ) : (
+              [
+                ...(createdRow && !questionIds.includes(createdRow.id)
+                  ? [createdRow.id]
+                  : []),
+                ...ids,
+              ].map((id) => {
+                if (createdRow?.id === id && !questionIds.includes(id)) {
+                  const active = activeId === id
+
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      data-testid="active-question-row"
+                      onClick={() => {
+                        setActiveId(id)
+                        select(id)
+                      }}
+                      className={cn(
+                        "o-calm flex w-full items-start gap-2.5 px-3 py-2.5 text-left",
+                        active ? "bg-accent/50" : "hover:bg-accent/30",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "mt-0.5 size-1.5 shrink-0 rounded-full",
+                          active ? "bg-action" : "bg-muted-foreground/40",
+                        )}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13px] font-medium leading-snug text-foreground text-pretty">
+                          {createdRow.title}
+                        </span>
+                        <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                          Open
+                        </span>
+                        <span className="mt-1 block text-[11px] text-cyan/70">
+                          Investigation ID {id}
+                        </span>
+                      </span>
+                    </button>
+                  )
+                }
+
                 const o = getObject(id)
                 if (!o) return null
+                const active = activeId === id
                 return (
                   <button
                     key={id}
                     type="button"
-                    onClick={() => select(resolveInspectorSelection(id))}
+                    data-testid="active-question-row"
+                    onClick={() => {
+                      setActiveId(id)
+                      select(resolveInspectorSelection(id))
+                    }}
+                    className={cn(
+                      "o-calm flex w-full items-start gap-2.5 px-3 py-2.5 text-left",
+                      active ? "bg-accent/50" : "hover:bg-accent/30",
+                    )}
                   >
-                    <Chip className="cursor-pointer hover:opacity-80">{o.title}</Chip>
+                    <span
+                      className={cn(
+                        "mt-0.5 size-1.5 shrink-0 rounded-full",
+                        active ? "bg-action" : "bg-muted-foreground/40",
+                      )}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-medium leading-snug text-foreground text-pretty">
+                        {o.title}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                        {hasLiveQuestions
+                          ? (o.tags?.[1] ?? o.status ?? "Open")
+                          : `${o.evidenceCount} receipts · ${o.status}`}
+                      </span>
+                      {hasLiveQuestions ? (
+                        <span className="mt-1 block text-[11px] text-cyan/70">
+                          Investigation ID {id}
+                        </span>
+                      ) : null}
+                    </span>
                   </button>
                 )
-              })}
-            </div>
-          </InvBlock>
-        )}
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              select(resolveInspectorSelection(activeId))
-              setInspectorTab("evidence")
-            }}
-            className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98]"
-          >
-            See evidence
-            <ArrowRight className="size-3.5" aria-hidden />
-          </button>
-          {["Explore this", "Propose fieldwork", "Mark resolved"].map((a) => (
-            <button
-              key={a}
-              type="button"
-              disabled={hasLiveQuestions}
-              className={cn(
-                "o-calm rounded-[8px] bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60",
-                hasLiveQuestions && ORVEK_DEFERRED_ACTION_CLASS,
-              )}
-            >
-              {a}
-            </button>
-          ))}
+              })
+            )}
+          </div>
         </div>
-          </>
-        ) : (
-          <>
-            <Chip tone="action">Active question</Chip>
-            <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
-              {emptyCopyBySlot?.exploreQuestionsEmptyDetail ??
-                "Select a question when one is available."}
-            </h2>
-            <InvBlock label="Why this is open">
-              {emptyCopyBySlot?.exploreQuestionsEmptyDetail ??
-                "Question rationale appears when an active question is selected."}
-            </InvBlock>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="o-material rounded-[10px] p-3.5">
-                <SectionLabel className="text-primary">Would resolve toward yes if</SectionLabel>
-                <p className="mt-2 text-[13px] text-muted-foreground">—</p>
+
+        <div className="min-w-0">
+          {showProductionDetail && activeId ? (
+            <ProductionInvestigationWorkbenchDetail
+              investigationId={activeId}
+              fallbackTitle={q?.title}
+            />
+          ) : q && !showEmptyList ? (
+            <>
+              <Chip tone="action">Active question · {q.status}</Chip>
+              <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
+                {q.title}
+              </h2>
+              <InvBlock label="Why this is open">{q.whyItMatters}</InvBlock>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="o-material rounded-[10px] p-3.5">
+                  <SectionLabel className="text-primary">Would resolve toward yes if</SectionLabel>
+                  <ul className="mt-2 space-y-1.5">
+                    {(q.supporting ?? ["A narrow public test reduces felt uncertainty."]).map((s) => (
+                      <li key={s} className="flex gap-2 text-[13px] text-foreground">
+                        <span className="mt-0.5 text-primary">+</span>
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="o-material rounded-[10px] p-3.5">
+                  <SectionLabel className="text-destructive/80">Would resolve toward no if</SectionLabel>
+                  <ul className="mt-2 space-y-1.5">
+                    {(q.conflicting ?? ["Visual output creates false confidence."]).map((c) => (
+                      <li key={c} className="flex gap-2 text-[13px] text-muted-foreground">
+                        <span className="mt-0.5 text-destructive">−</span>
+                        {c}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <div className="o-material rounded-[10px] p-3.5">
-                <SectionLabel className="text-destructive/80">Would resolve toward no if</SectionLabel>
-                <p className="mt-2 text-[13px] text-muted-foreground">—</p>
+              {q.relatedIds && q.relatedIds.length > 0 ? (
+                <InvBlock label="What this question touches">
+                  <div className="flex flex-wrap gap-1.5">
+                    {q.relatedIds.map((id) => {
+                      const o = getObject(id)
+                      if (!o) return null
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => select(resolveInspectorSelection(id))}
+                        >
+                          <Chip className="cursor-pointer hover:opacity-80">{o.title}</Chip>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </InvBlock>
+              ) : null}
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!activeId) {
+                      return
+                    }
+                    select(resolveInspectorSelection(activeId))
+                    setInspectorTab("evidence")
+                  }}
+                  className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98]"
+                >
+                  See evidence
+                  <ArrowRight className="size-3.5" aria-hidden />
+                </button>
               </div>
-            </div>
-          </>
-        )}
+            </>
+          ) : (
+            <>
+              <Chip tone="action">Active question</Chip>
+              <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
+                {emptyCopyBySlot?.exploreQuestionsEmptyDetail ??
+                  "Select a question when one is available."}
+              </h2>
+              <InvBlock label="Why this is open">
+                {emptyCopyBySlot?.exploreQuestionsEmptyDetail ??
+                  "Question rationale appears when an active question is selected."}
+              </InvBlock>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="o-material rounded-[10px] p-3.5">
+                  <SectionLabel className="text-primary">Would resolve toward yes if</SectionLabel>
+                  <p className="mt-2 text-[13px] text-muted-foreground">—</p>
+                </div>
+                <div className="o-material rounded-[10px] p-3.5">
+                  <SectionLabel className="text-destructive/80">Would resolve toward no if</SectionLabel>
+                  <p className="mt-2 text-[13px] text-muted-foreground">—</p>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -812,20 +889,36 @@ function Questions() {
 function Investigations() {
   const { select } = useWorkbench()
   const data = useOrvekData()
-  const { getObject, exploreInvestigationIds, exploreInvestigationSelectedId, emptyCopyBySlot } = data
+  const {
+    getObject,
+    exploreInvestigationIds,
+    exploreInvestigationSelectedId,
+    emptyCopyBySlot,
+    referenceSurface,
+  } = data
   const investigationIds = exploreInvestigationIds ?? []
   const hasLiveInvestigations = investigationIds.length > 0
+  const allowReferenceSample = referenceSurface === true
   const referenceInvestigationIds = ["inv-1", "inv-2", "inv-3"] as const
-  const ids = hasLiveInvestigations ? investigationIds : [...referenceInvestigationIds]
+  const ids = hasLiveInvestigations
+    ? investigationIds
+    : allowReferenceSample
+      ? [...referenceInvestigationIds]
+      : []
 
   const [activeId, setActiveId] = useState(
     hasLiveInvestigations
       ? (exploreInvestigationSelectedId ?? investigationIds[0] ?? referenceInvestigationIds[1])
-      : (referenceInvestigationIds[0] ?? referenceInvestigationIds[1]),
+      : allowReferenceSample
+        ? (referenceInvestigationIds[0] ?? referenceInvestigationIds[1])
+        : null,
   )
 
   useEffect(() => {
     if (!hasLiveInvestigations) {
+      if (!allowReferenceSample) {
+        setActiveId(null)
+      }
       return
     }
 
@@ -833,10 +926,11 @@ function Investigations() {
     if (nextId) {
       setActiveId(nextId)
     }
-  }, [exploreInvestigationSelectedId, investigationIds, hasLiveInvestigations])
+  }, [allowReferenceSample, exploreInvestigationSelectedId, investigationIds, hasLiveInvestigations])
 
-  const inv = getObject(activeId)
-  const showSkeleton = hasLiveInvestigations && ids.length === 0
+  const inv = activeId ? getObject(activeId) : undefined
+  const showEmptyList = ids.length === 0
+  const showProductionDetail = !allowReferenceSample && Boolean(activeId)
 
   function resolveInspectorSelection(id: string) {
     return hasLiveInvestigations ? resolveInvestigationsOpenSelectionId(id, getObject) : id
@@ -847,7 +941,7 @@ function Investigations() {
       <div>
         <SectionLabel>Threads</SectionLabel>
         <div className="mt-2 space-y-1.5">
-          {showSkeleton ? (
+          {showEmptyList ? (
             <div className="o-material rounded-[10px] px-2.5 py-2 text-[13px] text-muted-foreground">
               {emptyCopyBySlot?.exploreInvestigationsEmptyList ??
                 "No investigations are active yet."}
@@ -860,6 +954,7 @@ function Investigations() {
               <button
                 key={id}
                 type="button"
+                data-testid="investigation-row"
                 onClick={() => {
                   setActiveId(id)
                   select(resolveInspectorSelection(id))
@@ -877,6 +972,11 @@ function Investigations() {
                     ? (o.tags?.[1] ?? o.status ?? "Open")
                     : `${o.evidenceCount} linked · ${o.status}`}
                 </span>
+                {hasLiveInvestigations ? (
+                  <span className="mt-1 block text-[11px] text-cyan/70">
+                    Investigation ID {id}
+                  </span>
+                ) : null}
               </button>
             )
           })
@@ -885,7 +985,13 @@ function Investigations() {
       </div>
 
       <div className="min-w-0">
-        {inv && !showSkeleton ? (
+        {showProductionDetail && activeId ? (
+          <ProductionInvestigationWorkbenchDetail
+            investigationId={activeId}
+            fallbackTitle={inv?.title}
+            showActions={false}
+          />
+        ) : inv && !showEmptyList ? (
           <>
         <Chip tone="evidence">Investigation · {inv.status}</Chip>
         <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
@@ -1084,6 +1190,7 @@ function FieldworkBridge({ onSelect }: { onSelect: (id: string) => void }) {
                 <button
                   key={id}
                   type="button"
+                  data-testid="fieldwork-row"
                   onClick={() => {
                     setActiveId(id)
                     onSelect(resolveInspectorSelection(id))
@@ -1108,6 +1215,9 @@ function FieldworkBridge({ onSelect }: { onSelect: (id: string) => void }) {
                         {row.summary}
                       </span>
                     ) : null}
+                    <span className="mt-1 block text-[11px] text-cyan/70">
+                      Fieldwork ID {id}
+                    </span>
                   </span>
                 </button>
               )
@@ -1119,6 +1229,11 @@ function FieldworkBridge({ onSelect }: { onSelect: (id: string) => void }) {
       <Chip tone="action">
         Fieldwork Bridge{statusLabel ? ` · ${statusLabel}` : ""}
       </Chip>
+      {showLiveDetail ? (
+        <p className="label-meta mt-2 text-cyan/70" data-testid="watch-for-id">
+          Fieldwork ID {activeId}
+        </p>
+      ) : null}
       <h2 className="mt-2 text-base font-semibold text-foreground">{title}</h2>
       <dl className="o-material mt-4 divide-y divide-border overflow-hidden rounded-[10px]">
         {fields.map((f) => (

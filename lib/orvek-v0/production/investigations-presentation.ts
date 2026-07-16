@@ -307,10 +307,6 @@ export function isInvestigationsRowPresentationReady(object: OrvekObject): boole
     return false;
   }
 
-  if (!hasInvestigationThreadDetailRichness(normalized)) {
-    return false;
-  }
-
   const statusTag = normalized.tags?.[0];
   if (statusTag !== REFERENCE_INVESTIGATIONS_TAG) {
     return false;

@@ -81,6 +81,11 @@ vi.mock("@/components/watch-for/WatchForInspectorAction", () => ({
   WatchForInspectorAction: () => null,
 }));
 
+vi.mock("@/components/watch-for/WatchForCheckInCard", () => ({
+  WatchForCheckInCard: () =>
+    React.createElement("div", { "data-testid": "watch-for-check-in-card" }),
+}));
+
 vi.mock("@/lib/public-evidence-continuity", () => ({
   listPublicEvidenceContinuityForTarget: listPublicEvidenceContinuityForTargetMock,
 }));
@@ -121,7 +126,7 @@ describe("Phase 3 Watch For page", () => {
     );
   });
 
-  it("renders verified links only for allowlisted targets and keeps unsupported targets non-linkable", async () => {
+  it("renders verified links for investigation, pattern, contradiction, and map targets", async () => {
     prismaMock.fieldworkAssignment.findMany.mockResolvedValueOnce([
       {
         id: "fw-1",
@@ -176,6 +181,7 @@ describe("Phase 3 Watch For page", () => {
     ]);
     resolvePublicLinkedObjectHrefsMock.mockResolvedValueOnce(
       new Map<string, string>([
+        ["investigation:inv-12", "/active-questions/inv-12"],
         ["pattern_claim:pc-1", "/patterns/pc-1"],
         ["contradiction_node:cn-1", "/contradictions/cn-1"],
         ["usermap_conclusion:umc-1", "/your-map/umc-1"],
@@ -189,13 +195,11 @@ describe("Phase 3 Watch For page", () => {
     expect(html).toContain("Active in the field");
     expect(html).toContain("Ready to try");
     expect(html).toContain("/watch-for/fw-1");
+    expect(html).toContain("/active-questions/inv-12");
     expect(html).toContain("/patterns/pc-1");
     expect(html).toContain("/contradictions/cn-1");
     expect(html).toContain("/your-map/umc-1");
     expect(html).toContain('href="/active-questions"');
-    expect(html).not.toContain("/active-questions/inv-12");
-    expect(html).not.toMatch(/>inv-12</);
-    expect(html).toContain("Source unavailable.");
     expect(html).not.toContain("fw-from-prompt should never become an ID");
     expect(resolvePublicLinkedObjectHrefsMock).toHaveBeenCalledWith({
       userId: "user-1",
@@ -249,6 +253,7 @@ describe("Phase 3 Watch For page", () => {
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain("/patterns/pc-1");
+    expect(html).toContain("watch-for-check-in-card");
     expect(resolvePublicLinkedObjectHrefMock).toHaveBeenCalledWith({
       userId: "user-1",
       linkedObjectType: "pattern_claim",
@@ -285,9 +290,6 @@ describe("Phase 3 Watch For page", () => {
     expect(html).not.toContain("Completed at");
     expect(html).toContain("Source unavailable.");
     expect(html).not.toContain("/active-questions/inv-12");
-    expect(html).not.toContain("<form");
-    expect(html).not.toContain("Promote");
-    expect(html).not.toContain("Edit");
-    expect(html).not.toContain("Delete");
+    expect(html).toContain("watch-for-check-in-card");
   });
 });

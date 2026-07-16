@@ -1,0 +1,77 @@
+{
+  "createAndReload": {
+    "investigationId": "cmrmqfgtf000uqlcyy5ebe8fe",
+    "title": "dev-investigations-assault durable investigation create-and-reload 1784159371680",
+    "organizingQuestion": "dev-investigations-assault organizing question create-and-reload 1784159371680"
+  },
+  "linkage": {
+    "investigationId": "cmrmqgpuz000vqlcyyld7fl7r",
+    "title": "dev-investigations-assault durable investigation linkage 1784159432076",
+    "organizingQuestion": "dev-investigations-assault organizing question linkage 1784159432076",
+    "evidenceId": "dev-investigations-assault-evidence-primary",
+    "evidenceLinkId": "cmrmqgunh000wqlcyfcg7hynf",
+    "watchForId": "cmrmqhemr000xqlcybzz0kdh7",
+    "watchForPrompt": "dev-investigations-assault watch-for linkage 1784159470713",
+    "watchForReason": "Reason for linkage: verify whether naming the stop point changes the escalation.",
+    "checkInNote": "Investigations assault check-in: the stop point only held once I named it before the next ask.",
+    "checkInOutcome": null,
+    "inspectorId": "Investigation ID cmrmqgpuz000vqlcyyld7fl7r"
+  },
+  "closure": {
+    "investigationId": "cmrmqj2ny000yqlcytelf8esv",
+    "title": "dev-investigations-assault durable investigation closure 1784159541310",
+    "organizingQuestion": "dev-investigations-assault organizing question closure 1784159541310",
+    "evidenceId": "dev-investigations-assault-evidence-secondary",
+    "evidenceLinkId": "cmrmqj8k1000zqlcy63w491ut",
+    "watchForId": "cmrmqjvr00010qlcy87wigyl4",
+    "watchForPrompt": "dev-investigations-assault watch-for closure 1784159585961",
+    "watchForReason": "Reason for closure: verify whether naming the stop point changes the escalation.",
+    "checkInNote": "Investigations assault check-in: the stop point only held once I named it before the next ask.",
+    "checkInOutcome": null,
+    "inspectorId": "Investigation ID cmrmqj2ny000yqlcytelf8esv",
+    "outcome": "Investigations assault outcome: explicit stop-point naming reduced reopened scope pressure.",
+    "finalStatus": "resolved",
+    "resolvedAt": "2026-07-15T23:54:45.803Z",
+    "inspectorStatus": "Resolved · Closed as resolved"
+  },
+  "negativeStatuses": {
+    "unauthenticatedList": 404,
+    "unauthenticatedDetail": 404,
+    "unauthenticatedCreate": 404,
+    "unauthenticatedUpdate": 404,
+    "unauthenticatedClosure": 404,
+    "crossUserList": 200,
+    "crossUserDetail": 404,
+    "crossUserUpdate": 404,
+    "crossUserClosure": 404,
+    "crossUserEvidenceAttachment": 400,
+    "crossUserFieldworkAssociation": 400,
+    "missingInvestigation": 404,
+    "missingEvidence": 400,
+    "missingFieldwork": 404,
+    "malformedCreate": 400,
+    "malformedUpdate": 400,
+    "malformedClosure": 400,
+    "invalidLifecycleTransition": 422
+  },
+  "cleanup": {
+    "deletedInvestigations": 2,
+    "deletedWatchFors": 0,
+    "deletedEvidenceLinks": 0,
+    "deletedEvidenceObjects": 3,
+    "deletedMessages": 3,
+    "deletedSessions": 3,
+    "deletedModelUpdates": 0,
+    "remaining": {
+      "investigations": 0,
+      "watchFors": 0,
+      "evidenceLinks": 0,
+      "fieldworkAssociations": 0,
+      "outcomes": 0,
+      "closures": 0,
+      "investigationModelUpdates": 0,
+      "seededEvidenceObjects": 0,
+      "seededFieldworkObjects": 0
+    }
+  }
+}

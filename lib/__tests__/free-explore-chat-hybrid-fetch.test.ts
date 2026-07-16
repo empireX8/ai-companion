@@ -275,7 +275,7 @@ describe("bounded free explore chat hybrid fetch bridge", () => {
 
     expect(hybridApi.exploreFieldworkIds).toEqual(["fw-active"]);
     expect(hybridApi.exploreQuestionIds).toEqual(["aq-live-1"]);
-    expect(hybridApi.exploreInvestigationIds).toBeUndefined();
+    expect(hybridApi.exploreInvestigationIds).toEqual(["inv-resolved-1"]);
     expect(hybridApi.freeExploreChatSessionId).toBe("sess-ready-1");
     expect(hybridApi.freeExploreSendHandlerAvailable).toBe(false);
   });

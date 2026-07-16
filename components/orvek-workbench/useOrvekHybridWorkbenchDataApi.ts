@@ -69,6 +69,7 @@ import {
   type MapMovementPreviewItem,
   type MapOpenQuestionPreviewItem,
 } from "@/lib/your-map-preview-surface";
+import { buildAppSessionListUrl } from "@/lib/chat-surface-routing";
 import { fetchYourMapConclusions } from "@/lib/your-map-surface";
 import { fetchActiveQuestionItems, type ActiveQuestionItem } from "@/lib/active-questions";
 import {
@@ -98,6 +99,8 @@ const DISPLAY_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
 }).format(new Date());
 
+const APP_EXPLORE_SESSION_LIST_URL = buildAppSessionListUrl("explore_chat");
+
 type SurfacedEvidenceDepthApiResponse = {
   pointerObjects: OrvekObject[];
   linkedObjects: OrvekObject[];
@@ -105,6 +108,27 @@ type SurfacedEvidenceDepthApiResponse = {
   rejectedPointers: { pointerId: string; blockers: string[] }[];
   inspectorDepthListReady: boolean;
 };
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function waitForExploreSessionReady(maxAttempts = 6): Promise<boolean> {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(APP_EXPLORE_SESSION_LIST_URL, { cache: "no-store" });
+      if (response.ok) {
+        return true;
+      }
+    } catch {
+      // Retry while authenticated shell session bootstrap settles.
+    }
+
+    await delay(500 * (attempt + 1));
+  }
+
+  return false;
+}
 
 export function useOrvekHybridWorkbenchDataApi() {
   const baseApi = useMemo(() => createMockOrvekDataApi(), []);
@@ -175,7 +199,7 @@ export function useOrvekHybridWorkbenchDataApi() {
 
   const refreshAfterDurableWrite = useCallback(() => {
     setDurableActionsRevision((current) => current + 1);
-  }, []);
+  }, [durableActionsRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -206,7 +230,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [durableActionsRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -318,6 +342,10 @@ export function useOrvekHybridWorkbenchDataApi() {
 
       async function loadWatchFor(attempt = 0): Promise<void> {
         try {
+          const sessionReady = await waitForExploreSessionReady();
+          if (!sessionReady) {
+            throw new Error("Explore session did not become ready before watch-for hydration.");
+          }
           const nextItems = await fetchWatchForItems();
           if (cancelled) {
             return;
@@ -361,6 +389,10 @@ export function useOrvekHybridWorkbenchDataApi() {
     void (async () => {
       setIsLoadingActiveQuestions(true);
       try {
+        const sessionReady = await waitForExploreSessionReady();
+        if (!sessionReady) {
+          throw new Error("Explore session did not become ready before active question hydration.");
+        }
         const nextItems = await fetchActiveQuestionItems();
         if (!cancelled) {
           setActiveQuestionItems(nextItems);
@@ -379,7 +411,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [durableActionsRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -387,6 +419,10 @@ export function useOrvekHybridWorkbenchDataApi() {
     void (async () => {
       setIsLoadingInvestigations(true);
       try {
+        const sessionReady = await waitForExploreSessionReady();
+        if (!sessionReady) {
+          throw new Error("Explore session did not become ready before investigation hydration.");
+        }
         const nextItems = await fetchExploreInvestigationItems();
         if (!cancelled) {
           setExploreInvestigationItems(nextItems);
@@ -405,7 +441,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [durableActionsRevision]);
 
   useEffect(() => {
     let cancelled = false;

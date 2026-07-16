@@ -330,17 +330,17 @@ describe("investigations presentation readiness gate", () => {
     expect(isInvestigationsRowPresentationReady(object)).toBe(false);
   });
 
-  it("rejects thin public-list-only rows that would collapse rich reference Investigations cards", () => {
+  it("accepts honest thin public-list rows without fabricating thread richness", () => {
     const thinObject = exploreInvestigationItemToInvestigationObject(
       exploreInvestigationItem("inv-resolved-thin"),
     );
 
     expect(thinObject).not.toBeNull();
     expect(hasInvestigationThreadDetailRichness(thinObject!)).toBe(false);
-    expect(isInvestigationsRowPresentationReady(thinObject!)).toBe(false);
+    expect(isInvestigationsRowPresentationReady(thinObject!)).toBe(true);
 
     const rawApi = buildInvestigationsProductionDataApi(READY_INVESTIGATIONS);
-    expect(shouldMergeInvestigationsProductionApi(rawApi)).toBe(false);
+    expect(shouldMergeInvestigationsProductionApi(rawApi)).toBe(true);
   });
 
   it("rejects partial rich fields that are present but not meaningful", () => {

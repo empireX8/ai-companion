@@ -52,6 +52,13 @@ export type CorrectionWriteTarget = {
   correctionCount: number;
 };
 
+function buildJsonHeaders(sessionToken?: string | null): HeadersInit {
+  return {
+    "Content-Type": "application/json",
+    ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+  };
+}
+
 export function isDurableWriteError(
   result: { ok?: boolean; error?: string }
 ): result is DurableWriteError {
@@ -99,6 +106,7 @@ export async function applyUserMapCorrection(args: {
   label: DurableCorrectionChipLabel | string;
   originalSummary: string;
   correctionCount: number;
+  sessionToken?: string | null;
 }): Promise<UserMapCorrectionWriteResult | DurableWriteError> {
   const trimmedLabel = args.label.trim();
   if (!trimmedLabel) {
@@ -110,7 +118,7 @@ export async function applyUserMapCorrection(args: {
       `/api/user-map/conclusions/${encodeURIComponent(args.conclusionId)}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: buildJsonHeaders(args.sessionToken),
         body: JSON.stringify({
           lastUserCorrectionLabel: trimmedLabel,
           lastUserCorrectionAt: new Date().toISOString(),
@@ -160,6 +168,7 @@ export async function submitDecisionOutcome(args: {
   actionId: string;
   note: string;
   status?: Extract<ActionStatus, "helped" | "didnt_help">;
+  sessionToken?: string | null;
 }): Promise<DecisionOutcomeWriteResult | DurableWriteError> {
   const trimmedNote = args.note.trim();
   if (!trimmedNote) {
@@ -171,7 +180,7 @@ export async function submitDecisionOutcome(args: {
   try {
     const response = await fetch(`/api/actions/${encodeURIComponent(args.actionId)}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: buildJsonHeaders(args.sessionToken),
       body: JSON.stringify({ status, note: trimmedNote }),
     });
 
@@ -211,6 +220,7 @@ export async function submitFieldworkCheckIn(args: {
   fieldworkId: string;
   observationNote: string;
   observationOutcome?: string | null;
+  sessionToken?: string | null;
 }): Promise<FieldworkCheckInWriteResult | DurableWriteError> {
   const trimmedNote = args.observationNote.trim();
   if (!trimmedNote) {
@@ -220,7 +230,7 @@ export async function submitFieldworkCheckIn(args: {
   try {
     const response = await fetch(`/api/fieldwork/${encodeURIComponent(args.fieldworkId)}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: buildJsonHeaders(args.sessionToken),
       // Keep Watch For visibility (`assigned`/`active` only). Completing would
       // drop the parent from Explore Fieldwork Bridge on refresh.
       body: JSON.stringify({

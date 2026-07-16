@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ export function DurableCorrectionControls({
   object: OrvekObject;
   className?: string;
 }) {
+  const { getToken } = useAuth();
   const { refreshAfterDurableWrite } = useDurableActionsRefresh();
   const [pendingLabel, setPendingLabel] = useState<string | null>(null);
   const [savedLabel, setSavedLabel] = useState<string | null>(
@@ -54,6 +56,7 @@ export function DurableCorrectionControls({
       label,
       originalSummary: target.originalSummary,
       correctionCount: target.correctionCount,
+      sessionToken: await getToken(),
     });
 
     setPendingLabel(null);
@@ -133,6 +136,7 @@ export function DurableDecisionOutcomeControls({
   object: OrvekObject;
   className?: string;
 }) {
+  const { getToken } = useAuth();
   const { refreshAfterDurableWrite } = useDurableActionsRefresh();
   const [note, setNote] = useState("");
   const [savedOutcome, setSavedOutcome] = useState(object.actualOutcome ?? null);
@@ -156,6 +160,7 @@ export function DurableDecisionOutcomeControls({
     const result = await submitDecisionOutcome({
       actionId: object.id,
       note,
+      sessionToken: await getToken(),
     });
 
     setPending(false);
@@ -225,6 +230,7 @@ export function DurableFieldworkCheckInControls({
   object: OrvekObject;
   className?: string;
 }) {
+  const { getToken } = useAuth();
   const { refreshAfterDurableWrite } = useDurableActionsRefresh();
   const [note, setNote] = useState("");
   const [savedNote, setSavedNote] = useState(object.checkInNote ?? null);
@@ -246,6 +252,7 @@ export function DurableFieldworkCheckInControls({
     const result = await submitFieldworkCheckIn({
       fieldworkId: object.id,
       observationNote: note,
+      sessionToken: await getToken(),
     });
 
     setPending(false);
