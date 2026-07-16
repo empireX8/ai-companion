@@ -12,6 +12,7 @@ import {
   DurableFieldworkCheckInControls,
   supportsDurableCorrection,
 } from "@/components/orvek-v0/durable-user-action-controls";
+import { useDurableActionsRefresh } from "@/lib/orvek-v0/durable-actions-context";
 import { useWorkbench } from "@/components/orvek-v0/store";
 import { PublicLinkedObjectContinuity } from "@/lib/public-continuity-display";
 import { PUBLIC_EVIDENCE_FALLBACK_COPY } from "@/lib/public-continuity-registry";
@@ -23,6 +24,7 @@ import type { OrvekObject } from "@/lib/orvek-v0/orvek-types";
 import {
   fetchInspectorContradiction,
   fetchInspectorEvidenceLinks,
+  fetchInspectorInvestigationDetail,
   fetchInspectorModelUpdateDetail,
   fetchInspectorPatternClaim,
   fetchInspectorUserMapDetail,
@@ -1758,38 +1760,234 @@ function ReceiptEvidencePanel({
 
 function QuestionEvidencePanel({
   selection,
-  sourceObject,
 }: {
   selection: InspectorSelection;
   sourceObject: OrvekObject | undefined;
 }) {
-  if (!sourceObject) {
-    return <UnavailableState objectTypeLabel="Active question" />;
+  const { revision } = useDurableActionsRefresh();
+  const [detail, setDetail] = useState<Awaited<ReturnType<typeof fetchInspectorInvestigationDetail>>>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setNotFound(false);
+
+    void fetchInspectorInvestigationDetail(selection.selectedObjectId).then((next) => {
+      if (cancelled) {
+        return;
+      }
+
+      setDetail(next);
+      setNotFound(!next);
+      setIsLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [revision, selection.selectedObjectId]);
+
+  if (isLoading) {
+    return <PanelSkeleton />;
+  }
+
+  if (notFound || !detail) {
+    return (
+      <UnavailableState
+        objectTypeLabel={
+          selection.selectedObjectType === "investigation" ? "Investigation" : "Active question"
+        }
+      />
+    );
   }
 
   return (
-    <>
+    <div data-testid="inspector-investigation-panel">
       <ObjectHeader
         typeLabel={
           selection.selectedObjectType === "investigation"
             ? "Investigation"
             : "Active question"
         }
-        title={selection.selectedTitle ?? sourceObject.title}
+        title={selection.selectedTitle ?? detail.title}
         meta={[
-          sourceObject.status ?? "Open",
-          sourceObject.lastUpdated ? `Updated ${formatDateTime(sourceObject.lastUpdated)}` : null,
+          detail.statusLabel,
+          detail.closureStateLabel,
+          `Updated ${formatDateTime(detail.updatedAt)}`,
         ]
           .filter(Boolean)
           .join(" · ")}
       />
-      <SourceObjectSections object={sourceObject} />
-      <SectionBlock label="Actions">
-        <p className="text-[12px] leading-relaxed text-muted-foreground">
-          Resolve, create fieldwork, report and check-in controls are deferred in this Inspector.
+      <SectionBlock label="Identity">
+        <p className="mb-2 text-[11px] text-cyan/70" data-testid="inspector-investigation-id">
+          Investigation ID {detail.id}
         </p>
+        <p className="mb-2 text-[11px] text-muted-foreground" data-testid="inspector-investigation-status">
+          {detail.statusLabel} · {detail.closureStateLabel}
+        </p>
+        <FactGrid
+          items={[
+            { label: "ID", value: detail.id },
+            { label: "Seed", value: detail.seedTypeLabel },
+            { label: "State", value: detail.statusLabel },
+            { label: "Created", value: formatDateTime(detail.createdAt) },
+            { label: "Updated", value: formatDateTime(detail.updatedAt) },
+            ...(typeof detail.priority === "number"
+              ? [{ label: "Priority", value: String(detail.priority) }]
+              : []),
+          ]}
+        />
+        {detail.detailHref ? (
+          <div className="mt-3">
+            <Link href={detail.detailHref} className="text-[13px] font-medium text-primary hover:underline">
+              Open related surface
+            </Link>
+          </div>
+        ) : null}
       </SectionBlock>
-    </>
+
+      <SectionBlock label="Organizing question">
+        <ReadoutText value={detail.organizingQuestion} />
+      </SectionBlock>
+
+      {detail.competingTheories.length > 0 ? (
+        <SectionBlock label="Competing theories">
+          <RenderList
+            items={detail.competingTheories}
+            emptyCopy="No competing theories recorded."
+          />
+        </SectionBlock>
+      ) : null}
+
+      <SectionBlock label="Missing or pending evidence">
+        <RenderList
+          items={detail.evidenceNeeded}
+          emptyCopy="No pending evidence requests are recorded."
+        />
+      </SectionBlock>
+
+      <SectionBlock label="Outcome and closure">
+        <div className="space-y-2">
+          <div className="rounded-[9px] bg-secondary/50 p-2.5 text-[13px] leading-relaxed">
+            <ReadoutText
+              value={
+                detail.resolutionSummary ??
+                "No durable outcome has been recorded for this investigation yet."
+              }
+              muted={!detail.resolutionSummary}
+            />
+          </div>
+          <FactGrid
+            items={[
+              { label: "Closure", value: detail.closureStateLabel },
+              {
+                label: "Resolved at",
+                value: detail.resolvedAt ? formatDateTime(detail.resolvedAt) : "Not closed",
+              },
+            ]}
+          />
+          {detail.reopenReason ? (
+            <p className="text-[12px] leading-relaxed text-muted-foreground">
+              Reopen reason: {detail.reopenReason}
+            </p>
+          ) : null}
+        </div>
+      </SectionBlock>
+
+      <SectionBlock label="Linked evidence">
+        {detail.linkedEvidence.length === 0 ? (
+          <p className="text-[12px] leading-relaxed text-muted-foreground">
+            No evidence spans are linked to this investigation yet.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {detail.linkedEvidence.map((evidence) => (
+              <li
+                key={evidence.linkId}
+                className="rounded-[10px] bg-card p-2.5 text-[12px] shadow-[0_1px_3px_-1px_rgba(30,41,59,0.1)]"
+              >
+                <div className="font-medium text-foreground">Evidence ID {evidence.evidenceId}</div>
+                <div className="mt-1 leading-relaxed text-muted-foreground">
+                  <ReadoutText value={evidence.excerpt} muted />
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                  <span className="font-medium text-cyan/80">
+                    {evidence.sessionLabel ?? "Unnamed session"}
+                  </span>
+                  <span className="text-muted-foreground">
+                    Role {evidence.role.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <div className="label-meta mt-1">Linked {formatDateTime(evidence.createdAt)}</div>
+                <div className="mt-1">
+                  <Link href={evidence.evidenceHref} className="text-[11px] text-primary hover:underline">
+                    Open evidence span
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionBlock>
+
+      <SectionBlock label="Linked fieldwork and check-ins">
+        {detail.linkedFieldwork.length === 0 ? (
+          <p className="text-[12px] leading-relaxed text-muted-foreground">
+            No fieldwork prompts are linked to this investigation yet.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {detail.linkedFieldwork.map((fieldwork) => (
+              <li
+                key={fieldwork.id}
+                className="rounded-[10px] bg-card p-2.5 text-[12px] shadow-[0_1px_3px_-1px_rgba(30,41,59,0.1)]"
+              >
+                <div className="font-medium text-foreground">
+                  {fieldwork.prompt}
+                </div>
+                <div className="label-meta mt-1 text-cyan/70">Fieldwork ID {fieldwork.id}</div>
+                <div className="mt-1 leading-relaxed text-muted-foreground">
+                  <ReadoutText value={fieldwork.reason} muted />
+                </div>
+                <FactGrid
+                  items={[
+                    { label: "Status", value: fieldwork.statusLabel },
+                    { label: "Updated", value: formatDateTime(fieldwork.updatedAt) },
+                  ]}
+                />
+                <div className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+                  Observation note: {fieldwork.observationNote ?? "Not recorded yet."}
+                </div>
+                <div className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                  Observation outcome: {fieldwork.observationOutcome ?? "Not recorded yet."}
+                </div>
+                {fieldwork.detailHref ? (
+                  <div className="mt-2">
+                    <Link href={fieldwork.detailHref} className="text-[11px] text-primary hover:underline">
+                      Open fieldwork detail
+                    </Link>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionBlock>
+
+      <SectionBlock label="Connected map item">
+        {detail.resolvedConclusionHref && detail.resolvedConclusionId ? (
+          <Link href={detail.resolvedConclusionHref} className="text-[13px] font-medium text-primary hover:underline">
+            Related map item
+          </Link>
+        ) : (
+          <p className="text-[12px] leading-relaxed text-muted-foreground">
+            No verified map conclusion link is available for this investigation.
+          </p>
+        )}
+      </SectionBlock>
+    </div>
   );
 }
 

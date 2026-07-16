@@ -28,6 +28,11 @@ const LEGACY_PUBLIC_BLOCKED_ROUTE_PREFIXES = [
   "/metrics",
 ] as const;
 
+const AUTHENTICATED_LEGACY_ALLOWED_ROUTE_PREFIXES = [
+  "/active-questions",
+  "/watch-for",
+] as const;
+
 const INTERNAL_OR_DEV_PRESERVED_ROUTE_PREFIXES = [
   "/internal/user-map/review",
   "/dev/orvek-v0-reference",
@@ -57,6 +62,10 @@ function isLegacyPublicBlockedRoute(pathname: string): boolean {
   return isRouteInPrefixes(pathname, LEGACY_PUBLIC_BLOCKED_ROUTE_PREFIXES);
 }
 
+function isAuthenticatedLegacyAllowedRoute(pathname: string): boolean {
+  return isRouteInPrefixes(pathname, AUTHENTICATED_LEGACY_ALLOWED_ROUTE_PREFIXES);
+}
+
 function isPreservedInternalOrDevRoute(pathname: string): boolean {
   return isRouteInPrefixes(pathname, INTERNAL_OR_DEV_PRESERVED_ROUTE_PREFIXES);
 }
@@ -68,18 +77,22 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   const pathname = normalizePathname(request.nextUrl.pathname);
+  const authState = isPublicRoute(request) ? null : await auth();
+  const allowAuthenticatedLegacyRoute =
+    Boolean(authState?.userId) && isAuthenticatedLegacyAllowedRoute(pathname);
 
   if (
     !pathname.startsWith("/api") &&
     !pathname.startsWith("/trpc") &&
     isLegacyPublicBlockedRoute(pathname) &&
     !isPreservedInternalOrDevRoute(pathname) &&
+    !allowAuthenticatedLegacyRoute &&
     !isPublicRoute(request)
   ) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
-  if (!isPublicRoute(request)) {
+  if (!isPublicRoute(request) && !authState?.userId) {
     await auth.protect();
   }
 });

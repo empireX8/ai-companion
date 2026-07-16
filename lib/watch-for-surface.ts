@@ -2,9 +2,10 @@ import type { FieldworkStatus } from "@prisma/client";
 
 import type { WatchForListItem } from "./public-intelligence-safe-slice";
 import {
+  normalizeInspectorObjectId,
   isInspectorSelectableObjectType,
   parseSelectableObjectFromHref,
-  type InspectorSelectableObjectType,
+  type InspectorSelectionObjectType,
 } from "./inspector-selection";
 import { ORVEK_COPY, PRODUCT_NAME } from "./trust-language";
 
@@ -124,17 +125,25 @@ export function groupWatchForListItems(
 }
 
 export function getWatchForInspectorSelection(input: {
+  linkedObjectType?: string | null;
+  linkedObjectId?: string | null;
   linkedObjectHref: string | null;
   title: string;
 }):
   | {
-      objectType: InspectorSelectableObjectType;
+      objectType: InspectorSelectionObjectType;
       objectId: string;
       title: string;
     }
   | null {
-  if (!input.linkedObjectHref) {
-    return null;
+  const safeLinkedObjectId = normalizeInspectorObjectId(input.linkedObjectId);
+
+  if (input.linkedObjectType === "investigation" && safeLinkedObjectId) {
+    return {
+      objectType: "investigation",
+      objectId: safeLinkedObjectId,
+      title: input.title,
+    };
   }
 
   const parsed = parseSelectableObjectFromHref(input.linkedObjectHref);

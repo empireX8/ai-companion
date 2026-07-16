@@ -83,7 +83,10 @@ describe("explore surface wiring", () => {
     expect(inspectorSource).toContain('sourceSurface: "explore"');
     expect(inspectorSource).not.toContain('objectType: "fieldwork"');
 
-    expect(exploreViewSource).toContain("showSkeleton");
+    expect(exploreViewSource).toContain("showEmptyList");
+    expect(exploreViewSource).toContain("showProductionDetail");
+    expect(exploreViewSource).toContain("InvestigationCreateCard");
+    expect(exploreViewSource).toContain("ProductionInvestigationWorkbenchDetail");
     expect(exploreViewSource).toContain("Fieldwork Bridge");
     expect(exploreViewSource).not.toMatch(
       /if \(isProduction\)\s*\{\s*return\s*\(\s*<p className="text-sm text-muted-foreground">/

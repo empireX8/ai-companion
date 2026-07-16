@@ -23,6 +23,9 @@ export const INSPECTOR_PATTERN_CLAIM_ENDPOINT = (id: string) =>
 export const INSPECTOR_CONTRADICTION_ENDPOINT = (id: string) =>
   `/api/inspector/contradictions/${encodeURIComponent(id)}`;
 
+export const INSPECTOR_INVESTIGATION_ENDPOINT = (id: string) =>
+  `/api/inspector/investigations/${encodeURIComponent(id)}`;
+
 export type InspectorEvidenceLinkItem = {
   sourceTypeLabel: string;
   evidenceSummaryLabel: string;
@@ -49,6 +52,69 @@ export type InspectorContradictionProjection = {
 export type InspectorModelUpdateDetail = {
   item: WhatChangedListItem;
   report: RealityTrackingModelMovementReport;
+};
+
+export type InspectorInvestigationEvidenceItem = {
+  linkId: string;
+  evidenceId: string;
+  messageId: string;
+  excerpt: string;
+  sessionId: string | null;
+  sessionLabel: string | null;
+  origin: string | null;
+  role: string;
+  createdAt: string;
+  evidenceHref: string;
+};
+
+export type InspectorInvestigationFieldworkItem = {
+  id: string;
+  prompt: string;
+  reason: string;
+  status: string;
+  statusLabel: string;
+  linkedObjectType: string;
+  linkedObjectId: string;
+  observationNote: string | null;
+  observationOutcome: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  detailHref: string | null;
+};
+
+export type InspectorInvestigationDetail = {
+  id: string;
+  detailHref: string | null;
+  title: string;
+  organizingQuestion: string;
+  status: string;
+  statusLabel: string;
+  seedType: string;
+  seedTypeLabel: string;
+  priority: number | null;
+  createdAt: string;
+  updatedAt: string;
+  resolutionSummary: string | null;
+  resolvedAt: string | null;
+  reopenReason: string | null;
+  resolvedConclusionId: string | null;
+  resolvedConclusionHref: string | null;
+  competingTheories: string[];
+  evidenceNeeded: string[];
+  linkedEvidence: InspectorInvestigationEvidenceItem[];
+  linkedFieldwork: InspectorInvestigationFieldworkItem[];
+  availableEvidence?: Array<{
+    id: string;
+    messageId: string;
+    excerpt: string;
+    sessionId: string | null;
+    sessionLabel: string | null;
+    origin: string | null;
+    createdAt: string;
+  }>;
+  isClosed: boolean;
+  closureStateLabel: string;
 };
 
 export async function fetchInspectorUserMapDetail(
@@ -115,5 +181,19 @@ export async function fetchInspectorContradiction(
     return null;
   }
   const payload = (await response.json()) as { item?: InspectorContradictionProjection };
+  return payload.item ?? null;
+}
+
+export async function fetchInspectorInvestigationDetail(
+  id: string
+): Promise<InspectorInvestigationDetail | null> {
+  const response = await fetch(INSPECTOR_INVESTIGATION_ENDPOINT(id), {
+    method: "GET",
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    return null;
+  }
+  const payload = (await response.json()) as { item?: InspectorInvestigationDetail };
   return payload.item ?? null;
 }

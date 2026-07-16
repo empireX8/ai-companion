@@ -62,7 +62,7 @@ describe("public linked-object continuity helper", () => {
   });
 
   it("resolves investigation href only when user-owned and public-eligible", async () => {
-    const { buildPublicActiveInvestigationWhere } = await import(
+    const { buildPublicInvestigationWhere } = await import(
       "../investigation-public-visibility"
     );
     prismaMock.investigation.findMany.mockResolvedValueOnce([{ id: "inv-public" }]);
@@ -79,7 +79,7 @@ describe("public linked-object continuity helper", () => {
     expect(href).toBe("/active-questions/inv-public");
     expect(prismaMock.investigation.findMany).toHaveBeenCalledWith({
       where: {
-        ...buildPublicActiveInvestigationWhere({ userId: "user-1" }),
+        ...buildPublicInvestigationWhere({ userId: "user-1" }),
         id: { in: ["inv-public"] },
       },
       select: { id: true },

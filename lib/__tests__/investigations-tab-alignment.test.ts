@@ -202,11 +202,11 @@ describe("investigations tab alignment", () => {
     expect(hybridApi.getObject("inv-1")?.title).toBe(baseApi.getObject("inv-1")?.title);
   });
 
-  it("thin list-only rows do not replace rich reference Investigations", () => {
+  it("thin live rows replace reference Investigations without fake enrichment", () => {
     const baseApi = createMockOrvekDataApi();
     const thinInvestigationsApi = buildInvestigationsProductionDataApi(READY_INVESTIGATIONS);
 
-    expect(shouldMergeInvestigationsProductionApi(thinInvestigationsApi)).toBe(false);
+    expect(shouldMergeInvestigationsProductionApi(thinInvestigationsApi)).toBe(true);
 
     const hybridApi = buildHybridWorkbenchDataApi(
       baseApi,
@@ -219,8 +219,9 @@ describe("investigations tab alignment", () => {
       thinInvestigationsApi,
     );
 
-    expect(hybridApi.exploreInvestigationIds).toBeUndefined();
-    expect(hybridApi.getObject("inv-1")?.hypotheses?.length).toBeGreaterThan(0);
+    expect(hybridApi.exploreInvestigationIds).toContain("inv-resolved-1");
+    expect(hybridApi.getObject("inv-resolved-1")?.title).toBe(READY_INVESTIGATIONS[0]?.title);
+    expect(hybridApi.getObject("inv-resolved-1")?.hypotheses).toBeUndefined();
   });
 
   it("rejects Active-Questions-owned rows from Investigations production merge", () => {

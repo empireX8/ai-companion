@@ -59,6 +59,8 @@ describe("watch-for-surface", () => {
   it("allows Inspector selection only for supported linked object hrefs", () => {
     expect(
       getWatchForInspectorSelection({
+        linkedObjectType: "pattern_claim",
+        linkedObjectId: "pc-1",
         linkedObjectHref: "/patterns/pc-1",
         title: "Prompt",
       })
@@ -70,6 +72,21 @@ describe("watch-for-surface", () => {
 
     expect(
       getWatchForInspectorSelection({
+        linkedObjectType: "investigation",
+        linkedObjectId: "inv-1",
+        linkedObjectHref: "/active-questions/inv-1",
+        title: "Prompt",
+      })
+    ).toEqual({
+      objectType: "investigation",
+      objectId: "inv-1",
+      title: "Prompt",
+    });
+
+    expect(
+      getWatchForInspectorSelection({
+        linkedObjectType: null,
+        linkedObjectId: null,
         linkedObjectHref: null,
         title: "Prompt",
       })

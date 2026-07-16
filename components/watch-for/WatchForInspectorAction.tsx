@@ -4,13 +4,22 @@ import { InspectorSelectButton } from "@/components/inspector/InspectorSelectBut
 import { getWatchForInspectorSelection } from "@/lib/watch-for-surface";
 
 export function WatchForInspectorAction({
+  linkedObjectType,
+  linkedObjectId,
   linkedObjectHref,
   title,
 }: {
+  linkedObjectType: string | null;
+  linkedObjectId: string | null;
   linkedObjectHref: string | null;
   title: string;
 }) {
-  const selection = getWatchForInspectorSelection({ linkedObjectHref, title });
+  const selection = getWatchForInspectorSelection({
+    linkedObjectType,
+    linkedObjectId,
+    linkedObjectHref,
+    title,
+  });
   if (!selection) {
     return null;
   }

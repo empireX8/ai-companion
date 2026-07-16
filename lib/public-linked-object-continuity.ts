@@ -9,7 +9,7 @@ import {
 
 import prismadb from "@/lib/prismadb";
 import { buildPublicWatchForWhere } from "./fieldwork-public-visibility";
-import { buildPublicActiveInvestigationWhere } from "./investigation-public-visibility";
+import { buildPublicInvestigationWhere } from "./investigation-public-visibility";
 import {
   buildPublicObjectHref,
   isPublicObjectLinkType,
@@ -110,7 +110,7 @@ export async function resolvePublicLinkedObjectHrefs(args: {
     grouped.investigation.size > 0
       ? prismadb.investigation.findMany({
           where: {
-            ...buildPublicActiveInvestigationWhere({ userId: args.userId }),
+            ...buildPublicInvestigationWhere({ userId: args.userId }),
             id: { in: [...grouped.investigation] },
           },
           select: { id: true },

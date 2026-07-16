@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 
 import { PageHeader, SectionLabel } from "@/components/AppShell";
+import { InvestigationCreateCard } from "@/components/investigations/InvestigationCreateCard";
 import prismadb from "@/lib/prismadb";
 import { buildPublicActiveInvestigationWhere } from "@/lib/active-questions";
 import { toActiveQuestionListItem } from "@/lib/public-intelligence-safe-slice";
@@ -61,6 +62,8 @@ export default async function ActiveQuestionsPage() {
 
       <p className="text-[13px] text-meta mb-6 max-w-2xl">{ACTIVE_QUESTIONS_PAGE_INTRO}</p>
 
+      <InvestigationCreateCard />
+
       <SectionLabel>{ACTIVE_QUESTIONS_LIST_SECTION_LABEL}</SectionLabel>
       {items.length === 0 ? (
         <div className="card-standard p-5 text-[13px] text-meta space-y-1">
@@ -72,6 +75,7 @@ export default async function ActiveQuestionsPage() {
           {items.map((item) => (
             <article
               key={item.id}
+              data-testid="active-question-row"
               className="card-standard p-5 hover:border-[hsl(187_100%_50%/0.18)] transition-colors"
             >
               <Link href={item.detailHref} className="block group">
@@ -91,6 +95,9 @@ export default async function ActiveQuestionsPage() {
                       {typeof item.priority === "number"
                         ? ` · Priority ${item.priority}`
                         : ""}
+                    </div>
+                    <div className="label-meta mt-1 text-cyan/70">
+                      Investigation ID {item.id}
                     </div>
                   </div>
                 </div>
