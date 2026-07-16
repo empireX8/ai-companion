@@ -75,9 +75,7 @@ describe("desktop Inspector assault shared capability", () => {
       evidencePointerInspectorDepthReady: false,
     });
 
-    expect(
-      resolveOrvekObjectProvenance(hybridWithStaleParity, DEPTH_SAFE_POINTER),
-    ).toBe("reference_fallback");
+    expect(resolveOrvekObjectProvenance(hybridWithStaleParity, DEPTH_SAFE_POINTER)).toBe("live");
 
     const gated = applySurfacedEvidenceDepthGate({
       api: hybridWithStaleParity,
@@ -104,7 +102,7 @@ describe("desktop Inspector assault shared capability", () => {
     expect(resolveOrvekObjectProvenance(gated, LINKED_CONCLUSION)).toBe("live");
   });
 
-  it("distinguishes live active questions from reference-only decision/report objects", () => {
+  it("distinguishes live production objects from explicit reference-surface objects", () => {
     const question: OrvekObject = {
       id: "inv-resolved-1",
       type: "active-question",
@@ -116,13 +114,16 @@ describe("desktop Inspector assault shared capability", () => {
       type: "report",
       title: "Reference weekly report",
     };
-    const api = apiWith([question, decision, report], {
+    const liveApi = apiWith([question], {
       exploreQuestionIds: [question.id],
     });
+    const referenceApi = apiWith([decision, report], {
+      referenceSurface: true,
+    });
 
-    expect(resolveOrvekObjectProvenance(api, question)).toBe("live");
-    expect(resolveOrvekObjectProvenance(api, decision)).toBe("reference_fallback");
-    expect(resolveOrvekObjectProvenance(api, report)).toBe("reference_fallback");
+    expect(resolveOrvekObjectProvenance(liveApi, question)).toBe("live");
+    expect(resolveOrvekObjectProvenance(referenceApi, decision)).toBe("reference_fallback");
+    expect(resolveOrvekObjectProvenance(referenceApi, report)).toBe("reference_fallback");
     expect(resolveInspectorObjectType(decision)).toBe("reference_decision");
     expect(resolveInspectorObjectType(report)).toBe("reference_report");
     expect(

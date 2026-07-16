@@ -17,7 +17,6 @@ const ACTIVE_ROOT_CHAIN = [
 ] as const;
 
 const OLD_SHELL_COMPONENTS = [
-  "RouteTopBar",
   "RouteSidebar",
   "ProductionInspectorAside",
   "OrvekTopBar",
@@ -207,7 +206,7 @@ describe("desktop old-route / old-shell quarantine audit", () => {
     expect(workbench).toContain("createMockOrvekDataApi");
   });
 
-  it("8 — createMockOrvekDataApi remains available as workbench fallback", () => {
+  it("8 — production hybrid hook starts from the empty API while reference workbench keeps mock fallback", () => {
     const mockApi = readSource("lib/orvek-v0/mock-api.ts");
     const workbench = readSource("components/orvek-v0/workbench.tsx");
     const hybridHook = readSource(
@@ -216,7 +215,8 @@ describe("desktop old-route / old-shell quarantine audit", () => {
 
     expect(mockApi).toContain("export function createMockOrvekDataApi");
     expect(workbench).toContain("createMockOrvekDataApi");
-    expect(hybridHook).toContain("createMockOrvekDataApi");
+    expect(hybridHook).toContain("EMPTY_ORVEK_DATA_API");
+    expect(hybridHook).not.toContain("createMockOrvekDataApi");
   });
 
   it("9 — no global displayContract production in active root chain", () => {
@@ -234,7 +234,21 @@ describe("desktop old-route / old-shell quarantine audit", () => {
     expect(explorePage).toContain("freeExploreSendHandlerAvailable");
     expect(evidencePanel).toContain("showReferenceConversationMovement = exploreActive && !hasLiveExploreChat");
     expect(evidencePanel).toContain("showLiveConversationMovementEmpty");
-    expect(hybridApi).toContain("stripRejectedFreeExploreChatMockBleed");
+    expect(hybridApi).toContain("mergeFreeExploreChatShellState");
+    expect(hybridApi).toContain("looksLikeAuthOrSessionBootError");
+  });
+
+  it("11 — direct workbench routes sync the shared shell page from the pathname", () => {
+    const workbench = readSource("components/orvek-v0/workbench.tsx");
+
+    expect(workbench).toContain("usePathname");
+    expect(workbench).toContain("resolveWorkbenchPageFromPathname");
+    expect(workbench).toContain('pathname === "/your-map"');
+    expect(workbench).toContain('pathname === "/actions"');
+    expect(workbench).toContain('pathname === "/timeline"');
+    expect(workbench).toContain('pathname === "/explore"');
+    expect(workbench).toContain("<RoutePageSync />");
+    expect(workbench).toContain("setPage(nextPage)");
   });
 
   it("old shell components are not imported anywhere in app/components/lib source", () => {

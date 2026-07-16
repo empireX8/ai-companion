@@ -7,6 +7,7 @@
 
 import type { OrvekDataApi } from "./orvek-v0/data-provider";
 import { EMPTY_ORVEK_DATA_API } from "./orvek-v0/empty-api";
+import { withTodayAdapterHonesty } from "./orvek-v0/production/today-adapter-honesty";
 import {
   applySurfacedEvidenceDepthGate,
   type SurfacedEvidenceDepthOverlay,
@@ -53,10 +54,12 @@ export function applyTodayEvidenceDepthGateFromReadGraph(args: {
   readGraph: SurfacedEvidenceDepthGraphResult;
   baseApi?: OrvekDataApi;
 }): EvidenceDepthRuntimeGateResult {
-  const baseApi = args.baseApi ?? {
-    ...EMPTY_ORVEK_DATA_API,
-    todayResurfacedIds: ["receipt-0-thin-live"],
-  };
+  const baseApi =
+    args.baseApi ??
+    withTodayAdapterHonesty({
+      ...EMPTY_ORVEK_DATA_API,
+      todayResurfacedIds: ["receipt-0-thin-live"],
+    });
 
   const overlay = buildSurfacedEvidenceDepthOverlayFromGraph(args.readGraph);
   const gatedApi = applySurfacedEvidenceDepthGate({ api: baseApi, overlay });

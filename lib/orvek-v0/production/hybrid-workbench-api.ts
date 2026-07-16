@@ -24,12 +24,12 @@ import {
 } from "./timeline-presentation";
 import {
   shouldMergeFreeExploreChatProductionApi,
+  looksLikeAuthOrSessionBootError,
   normalizeFreeExploreChatProductionDataApi,
 } from "./free-explore-chat-presentation";
 import {
   assessLiveTodayObjectGraphParity,
   buildParitySafeTodayObjectMap,
-  shouldMergeTodayObjectGraph,
   withTodayObjectGraphParity,
   type LiveTodayGraphParity,
 } from "./today-object-graph-parity";
@@ -68,22 +68,34 @@ export function injectLiveMovementIdsIntoTimelineGroups(
 
 function mergeTodayOverlay(baseApi: OrvekDataApi, todayApi: OrvekDataApi): OrvekDataApi {
   const paritySafeObjects = buildParitySafeTodayObjectMap(todayApi);
-  if (paritySafeObjects.size === 0) {
-    return baseApi;
-  }
-
   const parity = assessLiveTodayObjectGraphParity(todayApi);
-  const baseGetObject = baseApi.getObject.bind(baseApi);
   const liveTodayReady =
     parity.movementRowsReady ||
     parity.reportReady ||
     parity.readyMovementRowIds.length > 0 ||
     parity.seeWhyMovedReady ||
     Boolean(parity.paritySafeReportTarget);
+  const shellApi: OrvekDataApi = {
+    ...baseApi,
+    today: todayApi.today,
+    todayCopy: todayApi.todayCopy,
+    todayIsLoading: todayApi.todayIsLoading,
+    todayResurfacedIds: todayApi.todayResurfacedIds,
+    emptyCopyBySlot: {
+      ...baseApi.emptyCopyBySlot,
+      ...todayApi.emptyCopyBySlot,
+    },
+  };
+
+  if (paritySafeObjects.size === 0) {
+    return withTodayObjectGraphParity(shellApi, parity);
+  }
+
+  const baseGetObject = baseApi.getObject.bind(baseApi);
 
   return withTodayObjectGraphParity(
     {
-      ...baseApi,
+      ...shellApi,
       // Never leak standalone production displayContract onto the hybrid root.
       displayContract: undefined,
       getObject: (id) => {
@@ -113,18 +125,10 @@ function mergeTodayOverlay(baseApi: OrvekDataApi, todayApi: OrvekDataApi): Orvek
       // reference t1…t14 while waiting on full Timeline readiness merge.
       ...(liveTodayReady
         ? {
-            today: todayApi.today,
-            todayCopy: todayApi.todayCopy,
-            todayIsLoading: todayApi.todayIsLoading,
-            todayResurfacedIds: todayApi.todayResurfacedIds,
             timelineGroups: injectLiveMovementIdsIntoTimelineGroups(parity),
             timelineFilters: TIMELINE_SEMANTIC_FILTERS.map((entry) => entry.label),
           }
         : {}),
-      emptyCopyBySlot: {
-        ...baseApi.emptyCopyBySlot,
-        ...todayApi.emptyCopyBySlot,
-      },
     },
     parity,
   );
@@ -169,6 +173,21 @@ function mergeMapOverlay(baseApi: OrvekDataApi, mapApi: OrvekDataApi): OrvekData
   };
 }
 
+function mergeMapShellState(baseApi: OrvekDataApi, mapApi: OrvekDataApi): OrvekDataApi {
+  return {
+    ...baseApi,
+    mapHeader: mapApi.mapHeader ?? baseApi.mapHeader ?? null,
+    mapSelectedId: mapApi.mapSelectedId ?? baseApi.mapSelectedId ?? null,
+    mapIsLoading: mapApi.mapIsLoading,
+    mapLoadError: mapApi.mapLoadError ?? null,
+    mapHasContent: mapApi.mapHasContent,
+    emptyCopyBySlot: {
+      ...baseApi.emptyCopyBySlot,
+      ...mapApi.emptyCopyBySlot,
+    },
+  };
+}
+
 function mergeDecisionsOverlay(baseApi: OrvekDataApi, decisionsApi: OrvekDataApi): OrvekDataApi {
   const baseGetObject = baseApi.getObject.bind(baseApi);
 
@@ -197,6 +216,21 @@ function mergeDecisionsOverlay(baseApi: OrvekDataApi, decisionsApi: OrvekDataApi
     },
     decisionListGroups: decisionsApi.decisionListGroups,
     decisionsSelectedId: decisionsApi.decisionsSelectedId,
+    decisionsHeaderStats: decisionsApi.decisionsHeaderStats,
+    decisionsIsLoading: decisionsApi.decisionsIsLoading,
+    emptyCopyBySlot: {
+      ...baseApi.emptyCopyBySlot,
+      ...decisionsApi.emptyCopyBySlot,
+    },
+  };
+}
+
+function mergeDecisionsShellState(
+  baseApi: OrvekDataApi,
+  decisionsApi: OrvekDataApi,
+): OrvekDataApi {
+  return {
+    ...baseApi,
     decisionsHeaderStats: decisionsApi.decisionsHeaderStats,
     decisionsIsLoading: decisionsApi.decisionsIsLoading,
     emptyCopyBySlot: {
@@ -245,6 +279,20 @@ function mergeActiveQuestionsOverlay(
   };
 }
 
+function mergeActiveQuestionsShellState(
+  baseApi: OrvekDataApi,
+  activeQuestionsApi: OrvekDataApi,
+): OrvekDataApi {
+  return {
+    ...baseApi,
+    activeQuestionsIsLoading: activeQuestionsApi.activeQuestionsIsLoading,
+    emptyCopyBySlot: {
+      ...baseApi.emptyCopyBySlot,
+      ...activeQuestionsApi.emptyCopyBySlot,
+    },
+  };
+}
+
 function mergeInvestigationsOverlay(
   baseApi: OrvekDataApi,
   investigationsApi: OrvekDataApi,
@@ -276,6 +324,20 @@ function mergeInvestigationsOverlay(
     },
     exploreInvestigationIds: investigationsApi.exploreInvestigationIds,
     exploreInvestigationSelectedId: investigationsApi.exploreInvestigationSelectedId,
+    investigationsIsLoading: investigationsApi.investigationsIsLoading,
+    emptyCopyBySlot: {
+      ...baseApi.emptyCopyBySlot,
+      ...investigationsApi.emptyCopyBySlot,
+    },
+  };
+}
+
+function mergeInvestigationsShellState(
+  baseApi: OrvekDataApi,
+  investigationsApi: OrvekDataApi,
+): OrvekDataApi {
+  return {
+    ...baseApi,
     investigationsIsLoading: investigationsApi.investigationsIsLoading,
     emptyCopyBySlot: {
       ...baseApi.emptyCopyBySlot,
@@ -320,6 +382,20 @@ function mergeExperimentOverlay(baseApi: OrvekDataApi, experimentApi: OrvekDataA
   };
 }
 
+function mergeExperimentShellState(
+  baseApi: OrvekDataApi,
+  experimentApi: OrvekDataApi,
+): OrvekDataApi {
+  return {
+    ...baseApi,
+    experimentIsLoading: experimentApi.experimentIsLoading,
+    emptyCopyBySlot: {
+      ...baseApi.emptyCopyBySlot,
+      ...experimentApi.emptyCopyBySlot,
+    },
+  };
+}
+
 function mergeTimelineOverlay(baseApi: OrvekDataApi, timelineApi: OrvekDataApi): OrvekDataApi {
   const baseGetObject = baseApi.getObject.bind(baseApi);
 
@@ -349,6 +425,21 @@ function mergeTimelineOverlay(baseApi: OrvekDataApi, timelineApi: OrvekDataApi):
     timelineGroups: timelineApi.timelineGroups,
     timelineFilters: timelineApi.timelineFilters,
     timelineIsLoading: timelineApi.timelineIsLoading,
+    emptyCopyBySlot: {
+      ...baseApi.emptyCopyBySlot,
+      ...timelineApi.emptyCopyBySlot,
+    },
+  };
+}
+
+function mergeTimelineShellState(
+  baseApi: OrvekDataApi,
+  timelineApi: OrvekDataApi,
+): OrvekDataApi {
+  return {
+    ...baseApi,
+    timelineIsLoading: timelineApi.timelineIsLoading,
+    timelineFilters: timelineApi.timelineFilters,
     emptyCopyBySlot: {
       ...baseApi.emptyCopyBySlot,
       ...timelineApi.emptyCopyBySlot,
@@ -386,14 +477,38 @@ function mergeFreeExploreChatOverlay(
   };
 }
 
-function stripRejectedFreeExploreChatMockBleed(api: OrvekDataApi): OrvekDataApi {
+function mergeFreeExploreChatShellState(
+  baseApi: OrvekDataApi,
+  freeExploreChatApi: OrvekDataApi,
+): OrvekDataApi {
+  const chatEmptyCopy = freeExploreChatApi.emptyCopyBySlot ?? {};
+  const shouldClearSessionIdentity =
+    freeExploreChatApi.exploreIsLoading ||
+    looksLikeAuthOrSessionBootError(freeExploreChatApi.explore?.errorMessage);
+
   return {
-    ...api,
+    ...baseApi,
     exploreMessages: undefined,
     exploreGrounding: [],
     exploreMovement: [],
     exploreLiveDetectionCopy: undefined,
     exploreLatestGrounding: null,
+    exploreIsLoading: freeExploreChatApi.exploreIsLoading,
+    freeExploreChatSessionId: shouldClearSessionIdentity
+      ? undefined
+      : freeExploreChatApi.freeExploreChatSessionId,
+    freeExploreSendHandlerAvailable:
+      freeExploreChatApi.freeExploreSendHandlerAvailable === true,
+    explore: freeExploreChatApi.explore,
+    emptyCopyBySlot: {
+      ...baseApi.emptyCopyBySlot,
+      ...(chatEmptyCopy.exploreChatEmpty
+        ? { exploreChatEmpty: chatEmptyCopy.exploreChatEmpty }
+        : {}),
+      ...(chatEmptyCopy.exploreGroundingEmpty
+        ? { exploreGroundingEmpty: chatEmptyCopy.exploreGroundingEmpty }
+        : {}),
+    },
   };
 }
 
@@ -408,7 +523,6 @@ export function buildHybridWorkbenchDataApi(
   investigationsApi?: OrvekDataApi,
   freeExploreChatApi?: OrvekDataApi,
 ): OrvekDataApi {
-  const mergeToday = shouldMergeTodayObjectGraph(todayApi);
   const mergeMap = shouldMergeMapProductionApi(mapApi);
   const mergeTimeline = shouldMergeTimelineProductionApi(timelineApi);
   const mergeDecisions = shouldMergeDecisionsProductionApi(decisionsApi);
@@ -416,66 +530,60 @@ export function buildHybridWorkbenchDataApi(
   const mergeActiveQuestions = shouldMergeActiveQuestionsProductionApi(activeQuestionsApi);
   const mergeInvestigations = shouldMergeInvestigationsProductionApi(investigationsApi);
   const mergeFreeExploreChat = shouldMergeFreeExploreChatProductionApi(freeExploreChatApi);
-
-  if (
-    !mergeToday &&
-    !mergeMap &&
-    !mergeTimeline &&
-    !mergeDecisions &&
-    !mergeExperiment &&
-    !mergeActiveQuestions &&
-    !mergeInvestigations &&
-    !mergeFreeExploreChat
-  ) {
-    if (freeExploreChatApi) {
-      return stripRejectedFreeExploreChatMockBleed(baseApi);
-    }
-    return baseApi;
-  }
-
   let api = baseApi;
 
-  if (mergeToday && todayApi) {
+  if (todayApi) {
     api = mergeTodayOverlay(api, todayApi);
   }
 
-  if (mergeMap && mapApi) {
-    api = mergeMapOverlay(api, normalizeMapProductionDataApi(mapApi));
+  if (mapApi) {
+    const normalizedMapApi = normalizeMapProductionDataApi(mapApi);
+    api = mergeMap ? mergeMapOverlay(api, normalizedMapApi) : mergeMapShellState(api, normalizedMapApi);
   }
 
-  if (mergeTimeline && timelineApi) {
-    api = mergeTimelineOverlay(api, normalizeTimelineProductionDataApi(timelineApi));
+  if (timelineApi) {
+    const normalizedTimelineApi = normalizeTimelineProductionDataApi(timelineApi);
+    api = mergeTimeline
+      ? mergeTimelineOverlay(api, normalizedTimelineApi)
+      : mergeTimelineShellState(api, normalizedTimelineApi);
   }
 
-  if (mergeDecisions && decisionsApi) {
-    api = mergeDecisionsOverlay(api, normalizeDecisionsProductionDataApi(decisionsApi));
+  if (decisionsApi) {
+    const normalizedDecisionsApi = normalizeDecisionsProductionDataApi(decisionsApi);
+    api = mergeDecisions
+      ? mergeDecisionsOverlay(api, normalizedDecisionsApi)
+      : mergeDecisionsShellState(api, normalizedDecisionsApi);
   }
 
-  if (mergeExperiment && experimentApi) {
-    api = mergeExperimentOverlay(api, normalizeExperimentProductionDataApi(experimentApi));
+  if (experimentApi) {
+    const normalizedExperimentApi = normalizeExperimentProductionDataApi(experimentApi);
+    api = mergeExperiment
+      ? mergeExperimentOverlay(api, normalizedExperimentApi)
+      : mergeExperimentShellState(api, normalizedExperimentApi);
   }
 
-  if (mergeActiveQuestions && activeQuestionsApi) {
-    api = mergeActiveQuestionsOverlay(
-      api,
-      normalizeActiveQuestionsProductionDataApi(activeQuestionsApi),
-    );
+  if (activeQuestionsApi) {
+    const normalizedActiveQuestionsApi =
+      normalizeActiveQuestionsProductionDataApi(activeQuestionsApi);
+    api = mergeActiveQuestions
+      ? mergeActiveQuestionsOverlay(api, normalizedActiveQuestionsApi)
+      : mergeActiveQuestionsShellState(api, normalizedActiveQuestionsApi);
   }
 
-  if (mergeInvestigations && investigationsApi) {
-    api = mergeInvestigationsOverlay(
-      api,
-      normalizeInvestigationsProductionDataApi(investigationsApi),
-    );
+  if (investigationsApi) {
+    const normalizedInvestigationsApi =
+      normalizeInvestigationsProductionDataApi(investigationsApi);
+    api = mergeInvestigations
+      ? mergeInvestigationsOverlay(api, normalizedInvestigationsApi)
+      : mergeInvestigationsShellState(api, normalizedInvestigationsApi);
   }
 
-  if (mergeFreeExploreChat && freeExploreChatApi) {
-    api = mergeFreeExploreChatOverlay(
-      api,
-      normalizeFreeExploreChatProductionDataApi(freeExploreChatApi),
-    );
-  } else if (freeExploreChatApi) {
-    api = stripRejectedFreeExploreChatMockBleed(api);
+  if (freeExploreChatApi) {
+    const normalizedFreeExploreChatApi =
+      normalizeFreeExploreChatProductionDataApi(freeExploreChatApi);
+    api = mergeFreeExploreChat
+      ? mergeFreeExploreChatOverlay(api, normalizedFreeExploreChatApi)
+      : mergeFreeExploreChatShellState(api, normalizedFreeExploreChatApi);
   }
 
   return api;

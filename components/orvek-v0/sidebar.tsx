@@ -1,6 +1,9 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { isProductionDisplay } from "@/lib/orvek-v0/display-contract"
+import { useOrvekData } from "@/lib/orvek-v0/data-provider"
+import { resolveWorkbenchRoutePath, updateWorkbenchHistory } from "@/lib/orvek-v0/workbench-route-history"
 import { useWorkbench, type OrvekPage } from "@/components/orvek-v0/store"
 import { CalendarClock, Compass, GitBranch, Home, Telescope } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
@@ -14,7 +17,9 @@ const NAV: { id: OrvekPage; label: string; icon: LucideIcon }[] = [
 ]
 
 export function Sidebar() {
+  const data = useOrvekData()
   const { page, setPage } = useWorkbench()
+  const isProduction = isProductionDisplay(data)
 
   return (
     <nav className="flex h-full w-[68px] shrink-0 flex-col items-center pb-4 pt-1">
@@ -27,7 +32,12 @@ export function Sidebar() {
             <li key={item.id} className="w-full">
               <button
                 type="button"
-                onClick={() => setPage(item.id)}
+                onClick={() => {
+                  setPage(item.id)
+                  if (isProduction) {
+                    updateWorkbenchHistory(resolveWorkbenchRoutePath(item.id))
+                  }
+                }}
                 aria-current={active ? "page" : undefined}
                 title={item.label}
                 data-testid={`nav-${item.id}`}

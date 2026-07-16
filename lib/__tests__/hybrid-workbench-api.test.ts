@@ -337,7 +337,7 @@ function readyFreeExploreChatInput(
 }
 
 describe("hybrid workbench data api", () => {
-  it("preserves the reference Today branch while hydrating live evidence pointers", () => {
+  it("preserves non-Today shell state while hydrating live Today metadata", () => {
     const baseApi = createMockOrvekDataApi();
     const productionTodayApi = buildTodayProductionDataApi({
       snapshot: LIVE_SNAPSHOT,
@@ -350,22 +350,18 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.mapCategories).toEqual(baseApi.mapCategories);
     expect(hybridApi.timelineGroups).toEqual(baseApi.timelineGroups);
     expect(hybridApi.decisionListGroups).toEqual(baseApi.decisionListGroups);
-    expect(hybridApi.todayCopy).toBeUndefined();
-    expect(hybridApi.todayResurfacedIds).toBeUndefined();
-    expect(hybridApi.getObjects(["r6", "r5", "r2"]).map((object) => object.id)).toEqual([
-      "r6",
-      "r5",
-      "r2",
-    ]);
+    expect(hybridApi.todayCopy).toMatchObject(productionTodayApi.todayCopy ?? {});
+    expect(hybridApi.today).toMatchObject(productionTodayApi.today ?? {});
+    expect(hybridApi.todayResurfacedIds).toBeDefined();
+    expect(hybridApi.todayResurfacedIds).not.toEqual(["r6", "r5", "r2"]);
     expect(hybridApi.getObject("r6")).toMatchObject(baseApi.getObject("r6") ?? {});
     expect(hybridApi.getObject("d1")).toMatchObject(baseApi.getObject("d1") ?? {});
-    expect(hybridApi.today).toBeUndefined();
     expect(hybridApi.todayObjectGraphParity?.inspectableEvidencePointerIds.length).toBeGreaterThan(
       0,
     );
   });
 
-  it("falls back to the reference baseline when production Today has no surfaced receipts", () => {
+  it("keeps Today empty states honest when production has no surfaced receipts", () => {
     const baseApi = createMockOrvekDataApi();
     const productionTodayApi = buildTodayProductionDataApi({
       snapshot: EMPTY_SNAPSHOT,
@@ -374,14 +370,11 @@ describe("hybrid workbench data api", () => {
     });
     const hybridApi = buildHybridWorkbenchDataApi(baseApi, productionTodayApi);
 
-    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi).not.toBe(baseApi);
     expect(hybridApi.displayContract).toBeUndefined();
-    expect(hybridApi.todayResurfacedIds).toBeUndefined();
-    expect(hybridApi.getObjects(["r6", "r5", "r2"]).map((object) => object.id)).toEqual([
-      "r6",
-      "r5",
-      "r2",
-    ]);
+    expect(hybridApi.todayResurfacedIds).toEqual([]);
+    expect(hybridApi.today?.hero).toBeNull();
+    expect(hybridApi.today?.receipts).toEqual([]);
     expect(hybridApi.getObject("d1")).toMatchObject(baseApi.getObject("d1") ?? {});
   });
 
@@ -414,8 +407,10 @@ describe("hybrid workbench data api", () => {
 
     const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, unsafeMapApi);
 
-    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi).not.toBe(baseApi);
     expect(hybridApi.mapCategories).toEqual([]);
+    expect(hybridApi.getObject("conclusion-c-1")).toBeUndefined();
+    expect(hybridApi.mapHasContent).toBe(true);
   });
 
   it("merges presentation-ready production Map data into the hybrid workbench", () => {
@@ -434,19 +429,25 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.getObject("m-claim-1")).toMatchObject(baseApi.getObject("m-claim-1") ?? {});
   });
 
-  it("falls back to reference Map when production Map fetch fails readiness", () => {
+  it("keeps a live Map rail when selected detail evidence preload is absent", () => {
     const baseApi = createMockOrvekDataApi();
     const failingMapApi = buildMapProductionDataApi({
       ...READY_MAP_INPUT,
       evidence: [],
     });
 
-    expect(shouldMergeMapProductionApi(failingMapApi)).toBe(false);
+    expect(shouldMergeMapProductionApi(failingMapApi)).toBe(true);
 
     const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, failingMapApi);
 
-    expect(hybridApi.mapCategories).toEqual([]);
-    expect(hybridApi.getObject("m-claim-1")).toMatchObject(baseApi.getObject("m-claim-1") ?? {});
+    expect(hybridApi.displayContract).toBeUndefined();
+    expect(hybridApi.mapHasContent).toBe(true);
+    expect(hybridApi.mapCategories.some((category) => category.ids.includes("conclusion-c-1"))).toBe(
+      true,
+    );
+    expect(hybridApi.getObject("conclusion-c-1")?.summary).toBe(
+      "The most active loop; directly raises decision pressure.",
+    );
   });
 
   it("falls back to reference Map when production Map list fetch fails", () => {
@@ -649,6 +650,8 @@ describe("hybrid workbench data api", () => {
     expect(hybridApi.displayContract).toBeUndefined();
     expect(hybridApi.decisionListGroups.some((group) => group.ids.length > 0)).toBe(true);
     expect(hybridApi.getObject("act-active")?.tags).toEqual(referenceTagsForDecisionGroup("Active"));
+    expect(hybridApi.getObject("act-active")?.inspectorObjectType).toBe("reference_decision");
+    expect(hybridApi.getObject("act-active")?.inspectorObjectId).toBe("act-active");
     expect(hybridApi.getObject("pc-1")?.inspectorObjectType).toBe("pattern_claim");
     expect(hybridApi.getObject("d1")).toMatchObject(baseApi.getObject("d1") ?? {});
   });
@@ -672,8 +675,9 @@ describe("hybrid workbench data api", () => {
       unsafeDecisionsApi,
     );
 
-    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi).not.toBe(baseApi);
     expect(hybridApi.decisionListGroups).toEqual([]);
+    expect(hybridApi.decisionsHeaderStats).toEqual({ outcomesDue: 0, reviewed: 0 });
     expect(hybridApi.getObject("d1")?.title).toBe(baseApi.getObject("d1")?.title);
   });
 
@@ -817,8 +821,9 @@ describe("hybrid workbench data api", () => {
       unsafeExperimentApi,
     );
 
-    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi).not.toBe(baseApi);
     expect(hybridApi.exploreFieldworkIds).toBeUndefined();
+    expect(hybridApi.experimentIsLoading).toBe(false);
     expect(hybridApi.getObject("f2")?.title).toBe(baseApi.getObject("f2")?.title);
   });
 
@@ -1032,8 +1037,9 @@ describe("hybrid workbench data api", () => {
       unsafeActiveQuestionsApi,
     );
 
-    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi).not.toBe(baseApi);
     expect(hybridApi.exploreQuestionIds).toBeUndefined();
+    expect(hybridApi.activeQuestionsIsLoading).toBe(false);
     expect(hybridApi.getObject("aq-1")?.title).toBe(baseApi.getObject("aq-1")?.title);
   });
 
@@ -1263,8 +1269,9 @@ describe("hybrid workbench data api", () => {
       unsafeInvestigationsApi,
     );
 
-    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi).not.toBe(baseApi);
     expect(hybridApi.exploreInvestigationIds).toBeUndefined();
+    expect(hybridApi.investigationsIsLoading).toBe(false);
     expect(hybridApi.getObject("inv-1")?.title).toBe(baseApi.getObject("inv-1")?.title);
   });
 

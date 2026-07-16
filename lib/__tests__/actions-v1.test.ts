@@ -173,6 +173,10 @@ describe("buildCurrentPrioritySnapshot", () => {
 });
 
 describe("selectStabilizeActionBlueprints", () => {
+  it("returns no stabilize suggestions when no live claims exist", () => {
+    expect(selectStabilizeActionBlueprints([])).toEqual([]);
+  });
+
   it("maps live claims to family-specific stabilize actions", () => {
     const blueprints = selectStabilizeActionBlueprints([
       makeClaim({
@@ -346,16 +350,8 @@ describe("selectBuildForwardActionBlueprints", () => {
     expect(blueprints[2]?.linkedGoalId).toBeNull();
   });
 
-  it("falls back to a stable default set when no active goals exist", () => {
-    const blueprints = selectBuildForwardActionBlueprints([]);
-    expect(blueprints.map((blueprint) => blueprint.templateId)).toEqual([
-      "b2",
-      "b4",
-      "b5",
-    ]);
-    expect(blueprints.every((blueprint) => blueprint.linkedGoalId === null)).toBe(
-      true
-    );
+  it("returns no build suggestions when no eligible goals exist", () => {
+    expect(selectBuildForwardActionBlueprints([])).toEqual([]);
   });
 });
 
@@ -401,5 +397,39 @@ describe("surfaced action persistence", () => {
     expect(second[0]?.id).toBe(first[0]?.id);
     expect(second[0]?.status).toBe("helped");
     expect(second[0]?.note).toBe("Helped me interrupt the loop.");
+  });
+
+  it("reuses the concurrently-created row when create loses a unique-key race", async () => {
+    const db = createMockDb();
+    const blueprints = selectStabilizeActionBlueprints([
+      makeClaim({
+        id: "claim-race",
+        patternType: "trigger_condition",
+        summary: "Pressure makes agreements happen too quickly.",
+      }),
+    ]).slice(0, 1);
+
+    const originalCreate = db.surfacedAction.create;
+    let firstCreate = true;
+
+    db.surfacedAction.create = async (args) => {
+      if (!firstCreate) {
+        return originalCreate(args);
+      }
+      firstCreate = false;
+      await originalCreate(args);
+      throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+    };
+
+    const result = await syncSurfacedActions({ userId: "user-race", blueprints }, db);
+
+    expect(result).toHaveLength(1);
+    expect(db.rows).toHaveLength(1);
+    expect(db.rows[0]?.surfaceKey).toBe(blueprints[0]?.surfaceKey);
+    expect(result[0]).toMatchObject({
+      title: blueprints[0]?.title,
+      linkedClaimId: "claim-race",
+      status: "not_started",
+    });
   });
 });

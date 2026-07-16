@@ -137,7 +137,7 @@ describe("live evidence depth runtime fixture", () => {
   it("validates Today gate stored-pointer replacement", async () => {
     const report = await runLiveEvidenceDepthRuntimeFixture(executeFixtureArgs());
 
-    expect(report.steps.todayGate.storedPointerReplacesFallback).toBe(true);
+    expect(report.steps.todayGate.storedPointerApplied).toBe(true);
     expect(report.steps.todayGate.todayResurfacedIds).toEqual([
       "receipt-pattern-dev-live-evidence-depth-claim",
     ]);
@@ -148,8 +148,8 @@ describe("live evidence depth runtime fixture", () => {
       executeFixtureArgs({ verifyUnsafeFallback: true }),
     );
 
-    expect(report.steps.unsafeFallback.checked).toBe(true);
-    expect(report.steps.unsafeFallback.preservesReferenceFallback).toBe(true);
+    expect(report.steps.unsafeBaseState.checked).toBe(true);
+    expect(report.steps.unsafeBaseState.keepsHonestEmptyState).toBe(true);
   });
 
   it("cleans up only deterministic fixture-owned ids by default", async () => {

@@ -92,6 +92,8 @@ describe("bounded free explore chat hybrid fetch bridge", () => {
     const chatHookSource = readSource("components/orvek-workbench/useOrvekExploreChat.ts");
 
     expect(hookSource).toContain("useOrvekExploreChat");
+    expect(hookSource).toContain("enabled: exploreChatEnabled");
+    expect(hookSource).toContain('pathname === "/explore"');
     expect(hookSource).toContain("buildFreeExploreChatProductionDataApi");
     expect(hookSource).toContain("freeExploreChatApi");
     expect(hookSource).toContain("sendHandlerAvailable: exploreChatSendReady");
@@ -100,6 +102,7 @@ describe("bounded free explore chat hybrid fetch bridge", () => {
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
     expect(chatHookSource).toContain("/api/message/list");
     expect(chatHookSource).toContain("buildAppSessionListUrl");
+    expect(chatHookSource).toContain("const enabled = options?.enabled ?? true;");
   });
 
   it("passes freeExploreChatApi as the ninth argument to buildHybridWorkbenchDataApi", () => {

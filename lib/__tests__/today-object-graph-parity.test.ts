@@ -138,7 +138,7 @@ describe("live Today object graph parity", () => {
     expect(canUseLiveTodaySeeWhyMoved(productionTodayApi, "iu-1")).toBe(false);
   });
 
-  it("merges only parity-safe receipt objects and keeps reference Today presentation props", () => {
+  it("merges parity-safe receipt objects and preserves the honest live Today presentation", () => {
     const baseApi = createMockOrvekDataApi();
     const productionTodayApi = buildTodayProductionDataApi({
       snapshot: LIVE_RECEIPT_SNAPSHOT,
@@ -149,8 +149,8 @@ describe("live Today object graph parity", () => {
     const receiptIds = productionTodayApi.todayResurfacedIds ?? [];
 
     expect(shouldMergeTodayObjectGraph(productionTodayApi)).toBe(true);
-    expect(hybridApi.today).toBeUndefined();
-    expect(hybridApi.todayResurfacedIds).toBeUndefined();
+    expect(hybridApi.today).toMatchObject(productionTodayApi.today ?? {});
+    expect(hybridApi.todayResurfacedIds).toEqual(receiptIds);
     expect(hybridApi.todayObjectGraphParity?.inspectableEvidencePointerIds.length).toBeGreaterThan(
       0,
     );
@@ -176,7 +176,10 @@ describe("live Today object graph parity", () => {
     });
 
     expect(shouldMergeTodayObjectGraph(productionTodayApi)).toBe(false);
-    expect(buildHybridWorkbenchDataApi(baseApi, productionTodayApi)).toBe(baseApi);
+    const hybridApi = buildHybridWorkbenchDataApi(baseApi, productionTodayApi);
+    expect(hybridApi.today).toMatchObject(productionTodayApi.today ?? {});
+    expect(hybridApi.todayResurfacedIds).toEqual([]);
+    expect(hybridApi.getObject("mu-1")).toMatchObject(baseApi.getObject("mu-1") ?? {});
   });
 
   it("does not register an openable live report without a report object", () => {

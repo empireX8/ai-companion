@@ -210,11 +210,7 @@ export function isMapObjectPresentationReady(object: OrvekObject): boolean {
 
   const isDetailLike =
     object.inspectorObjectType === "usermap_conclusion" &&
-    ((object.evidenceCount ?? 0) > 0 ||
-      Boolean(object.supporting?.length) ||
-      Boolean(object.conflicting?.length) ||
-      Boolean(object.before) ||
-      Boolean(object.after));
+    object.relatedIds !== undefined;
 
   if (isDetailLike) {
     if ((object.evidenceCount ?? 0) > 0 && !normalized.supporting?.length) {
@@ -255,7 +251,19 @@ export function hasValidMapCategoryStructure(categories: OrvekMapCategory[] | un
 }
 
 export function isMapPresentationReady(api: OrvekDataApi | undefined): boolean {
-  if (!api?.mapHasContent || api.mapLoadError || api.mapIsLoading) {
+  if (!api) {
+    return false;
+  }
+
+  if (!api.mapHasContent) {
+    return false;
+  }
+
+  if (api.mapLoadError) {
+    return false;
+  }
+
+  if (api.mapIsLoading) {
     return false;
   }
 

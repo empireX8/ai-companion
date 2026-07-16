@@ -83,11 +83,15 @@ export function ProductionInspectorBridge({ children }: { children: React.ReactN
     }
     const provenance = resolveOrvekObjectProvenance(data, obj);
     const availability =
-      objectType === "reference_decision" || objectType === "reference_report"
+      objectType === "reference_report"
         ? provenance === "live"
           ? "unsupported"
           : "reference_fallback"
-        : provenance;
+        : objectType === "reference_decision"
+          ? provenance === "live"
+            ? "live"
+            : "reference_fallback"
+          : provenance;
     const inspectorObjectId = obj.inspectorObjectId ?? obj.id;
     const signature = buildProductionInspectorBridgeSignature({
       selectedId,

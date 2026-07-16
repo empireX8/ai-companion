@@ -85,7 +85,7 @@ const BASE_INPUT: MapMapDataInput = {
 };
 
 describe("map production data bridge", () => {
-  it("projects detail fields onto both rail and selected ids", () => {
+  it("keeps the rail row live while exposing richer detail under the raw selected id", () => {
     const api = buildMapProductionDataApi(BASE_INPUT);
     const railObject = api.getObject("conclusion-c-1");
     const selectedObject = api.getObject("c-1");
@@ -96,12 +96,15 @@ describe("map production data bridge", () => {
       "The most active loop; directly raises decision pressure."
     );
     expect(railObject?.recommendation).toBeUndefined();
+    expect(railObject?.supporting).toBeUndefined();
+    expect(railObject?.relatedIds).toBeUndefined();
     expect(selectedObject?.summary).toBe(railObject?.summary);
-    expect(railObject?.supporting).toEqual([
+    expect(selectedObject?.supporting).toEqual([
       "Scope reopened twice this week",
       "Linked to public-test avoidance",
     ]);
-    expect(railObject?.conflicting?.length).toBeGreaterThan(0);
+    expect(selectedObject?.conflicting?.length).toBeGreaterThan(0);
+    expect(selectedObject?.relatedIds?.length).toBeGreaterThan(0);
   });
 
   it("always exposes the full ontology rail shell", () => {
@@ -114,7 +117,7 @@ describe("map production data bridge", () => {
 
   it("resolves related objects across mixed ontology rails", () => {
     const api = buildMapProductionDataApi(BASE_INPUT);
-    const detail = api.getObject("conclusion-c-1");
+    const detail = api.getObject("c-1");
     const related = api.getObjects(detail?.relatedIds);
 
     expect(related.length).toBeGreaterThan(0);
@@ -135,7 +138,7 @@ describe("map production data bridge", () => {
 
   it("never returns undefined entries from getObjects", () => {
     const api = buildMapProductionDataApi(BASE_INPUT);
-    const detail = api.getObject("conclusion-c-1");
+    const detail = api.getObject("c-1");
     const related = api.getObjects(detail?.relatedIds);
 
     expect(related.some((item) => item === undefined)).toBe(false);

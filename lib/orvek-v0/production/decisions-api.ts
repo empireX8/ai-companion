@@ -46,8 +46,8 @@ function actionToObject(
         : groupHeading === "Reviewed"
           ? "recorded"
           : undefined,
-    inspectorObjectType: action.linkedClaimId ? "pattern_claim" : undefined,
-    inspectorObjectId: action.linkedClaimId ?? action.id,
+    inspectorObjectType: "reference_decision",
+    inspectorObjectId: action.id,
     lastUpdated: action.updatedAt,
   };
 }

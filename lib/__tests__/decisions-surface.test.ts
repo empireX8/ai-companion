@@ -75,7 +75,8 @@ describe("decisions page wiring", () => {
     const adapterSource = readSource("lib/orvek-adapters/decisions.ts");
     const viewSource = readSource("components/orvek-v0/pages/decisions.tsx");
     const apiSource = readSource("lib/orvek-v0/production/decisions-api.ts");
-    const wiring = `${containerSource}\n${adapterSource}\n${viewSource}\n${apiSource}`;
+    const helperSource = readSource("lib/orvek-v0/production/decisions-presentation.ts");
+    const wiring = `${containerSource}\n${adapterSource}\n${viewSource}\n${apiSource}\n${helperSource}`;
 
     expect(pageSource).toContain("OrvekDecisionsPage");
     expect(wiring).toContain("DECISIONS_PAGE_INTRO");
@@ -86,8 +87,9 @@ describe("decisions page wiring", () => {
     expect(adapterSource).toContain('"Outcome due"');
     expect(viewSource).toContain("Options");
     expect(viewSource).toContain("Decisions");
-    expect(apiSource).toContain("inspectorObjectType");
-    expect(apiSource).toContain("pattern_claim");
+    expect(apiSource).toContain('inspectorObjectType: "reference_decision"');
+    expect(helperSource).toContain('inspectorObjectType: "pattern_claim"');
+    expect(apiSource).toContain("buildLinkedClaimAliasObject");
     expect(wiring).not.toContain("Recommended for you");
     expect(wiring).not.toContain("Loading actions");
   });

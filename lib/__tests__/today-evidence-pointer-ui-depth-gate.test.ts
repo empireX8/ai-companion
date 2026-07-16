@@ -5,10 +5,7 @@ import { EMPTY_ORVEK_DATA_API } from "../orvek-v0/empty-api";
 import type { OrvekDataApi } from "../orvek-v0/data-provider";
 import type { OrvekObject } from "../orvek-v0/orvek-types";
 import { mergeSurfacedEvidenceDepthObjects } from "../live-evidence-depth-linkage";
-import {
-  applySurfacedEvidenceDepthGate,
-  REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS,
-} from "../orvek-v0/production/today-evidence-pointer-depth-gate";
+import { applySurfacedEvidenceDepthGate } from "../orvek-v0/production/today-evidence-pointer-depth-gate";
 
 const STORED_POINTER: OrvekObject = {
   id: "receipt-pattern-claim-1",
@@ -36,7 +33,7 @@ describe("Today evidence pointer UI depth gate", () => {
     expect(api.getObject("receipt-pattern-claim-1")).toBeUndefined();
   });
 
-  it("does not surface thin production todayResurfacedIds when no depth-safe overlay is present", () => {
+  it("does not silently replace thin production todayResurfacedIds with reference fallback ids", () => {
     const api: OrvekDataApi = {
       ...EMPTY_ORVEK_DATA_API,
       todayResurfacedIds: ["receipt-0-thin-live"],
@@ -46,8 +43,10 @@ describe("Today evidence pointer UI depth gate", () => {
       api,
       overlay: null,
     });
-    expect(gated.todayResurfacedIds).toEqual([...REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS]);
-    expect(gated.todayResurfacedIds).not.toContain("receipt-0-thin-live");
+    expect(gated.todayResurfacedIds).toEqual(["receipt-0-thin-live"]);
+    expect(gated.todayObjectGraphParity?.blockedEvidencePointerIds).toEqual([
+      "receipt-0-thin-live",
+    ]);
   });
 
   it("registers stored depth-safe pointer objects without mutating todayResurfacedIds", () => {
@@ -96,4 +95,3 @@ describe("Today evidence pointer UI depth gate", () => {
     expect(gated.getObject(LINKED_TARGET.id)?.summary).toBe(LINKED_TARGET.summary);
   });
 });
-

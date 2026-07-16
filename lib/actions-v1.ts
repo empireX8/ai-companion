@@ -108,6 +108,15 @@ type MinimalDb = {
   };
 };
 
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "P2002"
+  );
+}
+
 const FAMILY_LABELS = Object.fromEntries(
   PATTERN_FAMILY_SECTIONS.map((section) => [section.familyKey, section.sectionLabel])
 ) as Record<FamilyKey, string>;
@@ -571,9 +580,7 @@ export function selectStabilizeActionBlueprints(
   );
 
   if (priorityClaims.length === 0) {
-    return STABILIZE_FALLBACK_ORDER.slice(0, maxItems).map((templateId) =>
-      makeStabilizeBlueprint(templateId, null)
-    );
+    return [];
   }
 
   const cursors = new Map(priorityClaims.map((claim) => [claim.id, 0]));
@@ -648,9 +655,7 @@ export function selectBuildForwardActionBlueprints(
   const orderedGoals = goalProfiles.map((profile) => profile.goal);
 
   if (orderedGoals.length === 0) {
-    return BUILD_FALLBACK_ORDER.slice(0, maxItems).map((templateId) =>
-      makeBuildBlueprint(templateId, null)
-    );
+    return [];
   }
 
   const goalSlotCaps = new Map(
@@ -776,20 +781,35 @@ export async function syncSurfacedActions(
   for (const blueprint of uniqueBlueprints) {
     const existing = byKey.get(blueprint.surfaceKey);
     if (!existing) {
-      const created = await db.surfacedAction.create({
-        data: {
-          userId,
-          surfaceKey: blueprint.surfaceKey,
-          templateId: blueprint.templateId,
-          bucket: blueprint.bucket,
-          linkedFamily: blueprint.linkedFamily,
-          linkedClaimId: blueprint.linkedClaimId,
-          linkedGoalRefId: blueprint.linkedGoalId,
-          status: "not_started",
-        },
-      });
-      resolvedRows.push(created);
-      byKey.set(created.surfaceKey, created);
+      try {
+        const created = await db.surfacedAction.create({
+          data: {
+            userId,
+            surfaceKey: blueprint.surfaceKey,
+            templateId: blueprint.templateId,
+            bucket: blueprint.bucket,
+            linkedFamily: blueprint.linkedFamily,
+            linkedClaimId: blueprint.linkedClaimId,
+            linkedGoalRefId: blueprint.linkedGoalId,
+            status: "not_started",
+          },
+        });
+        resolvedRows.push(created);
+        byKey.set(created.surfaceKey, created);
+      } catch (error) {
+        if (!isUniqueConstraintError(error)) {
+          throw error;
+        }
+        const concurrentRows = await db.surfacedAction.findMany({
+          where: { userId, surfaceKey: { in: [blueprint.surfaceKey] } },
+        });
+        const concurrentRow = concurrentRows[0];
+        if (!concurrentRow) {
+          throw error;
+        }
+        resolvedRows.push(concurrentRow);
+        byKey.set(concurrentRow.surfaceKey, concurrentRow);
+      }
       continue;
     }
 

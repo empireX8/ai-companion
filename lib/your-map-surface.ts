@@ -125,15 +125,21 @@ export async function fetchYourMapConclusions(): Promise<
     cache: "no-store",
   });
 
+  let payload: { items?: UserMapConclusionPublicApiListItem[] } | null = null;
+
+  try {
+    payload = (await response.json()) as {
+      items?: UserMapConclusionPublicApiListItem[];
+    };
+  } catch {
+    payload = null;
+  }
+
   if (!response.ok) {
     throw new Error(`Failed to load map conclusions (${response.status})`);
   }
 
-  const payload = (await response.json()) as {
-    items?: UserMapConclusionPublicApiListItem[];
-  };
-
-  return Array.isArray(payload.items) ? payload.items : [];
+  return Array.isArray(payload?.items) ? payload.items : [];
 }
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {

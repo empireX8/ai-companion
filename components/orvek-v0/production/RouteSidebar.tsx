@@ -32,6 +32,7 @@ export function RouteSidebar() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 title={item.label}
+                data-testid={`nav-${item.label.toLowerCase() === "today" ? "today" : item.label.toLowerCase()}`}
                 className={cn(
                   "o-calm group relative flex aspect-square w-full items-center justify-center rounded-[13px]",
                   active

@@ -1,15 +1,26 @@
 import { defineConfig } from "@playwright/test";
 
+const DESKTOP_PARITY_BASE_URL =
+  process.env.DESKTOP_PARITY_BASE_URL ?? "http://localhost:3100";
+const DESKTOP_PARITY_PORT = new URL(DESKTOP_PARITY_BASE_URL).port || "3100";
+const DESKTOP_PARITY_READY_URL = `${DESKTOP_PARITY_BASE_URL}/sign-in`;
+
 export default defineConfig({
   testDir: "./scripts",
-  testMatch: /(?:v0-route-smoke|movement-report-completion|durable-actions-assault|explore-grounding-movement-assault|explore-send-readiness-isolated|investigations-production-assault)\.playwright\.ts/,
+  testMatch: /(?:v0-route-smoke|movement-report-completion|durable-actions-assault|explore-grounding-movement-assault|explore-send-readiness-isolated|investigations-production-assault|desktop-production-parity-closure)\.playwright\.ts/,
   timeout: 300_000,
   retries: 0,
   expect: {
     timeout: 20_000,
   },
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: DESKTOP_PARITY_BASE_URL,
     trace: "off",
+  },
+  webServer: {
+    command: `npm run build && PORT=${DESKTOP_PARITY_PORT} npm run start`,
+    url: DESKTOP_PARITY_READY_URL,
+    reuseExistingServer: false,
+    timeout: 600_000,
   },
 });

@@ -519,7 +519,7 @@ describe("live evidence depth runtime validation", () => {
     expect(readGraph.inspectorDepthListReady).toBe(true);
   });
 
-  it("publish succeeds without pointer when stored rationale is missing; Today gate keeps fallback", async () => {
+  it("publish succeeds without pointer when stored rationale is missing; Today gate stays honestly empty", async () => {
     const fixture = makeRuntimeValidationFixture();
     await persistEvidenceDepthAuthoringInputsForSource({
       userId: fixture.userId,
@@ -540,7 +540,7 @@ describe("live evidence depth runtime validation", () => {
       deps: buildReadDeps(fixture),
     });
     const { gatedApi } = applyTodayEvidenceDepthGateFromReadGraph({ readGraph });
-    expect(gatedApi.todayResurfacedIds).toEqual([...REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS]);
+    expect(gatedApi.todayResurfacedIds).toEqual([]);
   });
 
   it.each([
@@ -552,7 +552,7 @@ describe("live evidence depth runtime validation", () => {
       "rationale_equals_source_text",
     ],
   ])(
-    "blocks %s: publish succeeds, no pointer, Today fallback remains",
+    "blocks %s: publish succeeds, no pointer, and Today stays honestly empty",
     async (_label, badRationale, blocker) => {
       const fixture = makeRuntimeValidationFixture();
       fixture.rationaleRows.push({
@@ -592,11 +592,11 @@ describe("live evidence depth runtime validation", () => {
         deps: buildReadDeps(fixture),
       });
       const { gatedApi } = applyTodayEvidenceDepthGateFromReadGraph({ readGraph });
-      expect(gatedApi.todayResurfacedIds).toEqual([...REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS]);
+      expect(gatedApi.todayResurfacedIds).toEqual([]);
     },
   );
 
-  it("blocks missing graphSlot links: no pointer and Today fallback remains", async () => {
+  it("blocks missing graphSlot links: no pointer and Today stays honestly empty", async () => {
     const fixture = makeRuntimeValidationFixture();
     await persistEvidenceDepthAuthoringInputsForSource({
       userId: fixture.userId,
@@ -620,7 +620,7 @@ describe("live evidence depth runtime validation", () => {
       deps: buildReadDeps(fixture),
     });
     const { gatedApi } = applyTodayEvidenceDepthGateFromReadGraph({ readGraph });
-    expect(gatedApi.todayResurfacedIds).toEqual([...REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS]);
+    expect(gatedApi.todayResurfacedIds).toEqual([]);
   });
 
   it("excludes private/ineligible graphSlot targets; no public pointer when none remain eligible", async () => {
@@ -653,10 +653,10 @@ describe("live evidence depth runtime validation", () => {
       deps: buildReadDeps(fixture),
     });
     const { gatedApi } = applyTodayEvidenceDepthGateFromReadGraph({ readGraph });
-    expect(gatedApi.todayResurfacedIds).toEqual([...REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS]);
+    expect(gatedApi.todayResurfacedIds).toEqual([]);
   });
 
-  it("fails closed on thin/unsafe stored pointer and preserves Today fallback", async () => {
+  it("fails closed on thin/unsafe stored pointer and keeps Today honestly empty", async () => {
     const fixture = makeRuntimeValidationFixture();
     const pointerId = buildSurfacedEvidencePointerId({
       sourceObjectType: "pattern_claim",
@@ -703,10 +703,10 @@ describe("live evidence depth runtime validation", () => {
     expect(readGraph.rejectedPointers[0]?.blockers).toContain("generic_why_it_matters");
 
     const { gatedApi } = applyTodayEvidenceDepthGateFromReadGraph({ readGraph });
-    expect(gatedApi.todayResurfacedIds).toEqual([...REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS]);
+    expect(gatedApi.todayResurfacedIds).toEqual([]);
   });
 
-  it("fails closed when linked target cannot hydrate; depth list not ready and fallback remains", async () => {
+  it("fails closed when linked target cannot hydrate; depth list not ready and Today stays honestly empty", async () => {
     const fixture = makeRuntimeValidationFixture();
     await seedAuthoredDepth(fixture);
     await publishCandidate(fixture);
@@ -722,7 +722,7 @@ describe("live evidence depth runtime validation", () => {
     expect(readGraph.rejectedPointers[0]?.blockers).toContain("unhydrated_target");
 
     const { gatedApi } = applyTodayEvidenceDepthGateFromReadGraph({ readGraph });
-    expect(gatedApi.todayResurfacedIds).toEqual([...REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS]);
+    expect(gatedApi.todayResurfacedIds).toEqual([]);
   });
 
   it("upserts same SurfacedEvidencePointer on duplicate materialization without duplicating rows", async () => {
@@ -769,7 +769,7 @@ describe("live evidence depth runtime validation", () => {
     expect(otherGraph.inspectorDepthListReady).toBe(false);
   });
 
-  it("Today gate regression: depth-ready stored pointers replace fallback; unsafe keeps r6/r5/r2; thin live rows blocked", () => {
+  it("Today gate regression: depth-ready stored pointers apply; unsafe rows stay honestly empty; thin live rows are blocked", () => {
     const thinLiveApi = {
       ...EMPTY_ORVEK_DATA_API,
       todayResurfacedIds: ["receipt-0-thin-live"],
@@ -779,8 +779,10 @@ describe("live evidence depth runtime validation", () => {
       api: thinLiveApi,
       overlay: null,
     });
-    expect(withoutOverlay.todayResurfacedIds).toEqual([...REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS]);
-    expect(withoutOverlay.todayResurfacedIds).not.toContain("receipt-0-thin-live");
+    expect(withoutOverlay.todayResurfacedIds).toEqual(["receipt-0-thin-live"]);
+    expect(withoutOverlay.todayObjectGraphParity?.blockedEvidencePointerIds).toEqual([
+      "receipt-0-thin-live",
+    ]);
 
     const withReadyOverlay = applySurfacedEvidenceDepthGate({
       api: thinLiveApi,

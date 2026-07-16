@@ -1,0 +1,180 @@
+{
+  "campaign": "DESKTOP-PRODUCTION-PARITY-CLOSURE-001",
+  "date": "2026-07-16",
+  "baselineCommit": "38d3b2c7cc9e944512fd6269269f04838b46a8e5",
+  "status": "passed",
+  "requiredSuite": "dedicated global production-parity Playwright suite",
+  "requiredMinimum": 7,
+  "completed": 7,
+  "passed": 7,
+  "tests": [
+    {
+      "name": "TEST 1 — Today and report continuity",
+      "status": "PASS",
+      "ids": {
+        "modelUpdateId": "cmrny3kfp0000qlid56o30lnv",
+        "reportOverlayId": "cmrny3kfp0000qlid56o30lnv",
+        "inspectorModelUpdateId": "cmrny3kfp0000qlid56o30lnv"
+      }
+    },
+    {
+      "name": "TEST 2 — Map and Inspector",
+      "status": "PASS",
+      "ids": {
+        "mapConclusionId": "dev-live-evidence-depth-conclusion",
+        "inspectorMapConclusionId": "dev-live-evidence-depth-conclusion"
+      }
+    },
+    {
+      "name": "TEST 3 — Decisions continuity",
+      "status": "PASS",
+      "ids": {
+        "decisionActionId": "cmrny41y10008qlidn502238j",
+        "inspectorDecisionId": "cmrny41y10008qlidn502238j"
+      }
+    },
+    {
+      "name": "TEST 4 — Explore grounding and movement continuity",
+      "status": "PASS",
+      "ids": {
+        "conversationId": "a11ce001-ea01-4000-8000-000000000002",
+        "userMessageId": "2cd4aa7f-b480-431d-ac2f-9e066899136c",
+        "assistantMessageId": "33714563-0b7b-4a63-b322-9a457c8e810f",
+        "proposalId": "cmrny4sf90004qlicpmws9q6e",
+        "modelUpdateId": "cmrny4u2r0005qlicjrbr4ehn"
+      }
+    },
+    {
+      "name": "TEST 5 — Investigations continuity",
+      "status": "PASS",
+      "ids": {
+        "investigationId": "cmrny5088000cqlica6rx9s56",
+        "evidenceId": "dev-investigations-assault-evidence-secondary",
+        "watchForId": "cmrny51ee000eqlicig99n6su",
+        "inspectorInvestigationId": "cmrny5088000cqlica6rx9s56"
+      }
+    },
+    {
+      "name": "TEST 6 — Timeline provenance",
+      "status": "PASS",
+      "ids": {
+        "modelUpdateId": "cmrny58qz0009qlidggwkoi5w",
+        "inspectorModelUpdateId": "cmrny58qz0009qlidggwkoi5w"
+      }
+    },
+    {
+      "name": "TEST 7 — global empty, unavailable, auth, and reference isolation",
+      "status": "PASS",
+      "statuses": {
+        "unauthenticatedInvestigationList": 404,
+        "unauthenticatedInvestigationDetail": 404,
+        "unauthenticatedDecisionPatch": 404,
+        "crossUserInvestigationDetail": 404,
+        "missingInvestigation": 404,
+        "missingExploreMessage": 404,
+        "malformedExploreMessage": 400,
+        "crossUserExploreSessionList": 404
+      },
+      "ids": {
+        "negativeInvestigationId": "cmrny5t7d000fqlichep227fs"
+      }
+    }
+  ],
+  "ids": {
+    "todayModelUpdateId": "cmrny3kfp0000qlid56o30lnv",
+    "mapConclusionId": "dev-live-evidence-depth-conclusion",
+    "decisionActionId": "cmrny41y10008qlidn502238j",
+    "exploreConversationId": "a11ce001-ea01-4000-8000-000000000002",
+    "exploreUserMessageId": "2cd4aa7f-b480-431d-ac2f-9e066899136c",
+    "exploreAssistantMessageId": "33714563-0b7b-4a63-b322-9a457c8e810f",
+    "exploreProposalId": "cmrny4sf90004qlicpmws9q6e",
+    "exploreModelUpdateId": "cmrny4u2r0005qlicjrbr4ehn",
+    "investigationId": "cmrny5088000cqlica6rx9s56",
+    "investigationEvidenceId": "dev-investigations-assault-evidence-secondary",
+    "watchForId": "cmrny51ee000eqlicig99n6su",
+    "timelineModelUpdateId": "cmrny58qz0009qlidggwkoi5w"
+  },
+  "inspectorIdentities": {
+    "todayModelUpdateId": "cmrny3kfp0000qlid56o30lnv",
+    "mapConclusionId": "dev-live-evidence-depth-conclusion",
+    "decisionActionId": "cmrny41y10008qlidn502238j",
+    "exploreModelUpdateId": "cmrny4u2r0005qlicjrbr4ehn",
+    "investigationId": "cmrny5088000cqlica6rx9s56",
+    "timelineModelUpdateId": "cmrny58qz0009qlidggwkoi5w"
+  },
+  "negativeStatuses": {
+    "unauthenticatedInvestigationList": 404,
+    "unauthenticatedInvestigationDetail": 404,
+    "unauthenticatedDecisionPatch": 404,
+    "crossUserInvestigationDetail": 404,
+    "missingInvestigation": 404,
+    "missingExploreMessage": 404,
+    "malformedExploreMessage": 400,
+    "crossUserExploreSessionList": 404
+  },
+  "fixtureCleanup": {
+    "movement": {
+      "deletedLinks": 0,
+      "deletedModelUpdates": 0,
+      "deletedEvidence": 0,
+      "deletedClaims": 0,
+      "deletedConclusions": 0,
+      "remainingModelUpdates": 0,
+      "remainingLinks": 0
+    },
+    "durable": {
+      "deletedConclusions": 0,
+      "deletedActions": 0,
+      "deletedFieldwork": 0,
+      "remainingConclusions": 0,
+      "remainingActions": 0,
+      "remainingFieldwork": 0
+    },
+    "explore": {
+      "deletedConversations": 0,
+      "deletedMessages": 0,
+      "deletedGroundingPayloadMessages": 0,
+      "deletedProposals": 0,
+      "deletedModelUpdates": 0,
+      "deletedMovementEvidenceLinks": 0,
+      "deletedSeededMapEvidenceObjects": 4,
+      "remainingConversations": 0,
+      "remainingMessages": 0,
+      "remainingProposals": 0,
+      "remainingModelUpdates": 0,
+      "remainingMovementEvidenceLinks": 0,
+      "remainingSeededMapEvidenceObjects": 0
+    },
+    "investigations": {
+      "deletedInvestigations": 1,
+      "deletedWatchFors": 0,
+      "deletedEvidenceLinks": 0,
+      "deletedEvidenceObjects": 0,
+      "deletedMessages": 0,
+      "deletedSessions": 0,
+      "deletedModelUpdates": 0,
+      "remaining": {
+        "investigations": 0,
+        "watchFors": 0,
+        "evidenceLinks": 0,
+        "fieldworkAssociations": 0,
+        "outcomes": 0,
+        "closures": 0,
+        "investigationModelUpdates": 0,
+        "seededEvidenceObjects": 0,
+        "seededFieldworkObjects": 0
+      }
+    },
+    "investigationsRemaining": {
+      "investigations": 0,
+      "watchFors": 0,
+      "evidenceLinks": 0,
+      "fieldworkAssociations": 0,
+      "outcomes": 0,
+      "closures": 0,
+      "investigationModelUpdates": 0,
+      "seededEvidenceObjects": 0,
+      "seededFieldworkObjects": 0
+    }
+  }
+}

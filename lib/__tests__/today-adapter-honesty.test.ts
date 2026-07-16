@@ -278,7 +278,8 @@ describe("live Today adapter honesty", () => {
 
     expect(hybridSource).toContain("liveTodayReady");
     expect(hybridSource).not.toMatch(/displayContract:\s*["']production["']/);
-    expect(hybridApi.today).toBeUndefined();
+    expect(hybridApi.today).toMatchObject(productionTodayApi.today ?? {});
+    expect(hybridApi.todayResurfacedIds).toEqual([]);
     expect(productionTodayApi.today?.hero?.showSeeWhyMoved).toBe(false);
   });
 

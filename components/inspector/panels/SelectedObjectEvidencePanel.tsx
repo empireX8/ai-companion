@@ -1206,21 +1206,33 @@ function UserMapEvidencePanel({
     setNotFound(false);
 
     void (async () => {
-      const [nextDetail, nextEvidence] = await Promise.all([
-        fetchInspectorUserMapDetail(selection.selectedObjectId),
-        fetchInspectorEvidenceLinks(
-          INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT(selection.selectedObjectId)
-        ),
-      ]);
+      try {
+        const [nextDetail, nextEvidence] = await Promise.all([
+          fetchInspectorUserMapDetail(selection.selectedObjectId),
+          fetchInspectorEvidenceLinks(
+            INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT(selection.selectedObjectId)
+          ),
+        ]);
 
-      if (cancelled) {
-        return;
+        if (cancelled) {
+          return;
+        }
+
+        setDetail(nextDetail);
+        setEvidence(nextEvidence);
+        setNotFound(!nextDetail);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        setDetail(null);
+        setEvidence([]);
+        setNotFound(true);
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
-
-      setDetail(nextDetail);
-      setEvidence(nextEvidence);
-      setNotFound(!nextDetail);
-      setIsLoading(false);
     })();
 
     return () => {
@@ -1237,7 +1249,7 @@ function UserMapEvidencePanel({
   }
 
   return (
-    <>
+    <div data-testid="inspector-map-conclusion-panel" data-object-id={detail.id}>
       <ObjectHeader
         typeLabel="Map conclusion"
         title={selection.selectedTitle ?? detail.title}
@@ -1273,7 +1285,30 @@ function UserMapEvidencePanel({
         <SectionLabel>Supporting evidence</SectionLabel>
         <EvidenceLinksSection items={evidence} />
       </section>
-    </>
+    </div>
+  );
+}
+
+function DecisionEvidencePanel({
+  selection,
+  sourceObject,
+}: {
+  selection: InspectorSelection;
+  sourceObject: OrvekObject | undefined;
+}) {
+  if (!sourceObject) {
+    return <UnavailableState objectTypeLabel="Decision" />;
+  }
+
+  return (
+    <div data-testid="inspector-decision-panel" data-object-id={sourceObject.id}>
+      <ObjectHeader
+        typeLabel="Decision"
+        title={selection.selectedTitle ?? sourceObject.title}
+        meta={sourceObject.tags?.join(" · ") ?? "Live decision"}
+      />
+      <SourceObjectSections object={sourceObject} />
+    </div>
   );
 }
 
@@ -2005,6 +2040,8 @@ export function SelectedObjectEvidencePanel({
   });
 
   if (selection.availability && selection.availability !== "live") {
+    if (selection.selectedObjectType === "usermap_conclusion") {
+    }
     return <SelectionAvailabilityPanel selection={selection} />;
   }
 
@@ -2032,6 +2069,9 @@ export function SelectedObjectEvidencePanel({
           resolveOrvekObject={(id) => orvekData?.getObject(id)}
         />
       );
+      break;
+    case "reference_decision":
+      panel = <DecisionEvidencePanel selection={selection} sourceObject={sourceObject} />;
       break;
     case "receipt":
       panel = <ReceiptEvidencePanel selection={selection} sourceObject={sourceObject} />;

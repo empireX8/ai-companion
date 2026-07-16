@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { usePathname } from "next/navigation";
 
 import type { OrvekDataApi } from "@/lib/orvek-v0/data-provider";
 import { OrvekDataProvider } from "@/lib/orvek-v0/data-provider";
@@ -16,14 +17,34 @@ import { Overlays } from "./overlays";
 import { InspectorProvider } from "@/components/inspector/InspectorContext";
 import { WorkbenchInspector } from "@/components/inspector/WorkbenchInspector";
 import { ProductionInspectorBridge } from "./production/ProductionInspectorBridge";
+import { RouteTopBar } from "./production/RouteTopBar";
 import { DecisionsPage } from "@/components/orvek-v0/pages/decisions";
 import { ExplorePage } from "@/components/orvek-v0/pages/explore";
 import { MapPage } from "@/components/orvek-v0/pages/map";
 import { TimelinePage } from "@/components/orvek-v0/pages/timeline";
 import { TodayPage } from "@/components/orvek-v0/pages/today";
 import { Sidebar } from "./sidebar";
-import { WorkbenchProvider, useWorkbench } from "./store";
+import { WorkbenchProvider, useWorkbench, type OrvekPage } from "./store";
 import { TopBar } from "./top-bar";
+
+function resolveWorkbenchPageFromPathname(pathname: string | null): OrvekPage | null {
+  if (!pathname || pathname === "/") {
+    return "today";
+  }
+  if (pathname === "/your-map" || pathname.startsWith("/your-map/")) {
+    return "map";
+  }
+  if (pathname === "/actions" || pathname.startsWith("/actions/")) {
+    return "decisions";
+  }
+  if (pathname === "/timeline" || pathname.startsWith("/timeline/")) {
+    return "timeline";
+  }
+  if (pathname === "/explore" || pathname.startsWith("/explore/")) {
+    return "explore";
+  }
+  return null;
+}
 
 function PageContent() {
   const { page } = useWorkbench();
@@ -43,10 +64,24 @@ function PageContent() {
   }
 }
 
+function RoutePageSync() {
+  const pathname = usePathname();
+  const { setPage } = useWorkbench();
+
+  useEffect(() => {
+    const nextPage = resolveWorkbenchPageFromPathname(pathname);
+    if (nextPage) {
+      setPage(nextPage);
+    }
+  }, [pathname, setPage]);
+
+  return null;
+}
+
 function Layout({ productionInspector }: { productionInspector: boolean }) {
   return (
     <OrvekShellLayout
-      topBar={<TopBar />}
+      topBar={productionInspector ? <RouteTopBar /> : <TopBar />}
       sidebar={<Sidebar />}
       inspector={productionInspector ? <WorkbenchInspector /> : <EvidencePanel />}
     >
@@ -80,6 +115,7 @@ export function Workbench({
   );
   return (
     <WorkbenchProvider>
+      <RoutePageSync />
       <OrvekDataProvider value={api}>
         <OrvekPageHandlersProvider value={pageHandlers}>
           {productionInspector ? (

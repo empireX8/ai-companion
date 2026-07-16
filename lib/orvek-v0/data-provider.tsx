@@ -191,7 +191,7 @@ export function resolveOrvekObjectProvenance(
     return "live";
   }
 
-  return "reference_fallback";
+  return data.referenceSurface === true ? "reference_fallback" : "live";
 }
 
 const OrvekDataContext = createContext<OrvekDataApi | null>(null);
@@ -232,7 +232,12 @@ export function resolveOrvekObjectFromGraph(
     return undefined;
   }
 
-  return data?.getObject(id) ?? getZipObject(id);
+  const liveObject = data?.getObject(id);
+  if (liveObject) {
+    return liveObject;
+  }
+
+  return data?.referenceSurface === true ? getZipObject(id) : undefined;
 }
 
 export function resolveOrvekObjectsFromGraph(
