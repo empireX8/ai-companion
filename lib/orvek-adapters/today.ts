@@ -63,7 +63,7 @@ function routeIntentForHref(
     return {};
   }
   if (href === "/journal-chat") {
-    return { overlayId: "capture" };
+    return {};
   }
   if (href.startsWith("/your-map")) {
     return { pageId: "map" };

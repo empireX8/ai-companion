@@ -87,11 +87,14 @@ describe("inspector surface wiring", () => {
   it("mounts one production Inspector while preserving the isolated reference Inspector", () => {
     const workbench = readSource("components/orvek-v0/workbench.tsx");
     const referenceRoute = readSource("app/dev/orvek-v0-reference/page.tsx");
+    const inspectorSource = readSource("components/inspector/WorkbenchInspector.tsx");
 
     expect(workbench).toContain(
       "inspector={productionInspector ? <WorkbenchInspector /> : <EvidencePanel />}"
     );
     expect(workbench).toContain("<ProductionInspectorBridge>");
+    expect(inspectorSource).toContain("Desktop keeps an honest empty Inspector instead of collapsing to nothing.");
+    expect(inspectorSource).toContain('<InspectorChrome className="hidden w-[min(100%,380px)] lg:flex" />');
     expect(referenceRoute).toContain("<Workbench />");
     expect(referenceRoute).not.toContain("dataApi=");
   });
@@ -100,12 +103,25 @@ describe("inspector surface wiring", () => {
     const pageSource = readSource("app/(root)/(routes)/your-map/page.tsx");
     const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
     const viewSource = readSource("components/orvek-v0/pages/map.tsx");
+    const panelSource = readSource("components/inspector/panels/SelectedObjectEvidencePanel.tsx");
     const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
 
     expect(pageSource).toContain("OrvekMapPage");
     expect(mapApiSource).toContain('inspectorObjectType: "usermap_conclusion"');
     expect(workbenchSource).toContain("OrvekV0PageShell");
     expect(viewSource).toContain('data-testid="orvek-v0-map-page"');
+    expect(panelSource).toContain('data-testid="inspector-map-conclusion-panel"');
+  });
+
+  it("treats live decisions as live Inspector objects while keeping reference decisions isolated", () => {
+    const bridgeSource = readSource("components/orvek-v0/production/ProductionInspectorBridge.tsx");
+    const panelSource = readSource("components/inspector/panels/SelectedObjectEvidencePanel.tsx");
+
+    expect(bridgeSource).toContain('objectType === "reference_report"');
+    expect(bridgeSource).toContain('objectType === "reference_decision"');
+    expect(panelSource).toContain('case "reference_decision"');
+    expect(panelSource).toContain('data-testid="inspector-decision-panel"');
+    expect(panelSource).toContain('typeLabel="Decision"');
   });
 
   it("wires model goal selections to model_goal inspector context and capture handoff copy", () => {

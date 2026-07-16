@@ -7,23 +7,18 @@ import {
   withTodayObjectGraphParity,
 } from "./today-object-graph-parity";
 
-/**
- * Accepted reference fallback Evidence Pointer receipt ids (product law).
- *
- * These ids exist only in the reference/mock Orvek dataset and must remain
- * available whenever stored depth-safe evidence pointers are unavailable.
- *
- * This is intentionally duplicated here (not imported from UI) so the UI
- * contract can be preserved without editing `components/orvek-v0/pages/today.tsx`.
- */
-export const REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS = ["r6", "r5", "r2"] as const;
-
 export type SurfacedEvidenceDepthOverlay = {
   pointerObjects: OrvekObject[];
   linkedObjects: OrvekObject[];
   depthSafePointerIds: string[];
   inspectorDepthListReady: boolean;
 };
+
+/**
+ * Reference-only receipt ids preserved for explicit sample surfaces and test
+ * fixtures. Production must not silently substitute them.
+ */
+export const REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS = ["r6", "r5", "r2"] as const;
 
 /** Explicit live-object metadata for depth-overlay objects merged after parity assessment. */
 export type SurfacedEvidenceDepthProvenance = {
@@ -72,11 +67,8 @@ export function applySurfacedEvidenceDepthGate(args: {
     );
   }
 
-  return {
-    ...args.api,
-    // Critical: preserve accepted reference fallback rows when stored pointers
-    // are not depth-ready. Never substitute thin live receipts.
-    todayResurfacedIds: [...REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS],
-  };
+  return withTodayObjectGraphParity(
+    args.api,
+    assessLiveTodayObjectGraphParity(args.api),
+  );
 }
-

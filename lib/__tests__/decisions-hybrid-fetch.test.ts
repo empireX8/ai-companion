@@ -69,7 +69,6 @@ describe("bounded decisions hybrid fetch bridge", () => {
     expect(hookSource).toContain("buildDecisionsProductionDataApi");
     expect(hookSource).toContain("buildHybridWorkbenchDataApi(");
     expect(hookSource).toContain("decisionsApi");
-    expect(hookSource).not.toContain("searchParams");
     expect(hookSource).not.toContain("DECISIONS_STABILIZE_TAB_LABEL");
     expect(hookSource).not.toMatch(/router\.(push|replace)\([^)]*\/actions/);
   });
@@ -168,6 +167,8 @@ describe("bounded decisions hybrid fetch bridge", () => {
 
     expect(hybridApi.getObject("pc-2")?.inspectorObjectType).toBe("pattern_claim");
     expect(hybridApi.getObject("act-chosen")?.receiptIds).toEqual(["pc-2"]);
+    expect(hybridApi.getObject("act-chosen")?.inspectorObjectType).toBe("reference_decision");
+    expect(hybridApi.getObject("act-chosen")?.inspectorObjectId).toBe("act-chosen");
   });
 
   it("resolves linked claim inspector targets when provider lookup can resolve them", () => {

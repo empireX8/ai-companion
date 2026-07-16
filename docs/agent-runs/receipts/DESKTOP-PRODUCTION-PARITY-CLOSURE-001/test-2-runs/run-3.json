@@ -1,0 +1,297 @@
+{
+  "runLabel": "run-3",
+  "expectedPrimaryUserId": "user_3GarRXw8WyQNG6sUuFG08MrGQLA",
+  "fixtureOwnerUserId": "user_3GarRXw8WyQNG6sUuFG08MrGQLA",
+  "emptyUserId": "user_3GarRkcXTC2lYjCmvvDDy0WQSPq",
+  "conclusionId": "dev-live-evidence-depth-conclusion",
+  "lifecycle": [
+    {
+      "at": "2026-07-16T16:48:35.614Z",
+      "step": "prior cleanup complete"
+    },
+    {
+      "at": "2026-07-16T16:48:35.618Z",
+      "step": "authenticated test user resolved",
+      "details": {
+        "primaryUserId": "user_3GarRXw8WyQNG6sUuFG08MrGQLA",
+        "emptyUserId": "user_3GarRkcXTC2lYjCmvvDDy0WQSPq"
+      }
+    },
+    {
+      "at": "2026-07-16T16:48:35.730Z",
+      "step": "campaign fixture created",
+      "details": {
+        "claimModelUpdateId": "cmrnqtsv40000ql24n2duze70",
+        "conclusionModelUpdateId": "dev-movement-report-assault-conclusion-update",
+        "sparseModelUpdateId": "dev-movement-report-assault-sparse"
+      }
+    },
+    {
+      "at": "2026-07-16T16:48:35.730Z",
+      "step": "database transaction committed",
+      "details": {
+        "wrapper": "prisma.$transaction"
+      }
+    },
+    {
+      "at": "2026-07-16T16:48:35.731Z",
+      "step": "direct database read confirms fixture exists",
+      "details": {
+        "conclusionId": "dev-live-evidence-depth-conclusion",
+        "exactCount": 1,
+        "fixtureOwnerUserId": "user_3GarRXw8WyQNG6sUuFG08MrGQLA"
+      }
+    },
+    {
+      "at": "2026-07-16T16:48:57.310Z",
+      "step": "browser context created",
+      "details": {
+        "pageUrl": "http://localhost:3000/"
+      }
+    },
+    {
+      "at": "2026-07-16T16:48:58.253Z",
+      "step": "authenticated identity confirmed",
+      "details": {
+        "source": "context_preflight",
+        "status": 200,
+        "handlerEntered": true,
+        "handlerUserId": "user_3GarRXw8WyQNG6sUuFG08MrGQLA",
+        "ownerMatch": true,
+        "expectedUserMatch": true,
+        "returnedIds": [
+          "dev-live-evidence-depth-conclusion"
+        ],
+        "matchingConclusionCount": 1
+      }
+    },
+    {
+      "at": "2026-07-16T16:49:01.771Z",
+      "step": "browser-side authenticated identity confirmed",
+      "details": {
+        "source": "browser_preflight",
+        "status": 200,
+        "returnedIds": [
+          "dev-live-evidence-depth-conclusion"
+        ],
+        "pageUrl": "http://localhost:3000/"
+      }
+    },
+    {
+      "at": "2026-07-16T16:49:01.778Z",
+      "step": "Map navigation begins",
+      "details": {
+        "pageUrl": "http://localhost:3000/"
+      }
+    },
+    {
+      "at": "2026-07-16T16:49:06.939Z",
+      "step": "UI assertion completes",
+      "details": {
+        "visibleRowId": "dev-live-evidence-depth-conclusion",
+        "inspectorId": "dev-live-evidence-depth-conclusion",
+        "pageUrl": "http://localhost:3000/your-map?selected=dev-live-evidence-depth-conclusion"
+      }
+    },
+    {
+      "at": "2026-07-16T16:49:06.942Z",
+      "step": "browser context closes",
+      "details": {
+        "pageUrl": "http://localhost:3000/your-map?selected=dev-live-evidence-depth-conclusion"
+      }
+    },
+    {
+      "at": "2026-07-16T16:49:27.686Z",
+      "step": "empty browser context created",
+      "details": {
+        "pageUrl": "http://localhost:3000/"
+      }
+    },
+    {
+      "at": "2026-07-16T16:49:32.621Z",
+      "step": "empty-user Map navigation begins",
+      "details": {
+        "pageUrl": "http://localhost:3000/"
+      }
+    },
+    {
+      "at": "2026-07-16T16:49:32.770Z",
+      "step": "empty-user UI assertion completes",
+      "details": {
+        "responseStatus": 200,
+        "returnedCount": 0,
+        "pageUrl": "http://localhost:3000/your-map"
+      }
+    },
+    {
+      "at": "2026-07-16T16:49:32.772Z",
+      "step": "empty browser context closes",
+      "details": {
+        "pageUrl": "http://localhost:3000/your-map"
+      }
+    },
+    {
+      "at": "2026-07-16T16:49:32.789Z",
+      "step": "campaign cleanup begins"
+    },
+    {
+      "at": "2026-07-16T16:49:32.897Z",
+      "step": "cleanup query confirms zero remaining records",
+      "details": {
+        "cleanupResult": {
+          "deletedLinks": 3,
+          "deletedModelUpdates": 2,
+          "deletedEvidence": 1,
+          "deletedClaims": 1,
+          "deletedConclusions": 1,
+          "remainingModelUpdates": 0,
+          "remainingLinks": 0
+        },
+        "remainingCounts": {
+          "conclusions": 0,
+          "claims": 0,
+          "evidence": 0,
+          "modelUpdates": 0,
+          "evidenceLinks": 0
+        }
+      }
+    }
+  ],
+  "primaryRequests": [
+    {
+      "at": "2026-07-16T16:48:58.251Z",
+      "source": "context_preflight",
+      "pageUrl": "http://localhost:3000/",
+      "status": 200,
+      "contentType": "application/json",
+      "responseBody": "{\"items\":[{\"id\":\"dev-live-evidence-depth-conclusion\",\"title\":\"Evening stop point matters\",\"summary\":\"Commitments lock before the body signals a stop.\",\"area\":\"recovery_architecture\",\"status\":\"supported\",\"confidenceLevel\":\"medium\",\"evidenceCount\":1,\"updatedAt\":\"2026-07-16T16:48:35.626Z\",\"lastUserCorrectionLabel\":null,\"lastUserCorrectionAt\":null,\"correctionCount\":0}],\"pageInfo\":{\"nextCursor\":null,\"limit\":50,\"hasMore\":false}}",
+      "returnedCount": 1,
+      "returnedIds": [
+        "dev-live-evidence-depth-conclusion"
+      ],
+      "handlerEntered": true,
+      "handlerUserId": "user_3GarRXw8WyQNG6sUuFG08MrGQLA",
+      "expectedUserMatch": true,
+      "ownerMatch": true,
+      "fixtureSetupComplete": true,
+      "priorTeardownActive": false,
+      "clerkAuthStatus": null,
+      "clerkAuthReason": null,
+      "middlewareRewrite": "/api/user-map/conclusions?limit=50&sortOrder=desc",
+      "matchingConclusionCount": 1,
+      "conclusionExists": true
+    },
+    {
+      "at": "2026-07-16T16:49:01.770Z",
+      "source": "browser_preflight",
+      "pageUrl": "http://localhost:3000/",
+      "status": 200,
+      "contentType": "application/json",
+      "responseBody": "{\"items\":[{\"id\":\"dev-live-evidence-depth-conclusion\",\"title\":\"Evening stop point matters\",\"summary\":\"Commitments lock before the body signals a stop.\",\"area\":\"recovery_architecture\",\"status\":\"supported\",\"confidenceLevel\":\"medium\",\"evidenceCount\":1,\"updatedAt\":\"2026-07-16T16:48:35.626Z\",\"lastUserCorrectionLabel\":null,\"lastUserCorrectionAt\":null,\"correctionCount\":0}],\"pageInfo\":{\"nextCursor\":null,\"limit\":50,\"hasMore\":false}}",
+      "returnedCount": 1,
+      "returnedIds": [
+        "dev-live-evidence-depth-conclusion"
+      ],
+      "handlerEntered": false,
+      "handlerUserId": null,
+      "expectedUserMatch": null,
+      "ownerMatch": null,
+      "fixtureSetupComplete": true,
+      "priorTeardownActive": false,
+      "clerkAuthStatus": null,
+      "clerkAuthReason": null,
+      "middlewareRewrite": "/api/user-map/conclusions?limit=50&sortOrder=desc",
+      "matchingConclusionCount": null,
+      "conclusionExists": null
+    },
+    {
+      "at": "2026-07-16T16:49:02.605Z",
+      "source": "page_response",
+      "pageUrl": "http://localhost:3000/your-map",
+      "status": 200,
+      "contentType": "application/json",
+      "responseBody": "{\"items\":[{\"id\":\"dev-live-evidence-depth-conclusion\",\"title\":\"Evening stop point matters\",\"summary\":\"Commitments lock before the body signals a stop.\",\"area\":\"recovery_architecture\",\"status\":\"supported\",\"confidenceLevel\":\"medium\",\"evidenceCount\":1,\"updatedAt\":\"2026-07-16T16:48:35.626Z\",\"lastUserCorrectionLabel\":null,\"lastUserCorrectionAt\":null,\"correctionCount\":0}],\"pageInfo\":{\"nextCursor\":null,\"limit\":50,\"hasMore\":false}}",
+      "returnedCount": 1,
+      "returnedIds": [
+        "dev-live-evidence-depth-conclusion"
+      ],
+      "handlerEntered": false,
+      "handlerUserId": null,
+      "expectedUserMatch": null,
+      "ownerMatch": null,
+      "fixtureSetupComplete": true,
+      "priorTeardownActive": false,
+      "clerkAuthStatus": null,
+      "clerkAuthReason": null,
+      "middlewareRewrite": "/api/user-map/conclusions?limit=50&sortOrder=desc",
+      "matchingConclusionCount": null,
+      "conclusionExists": null
+    }
+  ],
+  "emptyUserRequests": [
+    {
+      "at": "2026-07-16T16:49:29.246Z",
+      "source": "context_preflight",
+      "pageUrl": "http://localhost:3000/",
+      "status": 200,
+      "contentType": "application/json",
+      "responseBody": "{\"items\":[],\"pageInfo\":{\"nextCursor\":null,\"limit\":50,\"hasMore\":false}}",
+      "returnedCount": 0,
+      "returnedIds": [],
+      "handlerEntered": true,
+      "handlerUserId": "user_3GarRkcXTC2lYjCmvvDDy0WQSPq",
+      "expectedUserMatch": true,
+      "ownerMatch": true,
+      "fixtureSetupComplete": true,
+      "priorTeardownActive": false,
+      "clerkAuthStatus": null,
+      "clerkAuthReason": null,
+      "middlewareRewrite": "/api/user-map/conclusions?limit=50&sortOrder=desc",
+      "matchingConclusionCount": 0,
+      "conclusionExists": false
+    },
+    {
+      "at": "2026-07-16T16:49:32.607Z",
+      "source": "browser_preflight",
+      "pageUrl": "http://localhost:3000/",
+      "status": 200,
+      "contentType": "application/json",
+      "responseBody": "{\"items\":[],\"pageInfo\":{\"nextCursor\":null,\"limit\":50,\"hasMore\":false}}",
+      "returnedCount": 0,
+      "returnedIds": [],
+      "handlerEntered": false,
+      "handlerUserId": null,
+      "expectedUserMatch": null,
+      "ownerMatch": null,
+      "fixtureSetupComplete": true,
+      "priorTeardownActive": false,
+      "clerkAuthStatus": null,
+      "clerkAuthReason": null,
+      "middlewareRewrite": "/api/user-map/conclusions?limit=50&sortOrder=desc",
+      "matchingConclusionCount": null,
+      "conclusionExists": null
+    }
+  ],
+  "result": {
+    "primaryVisibleRowId": "dev-live-evidence-depth-conclusion",
+    "primaryInspectorId": "dev-live-evidence-depth-conclusion",
+    "emptyUserResponseStatus": 200,
+    "emptyUserUiState": "Nothing on your map yet.",
+    "cleanupResult": {
+      "deletedLinks": 3,
+      "deletedModelUpdates": 2,
+      "deletedEvidence": 1,
+      "deletedClaims": 1,
+      "deletedConclusions": 1,
+      "remainingModelUpdates": 0,
+      "remainingLinks": 0
+    },
+    "remainingCounts": {
+      "conclusions": 0,
+      "claims": 0,
+      "evidence": 0,
+      "modelUpdates": 0,
+      "evidenceLinks": 0
+    }
+  }
+}

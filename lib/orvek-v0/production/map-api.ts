@@ -340,14 +340,23 @@ export function buildMapProductionDataApi(input: MapMapDataInput): OrvekDataApi 
 
   if (view.detail) {
     const railId = `conclusion-${view.detail.id}`;
-    const selectedId = view.selectedId ?? railId;
-    const detailObject = buildDetailOrvekObject(view, selectedId);
+    const detailObject = buildDetailOrvekObject(view, view.detail.id);
 
-    objects[selectedId] = detailObject;
-    objects[railId] = {
-      ...detailObject,
-      id: railId,
-    };
+    objects[view.detail.id] = detailObject;
+
+    if (view.selectedId && view.selectedId !== view.detail.id && view.selectedId !== railId) {
+      objects[view.selectedId] = {
+        ...detailObject,
+        id: view.selectedId,
+      };
+    }
+
+    if (!objects[railId]) {
+      objects[railId] = {
+        ...detailObject,
+        id: railId,
+      };
+    }
 
     registerRelatedObjects(objects, view);
   }

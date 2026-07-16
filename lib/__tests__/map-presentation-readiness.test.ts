@@ -145,13 +145,37 @@ describe("map presentation readiness gate", () => {
     expect(detail?.after).toBeUndefined();
   });
 
-  it("rejects detail objects that require supporting evidence but have none", () => {
+  it("does not suppress a live rail row when detail evidence resolves empty", () => {
     const api = buildMapProductionDataApi({
       ...READY_INPUT,
       evidence: [],
     });
 
-    expect(isMapPresentationReady(api)).toBe(false);
+    expect(api.mapSelectedId).toBe("conclusion-c-1");
+    expect(api.getObject("conclusion-c-1")?.relatedIds).toBeUndefined();
+    expect(api.getObject("c-1")?.relatedIds?.length).toBeGreaterThanOrEqual(0);
+    expect(isMapPresentationReady(api)).toBe(true);
+  });
+
+  it("still rejects selected detail objects that claim evidence without any supporting rows", () => {
+    const detailObject = buildMapProductionDataApi({
+      ...READY_INPUT,
+      evidence: [],
+    }).getObject("c-1");
+
+    expect(detailObject).toBeDefined();
+    expect(isMapObjectPresentationReady(detailObject!)).toBe(false);
+  });
+
+  it("keeps list rail conclusions presentation-ready before detail evidence hydrates", () => {
+    const api = buildMapProductionDataApi({
+      ...READY_INPUT,
+      detail: null,
+      evidence: [],
+      selectedId: "c-1",
+    });
+
+    expect(isMapPresentationReady(api)).toBe(true);
   });
 
   it("rejects raw long text even after partial normalization attempt", () => {
@@ -173,6 +197,13 @@ describe("map presentation readiness gate", () => {
     const baseApi = createMockOrvekDataApi();
     const unsafeMapApi = buildMapProductionDataApi({
       ...READY_INPUT,
+      items: [
+        {
+          ...READY_INPUT.items[0],
+          summary: `${"conversation dump ".repeat(40)}`,
+        },
+      ],
+      detail: null,
       evidence: [],
     });
 
@@ -180,7 +211,8 @@ describe("map presentation readiness gate", () => {
 
     const hybridApi = buildHybridWorkbenchDataApi(baseApi, undefined, unsafeMapApi);
 
-    expect(hybridApi).toBe(baseApi);
+    expect(hybridApi).not.toBe(baseApi);
+    expect(hybridApi.mapHasContent).toBe(true);
     expect(hybridApi.mapCategories).toEqual([]);
     expect(hybridApi.getObject("m-claim-1")).toMatchObject(baseApi.getObject("m-claim-1") ?? {});
   });

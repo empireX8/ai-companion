@@ -233,7 +233,6 @@ describe("today production data bridge", () => {
     expect(byLabel["Continue from what changed"]?.reportId).toBeUndefined();
     expect(byLabel["Add what happened"]).toMatchObject({
       href: "/journal-chat",
-      overlayId: "capture",
     });
     expect(byLabel["Review outcome"]).toMatchObject({
       href: "/actions",
@@ -241,7 +240,6 @@ describe("today production data bridge", () => {
     });
     expect(byLabel["Capture new signal"]).toMatchObject({
       href: "/journal-chat",
-      overlayId: "capture",
     });
     expect(byLabel["Check in on fieldwork"]?.pageId ?? null).toBeNull();
 

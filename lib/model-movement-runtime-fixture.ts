@@ -41,6 +41,7 @@ export const MOVEMENT_ASSAULT_FIXTURE_MARKER = "devFixture:movement-report-assau
 
 export const FIXTURE_SPARSE_UPDATE_ID = `${MOVEMENT_ASSAULT_FIXTURE_PREFIX}-sparse`;
 export const FIXTURE_CONCLUSION_UPDATE_SUMMARY = "New conclusion: Evening stop point matters";
+export const FIXTURE_CLAIM_SUMMARY = "Energy drops after meetings without a stop point.";
 
 export type MovementAssaultFixtureSeedResult = {
   claimModelUpdateId: string;
@@ -56,7 +57,6 @@ export async function seedMovementAssaultRuntimeFixture(args: {
 }): Promise<MovementAssaultFixtureSeedResult> {
   const now = args.now ?? new Date();
   const includeSparse = args.includeSparse !== false;
-  const claimSummary = "Energy drops after meetings without a stop point.";
 
   await args.db.userMapConclusion.upsert({
     where: { id: FIXTURE_CONCLUSION_ID },
@@ -91,14 +91,14 @@ export async function seedMovementAssaultRuntimeFixture(args: {
       patternType: PatternType.repetitive_loop,
       strengthLevel: StrengthLevel.tentative,
       status: PatternClaimStatus.active,
-      summary: claimSummary,
-      summaryNorm: normalizeSummary(claimSummary),
+      summary: FIXTURE_CLAIM_SUMMARY,
+      summaryNorm: normalizeSummary(FIXTURE_CLAIM_SUMMARY),
       createdAt: now,
       updatedAt: now,
     },
     update: {
-      summary: claimSummary,
-      summaryNorm: normalizeSummary(claimSummary),
+      summary: FIXTURE_CLAIM_SUMMARY,
+      summaryNorm: normalizeSummary(FIXTURE_CLAIM_SUMMARY),
       updatedAt: now,
     },
   });
@@ -195,6 +195,28 @@ export async function seedMovementAssaultRuntimeFixture(args: {
       sourceId: FIXTURE_EVIDENCE_ID,
       targetType: UnderstandingLinkTargetType.model_update,
       targetId: conclusionUpdate.id,
+      role: UnderstandingLinkRole.supports,
+      summary: FIXTURE_SOURCE_TEXT,
+    },
+  });
+
+  await args.db.understandingEvidenceLink.deleteMany({
+    where: {
+      userId: args.userId,
+      sourceType: UnderstandingLinkSourceType.pattern_claim,
+      sourceId: FIXTURE_CLAIM_ID,
+      targetType: UnderstandingLinkTargetType.usermap_conclusion,
+      targetId: FIXTURE_CONCLUSION_ID,
+    },
+  });
+
+  await args.db.understandingEvidenceLink.create({
+    data: {
+      userId: args.userId,
+      sourceType: UnderstandingLinkSourceType.pattern_claim,
+      sourceId: FIXTURE_CLAIM_ID,
+      targetType: UnderstandingLinkTargetType.usermap_conclusion,
+      targetId: FIXTURE_CONCLUSION_ID,
       role: UnderstandingLinkRole.supports,
       summary: FIXTURE_SOURCE_TEXT,
     },

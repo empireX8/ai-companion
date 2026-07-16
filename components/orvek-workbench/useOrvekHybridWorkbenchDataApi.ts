@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import {
   fetchInspectorEvidenceLinks,
@@ -37,7 +38,8 @@ import {
   normalizeMapConclusionSelectionId,
   resolveMapWorkbenchSelectedId,
 } from "@/lib/orvek-v0/production/map-selection";
-import { createMockOrvekDataApi } from "@/lib/orvek-v0/mock-api";
+import { updateWorkbenchHistory } from "@/lib/orvek-v0/workbench-route-history";
+import { EMPTY_ORVEK_DATA_API } from "@/lib/orvek-v0/empty-api";
 import {
   fetchTodayReentrySnapshot,
   type TodayReentrySnapshot,
@@ -70,7 +72,10 @@ import {
   type MapOpenQuestionPreviewItem,
 } from "@/lib/your-map-preview-surface";
 import { buildAppSessionListUrl } from "@/lib/chat-surface-routing";
-import { fetchYourMapConclusions } from "@/lib/your-map-surface";
+import {
+  fetchYourMapConclusions,
+  YOUR_MAP_CONCLUSIONS_ENDPOINT,
+} from "@/lib/your-map-surface";
 import { fetchActiveQuestionItems, type ActiveQuestionItem } from "@/lib/active-questions";
 import {
   fetchExploreInvestigationItems,
@@ -130,8 +135,36 @@ async function waitForExploreSessionReady(maxAttempts = 6): Promise<boolean> {
   return false;
 }
 
+async function fetchMapConclusionsWithRetry(
+  maxAttempts = 6,
+  delayMs = 500,
+): Promise<UserMapConclusionPublicApiListItem[]> {
+  let lastError: unknown = new Error("Could not load map conclusions.");
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const items = await fetchYourMapConclusions();
+      return items;
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < maxAttempts - 1) {
+      await delay(delayMs);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Could not load map conclusions.");
+}
+
 export function useOrvekHybridWorkbenchDataApi() {
-  const baseApi = useMemo(() => createMockOrvekDataApi(), []);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const baseApi = useMemo(() => ({ ...EMPTY_ORVEK_DATA_API }), []);
+  const preferredMapSelectionId = searchParams.get("selected");
+  const searchParamsString = searchParams.toString();
+  const exploreChatEnabled =
+    pathname === "/explore" || Boolean(pathname?.startsWith("/explore/"));
 
   const asHybridShell = (api: typeof baseApi) => ({
     ...api,
@@ -146,7 +179,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     isSending: isExploreChatSending,
     errorMessage: exploreChatErrorMessage,
     sendMessage,
-  } = useOrvekExploreChat({});
+  } = useOrvekExploreChat({ enabled: exploreChatEnabled });
   const [snapshot, setSnapshot] = useState<TodayReentrySnapshot>(EMPTY_SNAPSHOT);
   const [movementDepthById, setMovementDepthById] = useState<ModelMovementDepthById>({});
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(true);
@@ -450,29 +483,17 @@ export function useOrvekHybridWorkbenchDataApi() {
       setIsLoadingMapList(true);
       setMapLoadError(null);
 
-      async function loadMapList(attempt = 0): Promise<void> {
-        try {
-          const nextItems = await fetchYourMapConclusions();
-          if (!cancelled) {
-            setMapItems(nextItems);
-            setMapLoadError(null);
-          }
-        } catch {
-          if (cancelled) {
-            return;
-          }
-          if (attempt < 3) {
-            await new Promise((resolve) => window.setTimeout(resolve, 1_000 * (attempt + 1)));
-            await loadMapList(attempt + 1);
-            return;
-          }
+      try {
+        const nextItems = await fetchMapConclusionsWithRetry(90, 1_000);
+        if (!cancelled) {
+          setMapItems(nextItems);
+          setMapLoadError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
           setMapItems([]);
           setMapLoadError("Could not load your map.");
         }
-      }
-
-      try {
-        await loadMapList();
       } finally {
         if (!cancelled) {
           setIsLoadingMapList(false);
@@ -483,7 +504,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, [durableActionsRevision]);
+  }, [durableActionsRevision, pathname]);
 
   useEffect(() => {
     let cancelled = false;
@@ -509,7 +530,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;
@@ -531,7 +552,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;
@@ -559,17 +580,17 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     setMapSelectedId(
       resolveMapWorkbenchSelectedId({
         items: mapItems,
-        preferredSelectionId: null,
+        preferredSelectionId: preferredMapSelectionId,
         mindContextItems,
       }),
     );
-  }, [mapItems, mindContextItems]);
+  }, [mapItems, mindContextItems, preferredMapSelectionId]);
 
   useEffect(() => {
     if (!mapSelectedId) {
@@ -591,16 +612,26 @@ export function useOrvekHybridWorkbenchDataApi() {
     setIsMapDetailLoading(true);
 
     void (async () => {
-      const [nextDetail, nextEvidence] = await Promise.all([
-        fetchInspectorUserMapDetail(normalizedSelectedId),
-        fetchInspectorEvidenceLinks(
-          INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT(normalizedSelectedId)
-        ),
-      ]);
-      if (!cancelled) {
-        setMapDetail(nextDetail);
-        setMapEvidence(nextEvidence);
-        setIsMapDetailLoading(false);
+      try {
+        const [nextDetail, nextEvidence] = await Promise.all([
+          fetchInspectorUserMapDetail(normalizedSelectedId),
+          fetchInspectorEvidenceLinks(
+            INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT(normalizedSelectedId)
+          ),
+        ]);
+        if (!cancelled) {
+          setMapDetail(nextDetail);
+          setMapEvidence(nextEvidence);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMapDetail(null);
+          setMapEvidence([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsMapDetailLoading(false);
+        }
       }
     })();
 
@@ -704,8 +735,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     isLoadingMapList ||
     isMindContextLoading ||
     isMovementLoading ||
-    isQuestionsLoading ||
-    isMapDetailLoading;
+    isQuestionsLoading;
 
   const timelineEntries = useMemo(() => {
     const activity = timelinePayload
@@ -764,11 +794,57 @@ export function useOrvekHybridWorkbenchDataApi() {
   );
 
   const handlers = useMemo((): OrvekPageHandlers => {
+    const mapApi = buildMapProductionDataApi({
+      items: mapItems,
+      isLoading: mapIsLoading,
+      loadError: mapLoadError,
+      selectedId: mapSelectedId,
+      detail: mapDetail,
+      isDetailLoading: isMapDetailLoading,
+      evidence: mapEvidence,
+      openQuestionsCount,
+      mindContext: {
+        isLoading: isMindContextLoading,
+        items: mindContextItems,
+        summaryCounts: mindContextSummaryCounts,
+      },
+      movementPreview: {
+        isLoading: isMovementLoading,
+        items: movementItems,
+      },
+      openQuestionsPreview: {
+        isLoading: isQuestionsLoading,
+        items: openQuestionItems,
+      },
+    });
+
+    const mapHandlers = {
+      onOpenItem: (railId: string) => {
+        const object = mapApi.getObject(railId);
+        const inspectorObjectId = object?.inspectorObjectId ?? railId;
+        if (!object) {
+          return;
+        }
+
+        const nextSelectionId =
+          object.type === "context"
+            ? inspectorObjectId
+            : inspectorObjectId.replace(/^conclusion-/, "");
+        const params = new URLSearchParams(searchParamsString);
+        params.set("selected", nextSelectionId);
+        const nextPath = `/your-map?${params.toString()}`;
+
+        setMapSelectedId(nextSelectionId);
+        updateWorkbenchHistory(nextPath, "replace");
+      },
+    };
+
     if (!exploreChatSendReady) {
-      return {};
+      return { map: mapHandlers };
     }
 
     return {
+      map: mapHandlers,
       explore: {
         onDraftChange: setExploreChatDraft,
         onSend: () => {
@@ -780,28 +856,30 @@ export function useOrvekHybridWorkbenchDataApi() {
         onComposerFocus: () => {},
       },
     };
-  }, [exploreChatSendReady, setExploreChatDraft, sendMessage]);
+  }, [
+    exploreChatSendReady,
+    isMapDetailLoading,
+    isMindContextLoading,
+    isMovementLoading,
+    isQuestionsLoading,
+    mapIsLoading,
+    mapLoadError,
+    mapDetail,
+    mapEvidence,
+    mapItems,
+    mapSelectedId,
+    movementItems,
+    mindContextItems,
+    mindContextSummaryCounts,
+    openQuestionItems,
+    openQuestionsCount,
+    pathname,
+    searchParamsString,
+    sendMessage,
+    setExploreChatDraft,
+  ]);
 
   const dataApi = useMemo(() => {
-    if (isLoadingSnapshot) {
-      return applySurfacedEvidenceDepthGate({
-        api: asHybridShell(
-          buildHybridWorkbenchDataApi(
-            baseApi,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            freeExploreChatApi,
-          ),
-        ),
-        overlay: surfacedEvidenceDepth,
-      });
-    }
-
     const todayApi = buildTodayProductionDataApi({
       snapshot,
       isLoading: isLoadingSnapshot,

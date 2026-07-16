@@ -149,12 +149,12 @@ export type LiveEvidenceDepthFixtureReport = {
       routeEquivalentOnly: true;
     };
     todayGate: {
-      storedPointerReplacesFallback: boolean;
+      storedPointerApplied: boolean;
       todayResurfacedIds: string[];
     };
-    unsafeFallback: {
+    unsafeBaseState: {
       checked: boolean;
-      preservesReferenceFallback: boolean;
+      keepsHonestEmptyState: boolean;
     };
   };
   httpRouteExecuted: false;
@@ -561,12 +561,12 @@ export async function runLiveEvidenceDepthRuntimeFixture(args: {
         routeEquivalentOnly: true,
       },
       todayGate: {
-        storedPointerReplacesFallback: false,
+        storedPointerApplied: false,
         todayResurfacedIds: [],
       },
-      unsafeFallback: {
+      unsafeBaseState: {
         checked: false,
-        preservesReferenceFallback: false,
+        keepsHonestEmptyState: false,
       },
     },
     httpRouteExecuted: false,
@@ -680,7 +680,7 @@ export async function runLiveEvidenceDepthRuntimeFixture(args: {
 
     const { gatedApi } = applyTodayEvidenceDepthGateFromReadGraph({ readGraph });
     report.steps.todayGate.todayResurfacedIds = [...(gatedApi.todayResurfacedIds ?? [])];
-    report.steps.todayGate.storedPointerReplacesFallback =
+    report.steps.todayGate.storedPointerApplied =
       readGraph.inspectorDepthListReady &&
       readGraph.depthSafePointerIds.length > 0 &&
       JSON.stringify(gatedApi.todayResurfacedIds) ===
@@ -713,10 +713,9 @@ export async function runLiveEvidenceDepthRuntimeFixture(args: {
       const unsafeGate = applyTodayEvidenceDepthGateFromReadGraph({
         readGraph: unsafeGraph,
       });
-      report.steps.unsafeFallback.checked = true;
-      report.steps.unsafeFallback.preservesReferenceFallback =
-        unsafeGate.gatedApi.todayResurfacedIds?.join(",") ===
-        REFERENCE_FALLBACK_EVIDENCE_POINTER_IDS.join(",");
+      report.steps.unsafeBaseState.checked = true;
+      report.steps.unsafeBaseState.keepsHonestEmptyState =
+        JSON.stringify(unsafeGate.gatedApi.todayResurfacedIds ?? []) === JSON.stringify([]);
     }
 
     const publishOk =
@@ -724,14 +723,14 @@ export async function runLiveEvidenceDepthRuntimeFixture(args: {
     const readOk =
       report.steps.readService.inspectorDepthListReady &&
       report.steps.readService.depthSafePointerIds.includes(expectedPointerId ?? "");
-    const gateOk = report.steps.todayGate.storedPointerReplacesFallback;
+    const gateOk = report.steps.todayGate.storedPointerApplied;
     const rationaleOk =
       report.steps.dbVerification.rationaleStored &&
       report.steps.dbVerification.pointerWhyItMatters === FIXTURE_AUTHORED_RATIONALE &&
       report.steps.dbVerification.movementSummaryRejectedAsRationale;
     const graphSlotOk = report.steps.dbVerification.graphSlotLinkCount > 0;
     const unsafeOk =
-      !verifyUnsafeFallback || report.steps.unsafeFallback.preservesReferenceFallback;
+      !verifyUnsafeFallback || report.steps.unsafeBaseState.keepsHonestEmptyState;
 
     report.ok =
       publishOk && readOk && gateOk && rationaleOk && graphSlotOk && unsafeOk;

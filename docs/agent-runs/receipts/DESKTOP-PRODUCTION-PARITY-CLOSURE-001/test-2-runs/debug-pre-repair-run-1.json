@@ -1,0 +1,134 @@
+{
+  "runLabel": "run-1",
+  "expectedPrimaryUserId": "user_3GaoBud6kdUFsKm6fnfurdJDn7F",
+  "fixtureOwnerUserId": "user_3GaoBud6kdUFsKm6fnfurdJDn7F",
+  "emptyUserId": "user_3GaoCADjCaQ7ZOSGrG52UKJ2LqF",
+  "conclusionId": "dev-live-evidence-depth-conclusion",
+  "lifecycle": [
+    {
+      "at": "2026-07-16T16:21:51.983Z",
+      "step": "prior cleanup complete"
+    },
+    {
+      "at": "2026-07-16T16:21:51.983Z",
+      "step": "authenticated test user resolved",
+      "details": {
+        "primaryUserId": "user_3GaoBud6kdUFsKm6fnfurdJDn7F",
+        "emptyUserId": "user_3GaoCADjCaQ7ZOSGrG52UKJ2LqF"
+      }
+    },
+    {
+      "at": "2026-07-16T16:21:52.042Z",
+      "step": "campaign fixture created",
+      "details": {
+        "claimModelUpdateId": "cmrnpvfgr0000ql24gp4bt666",
+        "conclusionModelUpdateId": "dev-movement-report-assault-conclusion-update",
+        "sparseModelUpdateId": "dev-movement-report-assault-sparse"
+      }
+    },
+    {
+      "at": "2026-07-16T16:21:52.042Z",
+      "step": "database transaction committed",
+      "details": {
+        "wrapper": "prisma.$transaction"
+      }
+    },
+    {
+      "at": "2026-07-16T16:21:52.043Z",
+      "step": "direct database read confirms fixture exists",
+      "details": {
+        "conclusionId": "dev-live-evidence-depth-conclusion",
+        "exactCount": 1,
+        "fixtureOwnerUserId": "user_3GaoBud6kdUFsKm6fnfurdJDn7F"
+      }
+    },
+    {
+      "at": "2026-07-16T16:22:00.017Z",
+      "step": "browser context created",
+      "details": {
+        "pageUrl": "http://localhost:3000/"
+      }
+    },
+    {
+      "at": "2026-07-16T16:22:00.724Z",
+      "step": "authenticated identity confirmed",
+      "details": {
+        "source": "context_preflight",
+        "status": 200,
+        "handlerEntered": true,
+        "handlerUserId": "user_3GaoBud6kdUFsKm6fnfurdJDn7F",
+        "ownerMatch": true,
+        "expectedUserMatch": true,
+        "returnedIds": [
+          "dev-live-evidence-depth-conclusion"
+        ],
+        "matchingConclusionCount": 1
+      }
+    },
+    {
+      "at": "2026-07-16T16:22:07.988Z",
+      "step": "browser-side authenticated identity confirmed",
+      "details": {
+        "source": "browser_preflight",
+        "status": 404,
+        "returnedIds": [],
+        "pageUrl": "http://localhost:3000/"
+      }
+    },
+    {
+      "at": "2026-07-16T16:22:07.998Z",
+      "step": "browser context closes",
+      "details": {
+        "pageUrl": "http://localhost:3000/"
+      }
+    }
+  ],
+  "primaryRequests": [
+    {
+      "at": "2026-07-16T16:22:00.723Z",
+      "source": "context_preflight",
+      "pageUrl": "http://localhost:3000/",
+      "status": 200,
+      "contentType": "application/json",
+      "responseBody": "JSON list containing dev-live-evidence-depth-conclusion",
+      "returnedCount": 1,
+      "returnedIds": [
+        "dev-live-evidence-depth-conclusion"
+      ],
+      "handlerEntered": true,
+      "handlerUserId": "user_3GaoBud6kdUFsKm6fnfurdJDn7F",
+      "expectedUserMatch": true,
+      "ownerMatch": true,
+      "fixtureSetupComplete": true,
+      "priorTeardownActive": false,
+      "clerkAuthStatus": null,
+      "clerkAuthReason": null,
+      "middlewareRewrite": "/api/user-map/conclusions?limit=50&sortOrder=desc",
+      "matchingConclusionCount": 1,
+      "conclusionExists": true
+    },
+    {
+      "at": "2026-07-16T16:22:07.985Z",
+      "source": "browser_preflight",
+      "pageUrl": "http://localhost:3000/",
+      "status": 404,
+      "contentType": "text/html; charset=utf-8",
+      "responseBody": "HTML 404 returned before route handler entry",
+      "returnedCount": null,
+      "returnedIds": [],
+      "handlerEntered": false,
+      "handlerUserId": null,
+      "expectedUserMatch": null,
+      "ownerMatch": null,
+      "fixtureSetupComplete": true,
+      "priorTeardownActive": false,
+      "clerkAuthStatus": "signed-out",
+      "clerkAuthReason": "protect-rewrite, session-token-and-uat-missing",
+      "middlewareRewrite": "/clerk_1784218926421",
+      "matchingConclusionCount": null,
+      "conclusionExists": null
+    }
+  ],
+  "emptyUserRequests": [],
+  "result": null
+}

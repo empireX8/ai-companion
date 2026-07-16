@@ -42,6 +42,7 @@ function buildTempId(prefix: string): string {
 }
 
 export function useOrvekExploreChat(options?: {
+  enabled?: boolean;
   onActiveSessionIdChange?: (sessionId: string | null) => void;
   onConversationUpdated?: () => void;
 }) {
@@ -56,6 +57,7 @@ export function useOrvekExploreChat(options?: {
   const abortRef = useRef<AbortController | null>(null);
   const bootAttemptRef = useRef(0);
   const bootRunIdRef = useRef(0);
+  const enabled = options?.enabled ?? true;
   const onActiveSessionIdChange = options?.onActiveSessionIdChange;
   const onConversationUpdated = options?.onConversationUpdated;
 
@@ -170,12 +172,28 @@ export function useOrvekExploreChat(options?: {
   }, [loadSessions]);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsBooting(false);
+      setErrorMessage(null);
+      return;
+    }
+
+    setIsBooting(true);
+  }, [enabled]);
+
+  useEffect(() => {
     return () => {
       abortRef.current?.abort();
     };
   }, []);
 
   const initializeExploreChat = useCallback(async (): Promise<boolean> => {
+    if (!enabled) {
+      setIsBooting(false);
+      setErrorMessage(null);
+      return false;
+    }
+
     const runId = ++bootRunIdRef.current;
 
     if (bootAttemptRef.current >= MAX_EXPLORE_CHAT_BOOT_ATTEMPTS) {
@@ -244,14 +262,18 @@ export function useOrvekExploreChat(options?: {
         setIsBooting(false);
       }
     }
-  }, [createSession, loadMessages, loadSessions, persistSessionSelection]);
+  }, [createSession, enabled, loadMessages, loadSessions, persistSessionSelection]);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     void initializeExploreChat();
-  }, [initializeExploreChat]);
+  }, [enabled, initializeExploreChat]);
 
   useEffect(() => {
-    if (isBooting || selectedSessionId) {
+    if (!enabled || isBooting || selectedSessionId) {
       return;
     }
 
@@ -264,7 +286,7 @@ export function useOrvekExploreChat(options?: {
     }, EXPLORE_CHAT_BOOT_RETRY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [errorMessage, initializeExploreChat, isBooting, selectedSessionId]);
+  }, [enabled, errorMessage, initializeExploreChat, isBooting, selectedSessionId]);
 
   const sendMessage = useCallback(async (overrideContent?: string) => {
     const content = (overrideContent ?? draft).trim();

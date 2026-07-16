@@ -187,6 +187,8 @@ describe("decisions presentation normalization", () => {
     expect(normalized.getObject("pc-1")?.type).toBe("receipt");
     expect(normalized.getObject("pc-1")?.inspectorObjectType).toBe("pattern_claim");
     expect(normalized.getObject("act-active")?.receiptIds).toEqual(["pc-1"]);
+    expect(normalized.getObject("act-active")?.inspectorObjectType).toBe("reference_decision");
+    expect(normalized.getObject("act-active")?.inspectorObjectId).toBe("act-active");
   });
 
   it("dedupes duplicate decision rows during normalization", () => {

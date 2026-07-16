@@ -90,12 +90,8 @@ export function WorkbenchInspector() {
         <MobileInspectorDrawer />
       </div>
 
-      {/* Desktop embedded inspector */}
-      {isOpen ? (
-        <InspectorChrome className="hidden w-[min(100%,380px)] lg:flex" />
-      ) : (
-        <div className="hidden w-0 lg:block" aria-hidden />
-      )}
+      {/* Desktop keeps an honest empty Inspector instead of collapsing to nothing. */}
+      <InspectorChrome className="hidden w-[min(100%,380px)] lg:flex" />
     </>
   );
 }

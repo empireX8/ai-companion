@@ -150,9 +150,32 @@ describe("your-map workbench", () => {
     expect(adapterSource).toContain("buildOntologyRailGroups");
     expect(adapterSource).toContain("V0_MAP_ONTOLOGY_RAIL_LABELS");
     expect(surfaceSource).toContain("journal, explore, import, decisions");
-    expect(hybridHookSource).toContain("createMockOrvekDataApi");
+    expect(hybridHookSource).toContain("EMPTY_ORVEK_DATA_API");
+    expect(hybridHookSource).toContain("YOUR_MAP_CONCLUSIONS_ENDPOINT");
+    expect(hybridHookSource).toContain("fetchMapConclusionsWithRetry(");
+    expect(hybridHookSource).toContain("fetchMapConclusionsWithRetry(90, 1_000)");
+    expect(hybridHookSource).toContain("usePathname");
+    expect(hybridHookSource).toContain("[durableActionsRevision, pathname]");
+    expect(hybridHookSource).not.toContain("waitForEndpointReady(");
+    expect(hybridHookSource).not.toContain("if (!isMapRoute)");
+    expect(hybridHookSource).not.toContain("map-runtime-trace");
     expect(hybridHookSource).not.toContain("mock-orvek-data");
     expect(viewSource).not.toContain("mock");
+  });
+
+  it("does not let map detail-only loading suppress live rail hydration", () => {
+    const hybridHookSource = readSource(
+      "components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts",
+    );
+
+    expect(hybridHookSource).toContain("const mapIsLoading =");
+    expect(hybridHookSource).toContain("isQuestionsLoading;");
+    expect(hybridHookSource).not.toContain("isQuestionsLoading ||\n    isMapDetailLoading");
+    expect(hybridHookSource).toContain("setMapDetail(null);");
+    expect(hybridHookSource).toContain("setMapEvidence([]);");
+    expect(hybridHookSource).toContain("setIsMapDetailLoading(false);");
+    expect(hybridHookSource).toContain("} catch {");
+    expect(hybridHookSource).toContain("} finally {");
   });
 
   it("renders movement and open-question preview bands with inspector wiring for published movement", () => {
