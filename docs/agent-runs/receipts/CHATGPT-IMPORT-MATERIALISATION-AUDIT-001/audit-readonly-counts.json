@@ -1,0 +1,436 @@
+{
+  "userId": "user_34TUYA53pI1QRLK73O22Kve1a1G",
+  "queriedAt": "2026-07-18T19:05:19.061Z",
+  "note": "Read-only. DATABASE_URL host is local postgres; this is Kay's persisted account used across prior production-path campaigns.",
+  "importUploadSessions": [
+    {
+      "id": "cmp2ftxhj0000qlsyxi55jo20",
+      "status": "complete",
+      "filename": "40b9316e0e050a69af42cdcee3e964123f9d815f765436dad2fc5a6737056417-2026-02-14-17-17-37-a42fc57a6fd947659002040efa706458.zip",
+      "contentType": "application/zip",
+      "bytesTotal": "388272564",
+      "totalChunks": 186,
+      "chunksPersisted": 186,
+      "createdAt": "2026-05-12T09:38:11.502Z",
+      "startedAt": "2026-05-12T09:39:22.346Z",
+      "finishedAt": "2026-05-12T09:41:37.814Z",
+      "sessionsCreated": 640,
+      "messagesCreated": 18582,
+      "contradictionsCreated": 25,
+      "processedConversations": 640,
+      "processedMessages": 18582,
+      "processingProgress": 100,
+      "error": null,
+      "resultErrorCount": 3,
+      "resultErrorsSample": [
+        "Conversation 274: no importable user/assistant messages",
+        "Conversation 297: no importable user/assistant messages",
+        "__IMPORT_DIAGNOSTICS_V1__:{\"version\":\"import_diagnostics_v1\",\"generatedAt\":\"2026-05-12T09:41:49.676Z\",\"importedConversationCount\":640,\"importedMessageCount\":18582,\"importedUserMessageCount\":8432,\"importedAssistantMessageCount\":10150,\"userMessagesSkippedForLength\":519,\"candidateMessagesConsideredForReferenceExtraction\":5922,\"referenceCandidatesAccepted\":29,\"referenceCandidatesRejected\":5893,\"contradictionDetectionAttemptedCount\":5922,\"contradictionEvidenceAcceptedCount\":25,\"patternDerivationTriggered\":true,\"patternBehavioralAcceptedCount\":456,\"patternBehavioralRejectedCount\":7976,\"topBehavioralRejectionReasons\":[{\"reason\":\"no_first_person\",\"count\":4079},{\"reason\":\"no_behavioral_signal\",\"count\":2651},{\"reason\":\"assistant_directed\",\"count\":1009},{\"reason\":\"question_like\",\"count\":631},{\"reason\":\"too_short\",\"count\":519}],\"patternRerunDiagnostics\":{\"historyEntryCount\":18582,\"messageEntryCount\":18582,\"journalEntryCount\":0,\"importedPatternRelevanceAcceptedCount\":6441,\"importedPatternRelevanceRejectedCount\":1991,\"importedPatternRelevanceRejectionReasonCounts\":{\"technical_or_terminal_noise\":493,\"project_task_chatter\":1129,\"tutorial_or_setup_chatter\":515,\"low_context_technical_question\":82,\"code_or_stacktrace_noise\":1087,\"implementation_debug_chatter\":478,\"project_handoff_noise\":68,\"codex_workflow_chatter\":155},\"importedPatternRelevanceRejectedSamples\":\"<redacted>\",\"importedSupportEntriesEvaluatedForEvidenceQuality\":43,\"importedSupportEntriesAcceptedForEvidenceQuality\":31,\"importedSupportEntriesRejectedForEvidenceQuality\":12,\"importedSupportEntriesEvidenceQualityRejectionReasonCounts\":{\"vague_no_behavioral_signal\":4,\"imported_low_context_confusion_snippet\":3,\"below_score_threshold\":1,\"imported_source_text_drafting_snippet\":1,\"imported_tooling_setup_chatter\":1,\"imported_recovery_metrics_or_biography_snippet\":2},\"importedSupportEntriesEvidenceQualityRejectedSamples\":\"<redacted>\",\"supportEntriesSkippedEvidenceQualityGateCount\":0,\"supportEntriesSkippedEvidenceQualityGateReasonCounts\":{},\"supportEntriesSkippedEvidenceQualityGateSamples\":\"<redacted>\",\"userEntryCount\":8432,\"behavioralEntryCount\":456,\"rejectedEntryCount\":7976,\"rejectionReasonCounts\":{\"question_like\":631,\"no_behavioral_signal\":2651,\"too_short\":519,\"no_first_person\":4079,\"likely_topic_query\":261,\"assistant_directed\":1009,\"likely_quoted_or_pasted\":250,\"imperative_like\":7},\"behavioralAcceptedByOrigin\":{\"IMPORTED_ARCHIVE\":456,\"APP\":0,\"journal\":0,\"unknown\":0},\"behavioralRejectedByOrigin\":{\"IMPORTED_ARCHIVE\":7976,\"APP\":0,\"journal\":0,\"unknown\":0},\"rejectionSamplesByReason\":\"<redacted>\",\"detectorInputCountsByFamily\":{\"trigger_condition\":270,\"inner_critic\":270,\"repetitive_loop\":270,\"contradiction_drift\":null,\"recovery_stabilizer\":270},\"triggerConditionSubgroupDiagnostics\":{\"social_appeasement\":{\"candidateCount\":7,\"sessionCount\":7,\"samples\":[\"Yeah, I'm interested in some feedback. I do think my shyness has largely been exacerbated by my life story and certain positions I've bee...\",\"the fcat i have to do this though also makes me feel a sense of doom because i feel like most people wont be doing this stuff and it then...\",\"I notice I am definitely a people pleaser\"],\"topMatchedMarkers\":[\"always_end_up_default\",\"every_time\",\"i_notice_i\"]},\"overwhelm_state_shift\":{\"candidateCount\":4,\"sessionCount\":4,\"samples\":[\"I swear I feel like I can literally feel my brain like bubbling when I see something that starts to trigger my identity. I’m in a exhaust...\",\"Enjoy that rassclart burger when it comes. 😂😂😂 but yh I feel you, I always feel this way in this mode, once I have one, two three dinn...\",\"when im ovwrwhelemed fo you think it triggers my internal hood identity\"],\"topMatchedMarkers\":[\"triggers_me\",\"every_time\",\"when_i_tend_to\"]},\"coping_reactivity\":{\"candidateCount\":1,\"sessionCount\":1,\"samples\":[\"Yh I got a kettle, what I was doing is boiling water and having tea, but sometimes that can make me feel weird too\"],\"topMatchedMarkers\":[\"makes_me\"]},\"general\":{\"candidateCount\":11,\"sessionCount\":11,\"samples\":[\"Yes, absolutely. Not only am I ready for it, I'm excited by it. Something kind of, I guess the subjects I'm actually genuinely interested...\",\"A bit random here, but I've noticed here how much are my views, but reviews of some random thing, and I noticed it's obviously reviews, v...\",\"I'm thinking of some video titles, like every time I get a video title or like a video idea, I'll put it on the title, so when we start t...\"],\"topMatchedMarkers\":[\"every_time\",\"makes_me\",\"always_when\"]}},\"journalBehavioralEntryCount\":0,\"journalRejectedEntryCount\":0,\"journalRejectionReasonCounts\":{},\"clueCounts\":{\"trigger_condition\":2,\"inner_critic\":1,\"repetitive_loop\":3,\"contradiction_drift\":0,\"recovery_stabilizer\":1},\"cluesEmittedByFamily\":{\"trigger_condition\":2,\"inner_critic\":1,\"repetitive_loop\":3,\"contradiction_drift\":0,\"recovery_stabilizer\":1},\"claimsCreatedByFamily\":{\"trigger_condition\":2,\"inner_critic\":1,\"repetitive_loop\":3,\"contradiction_drift\":0,\"recovery_stabilizer\":1},\"claimsMatchedExisting\":0,\"claimsMatchedExistingByFamily\":{\"trigger_condition\":0,\"inner_critic\":0,\"repetitive_loop\":0,\"contradiction_drift\":0,\"recovery_stabilizer\":0},\"supportEntriesTotal\":43,\"supportEntriesMessage\":43,\"supportEntriesJournal\":0,\"receiptsCreatedTotal\":33,\"receiptsCreatedMessage\":33,\"receiptsCreatedJournal\":0,\"receiptsSkippedDuplicate\":5,\"receiptsAttemptedJournal\":0,\"receiptsSkippedDuplicateJournal\":0,\"lifecycleAdvancedCount\":7,\"touchedClaimIds\":[\"cmp2fykzj00ddqlsybdeb96ql\",\"cmp2fyl6v00dkqlsycx1pq53l\",\"cmp2fyld200drqlsyrjzb292e\",\"cmp2fyle000e0qlsyum1s9lde\",\"cmp2fylfj00ejqlsy8zkc84or\",\"cmp2fylgk00euqlsyayvoxp8b\",\"cmp2fylmz00f3qlsympmfpdtp\"],\"touchedClaims\":[{\"id\":\"cmp2fykzj00ddqlsybdeb96ql\",\"patternType\":\"trigger_condition\",\"status\":\"active\",\"strengthLevel\":\"developing\",\"evidenceCount\":3,\"sessionCount\":3,\"journalEvidenceCount\":0,\"journalEntrySpread\":0,\"journalDaySpread\":0,\"supportContainerSpread\":3},{\"id\":\"cmp2fyl6v00dkqlsycx1pq53l\",\"patternType\":\"trigger_condition\",\"status\":\"active\",\"strengthLevel\":\"developing\",\"evidenceCount\":3,\"sessionCount\":3,\"journalEvidenceCount\":0,\"journalEntrySpread\":0,\"journalDaySpread\":0,\"supportContainerSpread\":3},{\"id\":\"cmp2fyld200drqlsyrjzb292e\",\"patternType\":\"inner_critic\",\"status\":\"active\",\"strengthLevel\":\"developing\",\"evidenceCount\":4,\"sessionCount\":4,\"journalEvidenceCount\":0,\"journalEntrySpread\":0,\"journalDaySpread\":0,\"supportContainerSpread\":4},{\"id\":\"cmp2fyle000e0qlsyum1s9lde\",\"patternType\":\"repetitive_loop\",\"status\":\"active\",\"strengthLevel\":\"established\",\"evidenceCount\":9,\"sessionCount\":9,\"journalEvidenceCount\":0,\"journalEntrySpread\":0,\"journalDaySpread\":0,\"supportContainerSpread\":9},{\"id\":\"cmp2fylfj00ejqlsy8zkc84or\",\"patternType\":\"repetitive_loop\",\"status\":\"active\",\"strengthLevel\":\"developing\",\"evidenceCount\":5,\"sessionCount\":5,\"journalEvidenceCount\":0,\"journalEntrySpread\":0,\"journalDaySpread\":0,\"supportContainerSpread\":5},{\"id\":\"cmp2fylgk00euqlsyayvoxp8b\",\"patternType\":\"repetitive_loop\",\"status\":\"active\",\"strengthLevel\":\"developing\",\"evidenceCount\":4,\"sessionCount\":4,\"journalEvidenceCount\":0,\"journalEntrySpread\":0,\"journalDaySpread\":0,\"supportContainerSpread\":4},{\"id\":\"cmp2fylmz00f3qlsympmfpdtp\",\"patternType\":\"recovery_stabilizer\",\"status\":\"active\",\"strengthLevel\":\"developing\",\"evidenceCount\":5,\"sessionCount\":5,\"journalEvidenceCount\":0,\"journalEntrySpread\":0,\"journalDaySpread\":0,\"supportContainerSpread\":5}]},\"patternClaimsCreatedCount\":7,\"patternClaimsSurfacedCount\":\"unavailable_without_refactor\",\"patternClaimsSuppressedCount\":\"unavailable_without_refactor\",\"suppressionReasons\":\"unavailable_without_refactor\",\"reasonCodeCounts\":{\"non_user_role\":10150,\"too_short\":519,\"import_human_relevance_rejected\":1991,\"code_or_stacktrace_noise\":1087,\"project_task_chatter\":1129,\"implementation_debug_chatter\":478,\"tutorial_or_setup_chatter\":515,\"import_human_relevance_accepted\":5922,\"reference_intent_not_detected\":5354,\"codex_workflow_chatter\":155,\"technical_or_terminal_noise\":493,\"reference_too_long\":422,\"low_context_technical_question\":82,\"project_handoff_noise\":68,\"reference_no_first_person\":77,\"accepted_reference_candidate\":29,\"imported_contradiction_rejected\":1047,\"contradiction_unrelated_pair\":846,\"accepted_contradiction_evidence\":25,\"candidate_contradiction_created\":25,\"contradiction_project_task_pair\":60,\"imported_contradiction_fanout_rejected\":143,\"contradiction_repeated_side_a\":143,\"reference_dedup_overlap\":18,\"reference_residual_noise\":10,\"reference_question_form\":11,\"contradiction_weak_behavior_sideB\":9,\"contradiction_technical_sideB\":9,\"contradiction_conversational_sideA\":658,\"contradiction_cross_topic_pair\":6,\"reference_insufficient_content\":1,\"pattern_derivation_triggered\":1,\"skipped_unavailable_without_refactor\":1},\"samples\":\"<redacted_private_samples>\"}"
+      ]
+    }
+  ],
+  "sessionsByOrigin": {
+    "IMPORTED_ARCHIVE": 640,
+    "APP": 3
+  },
+  "importedSessionsBySource": {
+    "chatgpt_export_json": 640
+  },
+  "importedProvenance": {
+    "withExternalId": 640,
+    "withImportedAt": 640,
+    "withImportedSource": 640
+  },
+  "importedTimeRange": {
+    "_min": {
+      "importedAt": "2026-05-12T09:39:29.167Z",
+      "createdAt": "2026-05-12T09:39:29.169Z",
+      "startedAt": "2025-09-08T09:31:14.204Z"
+    },
+    "_max": {
+      "importedAt": "2026-05-12T09:41:37.699Z",
+      "createdAt": "2026-05-12T09:41:37.700Z",
+      "startedAt": "2026-02-14T09:40:45.560Z"
+    }
+  },
+  "appSessions": [
+    {
+      "id": "8a4b242c-6adc-4455-a2e9-fe20aff6cbee",
+      "label": null,
+      "surfaceType": "journal_chat",
+      "createdAt": "2026-06-11T21:02:23.140Z",
+      "startedAt": "2026-06-11T21:02:23.140Z",
+      "_count": {
+        "messages": 0
+      }
+    },
+    {
+      "id": "25be1965-00d4-42ad-988d-d70ae86afa94",
+      "label": null,
+      "surfaceType": "explore_chat",
+      "createdAt": "2026-06-11T21:02:27.797Z",
+      "startedAt": "2026-06-11T21:02:27.797Z",
+      "_count": {
+        "messages": 0
+      }
+    },
+    {
+      "id": "3fc1236c-e91f-43de-a147-f0143ec653ca",
+      "label": "Inspecting a Conflict Inquiry",
+      "surfaceType": "explore_chat",
+      "createdAt": "2026-06-22T21:07:35.614Z",
+      "startedAt": "2026-06-22T21:07:35.614Z",
+      "_count": {
+        "messages": 44
+      }
+    }
+  ],
+  "messages": {
+    "imported": 18582,
+    "app": 44,
+    "total": 18626
+  },
+  "derivationRunsByScopeStatus": [
+    {
+      "_count": {
+        "_all": 22
+      },
+      "scope": "native",
+      "status": "completed"
+    },
+    {
+      "_count": {
+        "_all": 635
+      },
+      "scope": "import",
+      "status": "completed"
+    },
+    {
+      "_count": {
+        "_all": 20
+      },
+      "scope": "manual",
+      "status": "completed"
+    }
+  ],
+  "derivationRunsImportScope": 635,
+  "derivationRunsImportCompleted": 635,
+  "derivationRunsImportFailed": 0,
+  "derivationRunsImportCreated": 0,
+  "derivationRunsImportRunning": 0,
+  "derivationProcessorVersions": [
+    {
+      "_count": {
+        "_all": 1
+      },
+      "processorVersion": "pattern-v1"
+    },
+    {
+      "_count": {
+        "_all": 634
+      },
+      "processorVersion": "import-chatgpt@1"
+    }
+  ],
+  "derivationRunSample": [
+    {
+      "id": "6b8ea9f6-34fd-4db2-af9e-e4e2c639d35c",
+      "scope": "import",
+      "status": "completed",
+      "processorVersion": "import-chatgpt@1",
+      "createdAt": "2026-05-12T09:39:30.184Z",
+      "messageCount": null,
+      "sessionCount": null,
+      "inputMessageSetHash": "bdf47702c6bf6b880178662b58db93852ba175a56433ccd64edb2ba45e9e36eb"
+    },
+    {
+      "id": "846f8a94-63b5-4630-872f-7433d748a8b5",
+      "scope": "import",
+      "status": "completed",
+      "processorVersion": "import-chatgpt@1",
+      "createdAt": "2026-05-12T09:39:31.260Z",
+      "messageCount": null,
+      "sessionCount": null,
+      "inputMessageSetHash": "38f1c01cd227369a7c86ff209daf2796597b175c06d507fb85d04877969e7931"
+    },
+    {
+      "id": "16867fa9-c571-49d7-9633-9de1751a62a1",
+      "scope": "import",
+      "status": "completed",
+      "processorVersion": "import-chatgpt@1",
+      "createdAt": "2026-05-12T09:39:31.603Z",
+      "messageCount": null,
+      "sessionCount": null,
+      "inputMessageSetHash": "df1a10f134533f2ce3da1bd1ab4b5e5726962a37128d045698af9b6b343120f1"
+    },
+    {
+      "id": "107fe7e9-94a5-4f25-a941-8204f654faed",
+      "scope": "import",
+      "status": "completed",
+      "processorVersion": "import-chatgpt@1",
+      "createdAt": "2026-05-12T09:39:32.043Z",
+      "messageCount": null,
+      "sessionCount": null,
+      "inputMessageSetHash": "0bb17f77f203c56e1cdcae2c849207e456d93a927e6abfa485a2dfeacedd86bf"
+    },
+    {
+      "id": "7f716f9d-d47e-41dd-a670-e7acf503df4b",
+      "scope": "import",
+      "status": "completed",
+      "processorVersion": "import-chatgpt@1",
+      "createdAt": "2026-05-12T09:39:32.381Z",
+      "messageCount": null,
+      "sessionCount": null,
+      "inputMessageSetHash": "bc2f9afdf853d2bfd4a59f9e28bbe21012b84c5cea8b42bb17ca80510bb2df6d"
+    }
+  ],
+  "derivationArtifacts": [
+    {
+      "_count": {
+        "_all": 27
+      },
+      "type": "reference_candidate"
+    },
+    {
+      "_count": {
+        "_all": 20
+      },
+      "type": "understanding_dark_engine_diagnostics"
+    },
+    {
+      "_count": {
+        "_all": 28
+      },
+      "type": "contradiction_candidate"
+    }
+  ],
+  "evidenceSpansOnImportedMessages": 5922,
+  "evidenceSpansOnAppMessages": 19,
+  "referenceItems": {
+    "total": 29,
+    "fromImportedSession": 29,
+    "fromAppSession": 0,
+    "byStatus": {
+      "candidate": 29
+    },
+    "byType": {
+      "constraint": 4,
+      "goal": 17,
+      "preference": 8
+    }
+  },
+  "contradictionNodes": {
+    "total": 25,
+    "onImportedSessions": 25,
+    "onAppSessions": 0,
+    "byStatus": {
+      "candidate": 25
+    }
+  },
+  "patternClaims": {
+    "total": 7,
+    "byStatus": {
+      "active": 7
+    },
+    "byType": {
+      "trigger_condition": 2,
+      "inner_critic": 1,
+      "repetitive_loop": 3,
+      "recovery_stabilizer": 1
+    }
+  },
+  "patternClaimEvidence": {
+    "total": 33,
+    "withSessionId": 33,
+    "citingImportedSession": 33,
+    "citingAppSession": 0
+  },
+  "userMapConclusions": {
+    "total": 1,
+    "byVisibility": {
+      "user_visible": 1
+    },
+    "byLifecycle": {
+      "promoted": 1
+    },
+    "byStatus": {
+      "emerging": 1
+    },
+    "byArea": {
+      "operating_logic": 1
+    },
+    "seedPrefixed": 0,
+    "nonSeed": 1,
+    "nonSeedSample": [
+      {
+        "id": "cmq6frqdx0000ql8h6nkavzue",
+        "visibility": "user_visible",
+        "lifecycle": "promoted",
+        "area": "operating_logic",
+        "title": "Trigger-response pattern (social appeasement): \"I notice I am definitely a peopl",
+        "createdAt": "2026-06-09T09:27:16.053Z"
+      }
+    ]
+  },
+  "investigations": {
+    "total": 0,
+    "byVisibility": {},
+    "byLifecycle": {},
+    "seedPrefixed": 0,
+    "nonSeed": 0,
+    "nonSeedSample": []
+  },
+  "fieldwork": {
+    "total": 1,
+    "byVisibility": {
+      "user_visible": 1
+    },
+    "byLifecycle": {
+      "null": 1
+    },
+    "byStatus": {
+      "assigned": 1
+    },
+    "seedPrefixed": 0,
+    "nonSeed": 1,
+    "nonSeedSample": [
+      {
+        "id": "cmqazrqi10000qlmbmvkyh9xv",
+        "visibility": "user_visible",
+        "lifecycle": null,
+        "status": "assigned",
+        "prompt": "Wind down 20 minutes before bed",
+        "createdAt": "2026-06-12T13:58:13.223Z"
+      }
+    ]
+  },
+  "modelUpdates": {
+    "total": 1,
+    "byVisibility": {
+      "user_visible": 1
+    },
+    "byType": {
+      "conclusion_added": 1
+    },
+    "seedPrefixed": 0,
+    "seedAffectedObject": 0,
+    "nonSeed": 1,
+    "sample": [
+      {
+        "id": "cmq6h8ewn0000qlbwlg485jx1",
+        "visibility": "user_visible",
+        "updateType": "conclusion_added",
+        "summary": "New conclusion: Trigger-response pattern (social appeasement): \"I notice I am de",
+        "affectedObjectType": "usermap_conclusion",
+        "affectedObjectId": "cmq6frqdx0000ql8h6nkavzue",
+        "isMeaningful": true,
+        "sourceRunId": null,
+        "createdAt": "2026-06-09T10:08:13.944Z"
+      }
+    ]
+  },
+  "surfacedActions": {
+    "total": 7,
+    "byBucket": [
+      {
+        "_count": {
+          "_all": 4
+        },
+        "bucket": "stabilize"
+      },
+      {
+        "_count": {
+          "_all": 3
+        },
+        "bucket": "build"
+      }
+    ]
+  },
+  "understandingEvidenceLinks": {
+    "total": 50,
+    "bySourceType": [
+      {
+        "_count": {
+          "_all": 6
+        },
+        "sourceType": "contradiction_evidence"
+      },
+      {
+        "_count": {
+          "_all": 5
+        },
+        "sourceType": "pattern_claim_evidence"
+      },
+      {
+        "_count": {
+          "_all": 6
+        },
+        "sourceType": "message"
+      },
+      {
+        "_count": {
+          "_all": 5
+        },
+        "sourceType": "profile_artifact"
+      },
+      {
+        "_count": {
+          "_all": 5
+        },
+        "sourceType": "pattern_claim"
+      },
+      {
+        "_count": {
+          "_all": 6
+        },
+        "sourceType": "evidence_span"
+      },
+      {
+        "_count": {
+          "_all": 5
+        },
+        "sourceType": "reference_item"
+      },
+      {
+        "_count": {
+          "_all": 6
+        },
+        "sourceType": "contradiction_node"
+      },
+      {
+        "_count": {
+          "_all": 6
+        },
+        "sourceType": "import_record"
+      }
+    ],
+    "byTargetType": [
+      {
+        "_count": {
+          "_all": 50
+        },
+        "targetType": "usermap_conclusion"
+      }
+    ]
+  },
+  "journalEntries": 0,
+  "importedSessionsWith": {
+    "evidenceSpans": 622,
+    "referenceItems": 28,
+    "contradictionNodes": 14,
+    "patternClaimEvidence": 28
+  },
+  "importedSessionsUnprocessedApprox": 18,
+  "canonicalTodayComposition": {
+    "error": "\nInvalid `prisma.$queryRawUnsafe()` invocation:\n\n\nRaw query failed. Code: `42703`. Message: `column \"version\" does not exist`"
+  },
+  "canonicalModelMovementReports": [
+    {
+      "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-report-weekly",
+      "createdAt": "2026-07-14T12:00:00.000Z",
+      "updatedAt": "2026-07-14T12:00:00.000Z"
+    }
+  ],
+  "uelImportRecord": 6,
+  "patternClaimActions": []
+}
