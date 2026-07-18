@@ -14,9 +14,14 @@ import {
 const GENERIC_EVIDENCE_LABELS = new Set([
   PUBLIC_EVIDENCE_LINKED_LABEL.toLowerCase(),
   "related pattern",
+  "related map item",
   "related signal",
   "reference item",
   "linked receipt",
+  "linked pattern",
+  "linked pattern evidence",
+  "linked signal evidence",
+  "linked evidence",
 ]);
 
 export type InspectorEvidenceCardView = {

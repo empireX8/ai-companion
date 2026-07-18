@@ -67,6 +67,62 @@ export function injectLiveMovementIdsIntoTimelineGroups(
 }
 
 function mergeTodayOverlay(baseApi: OrvekDataApi, todayApi: OrvekDataApi): OrvekDataApi {
+  const reportId = todayApi.today?.report?.reportId ?? null;
+  const compositionReport =
+    Boolean(reportId) && todayApi.getObject(reportId)?.type === "report";
+
+  // Explicit CanonicalTodayComposition densograph: prefer todayApi.getObject over
+  // MU-report parity filtering (which would drop decision/report/receipt projections).
+  if (compositionReport) {
+    const baseGetObject = baseApi.getObject.bind(baseApi);
+    const hasWorkbench = (todayApi.mapCategories?.length ?? 0) > 0;
+    return {
+      ...baseApi,
+      today: todayApi.today,
+      todayCopy: todayApi.todayCopy,
+      todayIsLoading: todayApi.todayIsLoading,
+      todayResurfacedIds: todayApi.todayResurfacedIds,
+      emptyCopyBySlot: {
+        ...baseApi.emptyCopyBySlot,
+        ...todayApi.emptyCopyBySlot,
+      },
+      displayContract: undefined,
+      getObject: (id) => {
+        if (!id) return undefined;
+        return todayApi.getObject(id) ?? baseGetObject(id);
+      },
+      getObjects: (ids) => {
+        const resolved: OrvekObject[] = [];
+        for (const id of ids ?? []) {
+          if (!id) continue;
+          const object = todayApi.getObject(id) ?? baseGetObject(id);
+          if (object) resolved.push(object);
+        }
+        return resolved;
+      },
+      ...(hasWorkbench
+        ? {
+            mapCategories: todayApi.mapCategories,
+            mapSelectedId: todayApi.mapSelectedId,
+            mapHasContent: todayApi.mapHasContent,
+            timelineGroups: todayApi.timelineGroups,
+            timelineFilters: todayApi.timelineFilters,
+            decisionListGroups: todayApi.decisionListGroups,
+            decisionsSelectedId: todayApi.decisionsSelectedId,
+            exploreGrounding: todayApi.exploreGrounding,
+            exploreMovement: todayApi.exploreMovement,
+            exploreQuestionIds: todayApi.exploreQuestionIds,
+            exploreInvestigationIds: todayApi.exploreInvestigationIds,
+            exploreFieldworkIds: todayApi.exploreFieldworkIds,
+            exploreLiveDetectionCopy: todayApi.exploreLiveDetectionCopy,
+            mapHeader: todayApi.mapHeader ?? null,
+            modelStatusCard: todayApi.modelStatusCard ?? null,
+            importReview: todayApi.importReview ?? null,
+          }
+        : {}),
+    };
+  }
+
   const paritySafeObjects = buildParitySafeTodayObjectMap(todayApi);
   const parity = assessLiveTodayObjectGraphParity(todayApi);
   const liveTodayReady =
@@ -512,6 +568,54 @@ function mergeFreeExploreChatShellState(
   };
 }
 
+function applyCompositionWorkbenchRails(
+  baseApi: OrvekDataApi,
+  compositionApi: OrvekDataApi,
+): OrvekDataApi {
+  if ((compositionApi.mapCategories?.length ?? 0) === 0) {
+    return baseApi;
+  }
+  const baseGetObject = baseApi.getObject.bind(baseApi);
+  return {
+    ...baseApi,
+    mapCategories: compositionApi.mapCategories,
+    mapSelectedId: compositionApi.mapSelectedId,
+    mapHasContent: compositionApi.mapHasContent ?? true,
+    mapIsLoading: false,
+    mapLoadError: null,
+    timelineGroups: compositionApi.timelineGroups,
+    timelineFilters: compositionApi.timelineFilters,
+    decisionListGroups: compositionApi.decisionListGroups,
+    decisionsSelectedId: compositionApi.decisionsSelectedId,
+    decisionsIsLoading: false,
+    exploreGrounding: compositionApi.exploreGrounding,
+    exploreMovement: compositionApi.exploreMovement,
+    exploreQuestionIds: compositionApi.exploreQuestionIds,
+    exploreInvestigationIds: compositionApi.exploreInvestigationIds,
+    exploreFieldworkIds: compositionApi.exploreFieldworkIds,
+    exploreLiveDetectionCopy: compositionApi.exploreLiveDetectionCopy,
+    mapHeader: compositionApi.mapHeader ?? null,
+    modelStatusCard: compositionApi.modelStatusCard ?? null,
+    importReview: compositionApi.importReview ?? null,
+    activeQuestionsIsLoading: false,
+    investigationsIsLoading: false,
+    experimentIsLoading: false,
+    getObject: (id) => {
+      if (!id) return undefined;
+      return compositionApi.getObject(id) ?? baseGetObject(id);
+    },
+    getObjects: (ids) => {
+      const resolved: OrvekObject[] = [];
+      for (const id of ids ?? []) {
+        if (!id) continue;
+        const object = compositionApi.getObject(id) ?? baseGetObject(id);
+        if (object) resolved.push(object);
+      }
+      return resolved;
+    },
+  };
+}
+
 export function buildHybridWorkbenchDataApi(
   baseApi: OrvekDataApi,
   todayApi?: OrvekDataApi,
@@ -523,13 +627,27 @@ export function buildHybridWorkbenchDataApi(
   investigationsApi?: OrvekDataApi,
   freeExploreChatApi?: OrvekDataApi,
 ): OrvekDataApi {
-  const mergeMap = shouldMergeMapProductionApi(mapApi);
-  const mergeTimeline = shouldMergeTimelineProductionApi(timelineApi);
-  const mergeDecisions = shouldMergeDecisionsProductionApi(decisionsApi);
-  const mergeExperiment = shouldMergeExperimentProductionApi(experimentApi);
-  const mergeActiveQuestions = shouldMergeActiveQuestionsProductionApi(activeQuestionsApi);
-  const mergeInvestigations = shouldMergeInvestigationsProductionApi(investigationsApi);
-  const mergeFreeExploreChat = shouldMergeFreeExploreChatProductionApi(freeExploreChatApi);
+  const compositionWorkbench =
+    Boolean(todayApi) && (todayApi!.mapCategories?.length ?? 0) > 0;
+  const mergeMap =
+    !compositionWorkbench && shouldMergeMapProductionApi(mapApi);
+  const mergeTimeline =
+    !compositionWorkbench && shouldMergeTimelineProductionApi(timelineApi);
+  const mergeDecisions =
+    !compositionWorkbench && shouldMergeDecisionsProductionApi(decisionsApi);
+  const mergeExperiment =
+    !compositionWorkbench && shouldMergeExperimentProductionApi(experimentApi);
+  const mergeActiveQuestions =
+    !compositionWorkbench &&
+    shouldMergeActiveQuestionsProductionApi(activeQuestionsApi);
+  const mergeInvestigations =
+    !compositionWorkbench &&
+    shouldMergeInvestigationsProductionApi(investigationsApi);
+  // Free Explore chat stays live unless composition also supplies explore rails
+  // (grounding/movement). Chat transcript may still differ from frozen hardcoded bubbles.
+  const mergeFreeExploreChat = shouldMergeFreeExploreChatProductionApi(
+    freeExploreChatApi,
+  );
   let api = baseApi;
 
   if (todayApi) {
@@ -538,7 +656,9 @@ export function buildHybridWorkbenchDataApi(
 
   if (mapApi) {
     const normalizedMapApi = normalizeMapProductionDataApi(mapApi);
-    api = mergeMap ? mergeMapOverlay(api, normalizedMapApi) : mergeMapShellState(api, normalizedMapApi);
+    api = mergeMap
+      ? mergeMapOverlay(api, normalizedMapApi)
+      : mergeMapShellState(api, normalizedMapApi);
   }
 
   if (timelineApi) {
@@ -584,6 +704,10 @@ export function buildHybridWorkbenchDataApi(
     api = mergeFreeExploreChat
       ? mergeFreeExploreChatOverlay(api, normalizedFreeExploreChatApi)
       : mergeFreeExploreChatShellState(api, normalizedFreeExploreChatApi);
+  }
+
+  if (todayApi && compositionWorkbench) {
+    api = applyCompositionWorkbenchRails(api, todayApi);
   }
 
   return api;

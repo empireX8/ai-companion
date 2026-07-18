@@ -193,7 +193,9 @@ export function buildMovementReportOrvekObject(
     id: depth.id,
     type: "model-update",
     title: depth.movementSummary,
-    summary: `${depth.affectedObjectTypeLabel ?? depth.affectedObjectType} movement`,
+    // Do not invent type-shell summaries like "Related pattern movement".
+    // Title already carries the live movement summary when reportReady.
+    summary: undefined,
     reportSummary: depth.movementSummary,
     reportType: "What Changed",
     reportProvenance: "live_model_update",

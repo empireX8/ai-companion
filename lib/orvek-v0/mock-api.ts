@@ -4,6 +4,7 @@ import {
   getObject,
   getObjects,
 } from "./orvek-data";
+import { CANONICAL_REFERENCE_MODEL_STATUS_CARD } from "../canonical-reference-model-status-card";
 import type { OrvekDataApi } from "./data-provider";
 
 export function createMockOrvekDataApi(): OrvekDataApi {
@@ -24,5 +25,6 @@ export function createMockOrvekDataApi(): OrvekDataApi {
       receiptsLabel: "243",
       openQuestionsLabel: "7",
     },
+    modelStatusCard: { ...CANONICAL_REFERENCE_MODEL_STATUS_CARD },
   };
 }

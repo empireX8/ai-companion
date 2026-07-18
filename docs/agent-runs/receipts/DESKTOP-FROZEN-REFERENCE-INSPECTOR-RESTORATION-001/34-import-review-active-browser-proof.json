@@ -1,0 +1,24 @@
+{
+  "at": "2026-07-18T16:44:23.473Z",
+  "pass": true,
+  "failReason": null,
+  "checks": {
+    "userId": "user_34TUYA53pI1QRLK73O22Kve1a1G",
+    "email": "empirexkay@gmail.com",
+    "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+    "apiImportCandidates": 4,
+    "disabledAttr": null,
+    "ariaDisabled": "false",
+    "className": "o-calm inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-sm font-medium text-foreground hover:bg-white/[0.08] ",
+    "subtitle": true,
+    "proposals": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "screenshot": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/34-import-review-modal-open-canonical-live.png",
+    "urlClosed": "http://localhost:3000/dev/orvek-v0-canonical-live",
+    "stayedOnLive": true
+  }
+}

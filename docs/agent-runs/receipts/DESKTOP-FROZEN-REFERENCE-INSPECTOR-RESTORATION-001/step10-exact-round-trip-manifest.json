@@ -1,0 +1,545 @@
+{
+  "verdict": "EXACT ROUND-TRIP PASSED — PRODUCTION CAN REPRESENT CANONICAL CONTRACT",
+  "hardError": null,
+  "mismatchCount": 0,
+  "mismatches": [],
+  "walk": [
+    {
+      "id": "1-today-top",
+      "label": "Today top",
+      "fixture": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-reference",
+        "pathname": "/dev/orvek-v0-canonical-reference",
+        "briefingLine": "TUESDAY · SINCE YOUR LAST VISIT",
+        "briefingTitle": "Your model moved in 3 places.",
+        "briefingMeta": "2 reviews are due and 1 report is ready. Start where the change is most consequential.",
+        "leadTitle": "Use v0 architecture prototype before final design",
+        "leadNarrative": "You set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.",
+        "leadWhatChanged": "Outcome window closed",
+        "leadLastEvidence": "2 hours ago",
+        "leadKicker": "Most consequential now · decision outcome due",
+        "nowRowTitles": [
+          "Scope-reopening pattern triggered again",
+          "Small public test — narrow version before reopening",
+          "Ship prototype or keep refining architecture?",
+          "Which features are essential for a first version?"
+        ],
+        "nowRowKickers": [
+          "Watch For",
+          "Fieldwork",
+          "Outcome review",
+          "Open question"
+        ],
+        "nowRowStatuses": [
+          "Active",
+          "Due today",
+          "Review due",
+          "Needs input"
+        ],
+        "movements": [
+          {
+            "order": 0,
+            "previous": "Decision pressure was treated as an isolated state.",
+            "updated": "Pressure is now modeled as an output of the scope-reopening loop.",
+            "evidence": "6 receipts tied pressure to repeated scope reopening."
+          },
+          {
+            "order": 1,
+            "previous": "Background context was held as loose metadata.",
+            "updated": "Context Profile promoted to a first-class, correctable model layer.",
+            "evidence": "Recent captures referenced current build constraints directly."
+          },
+          {
+            "order": 2,
+            "previous": "Avoidance read as a general tendency under pressure.",
+            "updated": "Avoidance appears strongest when social consequence is uncertain.",
+            "evidence": "A decision review added social-consequence detail."
+          }
+        ],
+        "resurfacedTitles": [
+          "Weekly Model Movement reportReady",
+          "“Need to see everything expressed before I can stop reopening it.”Explore conversation",
+          "“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”ChatGPT archive"
+        ],
+        "reportTitle": "Weekly Model Movement report",
+        "reportMeta": "Ready · 3 loops, 2 decisions, 1 context update",
+        "reportPresent": true,
+        "primaryActionLabels": [
+          "Continue from what changed",
+          "Add what happened",
+          "Review outcome",
+          "Check in on fieldwork",
+          "Capture new signal"
+        ],
+        "bodyText": "TUESDAY · SINCE YOUR LAST VISIT\n\nYour model moved in 3 places.\n\n2 reviews are due and 1 report is ready. Start where the change is most consequential.\n\nMOST CONSEQUENTIAL NOW · DECISION OUTCOME DUE\nUse v0 architecture prototype before final design\n\nYou set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.\n\nWHAT CHANGED\nOutcome window closed\nLINKED RECEIPTS\n3 receipts\nLAST EVIDENCE\n2 hours ago\nAdd outcome\nSee why it moved\nContinue from what changed\nAdd what happened\nReview outcome\nCheck in on fieldwork\nCapture new signal\nNOW\nWATCH FOR\nScope-reopening pattern triggered again\nActive\nFIELDWORK\nSmall public test — narrow version before reopening\nDue today\nOUTCOME REVIEW\nShip prototype or keep refining architecture?\nReview due\nOPEN QUESTION\nWhich features are essential for a first version?\nNeeds input\nRECENT MODEL MOVEMENT\n\nPREVIOUSLY\n\nDecision pressure was treated as an isolated state.\n\nUPDATED UNDERSTANDING\n\nPressure is now modeled as an output of the scope-reopening loop.\n\n6 receipts tied pressure to repeated scope reopening.\n\nSee why\n\nPREVIOUSLY\n\nBackground context was held as loose metadata.\n\nUPDATED UNDERSTANDING\n\nContext Profile promoted to a first-class, correctable model layer.\n\nRecent captures referenced current build constraints directly.\n\nSee why\n\nPREVIOUSLY\n\nAvoidance read as a general tendency under pressure.\n\nUPDATED UNDERSTANDING\n\nAvoidance appears strongest when social consequence is uncertain.\n\nA decision review added social-consequence detail.\n\nSee why\nWeekly Model Movement report\nReady · 3 loops, 2 decisions, 1 context update\nRECEIPTS RESURFACED\n“Need to see everything expressed before I can stop reopening it.”\nExplore conversation · Today\n“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”\nChatGPT archive · 12 days ago\n“We need to see everything and see it expressed — every object, every panel — before I trust the shape.”\nChatGPT archive · 5 days ago"
+      },
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "briefingLine": "Tuesday · since your last visit",
+        "briefingTitle": "Your model moved in 3 places.",
+        "briefingMeta": "2 reviews are due and 1 report is ready. Start where the change is most consequential.",
+        "leadTitle": "Use v0 architecture prototype before final design",
+        "leadNarrative": "You set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.",
+        "leadWhatChanged": "Outcome window closed",
+        "leadLastEvidence": "2 hours ago",
+        "leadKicker": "Most consequential now · decision outcome due",
+        "nowRowTitles": [
+          "Scope-reopening pattern triggered again",
+          "Small public test — narrow version before reopening",
+          "Ship prototype or keep refining architecture?",
+          "Which features are essential for a first version?"
+        ],
+        "nowRowKickers": [
+          "Watch For",
+          "Fieldwork",
+          "Outcome review",
+          "Open question"
+        ],
+        "nowRowStatuses": [
+          "Active",
+          "Due today",
+          "Review due",
+          "Needs input"
+        ],
+        "movements": [
+          {
+            "order": 0,
+            "previous": "Decision pressure was treated as an isolated state.",
+            "updated": "Pressure is now modeled as an output of the scope-reopening loop.",
+            "evidence": "6 receipts tied pressure to repeated scope reopening."
+          },
+          {
+            "order": 1,
+            "previous": "Background context was held as loose metadata.",
+            "updated": "Context Profile promoted to a first-class, correctable model layer.",
+            "evidence": "Recent captures referenced current build constraints directly."
+          },
+          {
+            "order": 2,
+            "previous": "Avoidance read as a general tendency under pressure.",
+            "updated": "Avoidance appears strongest when social consequence is uncertain.",
+            "evidence": "A decision review added social-consequence detail."
+          }
+        ],
+        "resurfacedTitles": [
+          "Weekly Model Movement reportReady",
+          "“Need to see everything expressed before I can stop reopening it.”Explore conversation",
+          "“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”ChatGPT archive"
+        ],
+        "reportTitle": "Weekly Model Movement report",
+        "reportMeta": "Ready · 3 loops, 2 decisions, 1 context update",
+        "reportPresent": true,
+        "primaryActionLabels": [
+          "Continue from what changed",
+          "Add what happened",
+          "Review outcome",
+          "Check in on fieldwork",
+          "Capture new signal"
+        ],
+        "bodyText": "TUESDAY · SINCE YOUR LAST VISIT\n\nYour model moved in 3 places.\n\n2 reviews are due and 1 report is ready. Start where the change is most consequential.\n\nMOST CONSEQUENTIAL NOW · DECISION OUTCOME DUE\nUse v0 architecture prototype before final design\n\nYou set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.\n\nWHAT CHANGED\nOutcome window closed\nLINKED RECEIPTS\n3 receipts\nLAST EVIDENCE\n2 hours ago\nAdd outcome\nSee why it moved\nContinue from what changed\nAdd what happened\nReview outcome\nCheck in on fieldwork\nCapture new signal\nNOW\nWATCH FOR\nScope-reopening pattern triggered again\nActive\nFIELDWORK\nSmall public test — narrow version before reopening\nDue today\nOUTCOME REVIEW\nShip prototype or keep refining architecture?\nReview due\nOPEN QUESTION\nWhich features are essential for a first version?\nNeeds input\nRECENT MODEL MOVEMENT\n\nPREVIOUSLY\n\nDecision pressure was treated as an isolated state.\n\nUPDATED UNDERSTANDING\n\nPressure is now modeled as an output of the scope-reopening loop.\n\n6 receipts tied pressure to repeated scope reopening.\n\nSee why\n\nPREVIOUSLY\n\nBackground context was held as loose metadata.\n\nUPDATED UNDERSTANDING\n\nContext Profile promoted to a first-class, correctable model layer.\n\nRecent captures referenced current build constraints directly.\n\nSee why\n\nPREVIOUSLY\n\nAvoidance read as a general tendency under pressure.\n\nUPDATED UNDERSTANDING\n\nAvoidance appears strongest when social consequence is uncertain.\n\nA decision review added social-consequence detail.\n\nSee why\nWeekly Model Movement report\nReady · 3 loops, 2 decisions, 1 context update\nRECEIPTS RESURFACED\n“Need to see everything expressed before I can stop reopening it.”\nExplore conversation · Today\n“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”\nChatGPT archive · 12 days ago\n“We need to see everything and see it expressed — every object, every panel — before I trust the shape.”\nChatGPT archive · 5 days ago"
+      },
+      "mismatches": [],
+      "screenshotFixture": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step10-exact-round-trip/01-today-top-fixture.png",
+      "screenshotLive": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step10-exact-round-trip/01-today-top-live.png"
+    },
+    {
+      "id": "4-recent-movement",
+      "label": "Recent Model Movement",
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "briefingLine": "TUESDAY · SINCE YOUR LAST VISIT",
+        "briefingTitle": "Your model moved in 3 places.",
+        "briefingMeta": "2 reviews are due and 1 report is ready. Start where the change is most consequential.",
+        "leadTitle": "Use v0 architecture prototype before final design",
+        "leadNarrative": "You set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.",
+        "leadWhatChanged": "Outcome window closed",
+        "leadLastEvidence": "2 hours ago",
+        "leadKicker": "Most consequential now · decision outcome due",
+        "nowRowTitles": [
+          "Scope-reopening pattern triggered again",
+          "Small public test — narrow version before reopening",
+          "Ship prototype or keep refining architecture?",
+          "Which features are essential for a first version?"
+        ],
+        "nowRowKickers": [
+          "Watch For",
+          "Fieldwork",
+          "Outcome review",
+          "Open question"
+        ],
+        "nowRowStatuses": [
+          "Active",
+          "Due today",
+          "Review due",
+          "Needs input"
+        ],
+        "movements": [
+          {
+            "order": 0,
+            "previous": "Decision pressure was treated as an isolated state.",
+            "updated": "Pressure is now modeled as an output of the scope-reopening loop.",
+            "evidence": "6 receipts tied pressure to repeated scope reopening."
+          },
+          {
+            "order": 1,
+            "previous": "Background context was held as loose metadata.",
+            "updated": "Context Profile promoted to a first-class, correctable model layer.",
+            "evidence": "Recent captures referenced current build constraints directly."
+          },
+          {
+            "order": 2,
+            "previous": "Avoidance read as a general tendency under pressure.",
+            "updated": "Avoidance appears strongest when social consequence is uncertain.",
+            "evidence": "A decision review added social-consequence detail."
+          }
+        ],
+        "resurfacedTitles": [
+          "Weekly Model Movement reportReady",
+          "“Need to see everything expressed before I can stop reopening it.”Explore conversation",
+          "“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”ChatGPT archive"
+        ],
+        "reportTitle": "Weekly Model Movement report",
+        "reportMeta": "Ready · 3 loops, 2 decisions, 1 context update",
+        "reportPresent": true,
+        "primaryActionLabels": [
+          "Continue from what changed",
+          "Add what happened",
+          "Review outcome",
+          "Check in on fieldwork",
+          "Capture new signal"
+        ],
+        "bodyText": "TUESDAY · SINCE YOUR LAST VISIT\n\nYour model moved in 3 places.\n\n2 reviews are due and 1 report is ready. Start where the change is most consequential.\n\nMOST CONSEQUENTIAL NOW · DECISION OUTCOME DUE\nUse v0 architecture prototype before final design\n\nYou set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.\n\nWHAT CHANGED\nOutcome window closed\nLINKED RECEIPTS\n3 receipts\nLAST EVIDENCE\n2 hours ago\nAdd outcome\nSee why it moved\nContinue from what changed\nAdd what happened\nReview outcome\nCheck in on fieldwork\nCapture new signal\nNOW\nWATCH FOR\nScope-reopening pattern triggered again\nActive\nFIELDWORK\nSmall public test — narrow version before reopening\nDue today\nOUTCOME REVIEW\nShip prototype or keep refining architecture?\nReview due\nOPEN QUESTION\nWhich features are essential for a first version?\nNeeds input\nRECENT MODEL MOVEMENT\n\nPREVIOUSLY\n\nDecision pressure was treated as an isolated state.\n\nUPDATED UNDERSTANDING\n\nPressure is now modeled as an output of the scope-reopening loop.\n\n6 receipts tied pressure to repeated scope reopening.\n\nSee why\n\nPREVIOUSLY\n\nBackground context was held as loose metadata.\n\nUPDATED UNDERSTANDING\n\nContext Profile promoted to a first-class, correctable model layer.\n\nRecent captures referenced current build constraints directly.\n\nSee why\n\nPREVIOUSLY\n\nAvoidance read as a general tendency under pressure.\n\nUPDATED UNDERSTANDING\n\nAvoidance appears strongest when social consequence is uncertain.\n\nA decision review added social-consequence detail.\n\nSee why\nWeekly Model Movement report\nReady · 3 loops, 2 decisions, 1 context update\nRECEIPTS RESURFACED\n“Need to see everything expressed before I can stop reopening it.”\nExplore conversation · Today\n“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”\nChatGPT archive · 12 days ago\n“We need to see everything and see it expressed — every object, every panel — before I trust the shape.”\nChatGPT archive · 5 days ago"
+      },
+      "mismatches": [],
+      "screenshotLive": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step10-exact-round-trip/4-recent-movement-live.png"
+    },
+    {
+      "id": "5-see-why",
+      "label": "First movement See why",
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "briefingLine": "TUESDAY · SINCE YOUR LAST VISIT",
+        "briefingTitle": "Your model moved in 3 places.",
+        "briefingMeta": "2 reviews are due and 1 report is ready. Start where the change is most consequential.",
+        "leadTitle": "Use v0 architecture prototype before final design",
+        "leadNarrative": "You set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.",
+        "leadWhatChanged": "Outcome window closed",
+        "leadLastEvidence": "2 hours ago",
+        "leadKicker": "Most consequential now · decision outcome due",
+        "nowRowTitles": [
+          "Scope-reopening pattern triggered again",
+          "Small public test — narrow version before reopening",
+          "Ship prototype or keep refining architecture?",
+          "Which features are essential for a first version?"
+        ],
+        "nowRowKickers": [
+          "Watch For",
+          "Fieldwork",
+          "Outcome review",
+          "Open question"
+        ],
+        "nowRowStatuses": [
+          "Active",
+          "Due today",
+          "Review due",
+          "Needs input"
+        ],
+        "movements": [
+          {
+            "order": 0,
+            "previous": "Decision pressure was treated as an isolated state.",
+            "updated": "Pressure is now modeled as an output of the scope-reopening loop.",
+            "evidence": "6 receipts tied pressure to repeated scope reopening."
+          },
+          {
+            "order": 1,
+            "previous": "Background context was held as loose metadata.",
+            "updated": "Context Profile promoted to a first-class, correctable model layer.",
+            "evidence": "Recent captures referenced current build constraints directly."
+          },
+          {
+            "order": 2,
+            "previous": "Avoidance read as a general tendency under pressure.",
+            "updated": "Avoidance appears strongest when social consequence is uncertain.",
+            "evidence": "A decision review added social-consequence detail."
+          }
+        ],
+        "resurfacedTitles": [
+          "Weekly Model Movement reportReady",
+          "“Need to see everything expressed before I can stop reopening it.”Explore conversation",
+          "“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”ChatGPT archive"
+        ],
+        "reportTitle": "Weekly Model Movement report",
+        "reportMeta": "Ready · 3 loops, 2 decisions, 1 context update",
+        "reportPresent": true,
+        "primaryActionLabels": [
+          "Continue from what changed",
+          "Add what happened",
+          "Review outcome",
+          "Check in on fieldwork",
+          "Capture new signal"
+        ],
+        "bodyText": "TUESDAY · SINCE YOUR LAST VISIT\n\nYour model moved in 3 places.\n\n2 reviews are due and 1 report is ready. Start where the change is most consequential.\n\nMOST CONSEQUENTIAL NOW · DECISION OUTCOME DUE\nUse v0 architecture prototype before final design\n\nYou set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.\n\nWHAT CHANGED\nOutcome window closed\nLINKED RECEIPTS\n3 receipts\nLAST EVIDENCE\n2 hours ago\nAdd outcome\nSee why it moved\nContinue from what changed\nAdd what happened\nReview outcome\nCheck in on fieldwork\nCapture new signal\nNOW\nWATCH FOR\nScope-reopening pattern triggered again\nActive\nFIELDWORK\nSmall public test — narrow version before reopening\nDue today\nOUTCOME REVIEW\nShip prototype or keep refining architecture?\nReview due\nOPEN QUESTION\nWhich features are essential for a first version?\nNeeds input\nRECENT MODEL MOVEMENT\n\nPREVIOUSLY\n\nDecision pressure was treated as an isolated state.\n\nUPDATED UNDERSTANDING\n\nPressure is now modeled as an output of the scope-reopening loop.\n\n6 receipts tied pressure to repeated scope reopening.\n\nSee why\n\nPREVIOUSLY\n\nBackground context was held as loose metadata.\n\nUPDATED UNDERSTANDING\n\nContext Profile promoted to a first-class, correctable model layer.\n\nRecent captures referenced current build constraints directly.\n\nSee why\n\nPREVIOUSLY\n\nAvoidance read as a general tendency under pressure.\n\nUPDATED UNDERSTANDING\n\nAvoidance appears strongest when social consequence is uncertain.\n\nA decision review added social-consequence detail.\n\nSee why\nWeekly Model Movement report\nReady · 3 loops, 2 decisions, 1 context update\nRECEIPTS RESURFACED\n“Need to see everything expressed before I can stop reopening it.”\nExplore conversation · Today\n“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”\nChatGPT archive · 12 days ago\n“We need to see everything and see it expressed — every object, every panel — before I trust the shape.”\nChatGPT archive · 5 days ago"
+      },
+      "mismatches": [],
+      "screenshotLive": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step10-exact-round-trip/5-see-why-live.png"
+    },
+    {
+      "id": "12-model-movement-tab",
+      "label": "Model Movement tab",
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "briefingLine": "TUESDAY · SINCE YOUR LAST VISIT",
+        "briefingTitle": "Your model moved in 3 places.",
+        "briefingMeta": "2 reviews are due and 1 report is ready. Start where the change is most consequential.",
+        "leadTitle": "Use v0 architecture prototype before final design",
+        "leadNarrative": "You set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.",
+        "leadWhatChanged": "Outcome window closed",
+        "leadLastEvidence": "2 hours ago",
+        "leadKicker": "Most consequential now · decision outcome due",
+        "nowRowTitles": [
+          "Scope-reopening pattern triggered again",
+          "Small public test — narrow version before reopening",
+          "Ship prototype or keep refining architecture?",
+          "Which features are essential for a first version?"
+        ],
+        "nowRowKickers": [
+          "Watch For",
+          "Fieldwork",
+          "Outcome review",
+          "Open question"
+        ],
+        "nowRowStatuses": [
+          "Active",
+          "Due today",
+          "Review due",
+          "Needs input"
+        ],
+        "movements": [
+          {
+            "order": 0,
+            "previous": "Decision pressure was treated as an isolated state.",
+            "updated": "Pressure is now modeled as an output of the scope-reopening loop.",
+            "evidence": "6 receipts tied pressure to repeated scope reopening."
+          },
+          {
+            "order": 1,
+            "previous": "Background context was held as loose metadata.",
+            "updated": "Context Profile promoted to a first-class, correctable model layer.",
+            "evidence": "Recent captures referenced current build constraints directly."
+          },
+          {
+            "order": 2,
+            "previous": "Avoidance read as a general tendency under pressure.",
+            "updated": "Avoidance appears strongest when social consequence is uncertain.",
+            "evidence": "A decision review added social-consequence detail."
+          }
+        ],
+        "resurfacedTitles": [
+          "Weekly Model Movement reportReady",
+          "“Need to see everything expressed before I can stop reopening it.”Explore conversation",
+          "“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”ChatGPT archive"
+        ],
+        "reportTitle": "Weekly Model Movement report",
+        "reportMeta": "Ready · 3 loops, 2 decisions, 1 context update",
+        "reportPresent": true,
+        "primaryActionLabels": [
+          "Continue from what changed",
+          "Add what happened",
+          "Review outcome",
+          "Check in on fieldwork",
+          "Capture new signal"
+        ],
+        "bodyText": "TUESDAY · SINCE YOUR LAST VISIT\n\nYour model moved in 3 places.\n\n2 reviews are due and 1 report is ready. Start where the change is most consequential.\n\nMOST CONSEQUENTIAL NOW · DECISION OUTCOME DUE\nUse v0 architecture prototype before final design\n\nYou set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.\n\nWHAT CHANGED\nOutcome window closed\nLINKED RECEIPTS\n3 receipts\nLAST EVIDENCE\n2 hours ago\nAdd outcome\nSee why it moved\nContinue from what changed\nAdd what happened\nReview outcome\nCheck in on fieldwork\nCapture new signal\nNOW\nWATCH FOR\nScope-reopening pattern triggered again\nActive\nFIELDWORK\nSmall public test — narrow version before reopening\nDue today\nOUTCOME REVIEW\nShip prototype or keep refining architecture?\nReview due\nOPEN QUESTION\nWhich features are essential for a first version?\nNeeds input\nRECENT MODEL MOVEMENT\n\nPREVIOUSLY\n\nDecision pressure was treated as an isolated state.\n\nUPDATED UNDERSTANDING\n\nPressure is now modeled as an output of the scope-reopening loop.\n\n6 receipts tied pressure to repeated scope reopening.\n\nSee why\n\nPREVIOUSLY\n\nBackground context was held as loose metadata.\n\nUPDATED UNDERSTANDING\n\nContext Profile promoted to a first-class, correctable model layer.\n\nRecent captures referenced current build constraints directly.\n\nSee why\n\nPREVIOUSLY\n\nAvoidance read as a general tendency under pressure.\n\nUPDATED UNDERSTANDING\n\nAvoidance appears strongest when social consequence is uncertain.\n\nA decision review added social-consequence detail.\n\nSee why\nWeekly Model Movement report\nReady · 3 loops, 2 decisions, 1 context update\nRECEIPTS RESURFACED\n“Need to see everything expressed before I can stop reopening it.”\nExplore conversation · Today\n“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”\nChatGPT archive · 12 days ago\n“We need to see everything and see it expressed — every object, every panel — before I trust the shape.”\nChatGPT archive · 5 days ago"
+      },
+      "mismatches": [],
+      "screenshotLive": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step10-exact-round-trip/12-model-movement-tab-live.png"
+    },
+    {
+      "id": "13-report-overlay",
+      "label": "Report overlay",
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "briefingLine": "TUESDAY · SINCE YOUR LAST VISIT",
+        "briefingTitle": "Your model moved in 3 places.",
+        "briefingMeta": "2 reviews are due and 1 report is ready. Start where the change is most consequential.",
+        "leadTitle": "Use v0 architecture prototype before final design",
+        "leadNarrative": "You set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.",
+        "leadWhatChanged": "Outcome window closed",
+        "leadLastEvidence": "2 hours ago",
+        "leadKicker": "Most consequential now · decision outcome due",
+        "nowRowTitles": [
+          "Scope-reopening pattern triggered again",
+          "Small public test — narrow version before reopening",
+          "Ship prototype or keep refining architecture?",
+          "Which features are essential for a first version?"
+        ],
+        "nowRowKickers": [
+          "Watch For",
+          "Fieldwork",
+          "Outcome review",
+          "Open question"
+        ],
+        "nowRowStatuses": [
+          "Active",
+          "Due today",
+          "Review due",
+          "Needs input"
+        ],
+        "movements": [
+          {
+            "order": 0,
+            "previous": "Decision pressure was treated as an isolated state.",
+            "updated": "Pressure is now modeled as an output of the scope-reopening loop.",
+            "evidence": "6 receipts tied pressure to repeated scope reopening."
+          },
+          {
+            "order": 1,
+            "previous": "Background context was held as loose metadata.",
+            "updated": "Context Profile promoted to a first-class, correctable model layer.",
+            "evidence": "Recent captures referenced current build constraints directly."
+          },
+          {
+            "order": 2,
+            "previous": "Avoidance read as a general tendency under pressure.",
+            "updated": "Avoidance appears strongest when social consequence is uncertain.",
+            "evidence": "A decision review added social-consequence detail."
+          }
+        ],
+        "resurfacedTitles": [
+          "Weekly Model Movement reportReady",
+          "“Need to see everything expressed before I can stop reopening it.”Explore conversation",
+          "“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”ChatGPT archive"
+        ],
+        "reportTitle": "Weekly Model Movement report",
+        "reportMeta": "Ready · 3 loops, 2 decisions, 1 context update",
+        "reportPresent": true,
+        "primaryActionLabels": [
+          "Continue from what changed",
+          "Add what happened",
+          "Review outcome",
+          "Check in on fieldwork",
+          "Capture new signal"
+        ],
+        "bodyText": "TUESDAY · SINCE YOUR LAST VISIT\n\nYour model moved in 3 places.\n\n2 reviews are due and 1 report is ready. Start where the change is most consequential.\n\nMOST CONSEQUENTIAL NOW · DECISION OUTCOME DUE\nUse v0 architecture prototype before final design\n\nYou set a review window after choosing to prototype the architecture first. Recording what happened is what lets Orvek tell whether the scope-reopening loop actually eased.\n\nWHAT CHANGED\nOutcome window closed\nLINKED RECEIPTS\n3 receipts\nLAST EVIDENCE\n2 hours ago\nAdd outcome\nSee why it moved\nContinue from what changed\nAdd what happened\nReview outcome\nCheck in on fieldwork\nCapture new signal\nNOW\nWATCH FOR\nScope-reopening pattern triggered again\nActive\nFIELDWORK\nSmall public test — narrow version before reopening\nDue today\nOUTCOME REVIEW\nShip prototype or keep refining architecture?\nReview due\nOPEN QUESTION\nWhich features are essential for a first version?\nNeeds input\nRECENT MODEL MOVEMENT\n\nPREVIOUSLY\n\nDecision pressure was treated as an isolated state.\n\nUPDATED UNDERSTANDING\n\nPressure is now modeled as an output of the scope-reopening loop.\n\n6 receipts tied pressure to repeated scope reopening.\n\nSee why\n\nPREVIOUSLY\n\nBackground context was held as loose metadata.\n\nUPDATED UNDERSTANDING\n\nContext Profile promoted to a first-class, correctable model layer.\n\nRecent captures referenced current build constraints directly.\n\nSee why\n\nPREVIOUSLY\n\nAvoidance read as a general tendency under pressure.\n\nUPDATED UNDERSTANDING\n\nAvoidance appears strongest when social consequence is uncertain.\n\nA decision review added social-consequence detail.\n\nSee why\nWeekly Model Movement report\nReady · 3 loops, 2 decisions, 1 context update\nRECEIPTS RESURFACED\n“Need to see everything expressed before I can stop reopening it.”\nExplore conversation · Today\n“Maybe I keep refining because shipping makes it real and I'm not ready for it to be judged.”\nChatGPT archive · 12 days ago\n“We need to see everything and see it expressed — every object, every panel — before I trust the shape.”\nChatGPT archive · 5 days ago"
+      },
+      "mismatches": [],
+      "screenshotLive": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step10-exact-round-trip/13-report-overlay-live.png"
+    },
+    {
+      "id": "15-map",
+      "label": "Map",
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "briefingLine": "",
+        "briefingTitle": "",
+        "briefingMeta": "",
+        "leadTitle": "",
+        "leadNarrative": "",
+        "leadWhatChanged": "",
+        "leadLastEvidence": "",
+        "leadKicker": "",
+        "nowRowTitles": [],
+        "nowRowKickers": [],
+        "nowRowStatuses": [],
+        "movements": [],
+        "resurfacedTitles": [],
+        "reportTitle": "",
+        "reportMeta": "",
+        "reportPresent": false,
+        "primaryActionLabels": [],
+        "bodyText": "Map\n\nWhat Orvek currently understands — evidence-backed and correctable.\n\nConfidence\n—\n0 mapped\n0 open questions\n\nNothing on your map yet.\n\nNothing selected\n\nSelect a map object to inspect its current understanding, evidence, and corrections."
+      },
+      "mismatches": [],
+      "screenshotLive": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step10-exact-round-trip/15-map-live.png"
+    },
+    {
+      "id": "17-decision",
+      "label": "Decision",
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "briefingLine": "",
+        "briefingTitle": "",
+        "briefingMeta": "",
+        "leadTitle": "",
+        "leadNarrative": "",
+        "leadWhatChanged": "",
+        "leadLastEvidence": "",
+        "leadKicker": "",
+        "nowRowTitles": [],
+        "nowRowKickers": [],
+        "nowRowStatuses": [],
+        "movements": [],
+        "resurfacedTitles": [],
+        "reportTitle": "",
+        "reportMeta": "",
+        "reportPresent": false,
+        "primaryActionLabels": [],
+        "bodyText": "Decisions\n\nEnter a decision, see what to choose, record what happened, and learn what it reveals.\n\n0 outcomes due · 0 in list\nTalk it through\nCompare options\nAdd outcome\nReview due decision\n\nNo decisions in your model yet.\n\nNothing selected\n\nEnter a decision or select one from the list when evidence exists."
+      },
+      "mismatches": [],
+      "screenshotLive": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step10-exact-round-trip/17-decision-live.png"
+    },
+    {
+      "id": "20-timeline",
+      "label": "Timeline",
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "briefingLine": "",
+        "briefingTitle": "",
+        "briefingMeta": "",
+        "leadTitle": "",
+        "leadNarrative": "",
+        "leadWhatChanged": "",
+        "leadLastEvidence": "",
+        "leadKicker": "",
+        "nowRowTitles": [],
+        "nowRowKickers": [],
+        "nowRowStatuses": [],
+        "movements": [],
+        "resurfacedTitles": [],
+        "reportTitle": "",
+        "reportMeta": "",
+        "reportPresent": false,
+        "primaryActionLabels": [],
+        "bodyText": "Timeline\n\nHow the model evolved — receipts, decisions, reports, fieldwork, and movement.\n\nFILTER\nAll\nModel Updates\nReceipts\nDecisions\nReports\nFieldwork\nContext Profile\nImports\nLANES\nModel / context movement\nReports / fieldwork / imports\nDecisions\nReceipts"
+      },
+      "mismatches": [],
+      "screenshotLive": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step10-exact-round-trip/20-timeline-live.png"
+    }
+  ],
+  "notes": [
+    "Seeded exact round-trip composition for user_3GgBokymb8XbFNh69CkIbHHb0y3; report=dev-exact-rt-user_3GgBokymb8XbFNh69CkIbHHb0y3-report-weekly; movements=dev-exact-rt-user_3GgBokymb8XbFNh69CkIbHHb0y3-obj-mu-1,dev-exact-rt-user_3GgBokymb8XbFNh69CkIbHHb0y3-obj-mu-2,dev-exact-rt-user_3GgBokymb8XbFNh69CkIbHHb0y3-obj-aq-1-movement",
+    "Controlled timestamps: reportGeneratedAt=2026-07-14T12:00:00.000Z",
+    "fixtureIdMap keys=60",
+    "evidenceProbe={\"hasMu1Evidence\":true,\"hasMu2Evidence\":true,\"hasAqEvidence\":true}",
+    "Fixture movements (manifest): [{\"id\":\"mu-1\",\"previous\":\"Decision pressure was treated as an isolated state.\",\"evidence\":\"6 receipts tied pressure to repeated scope reopening.\",\"updated\":\"Pressure is now modeled as an output of the scope-reopening loop.\"},{\"id\":\"mu-2\",\"previous\":\"Background context was held as loose metadata.\",\"evidence\":\"Recent captures referenced current build constraints directly.\",\"updated\":\"Context Profile promoted to a first-class, correctable model layer.\"},{\"id\":\"aq-1\",\"previous\":\"Avoidance read as a general tendency under pressure.\",\"evidence\":\"A decision review added social-consequence detail.\",\"updated\":\"Avoidance appears strongest when social consequence is uncertain.\"}]",
+    "Live DOM movements: [{\"order\":0,\"previous\":\"Decision pressure was treated as an isolated state.\",\"updated\":\"Pressure is now modeled as an output of the scope-reopening loop.\",\"evidence\":\"6 receipts tied pressure to repeated scope reopening.\"},{\"order\":1,\"previous\":\"Background context was held as loose metadata.\",\"updated\":\"Context Profile promoted to a first-class, correctable model layer.\",\"evidence\":\"Recent captures referenced current build constraints directly.\"},{\"order\":2,\"previous\":\"Avoidance read as a general tendency under pressure.\",\"updated\":\"Avoidance appears strongest when social consequence is uncertain.\",\"evidence\":\"A decision review added social-consequence detail.\"}]",
+    "Report fixture=\"Weekly Model Movement report\" / \"Ready · 3 loops, 2 decisions, 1 context update\"",
+    "Report live=\"Weekly Model Movement report\" / \"Ready · 3 loops, 2 decisions, 1 context update\"",
+    "Lead fixture=\"Use v0 architecture prototype before final design\" live=\"Use v0 architecture prototype before final design\""
+  ],
+  "seeded": {
+    "userId": "user_3GgBokymb8XbFNh69CkIbHHb0y3",
+    "email": null,
+    "reportId": "dev-exact-rt-user_3GgBokymb8XbFNh69CkIbHHb0y3-report-weekly",
+    "movementIds": [
+      "dev-exact-rt-user_3GgBokymb8XbFNh69CkIbHHb0y3-obj-mu-1",
+      "dev-exact-rt-user_3GgBokymb8XbFNh69CkIbHHb0y3-obj-mu-2",
+      "dev-exact-rt-user_3GgBokymb8XbFNh69CkIbHHb0y3-obj-aq-1-movement"
+    ],
+    "controlledTimestamps": {
+      "reportGeneratedAt": "2026-07-14T12:00:00.000Z"
+    }
+  },
+  "retracted": "SEMANTIC TWIN GATE PASSED (receipt 27) — approximate; report card omitted",
+  "contracts": "see 30-root-cause-canonical-data-contract-map.md"
+}

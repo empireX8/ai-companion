@@ -1,0 +1,30 @@
+{
+  "verdict": "PASS",
+  "failReason": null,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "origin": "http://localhost:3000",
+  "liveRoute": "/dev/orvek-v0-canonical-live",
+  "captures": [
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/01-today.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/02-today-selected.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/03-evidence-context.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/04-linked-receipt.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/05-linked-context.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/06-back-restoration.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/07-model-movement.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/08-report-overlay.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/09-map.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/10-decision.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/11-experiment-investigation.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/12-explore.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step5-live-candidate/13-timeline.png"
+  ],
+  "notes": [
+    "Live candidate route mounted under auth.",
+    "Fixture route still mounts independently after live candidate visit."
+  ],
+  "rootCutover": false
+}

@@ -33,6 +33,71 @@ export type InvestigationRowEnrichment = {
   evidenceCount?: number;
 };
 
+/** Map inspector investigation detail into canonical typed-object enrichment (path B). */
+export function enrichmentFromInspectorInvestigationDetail(detail: {
+  competingTheories?: string[] | null;
+  evidenceNeeded?: string[] | null;
+  linkedEvidence?: Array<{ evidenceId: string; excerpt: string }> | null;
+  linkedFieldwork?: Array<{ id: string; prompt: string; reason: string }> | null;
+  resolvedConclusionId?: string | null;
+}): {
+  enrichment: InvestigationRowEnrichment;
+  linkedObjects: OrvekObject[];
+} {
+  const competingTheories = Array.isArray(detail.competingTheories)
+    ? detail.competingTheories
+    : [];
+  const evidenceNeeded = Array.isArray(detail.evidenceNeeded) ? detail.evidenceNeeded : [];
+  const linkedEvidence = Array.isArray(detail.linkedEvidence) ? detail.linkedEvidence : [];
+  const linkedFieldwork = Array.isArray(detail.linkedFieldwork) ? detail.linkedFieldwork : [];
+  const linkedObjects: OrvekObject[] = [];
+
+  for (const evidence of linkedEvidence) {
+    const excerpt = collapseInvestigationsDisplayWhitespace(evidence.excerpt);
+    if (!excerpt) continue;
+    linkedObjects.push({
+      id: evidence.evidenceId,
+      type: "receipt",
+      title: excerpt.slice(0, INVESTIGATIONS_TITLE_MAX_LENGTH),
+      summary: excerpt.slice(0, INVESTIGATIONS_SUMMARY_MAX_LENGTH),
+    });
+  }
+
+  for (const fieldwork of linkedFieldwork) {
+    const prompt = collapseInvestigationsDisplayWhitespace(fieldwork.prompt);
+    if (!prompt) continue;
+    linkedObjects.push({
+      id: fieldwork.id,
+      type: "fieldwork",
+      title: prompt.slice(0, INVESTIGATIONS_TITLE_MAX_LENGTH),
+      summary: collapseInvestigationsDisplayWhitespace(fieldwork.reason).slice(
+        0,
+        INVESTIGATIONS_SUMMARY_MAX_LENGTH,
+      ),
+    });
+  }
+
+  const relatedIds = [
+    ...linkedFieldwork.map((item) => item.id),
+    ...(detail.resolvedConclusionId ? [detail.resolvedConclusionId] : []),
+  ].filter(Boolean);
+
+  return {
+    enrichment: {
+      hypotheses: competingTheories
+        .map((value) => collapseInvestigationsDisplayWhitespace(value))
+        .filter(Boolean),
+      missingEvidence: evidenceNeeded
+        .map((value) => collapseInvestigationsDisplayWhitespace(value))
+        .filter(Boolean),
+      relatedIds,
+      receiptIds: linkedEvidence.map((item) => item.evidenceId).filter(Boolean),
+      evidenceCount: linkedEvidence.length,
+    },
+    linkedObjects,
+  };
+}
+
 export function collapseInvestigationsDisplayWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }

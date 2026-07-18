@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils"
 import { isProductionDisplay } from "@/lib/orvek-v0/display-contract"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
-import { resolveWorkbenchRoutePath, updateWorkbenchHistory } from "@/lib/orvek-v0/workbench-route-history"
+import { resolveWorkbenchRoutePath, updateWorkbenchHistory, isIsolatedWorkbenchPath } from "@/lib/orvek-v0/workbench-route-history"
 import { useWorkbench, type OrvekPage } from "@/components/orvek-v0/store"
 import { CalendarClock, Compass, GitBranch, Home, Telescope } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
@@ -34,7 +34,8 @@ export function Sidebar() {
                 type="button"
                 onClick={() => {
                   setPage(item.id)
-                  if (isProduction) {
+                  // Production root syncs URL; isolated /dev candidates keep pathname.
+                  if (isProduction && !isIsolatedWorkbenchPath()) {
                     updateWorkbenchHistory(resolveWorkbenchRoutePath(item.id))
                   }
                 }}

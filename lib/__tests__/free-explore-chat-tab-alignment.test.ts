@@ -246,10 +246,15 @@ describe("free explore chat tab alignment", () => {
     const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
     const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
+    const runtimeSource = readSource(
+      "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
+    );
 
     expect(workbenchSource).toContain("OrvekPageHandlersProvider");
-    expect(shellSource).toContain("handlers={handlers}");
-    expect(shellSource).not.toContain("handlers={{}}");
+    expect(shellSource).toContain("CanonicalLiveRuntimeEntry");
+    expect(runtimeSource).toContain("OrvekPageHandlersProvider");
+    expect(runtimeSource).toContain("value={handlers}");
+    expect(runtimeSource).not.toContain("handlers={{}}");
     expect(hookSource).toContain("sendMessage");
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
   });
@@ -381,7 +386,7 @@ describe("free explore chat tab alignment", () => {
     const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
     const exploreRouteSource = readSource("app/(root)/(routes)/explore/page.tsx");
 
-    expect(shellSource).toContain("useOrvekHybridWorkbenchDataApi");
+    expect(shellSource).toContain("CanonicalLiveRuntimeEntry");
     expect(shellSource).not.toContain("OrvekExplorePage");
     expect(workbenchSource).toContain("<ExplorePage />");
     expect(workbenchSource).toContain("createMockOrvekDataApi");

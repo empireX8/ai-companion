@@ -20,6 +20,7 @@ import {
   type ExploreMovement,
 } from "./orvek-data";
 import type { OrvekDisplayContract } from "./display-contract";
+import { useInspectorObjectOverlay } from "./inspector-object-overlay";
 
 export type OrvekDecisionsHeaderStats = {
   outcomesDue: number;
@@ -62,6 +63,36 @@ export type OrvekMapHeader = {
   openQuestionsLabel: string;
 };
 
+export type OrvekImportReviewCandidate = {
+  id: string;
+  raw: string;
+  proposed: string;
+  type: OrvekObject["type"];
+  confidence: "high" | "medium" | "low";
+};
+
+export type OrvekImportReviewBatch = {
+  /** Production densograph id for the import source report (subtitle/counts). */
+  sourceObjectId: string;
+  candidates: OrvekImportReviewCandidate[];
+};
+
+/** Living model-status cluster in the TopBar (not Map densograph slot counts). */
+export type OrvekModelStatusCardDestination =
+  | { kind: "workbench-page"; page: "map" }
+  | { kind: "route"; href: string };
+
+export type OrvekModelStatusCard = {
+  movementPlaceCount: number;
+  openQuestionCount: number;
+  openReviewCount: number;
+  /** Optional explicit copy; when omitted, format from counts. */
+  title?: string;
+  meta?: string;
+  compactLabel?: string;
+  destination: OrvekModelStatusCardDestination;
+};
+
 export type OrvekDataApi = {
   getObject: (id: string | null | undefined) => OrvekObject | undefined;
   getObjects: (ids: string[] | undefined) => OrvekObject[];
@@ -74,6 +105,17 @@ export type OrvekDataApi = {
   /** Production Explore chat; empty in mock reference unless overridden. */
   exploreMessages?: OrvekExploreMessage[];
   exploreLiveDetectionCopy?: string;
+  /**
+   * Explicit Review-import batch for the shared Import overlay.
+   * When present (and non-empty), production TopBar enables Import.
+   */
+  importReview?: OrvekImportReviewBatch | null;
+  /**
+   * TopBar living model-status card.
+   * When present, presentation uses these measures; when absent, production
+   * shows truthful generic map CTA (no reference counts).
+   */
+  modelStatusCard?: OrvekModelStatusCard | null;
   /** Honest empty copy keyed by slot id. */
   emptyCopyBySlot?: Record<string, string>;
   /** Page bodies — v0 view props from adapters (production) or reference builders (dev). */
@@ -116,6 +158,8 @@ export type OrvekDataApi = {
   decisionsIsLoading?: boolean;
   /** True only for the explicit /dev reference workbench — never hybrid production shell. */
   referenceSurface?: boolean;
+  /** True when pages/Inspector are the canonical reference-derived runtime. */
+  canonicalRuntime?: boolean;
   /** Parity assessment for live Today object graph — does not flip presentation. */
   todayObjectGraphParity?: import("./production/today-object-graph-parity").LiveTodayGraphParity;
   /** Live depth-overlay ids merged after parity assessment — authoritative for Inspector provenance. */
@@ -265,12 +309,40 @@ export function useOrvekObjectGraph(): {
   getObjects: (ids: string[] | undefined) => OrvekObject[];
 } {
   const data = useOrvekData();
+  const overlay = useInspectorObjectOverlay();
 
   return useMemo(
     () => ({
-      getObject: (id) => resolveOrvekObjectFromGraph(data, id),
-      getObjects: (ids) => resolveOrvekObjectsFromGraph(data, ids),
+      getObject: (id) => {
+        if (!id) {
+          return undefined;
+        }
+        const fromGraph = resolveOrvekObjectFromGraph(data, id);
+        const fromOverlay = overlay[id];
+        // Inspector-composed overlay wins field-by-field so production ModelUpdate
+        // satellites and canonical titles are not shadowed by thin graph shells.
+        if (fromOverlay && fromGraph) {
+          return { ...fromGraph, ...fromOverlay };
+        }
+        return fromOverlay ?? fromGraph;
+      },
+      getObjects: (ids) => {
+        if (!ids || ids.length === 0) {
+          return [];
+        }
+        return ids
+          .map((id) => {
+            if (!id) return undefined;
+            const fromGraph = resolveOrvekObjectFromGraph(data, id);
+            const fromOverlay = overlay[id];
+            if (fromOverlay && fromGraph) {
+              return { ...fromGraph, ...fromOverlay };
+            }
+            return fromOverlay ?? fromGraph;
+          })
+          .filter((object): object is OrvekObject => Boolean(object));
+      },
     }),
-    [data],
+    [data, overlay],
   );
 }

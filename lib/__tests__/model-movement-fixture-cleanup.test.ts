@@ -46,6 +46,8 @@ describe("movement assault fixture cleanup", () => {
       });
 
       expect(cleanup.deletedModelUpdates).toBeGreaterThan(0);
+      expect(cleanup.deletedClaims).toBeGreaterThan(0);
+      expect(cleanup.deletedConclusions).toBeGreaterThan(0);
       expect(cleanup.remainingModelUpdates).toBe(0);
       expect(cleanup.remainingLinks).toBe(0);
     } finally {

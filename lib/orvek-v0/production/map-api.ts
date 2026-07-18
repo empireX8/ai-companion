@@ -222,6 +222,7 @@ function buildDetailOrvekObject(view: V0MapViewProps, objectId: string): OrvekOb
     before: detail.beforeSummary,
     after: detail.afterSummary,
   });
+  const { receiptIds } = buildMapReceiptSatellites(view, objectId);
 
   return {
     id: objectId,
@@ -241,7 +242,39 @@ function buildDetailOrvekObject(view: V0MapViewProps, objectId: string): OrvekOb
     userCorrectionAt: detail.lastUserCorrectionAt ?? undefined,
     correctionCount: detail.correctionCount ?? 0,
     relatedIds,
+    receiptIds: receiptIds.length > 0 ? receiptIds : undefined,
   };
+}
+
+/** Project map evidence preview into typed receipt objects for Inspector LinkedRows. */
+function buildMapReceiptSatellites(
+  view: V0MapViewProps,
+  objectId: string,
+): { receiptIds: string[]; receipts: Record<string, OrvekObject> } {
+  const receiptIds: string[] = [];
+  const receipts: Record<string, OrvekObject> = {};
+  const seen = new Set<string>();
+
+  for (const [index, link] of view.evidence.preview.entries()) {
+    const quote = link.evidenceSummaryLabel.trim();
+    if (!quote) continue;
+    const key = quote.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const id = `map-receipt-${objectId}-${index}`;
+    receiptIds.push(id);
+    receipts[id] = {
+      id,
+      type: "receipt",
+      title: quote,
+      sourceText: quote,
+      sourceOrigin: link.sourceTypeLabel || undefined,
+      tags: ["Receipt", "Map evidence"],
+      evidenceCount: 1,
+    };
+  }
+
+  return { receiptIds, receipts };
 }
 
 function registerRelatedObjects(
@@ -341,6 +374,8 @@ export function buildMapProductionDataApi(input: MapMapDataInput): OrvekDataApi 
   if (view.detail) {
     const railId = `conclusion-${view.detail.id}`;
     const detailObject = buildDetailOrvekObject(view, view.detail.id);
+    const { receipts } = buildMapReceiptSatellites(view, view.detail.id);
+    Object.assign(objects, receipts);
 
     objects[view.detail.id] = detailObject;
 

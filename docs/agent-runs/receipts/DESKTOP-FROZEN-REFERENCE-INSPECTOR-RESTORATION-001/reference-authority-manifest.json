@@ -1,0 +1,205 @@
+{
+  "campaign": "DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001",
+  "generatedAt": "2026-07-17",
+  "worktree": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001",
+  "branch": "desktop-reference-authority-inspector-restoration-001",
+  "baseline": {
+    "requested": "staging @ 1f8cb7c",
+    "headCommit": "1f8cb7cede1844d079a2dd0ab0ac434a132e761e",
+    "stagingCommit": "1f8cb7cede1844d079a2dd0ab0ac434a132e761e",
+    "mergeBaseWithStaging": "1f8cb7cede1844d079a2dd0ab0ac434a132e761e",
+    "exactMatch": true
+  },
+  "search": {
+    "excludedGlobs": [
+      "node_modules/**",
+      ".next/**",
+      "coverage/**",
+      "dist/**",
+      "build/**",
+      "out/**",
+      ".turbo/**"
+    ],
+    "mediaExtensions": [
+      "png",
+      "jpg",
+      "jpeg",
+      "webp",
+      "gif",
+      "mov",
+      "mp4",
+      "m4v"
+    ]
+  },
+  "visualAuthority": {
+    "repoLocalVisualAssetsFound": false,
+    "status": "human_confirmed_frozen_route",
+    "notes": [
+      "No repo-local approved recording, screenshot, contact sheet, GIF, PNG, JPG, WEBP, MOV, or MP4 was found.",
+      "Documents reference prior recordings and sampled states but do not point to repo-local media files.",
+      "On 2026-07-17 Kay compared historical accepted app commit 5c56ba0 on http://localhost:3001 against http://localhost:3000/dev/orvek-v0-reference and found them visually and behaviorally the same.",
+      "The deleted original recording is not required for this campaign because the frozen route is now human-confirmed authority."
+    ],
+    "humanConfirmation": {
+      "comparedOn": "2026-07-17",
+      "historicalAcceptedAppCommit": "5c56ba0",
+      "historicalAcceptedAppUrl": "http://localhost:3001",
+      "frozenReferenceUrl": "http://localhost:3000/dev/orvek-v0-reference",
+      "result": "visually_and_behaviorally_same"
+    },
+    "repoLocalMediaFiles": [
+      {
+        "path": "public/empty.png",
+        "sha256": "e9bac2d1c741bb4cd71c65fe31dce97ddf030f628f4205cf20a239b9dc64524f",
+        "dimensions": "2160x2160",
+        "sizeBytes": 650298,
+        "role": "generic_asset_not_reference_capture"
+      },
+      {
+        "path": "public/orvek-atmosphere.png",
+        "sha256": "c4c2dfd6a891d9e49fb29d65364ea9a0c6494737baf682e8d98132d58f90658a",
+        "dimensions": "1024x1024",
+        "sizeBytes": 1334027,
+        "role": "generic_background_not_reference_capture"
+      }
+    ],
+    "documentsMentioningRecordings": [
+      "docs/agent-runs/receipts/DESKTOP-REFERENCE-PARITY-PROVENANCE-AUDIT-001/01-reference-state-inventory.md",
+      "docs/agent-runs/receipts/DESKTOP-REFERENCE-INTEGRITY-AUDIT-001/00-reference-route-integrity-audit.md"
+    ]
+  },
+  "frozenCodeAuthority": {
+    "snapshotCommit": {
+      "sha": "6ad723216088987953cac776c8119693ea3bc982",
+      "committedAt": "2026-06-29T13:30:12+01:00",
+      "subject": "Track Orvek v0 reference pages for verification"
+    },
+    "snapshotCompleteness": "partial_page_snapshot_only",
+    "snapshotFiles": [
+      {
+        "path": ".reference/v0-orvek-workbench/app/page.tsx",
+        "sha256": "7657ecad358f33b87b0edaad2b35f7830424f429b595d3915fdef71ba3f40918",
+        "sizeBytes": 116
+      },
+      {
+        "path": ".reference/v0-orvek-workbench/components/orvek/pages/decisions.tsx",
+        "sha256": "0a31beebd0c802d77b1b1be31668d7e0e2468951036688be2865cc88316bfe31",
+        "sizeBytes": 16291
+      },
+      {
+        "path": ".reference/v0-orvek-workbench/components/orvek/pages/explore.tsx",
+        "sha256": "71c4d3e742688a7ab94a2275e015caa3310b1dadffa6ded7c8f8d16bb80778db",
+        "sizeBytes": 17778
+      },
+      {
+        "path": ".reference/v0-orvek-workbench/components/orvek/pages/map.tsx",
+        "sha256": "4cebfb8460800569ae73c3f2736e3176f81e707062f34eb21efed33bffabd45e",
+        "sizeBytes": 14046
+      },
+      {
+        "path": ".reference/v0-orvek-workbench/components/orvek/pages/timeline.tsx",
+        "sha256": "4b2504f3fc2942aaf7d10b6d7c7d90f804e4ae09ed68a0ea53301e0cbfb86fb9",
+        "sizeBytes": 9617
+      },
+      {
+        "path": ".reference/v0-orvek-workbench/components/orvek/pages/today.tsx",
+        "sha256": "ac623957779a94a787e4a61312783206e7e039bea50823766090cdb8bac16cf4",
+        "sizeBytes": 14291
+      }
+    ],
+    "limitations": [
+      "Not a full runnable package",
+      "Missing frozen evidence-panel.tsx",
+      "Missing frozen workbench.tsx",
+      "Missing frozen top-bar.tsx, sidebar.tsx, overlays.tsx, store/primitives",
+      "Imports historical module paths such as '@/components/orvek/workbench' and '@/lib/orvek-data'"
+    ],
+    "provenanceMatchedSupplements": [
+      {
+        "path": "components/orvek-v0/evidence-panel.tsx",
+        "commit": "6ad723216088987953cac776c8119693ea3bc982",
+        "sha256AtCommit": "2aa11bc9ee72c27e618f433aca9f50b2c1b175efef76dbdb69ffd77fbb118c59",
+        "currentSha256": "0a0c5142917968e4cd0d6b26d792423c8be79ec9556c1fb1bab40fca4e409e0d",
+        "role": "frozen_inspector_companion"
+      },
+      {
+        "path": "components/orvek-v0/workbench.tsx",
+        "commit": "6ad723216088987953cac776c8119693ea3bc982",
+        "sha256AtCommit": "f4ce251ca9d2d329fde14618a51902643b48db8ab3b75497404525e7adfb76e4",
+        "currentSha256": "49791f715216766b8b1995bbd7fe8f53453937423e69ff79b0b7f2ed3d6b8773",
+        "role": "frozen_workbench_shell_companion"
+      }
+    ]
+  },
+  "currentMutableReferenceAndProductionPaths": {
+    "devReferenceRoute": {
+      "path": "app/dev/orvek-v0-reference/page.tsx",
+      "runtimeRoot": "components/orvek-v0-reference-frozen/workbench.tsx",
+      "role": "frozen_reference_entry_route"
+    },
+    "appShell": {
+      "path": "components/layout/AppShell.tsx",
+      "sha256": "8cefbc16017ad926910fc8de8d46849fb35e1560d0ebcdf9e0d4a6185ffd449f",
+      "lastCommit": "a1b24a330193a00badf48f2ce2d1f819e453c1fd"
+    },
+    "orvekWorkbenchShell": {
+      "path": "components/orvek-workbench/OrvekWorkbenchShell.tsx",
+      "sha256": "ff0bfa09d3481d65d0a793b40316901fca0af626e823d4928d24afcd700eee7d",
+      "lastCommit": "3fcf7eaf6d16031bc3fe4347ecc5aefdb00551d1"
+    },
+    "mutableWorkbench": {
+      "path": "components/orvek-v0/workbench.tsx",
+      "sha256": "49791f715216766b8b1995bbd7fe8f53453937423e69ff79b0b7f2ed3d6b8773",
+      "lastCommit": "0f161573fc3fd8d65484786b419e63fd45f7322b"
+    },
+    "mutableInspector": {
+      "path": "components/orvek-v0/evidence-panel.tsx",
+      "sha256": "0a0c5142917968e4cd0d6b26d792423c8be79ec9556c1fb1bab40fca4e409e0d",
+      "lastCommit": "3fcf7eaf6d16031bc3fe4347ecc5aefdb00551d1"
+    }
+  },
+  "authorityHierarchy": [
+    {
+      "rank": 1,
+      "source": "kay_human_confirmation_against_historical_accepted_app",
+      "available": true,
+      "status": "confirmed_frozen_route_on_2026-07-17"
+    },
+    {
+      "rank": 2,
+      "source": "current_frozen_reference_route_package",
+      "available": true,
+      "status": "app/dev/orvek-v0-reference_plus_components/orvek-v0-reference-frozen"
+    },
+    {
+      "rank": 3,
+      "source": "frozen_code_snapshot",
+      "available": true,
+      "status": "use_.reference_plus_same_commit_supplements_where_snapshot_is_incomplete"
+    },
+    {
+      "rank": 4,
+      "source": "campaign_product_owner_instructions",
+      "available": true
+    },
+    {
+      "rank": 5,
+      "source": "current_production_implementation",
+      "available": true,
+      "status": "implementation_under_repair_never_acceptance_target"
+    },
+    {
+      "rank": 6,
+      "source": "deferred_redesign_documents",
+      "available": true,
+      "status": "non_authoritative_for_this_campaign_quarantine_required"
+    }
+  ],
+  "hardGate": {
+    "authoritySourcesNamed": true,
+    "repoMediaSearchNegative": true,
+    "humanAuthorityConfirmationRecorded": true,
+    "devReferenceRouteConfirmedAsAuthority": true,
+    "runtimeImplementationMayProceed": true
+  }
+}

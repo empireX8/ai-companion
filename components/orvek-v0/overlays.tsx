@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { OBJECTS } from "@/lib/orvek-v0/orvek-data"
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
-import { useOrvekObjectGraph } from "@/lib/orvek-v0/data-provider"
+import { useOrvekData, useOrvekObjectGraph } from "@/lib/orvek-v0/data-provider"
 import {
   reportOverlayProvenanceLabel,
   resolveReportOverlayProvenance,
@@ -176,7 +176,12 @@ function CaptureOverlay({ onClose }: { onClose: () => void }) {
 
 /* ───────────────────────── Import Review ───────────────────────── */
 
-const IMPORT_CANDIDATES: {
+/**
+ * Reference-local fallback candidates (frozen /dev reference only).
+ * Live/canonical must supply the same shape via OrvekDataApi.importReview —
+ * never inject this array after the production query boundary.
+ */
+const REFERENCE_IMPORT_CANDIDATES: {
   id: string
   raw: string
   proposed: string
@@ -214,8 +219,17 @@ const IMPORT_CANDIDATES: {
 ]
 
 function ImportOverlay({ onClose }: { onClose: () => void }) {
+  const data = useOrvekData()
   const { getObject } = useOrvekObjectGraph()
-  const source = getObject("imp-1")
+  const batch = data.importReview
+  const candidates =
+    batch && batch.candidates.length > 0
+      ? batch.candidates
+      : data.referenceSurface
+        ? REFERENCE_IMPORT_CANDIDATES
+        : []
+  const sourceId = batch?.sourceObjectId ?? (data.referenceSurface ? "imp-1" : null)
+  const source = sourceId ? getObject(sourceId) : undefined
   const [decisions, setDecisions] = useState<Record<string, "accept" | "reject">>({})
 
   const accepted = Object.values(decisions).filter((d) => d === "accept").length
@@ -230,7 +244,7 @@ function ImportOverlay({ onClose }: { onClose: () => void }) {
       footer={
         <>
           <span className="mr-auto text-xs text-muted-foreground">
-            {reviewed} of {IMPORT_CANDIDATES.length} reviewed · {accepted} accepted
+            {reviewed} of {candidates.length} reviewed · {accepted} accepted
           </span>
           <GhostButton onClick={onClose}>Save for later</GhostButton>
           <PrimaryButton onClick={onClose}>
@@ -244,7 +258,7 @@ function ImportOverlay({ onClose }: { onClose: () => void }) {
         it — the raw words stay either way.
       </p>
       <div className="flex flex-col gap-2.5">
-        {IMPORT_CANDIDATES.map((c) => {
+        {candidates.map((c) => {
           const state = decisions[c.id]
           return (
             <div

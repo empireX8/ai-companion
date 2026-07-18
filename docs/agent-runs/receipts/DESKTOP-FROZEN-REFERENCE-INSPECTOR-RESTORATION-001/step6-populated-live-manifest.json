@@ -1,0 +1,52 @@
+{
+  "verdict": "PASS",
+  "failReason": null,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "origin": "http://localhost:3000",
+  "liveRoute": "/dev/orvek-v0-canonical-live",
+  "captures": [
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/01-populated-today.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/02-selected-today-object.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/03-evidence-context.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/04-linked-receipt.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/05-linked-related.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/06-back-restoration.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/07-model-movement.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/08-live-report-overlay.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/09-populated-map.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/10-populated-decision.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/11-populated-investigation.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/12-live-explore.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step6-populated-live/13-populated-timeline.png"
+  ],
+  "notes": [
+    "Seeded movement MU=cmrq7j09f0000qluudy7gg4bi, decision surface=stabilize:s6:claim:dev-durable-actions-assault-claim, openAQ=dev-populated-live-aq-1784369498184, resolvedInv=dev-populated-live-inv-1784369498184",
+    "No reference fixture identity/copy leak in live body text.",
+    "No reference fixture identity/copy leak in live body text.",
+    "No reference fixture identity/copy leak in live body text."
+  ],
+  "traces": [
+    "Today: live MU/claim → live provider → canonical Today → identity preserved (cmrq7j09f0000qluudy7gg4bi)",
+    "Evidence: selection → canonical Inspector Evidence/Context branch",
+    "Linked navigation: receipt/related → select → Inspector destination",
+    "Report: openReport(live id) → overlay; MU=cmrq7j09f0000qluudy7gg4bi",
+    "Map: conclusions API → mapCategories → canonical MapPage",
+    "Decisions: surfaced actions → decisionListGroups → canonical DecisionsPage",
+    "Active Question: /api/active-questions → exploreQuestionIds → canonical Questions (dev-populated-live-aq-1784369498184)",
+    "Investigation: /api/explore/investigations + inspector detail enrichment → typed investigation → canonical Explore Investigations (dev-populated-live-inv-1784369498184)",
+    "Explore Free: live chat handlers; fixture conversation gated off",
+    "Timeline: timeline API → timelineGroups → canonical TimelinePage"
+  ],
+  "seeded": {
+    "claimModelUpdateId": "cmrq7j09f0000qluudy7gg4bi",
+    "openInvestigationId": "dev-populated-live-aq-1784369498184",
+    "openInvestigationTitle": "dev-investigations-assault durable investigation active 1784369498184",
+    "investigationId": "dev-populated-live-inv-1784369498184",
+    "investigationTitle": "dev-investigations-assault durable investigation resolved 1784369498184"
+  },
+  "rootCutover": false,
+  "investigationDecision": "A+B preserved; C action cards require Kay decision"
+}

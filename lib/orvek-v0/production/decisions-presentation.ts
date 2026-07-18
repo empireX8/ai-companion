@@ -201,7 +201,7 @@ export function buildLinkedClaimAliasObject(input: {
   return {
     id: input.claimId,
     type: "receipt",
-    title: "Linked pattern",
+    title: summary ?? "Pattern claim",
     summary: summary ?? undefined,
     sourceText: summary ?? undefined,
     inspectorObjectType: "pattern_claim",

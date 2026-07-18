@@ -9,15 +9,19 @@ function readSource(relativePath: string): string {
 }
 
 describe("reference shell quarantine", () => {
-  it("keeps the active production shell on the reference workbench", () => {
+  it("keeps the active production shell on the canonical workbench", () => {
     const appLayout = readSource("app/(root)/layout.tsx");
     const shell = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
-    const workbench = readSource("components/orvek-v0/workbench.tsx");
+    const runtime = readSource(
+      "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
+    );
+    const workbench = readSource("components/orvek-v0-canonical/workbench.tsx");
 
     expect(appLayout).toContain("AppShell");
-    expect(shell).toContain("Workbench");
-    expect(shell).toContain("useOrvekHybridWorkbenchDataApi");
-    expect(shell).toContain("dataApi={dataApi}");
+    expect(shell).toContain("CanonicalLiveRuntimeEntry");
+    expect(runtime).toContain("CanonicalWorkbench");
+    expect(runtime).toContain("useOrvekHybridWorkbenchDataApi");
+    expect(runtime).toContain("buildCanonicalLiveRuntimeData");
     expect(shell).not.toContain("RouteTopBar");
     expect(shell).not.toContain("RouteSidebar");
     expect(shell).not.toContain("OrvekTopBar");
@@ -29,17 +33,20 @@ describe("reference shell quarantine", () => {
     expect(workbench).toContain("<Sidebar />");
     expect(workbench).toContain("<EvidencePanel />");
     expect(workbench).toContain("<Overlays />");
-    expect(workbench).toContain("dataApi?: OrvekDataApi");
   });
 
-  it("keeps mock data confined to the reference workbench baseline", () => {
+  it("keeps mock data confined to fixture / frozen baselines, not the production shell", () => {
     const shell = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
-    const workbench = readSource("components/orvek-v0/workbench.tsx");
+    const runtime = readSource(
+      "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
+    );
+    const fixture = readSource("components/orvek-v0-canonical/fixture-provider.ts");
+    const parallelWorkbench = readSource("components/orvek-v0/workbench.tsx");
 
-    expect(workbench).toContain("createMockOrvekDataApi");
-    expect(workbench).toContain("OrvekPageHandlersProvider");
-    expect(workbench).toContain("handlers?: OrvekPageHandlers");
+    expect(fixture).toContain("createCanonicalFixtureRuntimeData");
+    expect(parallelWorkbench).toContain("createMockOrvekDataApi");
     expect(shell).not.toContain("createMockOrvekDataApi");
+    expect(runtime).toContain("OrvekPageHandlersProvider");
   });
 
   it("leaves the old shell files as quarantined backup code", () => {

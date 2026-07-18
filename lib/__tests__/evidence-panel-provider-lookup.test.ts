@@ -19,10 +19,14 @@ function readSource(relativePath: string): string {
 
 describe("evidence panel provider lookup", () => {
   it("EvidencePanel resolves objects through useOrvekObjectGraph", () => {
-    const source = readSource("components/orvek-v0/evidence-panel.tsx");
+    const source = readSource("components/orvek-v0-authority/evidence-panel.tsx");
+    const reexport = readSource("components/orvek-v0/evidence-panel.tsx");
 
     expect(source).toContain("useOrvekObjectGraph");
     expect(source).toContain('from "@/lib/orvek-v0/data-provider"');
+    expect(reexport.trim()).toBe(
+      'export { EvidencePanel } from "@/components/orvek-v0-authority/evidence-panel"'
+    );
     expect(source).not.toMatch(
       /import\s*\{[^}]*\bgetObject\b[^}]*\}\s*from\s*"@\/lib\/orvek-v0\/orvek-data"/,
     );
@@ -197,11 +201,15 @@ describe("evidence panel provider lookup", () => {
 
   it("keeps the old production shell quarantined", () => {
     const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
-    const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
+    const runtimeSource = readSource(
+      "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
+    );
+    const workbenchSource = readSource("components/orvek-v0-canonical/workbench.tsx");
 
     expect(shellSource).not.toContain("RouteTopBar");
     expect(shellSource).not.toContain("OrvekEvidencePanel");
+    expect(shellSource).toContain("CanonicalLiveRuntimeEntry");
+    expect(runtimeSource).toContain("CanonicalWorkbench");
     expect(workbenchSource).toContain("<EvidencePanel />");
-    expect(workbenchSource).toContain("createMockOrvekDataApi");
   });
 });

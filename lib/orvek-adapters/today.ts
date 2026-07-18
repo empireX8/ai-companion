@@ -22,6 +22,7 @@ import {
   type TodayReentrySnapshot,
 } from "../today-reentry";
 import { TODAY_INTELLIGENCE_LOADING_COPY } from "../today-surface";
+import { resolveModelUpdateDisplayTitle } from "../model-update-identity";
 
 import type {
   V0CheckInOption,
@@ -316,11 +317,25 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
     movementSource.slice(0, 3).map((m) => {
       const depth = movementDepthById[m.id];
       const afterRecorded = Boolean(depth?.after?.trim());
+      const rationale = depth?.movementRationale?.trim() || null;
       return {
         id: m.id,
         previous: depth?.before ?? null,
-        updated: afterRecorded ? depth!.after!.trim() : TODAY_RESULT_STATE_UNAVAILABLE_COPY,
-        evidence: `${m.updateTypeLabel} · ${m.affectedObjectTypeLabel}`,
+        updated: afterRecorded
+          ? depth!.after!.trim()
+          : resolveModelUpdateDisplayTitle({
+              userFacingSummary: m.userFacingSummary,
+              updateTypeLabel: m.updateTypeLabel,
+              affectedObjectTypeLabel: m.affectedObjectTypeLabel,
+            }),
+        // Explanation line = recorded movement rationale when present (not the summary title).
+        evidence:
+          rationale ??
+          resolveModelUpdateDisplayTitle({
+            userFacingSummary: m.userFacingSummary,
+            updateTypeLabel: m.updateTypeLabel,
+            affectedObjectTypeLabel: m.affectedObjectTypeLabel,
+          }),
       };
     })
   );
@@ -343,7 +358,11 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
         id: latest.id,
         inspectSelectId: latest.id,
         summary: latest.userFacingSummary,
-        evidence: `${latest.updateTypeLabel} · ${latest.affectedObjectTypeLabel}`,
+        evidence: resolveModelUpdateDisplayTitle({
+          userFacingSummary: latest.userFacingSummary,
+          updateTypeLabel: latest.updateTypeLabel,
+          affectedObjectTypeLabel: latest.affectedObjectTypeLabel,
+        }),
         selectionId: latest.id,
         movementId: latest.id,
         inspectorTab: "movement",
@@ -357,6 +376,11 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
     meta: `${card.kind ?? "Receipt"} · ${card.meta?.trim() || "Receipt"}`,
     href: card.receiptHref ?? card.detailHref ?? "#",
   }));
+  const primaryActions = applyPrimaryActionRouting(PRIMARY_ACTIONS).map((action) =>
+    action.label === "Continue from what changed" && report?.reportId
+      ? { ...action, reportId: report.reportId }
+      : action,
+  );
 
   return normalizeV0TodayViewProps({
     briefingDate,
@@ -366,7 +390,7 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
     loadingCopy: TODAY_INTELLIGENCE_LOADING_COPY,
     heroEmptyCopy: TODAY_PRIMARY_EMPTY_COPY,
     hero: hero ? mapHero(hero) : null,
-    primaryActions: applyPrimaryActionRouting(PRIMARY_ACTIONS),
+    primaryActions,
     nowRows,
     nowEmptyCopy: TODAY_ATTENTION_EMPTY_COPY,
     movements,

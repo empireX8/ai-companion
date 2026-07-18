@@ -141,6 +141,10 @@ describe("today primary action routing", () => {
       (a) => a.label === "Continue from what changed"
     );
     expect(continueAction?.disabled).toBeFalsy();
+    expect(continueAction?.reportId).toBe("mu-1");
+    expect(resolveTodayWorkbenchCommands(continueAction ?? {})).toEqual([
+      { kind: "openReport", reportId: "mu-1" },
+    ]);
   });
 
   it("links fieldwork hero cards to the live Watch For detail route", () => {

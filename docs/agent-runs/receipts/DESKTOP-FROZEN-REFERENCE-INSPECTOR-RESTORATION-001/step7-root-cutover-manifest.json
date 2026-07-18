@@ -1,0 +1,70 @@
+{
+  "verdict": "PASS",
+  "failReason": null,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "origin": "http://localhost:3000",
+  "productionRoute": "/",
+  "liveCandidateRoute": "/dev/orvek-v0-canonical-live",
+  "keepSeed": true,
+  "captures": [
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/01-populated-today.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/02-selected-today-object.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/03-evidence-context.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/04-linked-receipt.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/05-linked-related.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/06-back-restoration.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/07-model-movement.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/08-live-report-overlay.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/09-populated-map.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/10-populated-decision.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/11-populated-investigation.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/12-live-explore.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/13-populated-timeline.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step7-root-cutover/14-canonical-live-equivalence-spot.png"
+  ],
+  "notes": [
+    "Seeded movement MU=cmrq7uymy0000qlccc21qjo3c, decision surface=stabilize:s6:claim:dev-durable-actions-assault-claim, openAQ=dev-populated-live-aq-1784370055907, resolvedInv=dev-populated-live-inv-1784370055907",
+    "Production `/` mounts orvek-v0-production-canonical-root (canonical runtime).",
+    "No reference fixture identity/copy leak in production body text.",
+    "No reference fixture identity/copy leak in production body text.",
+    "No reference fixture identity/copy leak in production body text.",
+    "WARNING: canonical-live Today identity not immediately visible on spot-check.",
+    "KEEP_SEED=true: Clerk users + DB seeds retained for Kay visual review. Cleanup: ROOT_CUTOVER_CLEANUP=1 after review.",
+    "Seeded primary userId=user_3GfkY153edzcz5FzJhlCMFybtmc email=populated-primary-1784370053828@example.com; cross=user_3GfkYB5mIQayPil8ZHSxJAUIDYg"
+  ],
+  "traces": [
+    "Today: live MU/claim → live provider → canonical Today → identity preserved (cmrq7uymy0000qlccc21qjo3c)",
+    "Evidence: selection → canonical Inspector Evidence/Context branch",
+    "Linked navigation: receipt/related → select → Inspector destination",
+    "Report: openReport(live id) → overlay; MU=cmrq7uymy0000qlccc21qjo3c",
+    "Map: conclusions API → mapCategories → canonical MapPage",
+    "Decisions: surfaced actions → decisionListGroups → canonical DecisionsPage",
+    "Active Question: /api/active-questions → exploreQuestionIds → canonical Questions (dev-populated-live-aq-1784370055907)",
+    "Investigation: /api/explore/investigations + inspector detail enrichment → typed investigation → canonical Explore Investigations (dev-populated-live-inv-1784370055907)",
+    "Explore Free: live chat handlers; fixture conversation gated off",
+    "Timeline: timeline API → timelineGroups → canonical TimelinePage"
+  ],
+  "paths": {
+    "shell": "components/orvek-workbench/OrvekWorkbenchShell.tsx",
+    "runtimeEntry": "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
+    "liveProvider": "components/orvek-v0-canonical/live-provider.ts",
+    "hybrid": "components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts",
+    "rollbackRoute": "/dev/orvek-v0-parallel-production-rollback"
+  },
+  "seeded": {
+    "primaryUserId": "user_3GfkY153edzcz5FzJhlCMFybtmc",
+    "primaryEmail": "populated-primary-1784370053828@example.com",
+    "crossUserId": "user_3GfkYB5mIQayPil8ZHSxJAUIDYg",
+    "claimModelUpdateId": "cmrq7uymy0000qlccc21qjo3c",
+    "openInvestigationId": "dev-populated-live-aq-1784370055907",
+    "openInvestigationTitle": "dev-investigations-assault durable investigation active 1784370055907",
+    "investigationId": "dev-populated-live-inv-1784370055907",
+    "investigationTitle": "dev-investigations-assault durable investigation resolved 1784370055907",
+    "primaryPassword": "Kay-RootCutover-Review-Aa1!"
+  },
+  "deferredProductDecision": "attach-evidence / create-watch-for investigation controls — post-cutover",
+  "rootCutover": true
+}

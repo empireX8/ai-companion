@@ -1,7 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 
 import {
-  FIXTURE_SPARSE_UPDATE_ID,
   publishMovementAssaultClaimFixture,
   seedMovementAssaultRuntimeFixture,
 } from "../lib/model-movement-runtime-fixture";
@@ -25,7 +24,7 @@ async function main() {
     const [claim, conclusion, sparse] = await Promise.all([
       db.modelUpdate.findUnique({ where: { id: seeded.claimModelUpdateId } }),
       db.modelUpdate.findUnique({ where: { id: seeded.conclusionModelUpdateId } }),
-      db.modelUpdate.findUnique({ where: { id: FIXTURE_SPARSE_UPDATE_ID } }),
+      db.modelUpdate.findUnique({ where: { id: seeded.sparseModelUpdateId } }),
     ]);
 
     const claimEvidenceCount = await db.understandingEvidenceLink.count({

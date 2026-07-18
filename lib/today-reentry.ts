@@ -22,6 +22,7 @@ import type { TimelineModelLayerItem } from "./timeline-model-layers";
 import type { WatchForItem } from "./watch-for";
 import { YOUR_MAP_CONCLUSIONS_ENDPOINT } from "./your-map-surface";
 import { ORVEK_COPY, PRODUCT_NAME } from "./trust-language";
+import { resolveModelUpdateDisplayTitle } from "./model-update-identity";
 
 /** Re-entry section order: primary → attention → changes → fieldwork → open loops → receipts → capture. */
 export const TODAY_SECTION_ORDER = [
@@ -133,7 +134,11 @@ function movementSelection(item: TodayIntelligenceUpdateItem): TodaySelectableTa
     objectType: "model_update",
     objectId: item.id,
     modelUpdateId: item.id,
-    title: `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`,
+    title: resolveModelUpdateDisplayTitle({
+      userFacingSummary: item.userFacingSummary,
+      updateTypeLabel: item.updateTypeLabel,
+      affectedObjectTypeLabel: item.affectedObjectTypeLabel,
+    }),
     tab: "movement",
   };
 }
@@ -154,7 +159,11 @@ function heroFromMovement(item: TodayIntelligenceUpdateItem): TodayHeroItem {
     id: `hero-movement-${item.id}`,
     laneLabel: ORVEK_COPY.mindModelMovement,
     typeLabel: item.updateTypeLabel,
-    title: `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`,
+    title: resolveModelUpdateDisplayTitle({
+      userFacingSummary: item.userFacingSummary,
+      updateTypeLabel: item.updateTypeLabel,
+      affectedObjectTypeLabel: item.affectedObjectTypeLabel,
+    }),
     summary: item.userFacingSummary,
     meta: null,
     whyItMatters: `Your ${ORVEK_COPY.mindModel.toLowerCase()} shifted based on recent evidence.`,
@@ -321,7 +330,11 @@ function rowFromMovement(item: TodayIntelligenceUpdateItem): TodayAttentionRow {
     id: `attention-movement-${item.id}`,
     laneLabel: ORVEK_COPY.mindModelMovement,
     typeLabel: "Mind Model change",
-    title: `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`,
+    title: resolveModelUpdateDisplayTitle({
+      userFacingSummary: item.userFacingSummary,
+      updateTypeLabel: item.updateTypeLabel,
+      affectedObjectTypeLabel: item.affectedObjectTypeLabel,
+    }),
     reason: item.userFacingSummary,
     meta: null,
     occurredAt: item.createdAt,
@@ -383,11 +396,16 @@ function rowFromInvestigation(item: ActiveQuestionItem): TodayAttentionRow {
 }
 
 function rowFromTimelineMovement(item: TimelineModelLayerItem): TodayAttentionRow {
+  const title = resolveModelUpdateDisplayTitle({
+    userFacingSummary: item.userFacingSummary,
+    updateTypeLabel: item.updateTypeLabel,
+    affectedObjectTypeLabel: item.affectedObjectTypeLabel,
+  });
   return {
     id: `attention-timeline-${item.id}`,
     laneLabel: "Timeline",
     typeLabel: "Recent movement",
-    title: `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`,
+    title,
     reason: item.userFacingSummary,
     meta: null,
     occurredAt: item.createdAt,
@@ -396,7 +414,7 @@ function rowFromTimelineMovement(item: TimelineModelLayerItem): TodayAttentionRo
       objectType: "model_update",
       objectId: item.id,
       modelUpdateId: item.id,
-      title: `${item.updateTypeLabel} · ${item.affectedObjectTypeLabel}`,
+      title,
       tab: "movement",
     },
   };
@@ -514,8 +532,9 @@ export function buildTodayChangeRows(
 }
 
 export function buildTodayBriefingTitle(snapshot: TodayReentrySnapshot): string {
-  if (snapshot.intelligenceUpdates.length > 0) {
-    return "Current state";
+  const movementCount = snapshot.intelligenceUpdates.length;
+  if (movementCount > 0) {
+    return `Your model moved in ${movementCount} place${movementCount === 1 ? "" : "s"}.`;
   }
   if (
     snapshot.userMapConclusions.length > 0 ||

@@ -55,8 +55,12 @@ const V0_PAGE_IMPORTS = [
 describe("orvek v0 UI inversion", () => {
   it("exposes dev-only v0 reference route", () => {
     const page = readSource("app/dev/orvek-v0-reference/page.tsx");
+    const frozenWorkbench = readSource("components/orvek-v0-reference-frozen/workbench.tsx");
     expect(page).toContain('data-testid="orvek-v0-reference-route"');
-    expect(page).toContain("@/components/orvek-v0/workbench");
+    expect(page).toContain("@/components/orvek-v0-reference-frozen/workbench");
+    expect(page).toContain("FrozenReferenceWorkbench");
+    expect(frozenWorkbench).toContain("createFrozenReferenceDataApi");
+    expect(frozenWorkbench).not.toContain("useOrvekHybridWorkbenchDataApi");
     expect(readSource("lib/orvek-v0/mock-api.ts")).toContain("createMockOrvekDataApi");
   });
 

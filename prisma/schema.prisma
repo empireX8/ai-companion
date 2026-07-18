@@ -1038,3 +1038,40 @@ model UnderstandingEvidenceLink {
   @@index([userId, targetType, role])
   @@index([userId, createdAt])
 }
+
+/// Explicit Today layout — authoritative ordered composition for the workbench Today surface.
+/// When present, production Today/hybrid emit this instead of inferring lead from first ModelUpdate.
+model CanonicalTodayComposition {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  /// Versioned CanonicalTodayCompositionPayload JSON.
+  payload   Json
+  /// Provenance: exact_round_trip_seed | generated | manual
+  source    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+/// First-class Model Movement Report (not a ModelUpdate alias).
+model CanonicalModelMovementReport {
+  id                 String   @id @default(cuid())
+  userId             String
+  reportType         String
+  title              String
+  status             String
+  meta               String
+  period             String?
+  /// Ordered sections: [{ id, heading, body }]
+  sectionsJson       Json
+  /// Ordered ModelUpdate / movement entry ids
+  relatedMovementIds Json
+  /// Ordered receipt / evidence object ids
+  relatedReceiptIds  Json
+  generatedAt        DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId, generatedAt])
+}

@@ -47,20 +47,27 @@ function freeExploreBlock(source: string): string {
 describe("free explore chat send/draft/stream wiring (E2/E3)", () => {
   it("passes explore handlers from production shell only", () => {
     const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
+    const runtimeSource = readSource(
+      "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
+    );
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
     const referencePageSource = readSource("app/dev/orvek-v0-reference/page.tsx");
+    const frozenWorkbenchSource = readSource("components/orvek-v0-reference-frozen/workbench.tsx");
 
-    expect(shellSource).toContain("useOrvekHybridWorkbenchDataApi()");
-    expect(shellSource).toContain("dataApi, handlers");
-    expect(shellSource).toContain("handlers={handlers}");
-    expect(shellSource).not.toContain("handlers={{}}");
+    expect(shellSource).toContain("CanonicalLiveRuntimeEntry");
+    expect(runtimeSource).toContain("useOrvekHybridWorkbenchDataApi()");
+    expect(runtimeSource).toContain("dataApi, handlers");
+    expect(runtimeSource).toContain("OrvekPageHandlersProvider");
+    expect(runtimeSource).toContain("value={handlers}");
+    expect(runtimeSource).not.toContain("handlers={{}}");
     expect(hookSource).toContain("sendMessage");
     expect(hookSource).toContain("onSend:");
     expect(hookSource).toContain("onDraftChange: setExploreChatDraft");
     expect(hookSource).toContain("onQuickPrompt:");
-    expect(referencePageSource).toContain("<Workbench />");
+    expect(referencePageSource).toContain("<FrozenReferenceWorkbench />");
     expect(referencePageSource).not.toContain("handlers=");
     expect(referencePageSource).not.toContain("useOrvekHybridWorkbenchDataApi");
+    expect(frozenWorkbenchSource).toContain("createFrozenReferenceDataApi");
   });
 
   it("keeps /dev/orvek-v0-reference send-disabled without hybrid handlers", () => {
