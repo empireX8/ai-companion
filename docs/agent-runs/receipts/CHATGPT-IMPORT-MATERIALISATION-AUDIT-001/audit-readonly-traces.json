@@ -1,0 +1,291 @@
+{
+  "queriedAt": "2026-07-18T19:05:20.213Z",
+  "note": "READ-ONLY. Partial PatternClaims/UM are not proof of complete automatic materialisation.",
+  "uploadSession": {
+    "id": "cmp2ftxhj0000qlsyxi55jo20",
+    "status": "complete",
+    "filename": "40b9316e0e050a69af42cdcee3e964123f9d815f765436dad2fc5a6737056417-2026-02-14-17-17-37-a42fc57a6fd947659002040efa706458.zip",
+    "sessionsCreated": 640,
+    "messagesCreated": 18582,
+    "contradictionsCreated": 25,
+    "processedConversations": 640,
+    "processingProgress": 100,
+    "resultErrorCount": 3,
+    "createdAt": "2026-05-12T09:38:11.502Z",
+    "finishedAt": "2026-05-12T09:41:37.814Z"
+  },
+  "coverage": {
+    "totalImported": 640,
+    "withAnySpan": 622,
+    "withAnyRef": 28,
+    "withAnyContra": 14,
+    "withAnyPatternEv": 28,
+    "withUelFromMessage": 6
+  },
+  "referenceItemsFromImportedByStatus": [
+    {
+      "status": "candidate",
+      "c": 29
+    }
+  ],
+  "userMapLinkedToImportedMessages": [],
+  "investigationsLinkedToImportedMessages": [],
+  "compositionImportReview": [
+    {
+      "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-today-composition",
+      "source": "full_reference_round_trip_seed",
+      "has_import_review": true,
+      "candidate_count": 4,
+      "source_object_id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-obj-imp-1"
+    }
+  ],
+  "seedObjectStats": [
+    {
+      "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-today-composition",
+      "source": "full_reference_round_trip_seed",
+      "object_count": 67,
+      "seed_prefixed_objects": 67
+    }
+  ],
+  "traces": [
+    {
+      "bucket": "rich_evidence_spans",
+      "importUploadSessionId": "cmp2ftxhj0000qlsyxi55jo20",
+      "importUploadStatus": "complete",
+      "conversation": {
+        "id": "437b78dd-132f-4214-89b6-1d514f53bc7f",
+        "label": "Branch · Branch · Branch · Branch · Branch · CodeSpring app overview",
+        "origin": "IMPORTED_ARCHIVE",
+        "importedSource": "chatgpt_export_json",
+        "importedAt": "2026-05-12T09:41:16.780Z",
+        "importedExternalId": "68ff8c57-a77c-8325-86c2-8b2b5208cc14",
+        "createdAt": "2026-05-12T09:41:16.781Z",
+        "startedAt": "2025-10-19T13:05:14.237Z"
+      },
+      "messages": {
+        "total": 731,
+        "user": 319
+      },
+      "sourceUnits": {
+        "note": "No SourceUnit table; EvidenceSpan used as extraction unit",
+        "evidenceSpans": 176
+      },
+      "derivationArtifactsMentioningSession": {
+        "reference_candidate": 0,
+        "contradiction_candidate": 0
+      },
+      "referenceItems": [],
+      "contradictionNodes": [],
+      "patternEvidence": [],
+      "understandingEvidenceLinksFromMessages": 0,
+      "linkedUnderstandingTargets": [],
+      "firstLineageBreak": "spans_only_no_candidates"
+    },
+    {
+      "bucket": "has_reference_items",
+      "importUploadSessionId": "cmp2ftxhj0000qlsyxi55jo20",
+      "importUploadStatus": "complete",
+      "conversation": {
+        "id": "142d90bc-d5ef-4a45-935d-698bec04a0d2",
+        "label": "Pre-structural work insights",
+        "origin": "IMPORTED_ARCHIVE",
+        "importedSource": "chatgpt_export_json",
+        "importedAt": "2026-05-12T09:40:38.765Z",
+        "importedExternalId": "693c9a72-50ac-8332-b7da-09d146b16d33",
+        "createdAt": "2026-05-12T09:40:38.766Z",
+        "startedAt": "2025-12-12T22:43:47.706Z"
+      },
+      "messages": {
+        "total": 28,
+        "user": 13
+      },
+      "sourceUnits": {
+        "note": "No SourceUnit table; EvidenceSpan used as extraction unit",
+        "evidenceSpans": 11
+      },
+      "derivationArtifactsMentioningSession": {
+        "reference_candidate": 0,
+        "contradiction_candidate": 0
+      },
+      "referenceItems": [
+        {
+          "id": "de1908c7-3550-4847-9025-13186064d697",
+          "type": "goal",
+          "status": "candidate",
+          "statement": "I need to simplify my life down a lot don't I and just remain focused? Delete social media and just ",
+          "sourceMessageId": "c9a36eda-5769-4afc-84d2-b5bb1aefbf24"
+        },
+        {
+          "id": "3fd4f4f7-eab2-4dbd-a985-afff52f2d5de",
+          "type": "goal",
+          "status": "candidate",
+          "statement": "I'm saying that because 1 book a month is not going to do much to become what I need to be in a time",
+          "sourceMessageId": "0ef54f6f-6ecb-4853-be83-04565d904e00"
+        }
+      ],
+      "contradictionNodes": [],
+      "patternEvidence": [],
+      "understandingEvidenceLinksFromMessages": 0,
+      "linkedUnderstandingTargets": [],
+      "firstLineageBreak": "candidates_or_patterns_exist_but_no_understanding_object_links"
+    },
+    {
+      "bucket": "has_contradiction",
+      "importUploadSessionId": "cmp2ftxhj0000qlsyxi55jo20",
+      "importUploadStatus": "complete",
+      "conversation": {
+        "id": "d3fa4659-b504-4335-8957-2ad7a4118d4d",
+        "label": "Branch · Mental Regulation Failure",
+        "origin": "IMPORTED_ARCHIVE",
+        "importedSource": "chatgpt_export_json",
+        "importedAt": "2026-05-12T09:40:04.957Z",
+        "importedExternalId": "696ff39a-b918-8329-ac93-66bb6389796e",
+        "createdAt": "2026-05-12T09:40:04.958Z",
+        "startedAt": "2026-01-20T07:53:48.938Z"
+      },
+      "messages": {
+        "total": 20,
+        "user": 10
+      },
+      "sourceUnits": {
+        "note": "No SourceUnit table; EvidenceSpan used as extraction unit",
+        "evidenceSpans": 10
+      },
+      "derivationArtifactsMentioningSession": {
+        "reference_candidate": 0,
+        "contradiction_candidate": 0
+      },
+      "referenceItems": [],
+      "contradictionNodes": [
+        {
+          "id": "cmp2fwd3y00bgqlsyw7yown9p",
+          "type": "goal_behavior_gap",
+          "status": "candidate",
+          "title": "Goal behavior gap"
+        },
+        {
+          "id": "cmp2fwd8w00bqqlsype8rrdjd",
+          "type": "goal_behavior_gap",
+          "status": "candidate",
+          "title": "Goal behavior gap"
+        },
+        {
+          "id": "cmp2fwd9600buqlsyt0glz33l",
+          "type": "goal_behavior_gap",
+          "status": "candidate",
+          "title": "Goal behavior gap"
+        },
+        {
+          "id": "cmp2fwd4800bkqlsymbnj3ko7",
+          "type": "goal_behavior_gap",
+          "status": "candidate",
+          "title": "Goal behavior gap"
+        }
+      ],
+      "patternEvidence": [
+        {
+          "evidenceId": "cmp2fyldd00dvqlsyi103amq1",
+          "claimId": "cmp2fyld200drqlsyrjzb292e",
+          "claimStatus": "active",
+          "patternType": "inner_critic",
+          "summary": "Self-critical pattern: \"Yeah, and I'm just thinking, it might even be better if it don't go well, be",
+          "quote": "So, yeah, I can't do that."
+        },
+        {
+          "evidenceId": "cmp2fylg200erqlsysb1dgx6m",
+          "claimId": "cmp2fylfj00ejqlsy8zkc84or",
+          "claimStatus": "active",
+          "patternType": "repetitive_loop",
+          "summary": "Repetitive loop (cognitive overload loop) across sessions: \"I wish I could learn at the pace I could",
+          "quote": "And do you remember the night before, I said I felt the same thing, woke up, pra"
+        }
+      ],
+      "understandingEvidenceLinksFromMessages": 0,
+      "linkedUnderstandingTargets": [],
+      "firstLineageBreak": "candidates_or_patterns_exist_but_no_understanding_object_links"
+    },
+    {
+      "bucket": "has_pattern_evidence",
+      "importUploadSessionId": "cmp2ftxhj0000qlsyxi55jo20",
+      "importUploadStatus": "complete",
+      "conversation": {
+        "id": "108eee97-c80c-4452-a25f-695a1f2a126c",
+        "label": "Neurodiversity Inquiry",
+        "origin": "IMPORTED_ARCHIVE",
+        "importedSource": "chatgpt_export_json",
+        "importedAt": "2026-05-12T09:39:41.720Z",
+        "importedExternalId": "69879971-28b0-838a-86e9-ea2bf4d5450b",
+        "createdAt": "2026-05-12T09:39:41.721Z",
+        "startedAt": "2026-02-07T19:59:08.177Z"
+      },
+      "messages": {
+        "total": 14,
+        "user": 7
+      },
+      "sourceUnits": {
+        "note": "No SourceUnit table; EvidenceSpan used as extraction unit",
+        "evidenceSpans": 7
+      },
+      "derivationArtifactsMentioningSession": {
+        "reference_candidate": 0,
+        "contradiction_candidate": 0
+      },
+      "referenceItems": [],
+      "contradictionNodes": [],
+      "patternEvidence": [
+        {
+          "evidenceId": "cmp2fyl0200djqlsylb5vzmj2",
+          "claimId": "cmp2fykzj00ddqlsybdeb96ql",
+          "claimStatus": "active",
+          "patternType": "trigger_condition",
+          "summary": "Trigger-response pattern (social appeasement): \"I notice I am definitely a people pleaser\"",
+          "quote": "But since a child, I've always been considered shy, so..."
+        },
+        {
+          "evidenceId": "cmp2fyldl00dzqlsy8ee6hs0y",
+          "claimId": "cmp2fyld200drqlsyrjzb292e",
+          "claimStatus": "active",
+          "patternType": "inner_critic",
+          "summary": "Self-critical pattern: \"Yeah, and I'm just thinking, it might even be better if it don't go well, be",
+          "quote": "Because I would have gone through the phases where I feel like I can't do this, "
+        }
+      ],
+      "understandingEvidenceLinksFromMessages": 0,
+      "linkedUnderstandingTargets": [],
+      "firstLineageBreak": "candidates_or_patterns_exist_but_no_understanding_object_links"
+    },
+    {
+      "bucket": "unprocessed_no_downstream",
+      "importUploadSessionId": "cmp2ftxhj0000qlsyxi55jo20",
+      "importUploadStatus": "complete",
+      "conversation": {
+        "id": "f21c9d63-6d83-4853-b319-e02fc6ae57dc",
+        "label": "Philosophy Foundations Guide",
+        "origin": "IMPORTED_ARCHIVE",
+        "importedSource": "chatgpt_export_json",
+        "importedAt": "2026-05-12T09:39:45.284Z",
+        "importedExternalId": "69861d8e-8058-838a-b16a-efaebdf7977f",
+        "createdAt": "2026-05-12T09:39:45.286Z",
+        "startedAt": "2026-02-06T16:58:04.654Z"
+      },
+      "messages": {
+        "total": 2,
+        "user": 1
+      },
+      "sourceUnits": {
+        "note": "No SourceUnit table; EvidenceSpan used as extraction unit",
+        "evidenceSpans": 0
+      },
+      "derivationArtifactsMentioningSession": {
+        "reference_candidate": 0,
+        "contradiction_candidate": 0
+      },
+      "referenceItems": [],
+      "contradictionNodes": [],
+      "patternEvidence": [],
+      "understandingEvidenceLinksFromMessages": 0,
+      "linkedUnderstandingTargets": [],
+      "firstLineageBreak": "no_extraction_outputs"
+    }
+  ]
+}

@@ -1,0 +1,592 @@
+{
+  "queriedAt": "2026-07-18T19:05:20.676Z",
+  "note": "READ-ONLY. cleanupFullReferenceRoundTrip NOT invoked. Seven PatternClaims + one UM/MU are partial side-effects, not complete automatic materialisation.",
+  "compositionTableColumns": [
+    {
+      "column_name": "id",
+      "data_type": "text"
+    },
+    {
+      "column_name": "userId",
+      "data_type": "text"
+    },
+    {
+      "column_name": "payload",
+      "data_type": "jsonb"
+    },
+    {
+      "column_name": "source",
+      "data_type": "text"
+    },
+    {
+      "column_name": "createdAt",
+      "data_type": "timestamp without time zone"
+    },
+    {
+      "column_name": "updatedAt",
+      "data_type": "timestamp without time zone"
+    }
+  ],
+  "composition": [
+    {
+      "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-today-composition",
+      "source": "full_reference_round_trip_seed",
+      "createdAt": "2026-07-14T12:00:00.000Z",
+      "updatedAt": "2026-07-14T12:00:00.000Z",
+      "object_count": 67,
+      "has_import_review": true,
+      "import_review_candidates": 4,
+      "import_review_source_object_id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-obj-imp-1"
+    }
+  ],
+  "importReviewSample": [
+    {
+      "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-import-cand-ic1",
+      "title": "Repeated loop: reopening before shipping"
+    },
+    {
+      "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-import-cand-ic2",
+      "title": "Belief: completeness precedes commitment"
+    },
+    {
+      "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-import-cand-ic3",
+      "title": "Open question: would a narrow public test break the loop?"
+    },
+    {
+      "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-import-cand-ic4",
+      "title": "Receipt only — no model change"
+    }
+  ],
+  "userMapUels": [
+    {
+      "id": "cmq6frqeh0001ql8h6nzy26et",
+      "sourceType": "contradiction_evidence",
+      "sourceId": "cmp2fvpge00aiqlsya90f3wqc",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.073Z"
+    },
+    {
+      "id": "cmq6frqf00002ql8h8yaqojdf",
+      "sourceType": "contradiction_evidence",
+      "sourceId": "cmp2fvppj00amqlsyvumojrj1",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.092Z"
+    },
+    {
+      "id": "cmq6frqf80003ql8hkb8vqhyy",
+      "sourceType": "contradiction_evidence",
+      "sourceId": "cmp2fvq8j00aqqlsy45rnq75n",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.101Z"
+    },
+    {
+      "id": "cmq6frqfe0004ql8h4xc9haqu",
+      "sourceType": "contradiction_evidence",
+      "sourceId": "cmp2fvtbe00auqlsygbro7jiw",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.107Z"
+    },
+    {
+      "id": "cmq6frqfm0005ql8hynxtv0rc",
+      "sourceType": "contradiction_evidence",
+      "sourceId": "cmp2fvtbo00ayqlsyyxhsyg1p",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.114Z"
+    },
+    {
+      "id": "cmq6frqfs0006ql8hyk90sfo1",
+      "sourceType": "contradiction_evidence",
+      "sourceId": "cmp2fvtk100b2qlsymigpnijy",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.121Z"
+    },
+    {
+      "id": "cmq6frqg10007ql8hy6eounj9",
+      "sourceType": "contradiction_node",
+      "sourceId": "cmp2fvpg900agqlsyz6pfxypx",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.129Z"
+    },
+    {
+      "id": "cmq6frqg80008ql8hpf7j81yn",
+      "sourceType": "contradiction_node",
+      "sourceId": "cmp2fvpph00akqlsy3uy645bc",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.136Z"
+    },
+    {
+      "id": "cmq6frqgd0009ql8hnj1fso4q",
+      "sourceType": "contradiction_node",
+      "sourceId": "cmp2fvq8f00aoqlsyy9z3sckc",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.142Z"
+    },
+    {
+      "id": "cmq6frqgn000aql8hw7tjyd5n",
+      "sourceType": "contradiction_node",
+      "sourceId": "cmp2fvtbb00asqlsyp5rovhrd",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.152Z"
+    },
+    {
+      "id": "cmq6frqgt000bql8hnj4p2azi",
+      "sourceType": "contradiction_node",
+      "sourceId": "cmp2fvtbl00awqlsygp9s2smw",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.157Z"
+    },
+    {
+      "id": "cmq6frqh0000cql8hb06zw5yk",
+      "sourceType": "contradiction_node",
+      "sourceId": "cmp2fvtjy00b0qlsyue6873np",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.164Z"
+    },
+    {
+      "id": "cmq6frqh8000dql8hpzobmj4c",
+      "sourceType": "evidence_span",
+      "sourceId": "0005331c-ba1e-412f-8204-bc9764b2f331",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.173Z"
+    },
+    {
+      "id": "cmq6frqhe000eql8hdssx3h8t",
+      "sourceType": "evidence_span",
+      "sourceId": "0030a8d2-b218-44a6-bbd5-9d03007e5fa1",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.178Z"
+    },
+    {
+      "id": "cmq6frqhl000fql8hab8x5e63",
+      "sourceType": "evidence_span",
+      "sourceId": "003b29ad-e98c-4103-81bc-57618a0a2173",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.186Z"
+    },
+    {
+      "id": "cmq6frqhq000gql8hucjs0fx8",
+      "sourceType": "evidence_span",
+      "sourceId": "005233ba-3d07-4cd5-8c58-ebb1331e7900",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.191Z"
+    },
+    {
+      "id": "cmq6frqhy000hql8herukhiw6",
+      "sourceType": "evidence_span",
+      "sourceId": "00553e8a-3f4d-4fb3-9389-5835712795fb",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.198Z"
+    },
+    {
+      "id": "cmq6frqi3000iql8hqudb2wpb",
+      "sourceType": "evidence_span",
+      "sourceId": "006a9d7f-cdef-4074-a7a8-472dc3a2e49d",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.204Z"
+    },
+    {
+      "id": "cmq6frqia000jql8h10m1srh0",
+      "sourceType": "import_record",
+      "sourceId": "cmp2ftxhj0000qlsyxi55jo20",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.210Z"
+    },
+    {
+      "id": "cmq6frqik000kql8h5e6rjzqc",
+      "sourceType": "import_record",
+      "sourceId": "cmp2fty320003qlsyzhf475in",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.221Z"
+    },
+    {
+      "id": "cmq6frqiu000lql8hdcc0m9pp",
+      "sourceType": "import_record",
+      "sourceId": "cmp2ftyf20005qlsy6xswa55j",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.230Z"
+    },
+    {
+      "id": "cmq6frqj0000mql8h9jvf2rlc",
+      "sourceType": "import_record",
+      "sourceId": "cmp2ftyov0007qlsytnjr0c43",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.237Z"
+    },
+    {
+      "id": "cmq6frqj7000nql8huz0jhrtd",
+      "sourceType": "import_record",
+      "sourceId": "cmp2ftyzg0009qlsyp3j6z081",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.244Z"
+    },
+    {
+      "id": "cmq6frqjh000oql8hzr91qbg5",
+      "sourceType": "import_record",
+      "sourceId": "cmp2ftzb0000bqlsyg529k490",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.253Z"
+    },
+    {
+      "id": "cmq6frqjn000pql8ht72imsf8",
+      "sourceType": "message",
+      "sourceId": "0e28b275-d819-4baf-84c2-1ba244e0ce5f",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.260Z"
+    },
+    {
+      "id": "cmq6frqjv000qql8hf6jyvc86",
+      "sourceType": "message",
+      "sourceId": "128f8f7d-dbdf-4474-9d6b-8e299fc6d037",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.267Z"
+    },
+    {
+      "id": "cmq6frqk0000rql8hjax6py9e",
+      "sourceType": "message",
+      "sourceId": "183c941e-6698-4816-8dd9-60cc331aed23",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.272Z"
+    },
+    {
+      "id": "cmq6frqk5000sql8h9l9yfvm9",
+      "sourceType": "message",
+      "sourceId": "34aa2241-0c34-4c70-b44b-f63ffb93cfff",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.277Z"
+    },
+    {
+      "id": "cmq6frqkc000tql8hz7l9tdcw",
+      "sourceType": "message",
+      "sourceId": "3e3cc028-f51f-4884-a89e-20926809aec0",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.284Z"
+    },
+    {
+      "id": "cmq6frqkh000uql8h8mheev94",
+      "sourceType": "message",
+      "sourceId": "3eeed6cd-ead9-4d8a-a7f2-5d39248e2d85",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.289Z"
+    },
+    {
+      "id": "cmq6frqkq000vql8hdwehozgc",
+      "sourceType": "pattern_claim",
+      "sourceId": "cmp2fykzj00ddqlsybdeb96ql",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.298Z"
+    },
+    {
+      "id": "cmq6frqkv000wql8htj5rz3tt",
+      "sourceType": "pattern_claim",
+      "sourceId": "cmp2fyl6v00dkqlsycx1pq53l",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.304Z"
+    },
+    {
+      "id": "cmq6frql1000xql8h1tp5ie86",
+      "sourceType": "pattern_claim",
+      "sourceId": "cmp2fyld200drqlsyrjzb292e",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.309Z"
+    },
+    {
+      "id": "cmq6frqla000yql8h3wucgewx",
+      "sourceType": "pattern_claim",
+      "sourceId": "cmp2fyle000e0qlsyum1s9lde",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.318Z"
+    },
+    {
+      "id": "cmq6frqlg000zql8h5obvjngd",
+      "sourceType": "pattern_claim",
+      "sourceId": "cmp2fylfj00ejqlsy8zkc84or",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.324Z"
+    },
+    {
+      "id": "cmq6frqlp0010ql8hh8lhn3en",
+      "sourceType": "pattern_claim_evidence",
+      "sourceId": "cmp2fykzt00dfqlsyyx9zj4pw",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.333Z"
+    },
+    {
+      "id": "cmq6frqlw0011ql8hty8nciw5",
+      "sourceType": "pattern_claim_evidence",
+      "sourceId": "cmp2fykzy00dhqlsyxurgevdd",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.340Z"
+    },
+    {
+      "id": "cmq6frqm30012ql8huwzqaz0r",
+      "sourceType": "pattern_claim_evidence",
+      "sourceId": "cmp2fyl0200djqlsylb5vzmj2",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.348Z"
+    },
+    {
+      "id": "cmq6frqm90013ql8h43ah6j9d",
+      "sourceType": "pattern_claim_evidence",
+      "sourceId": "cmp2fyl7100dmqlsysclyp88u",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.353Z"
+    },
+    {
+      "id": "cmq6frqme0014ql8hiwwxomav",
+      "sourceType": "pattern_claim_evidence",
+      "sourceId": "cmp2fyl7500doqlsytykti3vu",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.359Z"
+    },
+    {
+      "id": "cmq6frqmm0015ql8h5vv70yso",
+      "sourceType": "profile_artifact",
+      "sourceId": "00274ef1-8f80-46e1-b22b-29693ccbe977",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.367Z"
+    },
+    {
+      "id": "cmq6frqmr0016ql8hl3zfu1pz",
+      "sourceType": "profile_artifact",
+      "sourceId": "00ceeaa9-13ec-49d4-af8c-b5be4d2003c5",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.372Z"
+    },
+    {
+      "id": "cmq6frqmw0017ql8h2b5f78c8",
+      "sourceType": "profile_artifact",
+      "sourceId": "015d1be6-d4ed-47ec-99bf-29773caa7721",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.376Z"
+    },
+    {
+      "id": "cmq6frqn30018ql8htdr8kuzn",
+      "sourceType": "profile_artifact",
+      "sourceId": "0365e5db-6b87-4f62-8560-0c3e90a198a3",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.383Z"
+    },
+    {
+      "id": "cmq6frqn70019ql8hilx3e087",
+      "sourceType": "profile_artifact",
+      "sourceId": "0392e217-f9e5-45b3-a70f-c4bb73bc0fe4",
+      "targetType": "usermap_conclusion",
+      "role": "supports",
+      "createdAt": "2026-06-09T09:27:16.388Z"
+    },
+    {
+      "id": "cmq6frqnd001aql8h952etpzx",
+      "sourceType": "reference_item",
+      "sourceId": "043a6387-a18b-41cf-83c0-4baa99ab0f38",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.393Z"
+    },
+    {
+      "id": "cmq6frqnk001bql8h28ln19ug",
+      "sourceType": "reference_item",
+      "sourceId": "05bc763e-e7f5-4bf3-a89c-5303ce2c4570",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.401Z"
+    },
+    {
+      "id": "cmq6frqnp001cql8hdqwvtjlu",
+      "sourceType": "reference_item",
+      "sourceId": "07470110-aa77-44b0-83b2-2117c9ff1c75",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.406Z"
+    },
+    {
+      "id": "cmq6frqnx001dql8hpj6qzlxd",
+      "sourceType": "reference_item",
+      "sourceId": "18ddffc5-beb7-42cd-8025-e57252673411",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.413Z"
+    },
+    {
+      "id": "cmq6frqo2001eql8hag2yhah0",
+      "sourceType": "reference_item",
+      "sourceId": "20646554-fa44-4b23-ae46-4a25b89f8c64",
+      "targetType": "usermap_conclusion",
+      "role": "context",
+      "createdAt": "2026-06-09T09:27:16.419Z"
+    }
+  ],
+  "sourceTypeCounts": {
+    "contradiction_evidence": 6,
+    "contradiction_node": 6,
+    "evidence_span": 6,
+    "import_record": 6,
+    "message": 6,
+    "pattern_claim": 5,
+    "pattern_claim_evidence": 5,
+    "profile_artifact": 5,
+    "reference_item": 5
+  },
+  "importRecordResolution": {
+    "uploadSessions": [
+      {
+        "id": "cmp2ftxhj0000qlsyxi55jo20",
+        "filename": "40b9316e0e050a69af42cdcee3e964123f9d815f765436dad2fc5a6737056417-2026-02-14-17-17-37-a42fc57a6fd947659002040efa706458.zip",
+        "status": "complete"
+      }
+    ],
+    "sessionsAsImportRecord": [],
+    "importRecordIds": [
+      "cmp2ftxhj0000qlsyxi55jo20",
+      "cmp2fty320003qlsyzhf475in",
+      "cmp2ftyf20005qlsy6xswa55j",
+      "cmp2ftyov0007qlsytnjr0c43",
+      "cmp2ftyzg0009qlsyp3j6z081",
+      "cmp2ftzb0000bqlsyg529k490"
+    ]
+  },
+  "patterns": [
+    {
+      "id": "cmp2fykzj00ddqlsybdeb96ql",
+      "patternType": "trigger_condition",
+      "status": "active",
+      "strengthLevel": "developing",
+      "summary": "Trigger-response pattern (social appeasement): \"I notice I am definitely a people pleaser\"",
+      "createdAt": "2026-05-12T09:41:48.608Z",
+      "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e"
+    },
+    {
+      "id": "cmp2fyl6v00dkqlsycx1pq53l",
+      "patternType": "trigger_condition",
+      "status": "active",
+      "strengthLevel": "developing",
+      "summary": "Trigger-response pattern (overwhelm/state shift): \"I swear I feel like I can literally feel my brain like bubbling when ",
+      "createdAt": "2026-05-12T09:41:48.872Z",
+      "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e"
+    },
+    {
+      "id": "cmp2fyld200drqlsyrjzb292e",
+      "patternType": "inner_critic",
+      "status": "active",
+      "strengthLevel": "developing",
+      "summary": "Self-critical pattern: \"Yeah, and I'm just thinking, it might even be better if it don't go well, because if I just do i",
+      "createdAt": "2026-05-12T09:41:49.094Z",
+      "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e"
+    },
+    {
+      "id": "cmp2fyle000e0qlsyum1s9lde",
+      "patternType": "repetitive_loop",
+      "status": "active",
+      "strengthLevel": "established",
+      "summary": "Repetitive loop pattern across sessions: \"I'm thinking of some video titles, like every time I get a video title or like",
+      "createdAt": "2026-05-12T09:41:49.129Z",
+      "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e"
+    },
+    {
+      "id": "cmp2fylfj00ejqlsy8zkc84or",
+      "patternType": "repetitive_loop",
+      "status": "active",
+      "strengthLevel": "developing",
+      "summary": "Repetitive loop (cognitive overload loop) across sessions: \"I wish I could learn at the pace I could think, but then aga",
+      "createdAt": "2026-05-12T09:41:49.183Z",
+      "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e"
+    },
+    {
+      "id": "cmp2fylgk00euqlsyayvoxp8b",
+      "patternType": "repetitive_loop",
+      "status": "active",
+      "strengthLevel": "developing",
+      "summary": "Repetitive loop (assistant/process loop) across sessions: \"Yeah, facts, I agree. And that's what I've been trying to do ",
+      "createdAt": "2026-05-12T09:41:49.220Z",
+      "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e"
+    },
+    {
+      "id": "cmp2fylmz00f3qlsympmfpdtp",
+      "patternType": "recovery_stabilizer",
+      "status": "active",
+      "strengthLevel": "developing",
+      "summary": "Recovery pattern: \"We're making progress though.\"",
+      "createdAt": "2026-05-12T09:41:49.451Z",
+      "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e"
+    }
+  ],
+  "darkEngineDiagnosticsSample": [
+    {
+      "id": "93d6c3d9-725a-421b-b760-6017094bc433",
+      "createdAt": "2026-07-12T19:13:45.571Z",
+      "payloadPreview": "{\"notes\":[\"decision:pass\",\"allowedStatus:emerging\",\"blockedWriteReasons:DUPLICATE_CANDIDATE\",\"persistedConclusionId:cmq6frqdx0000ql8h6nkavzue\",\"evidenceLinksSelectedBeforeCap:6506\",\"evidenceLinksSelectedAfterCap:50\",\"evidenceLinkCapApplied:true\",\"evidenceLinkCapLimit:50\"],\"runId\":\"8438bdde-b27e-4424-9b88-f78fc4fcc3b7\",\"userId\":\"user_34TUYA53pI1QRLK73O22Kve1a1G\",\"warnings\":[],\"dryRunOnly\":false,\"abstentions\":0,\"persistedAt\":\"2026-07-12T19:13:45.558Z\",\"runCreatedAt\":\"2026-07-12T19:13:45.270Z\",\"sourceCounts\":{\"message\":43,\"session\":3,\"evidence_span\":5941,\"import_record\":187,\"pattern_claim\":7,\"reference_item\":29,\"surfaced_action\":7,\"profile_artifact\":203,\"contradiction_node\":25,\"contradiction_evidence\":28,\"pattern_claim_evidence\":33},\"packetMetrics\":{\"mixedCount\":0,\"nativeCount\":51,\"receiptCou"
+    },
+    {
+      "id": "4e36d325-0d5e-4753-bca5-afabe80e205d",
+      "createdAt": "2026-07-07T17:44:17.459Z",
+      "payloadPreview": "{\"notes\":[\"decision:pass\",\"allowedStatus:emerging\",\"blockedWriteReasons:DUPLICATE_CANDIDATE\",\"persistedConclusionId:cmq6frqdx0000ql8h6nkavzue\",\"evidenceLinksSelectedBeforeCap:6504\",\"evidenceLinksSelectedAfterCap:50\",\"evidenceLinkCapApplied:true\",\"evidenceLinkCapLimit:50\"],\"runId\":\"280aaee3-376a-4294-a03c-60c2151d2b3e\",\"userId\":\"user_34TUYA53pI1QRLK73O22Kve1a1G\",\"warnings\":[],\"dryRunOnly\":false,\"abstentions\":0,\"persistedAt\":\"2026-07-07T17:44:17.452Z\",\"runCreatedAt\":\"2026-07-07T17:44:17.394Z\",\"sourceCounts\":{\"message\":42,\"session\":3,\"evidence_span\":5940,\"import_record\":187,\"pattern_claim\":7,\"reference_item\":29,\"surfaced_action\":7,\"profile_artifact\":203,\"contradiction_node\":25,\"contradiction_evidence\":28,\"pattern_claim_evidence\":33},\"packetMetrics\":{\"mixedCount\":0,\"nativeCount\":49,\"receiptCou"
+    },
+    {
+      "id": "ce862abe-d0de-4cf1-8f12-6c7eb2dab00c",
+      "createdAt": "2026-07-07T15:42:56.371Z",
+      "payloadPreview": "{\"notes\":[\"decision:pass\",\"allowedStatus:emerging\",\"blockedWriteReasons:DUPLICATE_CANDIDATE\",\"persistedConclusionId:cmq6frqdx0000ql8h6nkavzue\",\"evidenceLinksSelectedBeforeCap:6503\",\"evidenceLinksSelectedAfterCap:50\",\"evidenceLinkCapApplied:true\",\"evidenceLinkCapLimit:50\"],\"runId\":\"633d131c-42df-49af-9d3f-021861c7cc74\",\"userId\":\"user_34TUYA53pI1QRLK73O22Kve1a1G\",\"warnings\":[],\"dryRunOnly\":false,\"abstentions\":0,\"persistedAt\":\"2026-07-07T15:42:56.365Z\",\"runCreatedAt\":\"2026-07-07T15:42:56.310Z\",\"sourceCounts\":{\"message\":41,\"session\":3,\"evidence_span\":5940,\"import_record\":187,\"pattern_claim\":7,\"reference_item\":29,\"surfaced_action\":7,\"profile_artifact\":203,\"contradiction_node\":25,\"contradiction_evidence\":28,\"pattern_claim_evidence\":33},\"packetMetrics\":{\"mixedCount\":0,\"nativeCount\":48,\"receiptCou"
+    }
+  ],
+  "internalCandidates": {
+    "userMap": 0,
+    "investigation": 0,
+    "fieldwork": 0,
+    "modelUpdate": 0
+  },
+  "seedCleanupVerifyBefore": {
+    "compositions": 1,
+    "reportsPrefixed": 1,
+    "importedSessions": 640,
+    "importedMessages": 18582,
+    "referenceItems": 29,
+    "contradictionNodes": 25,
+    "patternClaims": 7,
+    "userMap": 1,
+    "modelUpdates": 1,
+    "evidenceSpansImported": 5922
+  },
+  "refsInComposition": 0
+}
