@@ -89,6 +89,9 @@ import {
   type ExploreInvestigationItem,
 } from "@/lib/investigations";
 import { fetchWatchForItems, type WatchForItem } from "@/lib/watch-for";
+import { fetchImportReviewCandidates } from "@/lib/import-candidate-review-client";
+import { emptyImportReviewBatch } from "@/lib/import-candidate-review-presentation";
+import type { OrvekImportReviewBatch } from "@/lib/orvek-v0/data-provider";
 
 import { useOrvekExploreChat } from "./useOrvekExploreChat";
 
@@ -244,6 +247,9 @@ export function useOrvekHybridWorkbenchDataApi() {
   const [surfacedEvidenceDepth, setSurfacedEvidenceDepth] =
     useState<SurfacedEvidenceDepthOverlay | null>(null);
   const [durableActionsRevision, setDurableActionsRevision] = useState(0);
+  const [importReview, setImportReview] = useState<OrvekImportReviewBatch>(() =>
+    emptyImportReviewBatch({ loading: true }),
+  );
 
   const refreshAfterDurableWrite = useCallback(() => {
     setDurableActionsRevision((current) => current + 1);
@@ -279,6 +285,40 @@ export function useOrvekHybridWorkbenchDataApi() {
 
     return () => {
       cancelled = true;
+    };
+  }, [durableActionsRevision]);
+
+  // Production Import review: always load genuine DB candidates.
+  // Never fall back to composition/seed importReview (dev-exact-rt-…-import-cand-ic*).
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+
+    void (async () => {
+      setImportReview(emptyImportReviewBatch({ loading: true }));
+      try {
+        const batch = await fetchImportReviewCandidates({
+          limit: 100,
+          offset: 0,
+          signal: controller.signal,
+        });
+        if (!cancelled) {
+          setImportReview(batch);
+        }
+      } catch {
+        if (!cancelled) {
+          setImportReview(
+            emptyImportReviewBatch({
+              error: "Could not load import candidates.",
+            }),
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
     };
   }, [durableActionsRevision]);
 
@@ -996,7 +1036,11 @@ export function useOrvekHybridWorkbenchDataApi() {
     );
 
     return applySurfacedEvidenceDepthGate({
-      api: asHybridShell(hybridApi),
+      api: {
+        ...asHybridShell(hybridApi),
+        // Override any composition/seed importReview with the live DB query.
+        importReview,
+      },
       // Explicit Today composition owns resurfaced ordering — do not replace with depth overlay.
       overlay: canonicalWorkbench ? null : surfacedEvidenceDepth,
     });
@@ -1040,6 +1084,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     isLoadingInvestigations,
     freeExploreChatApi,
     surfacedEvidenceDepth,
+    importReview,
   ]);
 
   return { dataApi, handlers, durableActionsRevision, refreshAfterDurableWrite };

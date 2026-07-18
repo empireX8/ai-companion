@@ -1,0 +1,144 @@
+{
+  "userId": "user_34TUYA53pI1QRLK73O22Kve1a1G",
+  "queriedAt": "2026-07-18T22:37:03.667Z",
+  "mode": "read_only",
+  "mutationsPerformed": false,
+  "note": "Human gate only. No accept/reject. No writes.",
+  "productionQuery": {
+    "sourceTables": [
+      "ReferenceItem",
+      "ContradictionNode"
+    ],
+    "referenceItemPending": 29,
+    "contradictionNodePending": 25,
+    "totalPendingCount": 54,
+    "pageSizeUsed": 100,
+    "returnedCount": 54,
+    "candidatesSample": [
+      {
+        "reviewKey": "reference_item:05bc763e-e7f5-4bf3-a89c-5303ce2c4570",
+        "sourceTable": "ReferenceItem",
+        "id": "05bc763e-e7f5-4bf3-a89c-5303ce2c4570",
+        "type": "goal",
+        "status": "candidate",
+        "confidence": "low",
+        "provenance": "import_derived_session",
+        "sourceSessionId": "78dcff13-2497-48a8-b8a9-b510332c362b",
+        "sourceMessageId": "99f1f5f9-51ea-4ddd-8a17-8919faf4bfd4",
+        "createdAt": "2026-05-12T09:39:33.004Z",
+        "titlePreview": "I think i want to say forget me too. and forget double too for this, but everyth"
+      },
+      {
+        "reviewKey": "reference_item:043a6387-a18b-41cf-83c0-4baa99ab0f38",
+        "sourceTable": "ReferenceItem",
+        "id": "043a6387-a18b-41cf-83c0-4baa99ab0f38",
+        "type": "constraint",
+        "status": "candidate",
+        "confidence": "low",
+        "provenance": "import_derived_session",
+        "sourceSessionId": "eba90c59-7f62-42b5-8f8e-2572d6b5ec80",
+        "sourceMessageId": "a6aa2fb5-3a0f-4c86-94f5-45ced37132d2",
+        "createdAt": "2026-05-12T09:39:34.293Z",
+        "titlePreview": "I'm just having fun I don't really care that much although I always optimise for"
+      },
+      {
+        "reviewKey": "contradiction_node:cmp2fvpg900agqlsyz6pfxypx",
+        "sourceTable": "ContradictionNode",
+        "id": "cmp2fvpg900agqlsyz6pfxypx",
+        "type": "constraint_conflict",
+        "status": "candidate",
+        "confidence": "low",
+        "provenance": "import_derived_session",
+        "sourceSessionId": "eba90c59-7f62-42b5-8f8e-2572d6b5ec80",
+        "sourceMessageId": "cfa5a290-f5a4-4a42-9fb0-0f74dc621f62",
+        "createdAt": "2026-05-12T09:39:34.426Z",
+        "titlePreview": "Constraint conflict"
+      },
+      {
+        "reviewKey": "contradiction_node:cmp2fvpph00akqlsy3uy645bc",
+        "sourceTable": "ContradictionNode",
+        "id": "cmp2fvpph00akqlsy3uy645bc",
+        "type": "constraint_conflict",
+        "status": "candidate",
+        "confidence": "low",
+        "provenance": "import_derived_session",
+        "sourceSessionId": "a56b2b9d-2437-4867-9ef6-9dcb0dda39c4",
+        "sourceMessageId": "b596501d-950d-41a8-b02e-2fd1795e201e",
+        "createdAt": "2026-05-12T09:39:34.758Z",
+        "titlePreview": "Constraint conflict"
+      },
+      {
+        "reviewKey": "reference_item:924beb6b-4b84-4e2f-851b-5ceecf58feae",
+        "sourceTable": "ReferenceItem",
+        "id": "924beb6b-4b84-4e2f-851b-5ceecf58feae",
+        "type": "goal",
+        "status": "candidate",
+        "confidence": "low",
+        "provenance": "import_derived_session",
+        "sourceSessionId": "bf81eae6-9439-439c-a63b-f91a8eaab7ad",
+        "sourceMessageId": "5f8d1e4b-fa06-47e7-a2c5-469c4ee53d8b",
+        "createdAt": "2026-05-12T09:39:35.222Z",
+        "titlePreview": "I would like to enforce this rhetoric on an institutional level later down the r"
+      },
+      {
+        "reviewKey": "contradiction_node:cmp2fvq8f00aoqlsyy9z3sckc",
+        "sourceTable": "ContradictionNode",
+        "id": "cmp2fvq8f00aoqlsyy9z3sckc",
+        "type": "constraint_conflict",
+        "status": "candidate",
+        "confidence": "low",
+        "provenance": "import_derived_session",
+        "sourceSessionId": "68c4f65a-3ce1-4848-b905-8f63dc3555ab",
+        "sourceMessageId": "f4433e90-ec86-4d6a-ac79-7e8225bfb598",
+        "createdAt": "2026-05-12T09:39:35.439Z",
+        "titlePreview": "Constraint conflict"
+      },
+      {
+        "reviewKey": "reference_item:3866c83c-c7fe-4b0d-b4ae-8c7dc265ea11",
+        "sourceTable": "ReferenceItem",
+        "id": "3866c83c-c7fe-4b0d-b4ae-8c7dc265ea11",
+        "type": "goal",
+        "status": "candidate",
+        "confidence": "low",
+        "provenance": "import_derived_session",
+        "sourceSessionId": "b46c5b34-32da-46f2-a62e-69238aeb46cf",
+        "sourceMessageId": "2221c51b-c240-4d87-9205-c918f76c31bc",
+        "createdAt": "2026-05-12T09:39:39.325Z",
+        "titlePreview": "I need to review after i read to retain though"
+      },
+      {
+        "reviewKey": "contradiction_node:cmp2fvtbb00asqlsyp5rovhrd",
+        "sourceTable": "ContradictionNode",
+        "id": "cmp2fvtbb00asqlsyp5rovhrd",
+        "type": "goal_behavior_gap",
+        "status": "candidate",
+        "confidence": "medium",
+        "provenance": "import_derived_session",
+        "sourceSessionId": "b46c5b34-32da-46f2-a62e-69238aeb46cf",
+        "sourceMessageId": "1f8d919e-91d7-4da6-a3de-b119502a29de",
+        "createdAt": "2026-05-12T09:39:39.431Z",
+        "titlePreview": "Goal behavior gap"
+      }
+    ]
+  },
+  "seedCompositionStillPresent": {
+    "compositionId": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-today-composition",
+    "compositionSource": "full_reference_round_trip_seed",
+    "seedImportReviewCandidateCount": 4,
+    "seedImportReviewCandidateIds": [
+      "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-import-cand-ic1",
+      "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-import-cand-ic2",
+      "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-import-cand-ic3",
+      "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-import-cand-ic4"
+    ],
+    "note": "Seed may still exist in composition JSON; production Import path must not use these ids."
+  },
+  "integrity": {
+    "patternClaimCountUnchangedExpectation": 7,
+    "patternClaimCountObserved": 7,
+    "seedIdsAbsentFromProductionQuery": true,
+    "allProductionCandidatesHaveImportProvenance": true,
+    "noMutations": true
+  },
+  "verdict": "REAL_IMPORT_CANDIDATES_VISIBLE"
+}

@@ -69,12 +69,28 @@ export type OrvekImportReviewCandidate = {
   proposed: string;
   type: OrvekObject["type"];
   confidence: "high" | "medium" | "low";
+  /** Present on production DB-backed candidates; absent on frozen reference fixtures. */
+  candidateSourceTable?: "ReferenceItem" | "ContradictionNode";
+  candidateType?: string;
+  status?: string;
+  provenance?: string;
+  sourceSessionId?: string | null;
+  sourceMessageId?: string | null;
+  sourceImportBatchId?: string | null;
+  evidenceExcerpt?: string | null;
+  createdAt?: string;
 };
 
 export type OrvekImportReviewBatch = {
   /** Production densograph id for the import source report (subtitle/counts). */
   sourceObjectId: string;
   candidates: OrvekImportReviewCandidate[];
+  /** Truthful total pending across pages (production path). */
+  totalPendingCount?: number;
+  sourceImportBatchIds?: string[];
+  sourceTables?: Array<"ReferenceItem" | "ContradictionNode">;
+  loading?: boolean;
+  error?: string | null;
 };
 
 /** Living model-status cluster in the TopBar (not Map densograph slot counts). */

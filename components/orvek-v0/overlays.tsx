@@ -1,9 +1,13 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { OBJECTS } from "@/lib/orvek-v0/orvek-data"
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
-import { useOrvekData, useOrvekObjectGraph } from "@/lib/orvek-v0/data-provider"
+import {
+  useOrvekData,
+  useOrvekObjectGraph,
+  type OrvekImportReviewCandidate,
+} from "@/lib/orvek-v0/data-provider"
 import {
   reportOverlayProvenanceLabel,
   resolveReportOverlayProvenance,
@@ -181,13 +185,7 @@ function CaptureOverlay({ onClose }: { onClose: () => void }) {
  * Live/canonical must supply the same shape via OrvekDataApi.importReview —
  * never inject this array after the production query boundary.
  */
-const REFERENCE_IMPORT_CANDIDATES: {
-  id: string
-  raw: string
-  proposed: string
-  type: OrvekObject["type"]
-  confidence: "high" | "medium" | "low"
-}[] = [
+const REFERENCE_IMPORT_CANDIDATES: OrvekImportReviewCandidate[] = [
   {
     id: "ic1",
     raw: "I keep reopening the design instead of shipping it.",
@@ -222,33 +220,111 @@ function ImportOverlay({ onClose }: { onClose: () => void }) {
   const data = useOrvekData()
   const { getObject } = useOrvekObjectGraph()
   const batch = data.importReview
-  const candidates =
-    batch && batch.candidates.length > 0
-      ? batch.candidates
-      : data.referenceSurface
-        ? REFERENCE_IMPORT_CANDIDATES
-        : []
-  const sourceId = batch?.sourceObjectId ?? (data.referenceSurface ? "imp-1" : null)
-  const source = sourceId ? getObject(sourceId) : undefined
+  const isReferenceFixture = data.referenceSurface === true
+  const [liveCandidates, setLiveCandidates] = useState(() =>
+    batch && batch.candidates.length > 0 ? batch.candidates : [],
+  )
   const [decisions, setDecisions] = useState<Record<string, "accept" | "reject">>({})
+  const [pendingKeys, setPendingKeys] = useState<Record<string, boolean>>({})
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  // Keep live list in sync when the production query refreshes; never inject seed.
+  useEffect(() => {
+    if (isReferenceFixture) return
+    if (batch?.candidates) {
+      setLiveCandidates(batch.candidates)
+    }
+  }, [batch, isReferenceFixture])
+
+  const candidates = isReferenceFixture
+    ? batch && batch.candidates.length > 0
+      ? batch.candidates
+      : REFERENCE_IMPORT_CANDIDATES
+    : liveCandidates
+
+  const sourceId = batch?.sourceObjectId ?? (isReferenceFixture ? "imp-1" : null)
+  const source = sourceId ? getObject(sourceId) : undefined
+  const totalPending =
+    batch?.totalPendingCount ?? candidates.length
+  const loading = Boolean(batch?.loading) && !isReferenceFixture
+  const loadError = !isReferenceFixture ? batch?.error ?? null : null
 
   const accepted = Object.values(decisions).filter((d) => d === "accept").length
   const reviewed = Object.keys(decisions).length
 
+  async function persistDecision(
+    candidateId: string,
+    decision: "accept" | "reject",
+  ) {
+    if (isReferenceFixture) {
+      setDecisions((p) => ({ ...p, [candidateId]: decision }))
+      return
+    }
+    if (pendingKeys[candidateId]) return
+
+    setActionError(null)
+    setPendingKeys((p) => ({ ...p, [candidateId]: true }))
+    try {
+      const { decideImportReviewCandidate } = await import(
+        "@/lib/import-candidate-review-client"
+      )
+      const result = await decideImportReviewCandidate({
+        reviewKey: candidateId,
+        decision,
+      })
+      if (!result.ok) {
+        const message =
+          typeof result.body === "object" &&
+          result.body &&
+          "error" in result.body
+            ? JSON.stringify(
+                (result.body as { error: unknown }).error,
+              )
+            : `Review failed (${result.status})`
+        setActionError(message)
+        return
+      }
+      setDecisions((p) => ({ ...p, [candidateId]: decision }))
+      setLiveCandidates((prev) => prev.filter((c) => c.id !== candidateId))
+    } catch {
+      setActionError("Could not persist review decision.")
+    } finally {
+      setPendingKeys((p) => {
+        const next = { ...p }
+        delete next[candidateId]
+        return next
+      })
+    }
+  }
+
+  const subtitle = isReferenceFixture
+    ? source?.reportSummary
+    : loading
+      ? "Loading pending import candidates…"
+      : loadError
+        ? "Could not load candidates"
+        : `${totalPending} pending import candidate${totalPending === 1 ? "" : "s"} — not yet in your model`
+
   return (
     <OverlayShell
       title="Review import"
-      subtitle={source?.reportSummary}
+      subtitle={subtitle}
       onClose={onClose}
       wide
       footer={
         <>
           <span className="mr-auto text-xs text-muted-foreground">
-            {reviewed} of {candidates.length} reviewed · {accepted} accepted
+            {isReferenceFixture
+              ? `${reviewed} of ${candidates.length} reviewed · ${accepted} accepted`
+              : `${candidates.length} remaining in this page · ${accepted} accepted this session`}
           </span>
           <GhostButton onClick={onClose}>Save for later</GhostButton>
           <PrimaryButton onClick={onClose}>
-            Add {accepted} to model
+            {isReferenceFixture
+              ? `Add ${accepted} to model`
+              : accepted > 0
+                ? `Done · ${accepted} accepted`
+                : "Close"}
           </PrimaryButton>
         </>
       }
@@ -257,9 +333,28 @@ function ImportOverlay({ onClose }: { onClose: () => void }) {
         Orvek proposes what each fragment might mean. Nothing enters your model until you accept
         it — the raw words stay either way.
       </p>
+      {actionError && (
+        <p className="mb-3 text-sm text-destructive" role="alert">
+          {actionError}
+        </p>
+      )}
+      {loading && (
+        <p className="mb-3 text-sm text-muted-foreground">Loading candidates…</p>
+      )}
+      {loadError && !loading && (
+        <p className="mb-3 text-sm text-destructive" role="alert">
+          {loadError}
+        </p>
+      )}
+      {!loading && !loadError && candidates.length === 0 && (
+        <p className="mb-3 text-sm text-muted-foreground">
+          No pending import candidates.
+        </p>
+      )}
       <div className="flex flex-col gap-2.5">
         {candidates.map((c) => {
           const state = decisions[c.id]
+          const busy = Boolean(pendingKeys[c.id])
           return (
             <div
               key={c.id}
@@ -294,11 +389,34 @@ function ImportOverlay({ onClose }: { onClose: () => void }) {
                 <TypeBadge type={c.type} />
                 <span className="text-sm text-foreground text-pretty">{c.proposed}</span>
               </div>
+              {!isReferenceFixture &&
+                (c.candidateSourceTable || c.provenance) && (
+                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                    {[
+                      c.candidateSourceTable
+                        ? `Source table: ${c.candidateSourceTable}`
+                        : null,
+                      c.candidateType ? `Type: ${c.candidateType}` : null,
+                      c.provenance ? `Provenance: ${c.provenance}` : null,
+                      c.status ? `Status: ${c.status}` : null,
+                      c.sourceSessionId
+                        ? `Conversation: ${c.sourceSessionId.slice(0, 12)}…`
+                        : null,
+                      c.sourceMessageId
+                        ? `Message: ${c.sourceMessageId.slice(0, 12)}…`
+                        : null,
+                      c.sourceImportBatchId
+                        ? `Import batch: ${c.sourceImportBatchId.slice(0, 12)}…`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
               <div className="mt-2.5 flex items-center gap-2">
                 <button
-                  onClick={() =>
-                    setDecisions((p) => ({ ...p, [c.id]: "accept" }))
-                  }
+                  disabled={busy || Boolean(state)}
+                  onClick={() => void persistDecision(c.id, "accept")}
                   className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                     state === "accept"
                       ? "bg-primary text-primary-foreground"
@@ -309,9 +427,8 @@ function ImportOverlay({ onClose }: { onClose: () => void }) {
                   Accept
                 </button>
                 <button
-                  onClick={() =>
-                    setDecisions((p) => ({ ...p, [c.id]: "reject" }))
-                  }
+                  disabled={busy || Boolean(state)}
+                  onClick={() => void persistDecision(c.id, "reject")}
                   className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                     state === "reject"
                       ? "bg-foreground text-background"
