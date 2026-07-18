@@ -23,11 +23,17 @@ import {
   pickTodayHeroItem,
   type TodaySelectableTarget,
 } from "../../today-reentry";
+import {
+  buildV0TodayPropsFromCanonicalComposition,
+  collectCompositionObjects,
+  type CanonicalWorkbenchBundle,
+} from "../../canonical-today-composition";
 
 import type { OrvekDataApi } from "../data-provider";
 import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import type { OrvekObject } from "../orvek-types";
+import { resolveModelUpdateDisplayTitle } from "../../model-update-identity";
 import { withTodayAdapterHonesty } from "./today-adapter-honesty";
 
 function selectionToOrvekObject(
@@ -140,7 +146,63 @@ function receiptRowToOrvekObject(row: V0TodayReceiptRow): OrvekObject {
   };
 }
 
-export function buildTodayProductionDataApi(input: MapTodayDataInput): OrvekDataApi {
+export function buildTodayProductionDataApi(
+  input: MapTodayDataInput & {
+    canonicalWorkbench?: CanonicalWorkbenchBundle | null;
+  },
+): OrvekDataApi {
+  if (input.canonicalWorkbench?.composition) {
+    const { composition, report } = input.canonicalWorkbench;
+    const today = buildV0TodayPropsFromCanonicalComposition(composition, report);
+    const objects = collectCompositionObjects(composition, report);
+    const workbench = composition.workbench;
+
+    // Composition is an explicit production contract — do not strip via inferred
+    // MU-report / evidence-pointer honesty filters designed for sparse live graphs.
+    return withProductionContract({
+      ...EMPTY_ORVEK_DATA_API,
+      getObject: (id) => (id ? objects[id] : undefined),
+      getObjects: (ids) =>
+        filterDefined((ids ?? []).map((id) => (id ? objects[id] : undefined))),
+      todayCopy: {
+        briefingLine: composition.briefingLine,
+        briefingTitle: composition.briefingTitle,
+        briefingMeta: composition.briefingMeta,
+      },
+      today,
+      todayResurfacedIds: composition.resurfacedObjectIds,
+      todayIsLoading: false,
+      emptyCopyBySlot: {
+        todayHeroEmpty: today.heroEmptyCopy,
+        todayNowEmpty: today.nowEmptyCopy,
+        todayMovementEmpty: today.movementEmptyCopy,
+        todayPriorReadEmpty: today.priorReadEmptyCopy,
+        todayResurfacedEmpty: "No receipts resurfaced in this window yet.",
+        todayReportEmpty: TODAY_REPORT_EMPTY_COPY,
+      },
+      ...(workbench
+        ? {
+            mapCategories: workbench.mapCategories,
+            mapSelectedId: workbench.mapDefaultSelectedId,
+            mapHasContent: workbench.mapCategories.some((c) => c.ids.length > 0),
+            timelineGroups: workbench.timelineGroups,
+            timelineFilters: workbench.timelineFilters,
+            decisionListGroups: workbench.decisionListGroups,
+            decisionsSelectedId: workbench.decisionsDefaultId,
+            exploreGrounding: workbench.exploreGroundingIds,
+            exploreMovement: workbench.exploreMovement,
+            exploreQuestionIds: workbench.exploreQuestionIds,
+            exploreInvestigationIds: workbench.exploreInvestigationIds,
+            exploreFieldworkIds: workbench.exploreFieldworkIds,
+            exploreLiveDetectionCopy: workbench.exploreLiveDetectionCopy,
+            mapHeader: workbench.mapHeader ?? null,
+            modelStatusCard: workbench.modelStatusCard ?? null,
+            importReview: workbench.importReview ?? null,
+          }
+        : {}),
+    });
+  }
+
   const today = mapTodayDataToV0Props(input);
   const objects: Record<string, OrvekObject> = {};
   const movementDepthById: ModelMovementDepthById = input.movementDepthById ?? {};
@@ -151,14 +213,20 @@ export function buildTodayProductionDataApi(input: MapTodayDataInput): OrvekData
 
   for (const update of input.snapshot.intelligenceUpdates) {
     const depth = movementDepthById[update.id];
-    const title =
-      update.userFacingSummary.trim() ||
-      `${update.updateTypeLabel} · ${update.affectedObjectTypeLabel}`;
+    const title = resolveModelUpdateDisplayTitle({
+      userFacingSummary: update.userFacingSummary,
+      updateTypeLabel: update.updateTypeLabel,
+      affectedObjectTypeLabel: update.affectedObjectTypeLabel,
+    });
     const base: OrvekObject = {
       id: update.id,
       type: "model-update",
       title,
-      summary: `${update.updateTypeLabel} · ${update.affectedObjectTypeLabel}`,
+      summary:
+        update.userFacingSummary.trim() &&
+        update.userFacingSummary.trim().toLowerCase() !== title.toLowerCase()
+          ? update.userFacingSummary.trim()
+          : undefined,
       eventType: "Model update",
       tags: ["Model update"],
       inspectorObjectType: "model_update",
@@ -169,11 +237,19 @@ export function buildTodayProductionDataApi(input: MapTodayDataInput): OrvekData
 
   for (const movement of today.movements) {
     const depth = movementDepthById[movement.id];
+    const title = resolveModelUpdateDisplayTitle({
+      userFacingSummary: movement.evidence,
+      existingTitle: movement.updated,
+    });
     const base: OrvekObject = {
       id: movement.id,
       type: "model-update",
-      title: movement.updated,
-      summary: movement.evidence,
+      title,
+      summary:
+        movement.evidence.trim() &&
+        movement.evidence.trim().toLowerCase() !== title.toLowerCase()
+          ? movement.evidence.trim()
+          : undefined,
       eventType: "Model update",
       tags: ["Model update"],
       inspectorObjectType: "model_update",

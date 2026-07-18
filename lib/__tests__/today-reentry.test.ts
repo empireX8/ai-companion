@@ -268,7 +268,15 @@ describe("today-reentry briefing copy", () => {
       ...emptySnapshot(),
       intelligenceUpdates: [movementItem("mu-1"), movementItem("mu-2")],
     };
-    expect(buildTodayBriefingTitle(snapshot)).toBe("Current state");
+    expect(buildTodayBriefingTitle(snapshot)).toBe("Your model moved in 2 places.");
+  });
+
+  it("uses singular movement headline for one update", () => {
+    const snapshot: TodayReentrySnapshot = {
+      ...emptySnapshot(),
+      intelligenceUpdates: [movementItem("mu-1")],
+    };
+    expect(buildTodayBriefingTitle(snapshot)).toBe("Your model moved in 1 place.");
   });
 
   it("uses sparse fallback title when only non-movement data exists", () => {

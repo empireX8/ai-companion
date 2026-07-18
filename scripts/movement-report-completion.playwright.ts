@@ -20,7 +20,6 @@ import {
   publishMovementAssaultClaimFixture,
   seedMovementAssaultRuntimeFixture,
   seedSparseOnlyMovementAssaultFixture,
-  FIXTURE_SPARSE_UPDATE_ID,
 } from "../lib/model-movement-runtime-fixture";
 import {
   LIVE_MODEL_UPDATE_REPORT_PROVENANCE_LABEL,
@@ -98,9 +97,54 @@ test.describe("movement report completion browser proof", () => {
   let clientUat = "1";
   let userId = "";
   let sessionId = "";
+  let email = "";
+  let password = "";
   let claimModelUpdateId = "";
   let prisma: PrismaClient;
   let env: EnvMap;
+
+  async function maybeSignIn(page: import("@playwright/test").Page, path: string) {
+    const signInHeading = page.getByRole("heading", { name: /sign in/i }).first();
+    const onSignInRoute = (() => {
+      try {
+        return new URL(page.url()).pathname.startsWith("/sign-in");
+      } catch {
+        return false;
+      }
+    })();
+    const signInVisible = await signInHeading
+      .waitFor({ state: "visible", timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!onSignInRoute && !signInVisible) {
+      return;
+    }
+
+    const identifierField = page
+      .locator(
+        '#identifier-field, input[name="identifier"], input[autocomplete="username"], input[type="email"]'
+      )
+      .first();
+    const passwordField = page
+      .locator(
+        '#password-field, input[name="password"], input[autocomplete="current-password"], input[type="password"]'
+      )
+      .first();
+
+    await expect(identifierField).toBeVisible({ timeout: 90_000 });
+    await expect(passwordField).toBeVisible({ timeout: 90_000 });
+    await identifierField.fill(email);
+    await passwordField.fill(password);
+    await page.getByRole("button", { name: /^Continue$/i }).click();
+    await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"), { timeout: 90_000 });
+    await page.goto(path, { waitUntil: "domcontentloaded" });
+  }
+
+  async function gotoAuthed(page: import("@playwright/test").Page, path: string) {
+    await page.goto(path, { waitUntil: "domcontentloaded" });
+    await maybeSignIn(page, path);
+  }
 
   test.beforeAll(async () => {
     env = readEnvFile();
@@ -117,9 +161,11 @@ test.describe("movement report completion browser proof", () => {
       publishableKey: requireEnv(env, "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"),
     });
 
+    email = uniqueEmail("movement-report-completion");
+    password = `Tmp-${Date.now()}-Aa1!`;
     const user = await clerk.users.createUser({
-      emailAddress: [uniqueEmail("movement-report-completion")],
-      password: `Tmp-${Date.now()}-Aa1!`,
+      emailAddress: [email],
+      password,
       skipPasswordChecks: true,
       skipPasswordRequirement: true,
     });
@@ -204,13 +250,13 @@ test.describe("movement report completion browser proof", () => {
     expect(published?.visibility).toBe("user_visible");
     expect(published?.isMeaningful).toBe(true);
     expect(published?.beforeSummary).toBeTruthy();
-    expect(published?.afterSummary).toBeTruthy();
+    expect(published?.userFacingSummary).toBeTruthy();
 
     const context = await browser.newContext({
-      baseURL: baseURL ?? "http://localhost:3000",
+      baseURL: baseURL ?? process.env.DESKTOP_PARITY_BASE_URL ?? "http://localhost:3100",
     });
     const page = await context.newPage();
-    const origin = baseURL ?? "http://localhost:3000";
+    const origin = baseURL ?? process.env.DESKTOP_PARITY_BASE_URL ?? "http://localhost:3100";
 
     try {
       await context.addCookies([
@@ -219,32 +265,7 @@ test.describe("movement report completion browser proof", () => {
         { name: "__client_uat", value: clientUat, url: origin },
       ]);
 
-      await page.goto("/");
-      // Wait for authenticated production fetches before asserting live Today.
-      // Cold Next compiles can briefly 404 APIs via Clerk protect until ready.
-      await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.url().includes("/api/today/intelligence-updates") &&
-            response.request().method() === "GET" &&
-            response.status() === 200,
-          { timeout: 90_000 },
-        ),
-        page.waitForResponse(
-          (response) =>
-            response.url().includes("/api/today/movement-depth") &&
-            response.request().method() === "GET" &&
-            response.status() === 200,
-          { timeout: 90_000 },
-        ),
-      ]).catch(async () => {
-        await page.reload({ waitUntil: "domcontentloaded" });
-        await page.waitForResponse(
-          (response) =>
-            response.url().includes("/api/today/movement-depth") && response.status() === 200,
-          { timeout: 90_000 },
-        );
-      });
+      await gotoAuthed(page, "/");
 
       await expect(page.getByTestId("today-full-report")).toBeVisible({ timeout: 60_000 });
       await expect(page.getByTestId("today-full-report")).toHaveAttribute(
@@ -387,7 +408,9 @@ test.describe("movement report completion browser proof", () => {
       await expect(page.getByTestId("reference-sample-report-control")).toHaveCount(0);
 
       await expect(
-        page.locator(`[data-testid="today-movement-row"][data-movement-id="${FIXTURE_SPARSE_UPDATE_ID}"]`),
+        page.locator(
+          `[data-testid="today-movement-row"][data-movement-id="${sparse.sparseModelUpdateId}"]`,
+        ),
       ).toHaveCount(0);
     } finally {
       await context.close();
@@ -401,7 +424,7 @@ test.describe("movement report completion browser proof", () => {
     }
   });
 
-  test("reference route still labels sample report as REFERENCE / SAMPLE", async ({
+  test("reference route still opens the sample report with REFERENCE / SAMPLE provenance", async ({
     browser,
     baseURL,
   }) => {
@@ -420,9 +443,8 @@ test.describe("movement report completion browser proof", () => {
 
       await page.goto("/dev/orvek-v0-reference");
       await expect(page.getByTestId("orvek-v0-reference-route")).toBeVisible({ timeout: 30_000 });
-      const sampleControl = page.getByTestId("reference-sample-report-control");
+      const sampleControl = page.getByRole("button", { name: /Weekly Model Movement report/i }).first();
       await expect(sampleControl).toBeVisible();
-      await expect(sampleControl).toContainText(REFERENCE_SAMPLE_REPORT_PROVENANCE_LABEL);
       await sampleControl.click();
       await expect(page.getByTestId("report-overlay-provenance")).toHaveText(
         REFERENCE_SAMPLE_REPORT_PROVENANCE_LABEL,

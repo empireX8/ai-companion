@@ -1,0 +1,172 @@
+{
+  "verdict": "PASS",
+  "failReason": null,
+  "keepSeed": true,
+  "checks": [
+    {
+      "id": "route-isolation-live",
+      "classification": "PASS",
+      "detail": "live pathname=/dev/orvek-v0-canonical-live",
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "activePage": "today",
+        "selectedObjectType": "selected-lead-or-object",
+        "selectedObjectIdentity": "Avoidance appears strongest when social consequence is uncertain.",
+        "inspectorTab": "Evidence / Context",
+        "provider": "live",
+        "movementCount": 3,
+        "nowRowCount": 8,
+        "reportTitle": "What Changed3 published movements in this window",
+        "blankIconArrowCards": 0
+      }
+    },
+    {
+      "id": "route-isolation-fixture",
+      "classification": "PASS",
+      "detail": "fixture pathname=/dev/orvek-v0-canonical-reference",
+      "fixture": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-reference",
+        "pathname": "/dev/orvek-v0-canonical-reference",
+        "activePage": "today",
+        "selectedObjectType": "selected-lead-or-object",
+        "selectedObjectIdentity": "Use v0 architecture prototype before final design",
+        "inspectorTab": "Evidence / Context",
+        "provider": "fixture",
+        "movementCount": 3,
+        "nowRowCount": 6,
+        "reportTitle": "Weekly Model Movement reportReady · 3 loops, 2 decisions, 1 context update",
+        "blankIconArrowCards": 0
+      }
+    },
+    {
+      "id": "blank-icon-arrow-cards",
+      "classification": "PASS",
+      "detail": "blank cards fixture=0 live=0",
+      "fixture": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-reference",
+        "pathname": "/dev/orvek-v0-canonical-reference",
+        "activePage": "today",
+        "selectedObjectType": "selected-lead-or-object",
+        "selectedObjectIdentity": "Use v0 architecture prototype before final design",
+        "inspectorTab": "Evidence / Context",
+        "provider": "fixture",
+        "movementCount": 3,
+        "nowRowCount": 6,
+        "reportTitle": "Weekly Model Movement reportReady · 3 loops, 2 decisions, 1 context update",
+        "blankIconArrowCards": 0
+      },
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "activePage": "today",
+        "selectedObjectType": "selected-lead-or-object",
+        "selectedObjectIdentity": "Avoidance appears strongest when social consequence is uncertain.",
+        "inspectorTab": "Evidence / Context",
+        "provider": "live",
+        "movementCount": 3,
+        "nowRowCount": 8,
+        "reportTitle": "What Changed3 published movements in this window",
+        "blankIconArrowCards": 0
+      }
+    },
+    {
+      "id": "today-recent-movement",
+      "classification": "PASS",
+      "detail": "fixture movements≈3 live≈3",
+      "fixture": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-reference",
+        "pathname": "/dev/orvek-v0-canonical-reference",
+        "activePage": "today",
+        "selectedObjectType": "selected-lead-or-object",
+        "selectedObjectIdentity": "Use v0 architecture prototype before final design",
+        "inspectorTab": "Evidence / Context",
+        "provider": "fixture",
+        "movementCount": 3,
+        "nowRowCount": 6,
+        "reportTitle": "Weekly Model Movement reportReady · 3 loops, 2 decisions, 1 context update",
+        "blankIconArrowCards": 0
+      },
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "activePage": "today",
+        "selectedObjectType": "selected-lead-or-object",
+        "selectedObjectIdentity": "Avoidance appears strongest when social consequence is uncertain.",
+        "inspectorTab": "Evidence / Context",
+        "provider": "live",
+        "movementCount": 3,
+        "nowRowCount": 8,
+        "reportTitle": "What Changed3 published movements in this window",
+        "blankIconArrowCards": 0
+      }
+    },
+    {
+      "id": "report-overlay",
+      "classification": "PASS",
+      "detail": "Report overlay opened without leaving live route"
+    },
+    {
+      "id": "linked-back",
+      "classification": "PASS",
+      "detail": "Linked navigation + Back stayed on live route"
+    },
+    {
+      "id": "final-isolation",
+      "classification": "PASS",
+      "detail": "final url=http://localhost:3000/dev/orvek-v0-canonical-live",
+      "live": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+        "pathname": "/dev/orvek-v0-canonical-live",
+        "activePage": "today",
+        "selectedObjectType": "selected-lead-or-object",
+        "selectedObjectIdentity": "Avoidance appears strongest when social consequence is uncertain.",
+        "inspectorTab": "Evidence / Context",
+        "provider": "live",
+        "movementCount": 3,
+        "nowRowCount": 8,
+        "reportTitle": "What Changed3 published movements in this window",
+        "blankIconArrowCards": 0
+      },
+      "fixture": {
+        "url": "http://localhost:3000/dev/orvek-v0-canonical-reference",
+        "pathname": "/dev/orvek-v0-canonical-reference",
+        "activePage": "today",
+        "selectedObjectType": "selected-lead-or-object",
+        "selectedObjectIdentity": "Use v0 architecture prototype before final design",
+        "inspectorTab": "Evidence / Context",
+        "provider": "fixture",
+        "movementCount": 3,
+        "nowRowCount": 6,
+        "reportTitle": "Weekly Model Movement reportReady · 3 loops, 2 decisions, 1 context update",
+        "blankIconArrowCards": 0
+      }
+    }
+  ],
+  "notes": [
+    "Seeded dev-semantic-twin for user_3GfxO1sIpEEOAH37Euxb1QKIpHm; MUs=dev-semantic-twin-user_3GfxO1sIpEEOAH37Euxb1QKIpHm-model-update-mu-1,dev-semantic-twin-user_3GfxO1sIpEEOAH37Euxb1QKIpHm-model-update-mu-2,dev-semantic-twin-user_3GfxO1sIpEEOAH37Euxb1QKIpHm-model-update-aq-1-movement",
+    "Compared Today initial: fixture movements=3 live=3; blankCards f/l=0/0",
+    "Live movement tab state: identity=Avoidance appears strongest when social consequence is uncertain. tab=Evidence / Context",
+    "KEEP_SEED user=user_3GfxO1sIpEEOAH37Euxb1QKIpHm email=semantic-twin-iso-primary-1784376388189@example.com password=TwinIso-1784376388189-Aa1!"
+  ],
+  "captures": [
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step9-semantic-twin-isolated/01-today-initial-fixture.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step9-semantic-twin-isolated/01-today-initial-live.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step9-semantic-twin-isolated/02-selected-lead-live.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step9-semantic-twin-isolated/03-evidence-live.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step9-semantic-twin-isolated/04-movement-tab-live.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step9-semantic-twin-isolated/05-report-live.png",
+    "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step9-semantic-twin-isolated/06-linked-live.png"
+  ],
+  "seeded": {
+    "userId": "user_3GfxO1sIpEEOAH37Euxb1QKIpHm",
+    "email": "semantic-twin-iso-primary-1784376388189@example.com",
+    "password": "TwinIso-1784376388189-Aa1!",
+    "modelUpdateIds": [
+      "dev-semantic-twin-user_3GfxO1sIpEEOAH37Euxb1QKIpHm-model-update-mu-1",
+      "dev-semantic-twin-user_3GfxO1sIpEEOAH37Euxb1QKIpHm-model-update-mu-2",
+      "dev-semantic-twin-user_3GfxO1sIpEEOAH37Euxb1QKIpHm-model-update-aq-1-movement"
+    ]
+  },
+  "retractedPriorVerdict": "SEMANTIC TWIN PASSED (receipt 24)"
+}

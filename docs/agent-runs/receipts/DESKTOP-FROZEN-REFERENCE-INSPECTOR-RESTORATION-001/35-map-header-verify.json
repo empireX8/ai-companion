@@ -1,0 +1,29 @@
+{
+  "at": "2026-07-18T17:27:20.575Z",
+  "pass": true,
+  "failReason": "",
+  "checks": {
+    "api": {
+      "status": 200,
+      "mapHeader": {
+        "receiptsLabel": "243",
+        "confidenceLabel": "mixed / evolving",
+        "openQuestionsLabel": "7"
+      }
+    },
+    "live": {
+      "confidence": true,
+      "receipts243": true,
+      "questions7": true,
+      "mapped30": false,
+      "questions4": false
+    },
+    "reference": {
+      "confidence": true,
+      "receipts243": true,
+      "questions7": true,
+      "mapped30": false,
+      "questions4": false
+    }
+  }
+}

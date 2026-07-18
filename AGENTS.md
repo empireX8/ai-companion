@@ -12,6 +12,14 @@ The core frame is **capture → reveal → understand**.
 
 **Do not** reframe it as therapy, productivity, generic journaling, generic coaching, or action-first self-help.
 
+## Desktop Reference Authority
+
+For desktop Orvek workbench / Inspector restoration and visual-parity work:
+
+- `docs/CURRENT-DESKTOP-REFERENCE-AUTHORITY.md` is the controlling desktop UI authority.
+- `docs/archive/deferred-redesign/SUPERSESSION-INDEX.md` lists deferred redesign contracts and historical visual PASS receipts that are not current acceptance authority.
+- Do not use archived redesign docs or historical visual PASS receipts as acceptance targets unless the current authority doc explicitly re-activates them.
+
 ---
 
 ## Hard Rules

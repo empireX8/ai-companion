@@ -1,0 +1,495 @@
+{
+  "campaign": "DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001",
+  "date": "2026-07-17",
+  "baselineCommit": "1f8cb7cede1844d079a2dd0ab0ac434a132e761e",
+  "visualAuthorityComplete": false,
+  "storedVisualReferencePaths": [],
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "imageDiff": {
+    "available": false,
+    "reason": "No pixel-diff tool is available in this local environment."
+  },
+  "captures": [
+    {
+      "state": "today-hero-identity",
+      "label": "Today hero/list identity",
+      "surface": "reference",
+      "route": "/dev/orvek-v0-reference",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/01-today-hero-identity-reference.png",
+      "selectedObjectId": null,
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"orvek-v0-reference-route\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Reference Today curated identity (no generic Link Detected · Related pattern).",
+        "Presentation: frozen Today page (not ObjectDetail)."
+      ]
+    },
+    {
+      "state": "evidence-top",
+      "label": "01 Evidence / Context top",
+      "surface": "reference",
+      "route": "/dev/orvek-v0-reference",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/02-evidence-top-reference.png",
+      "selectedObjectId": "mu-1",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-evidence-top\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Shared ObjectDetail presentation for ModelUpdate."
+      ]
+    },
+    {
+      "state": "evidence-receipts-supporting",
+      "label": "02 Receipt/supporting/conflicting section",
+      "surface": "reference",
+      "route": "/dev/orvek-v0-reference",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/03-evidence-receipts-supporting-reference.png",
+      "selectedObjectId": "mu-1",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-receipts\"]",
+        "[data-testid=\"model-update-supporting-conflicting\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Shared ObjectDetail receipts / supporting blocks."
+      ]
+    },
+    {
+      "state": "evidence-related",
+      "label": "03 Related-object rows",
+      "surface": "reference",
+      "route": "/dev/orvek-v0-reference",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/04-evidence-related-reference.png",
+      "selectedObjectId": "mu-1",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-related-objects\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Shared ObjectDetail related rows."
+      ]
+    },
+    {
+      "state": "linked-object-detail",
+      "label": "04 Linked-object detail",
+      "surface": "reference",
+      "route": "/dev/orvek-v0-reference",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/05-linked-object-detail-reference.png",
+      "selectedObjectId": null,
+      "reportId": null,
+      "selectors": [
+        "button[name^=\"Back to\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Shared ObjectDetail for linked receipt."
+      ]
+    },
+    {
+      "state": "linked-back-navigation",
+      "label": "05 Back restoration at prior scroll position",
+      "surface": "reference",
+      "route": "/dev/orvek-v0-reference",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/06-linked-back-navigation-reference.png",
+      "selectedObjectId": "mu-1",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-evidence-top\"]"
+      ],
+      "scrollTop": 90,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Shared ObjectDetail + store scroll restore."
+      ]
+    },
+    {
+      "state": "movement-top",
+      "label": "06 Model Movement top",
+      "surface": "reference",
+      "route": "/dev/orvek-v0-reference",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/07-movement-top-reference.png",
+      "selectedObjectId": "mu-1",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-movement-top\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Shared MovementView presentation."
+      ]
+    },
+    {
+      "state": "movement-recent",
+      "label": "07 Recent movement cards",
+      "surface": "reference",
+      "route": "/dev/orvek-v0-reference",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/08-movement-recent-reference.png",
+      "selectedObjectId": "mu-1",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-recent-movement\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Shared MovementView recent cards."
+      ]
+    },
+    {
+      "state": "report-overlay-top",
+      "label": "08 Report overlay top",
+      "surface": "reference",
+      "route": "/dev/orvek-v0-reference",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/09-report-overlay-top-reference.png",
+      "selectedObjectId": "mu-1",
+      "reportId": "rep-weekly",
+      "selectors": [
+        "[data-testid=\"report-overlay-provenance\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Shared report overlay opened from MovementView."
+      ]
+    },
+    {
+      "state": "report-overlay-lower",
+      "label": "09 Report overlay lower content",
+      "surface": "reference",
+      "route": "/dev/orvek-v0-reference",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/10-report-overlay-lower-reference.png",
+      "selectedObjectId": "mu-1",
+      "reportId": "rep-weekly",
+      "selectors": [
+        "[data-testid=\"report-overlay-provenance\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Shared report overlay lower content."
+      ]
+    },
+    {
+      "state": "report-overlay-close",
+      "label": "10 Overlay close/return state",
+      "surface": "reference",
+      "route": "/dev/orvek-v0-reference",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/11-report-overlay-close-reference.png",
+      "selectedObjectId": "mu-1",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-movement-top\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Returns to shared MovementView without Map detour."
+      ]
+    },
+    {
+      "state": "empty-inspector",
+      "label": "Empty Inspector",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/12-empty-inspector-production.png",
+      "selectedObjectId": null,
+      "reportId": null,
+      "selectors": [
+        "aside:has-text(\"Inspector\")"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Authenticated production route with a fixture-free user."
+      ]
+    },
+    {
+      "state": "today-hero-identity",
+      "label": "11 Today hero/list identity with no generic label leakage",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/13-today-hero-identity-production.png",
+      "selectedObjectId": null,
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"today-see-why\"][data-movement-id=\"cmrpjmo680000qln16seq014z\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Shared resolveModelUpdateDisplayTitle identity on Today.",
+        "Must not show Link Detected · Related pattern / Reference item / Linked pattern."
+      ]
+    },
+    {
+      "state": "evidence-top",
+      "label": "01 Evidence / Context top",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/14-evidence-top-production.png",
+      "selectedObjectId": "cmrpjmo680000qln16seq014z",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"authority-model-update-evidence\"]",
+        "[data-testid=\"model-update-evidence-top\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Same presentation component as reference: ObjectDetail.",
+        "Live composed OrvekObject via composeProductionModelUpdateCanonicalViewModel."
+      ]
+    },
+    {
+      "state": "evidence-receipts-supporting",
+      "label": "02 Receipt/supporting/conflicting section",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/15-evidence-receipts-supporting-production.png",
+      "selectedObjectId": "cmrpjmo680000qln16seq014z",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-receipts\"]",
+        "[data-testid=\"model-update-supporting-conflicting\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Same presentation component as reference: ObjectDetail."
+      ]
+    },
+    {
+      "state": "evidence-related",
+      "label": "03 Related-object rows",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/16-evidence-related-production.png",
+      "selectedObjectId": "cmrpjmo680000qln16seq014z",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-related-objects\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Same presentation component as reference: ObjectDetail."
+      ]
+    },
+    {
+      "state": "linked-object-detail",
+      "label": "04 Linked-object detail",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/17-linked-object-detail-production.png",
+      "selectedObjectId": null,
+      "reportId": null,
+      "selectors": [
+        "button[name^=\"Back to\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Same presentation component as reference: ObjectDetail for linked receipt."
+      ]
+    },
+    {
+      "state": "linked-back-navigation",
+      "label": "05 Back restoration at prior scroll position",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/18-linked-back-navigation-production.png",
+      "selectedObjectId": "cmrpjmo680000qln16seq014z",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-evidence-top\"]",
+        "[data-testid=\"model-update-receipts\"]"
+      ],
+      "scrollTop": 0,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Scroll before linked navigation mid-point was 0; restored scrollTop=0.",
+        "Same ObjectDetail path; sticky overlay preserves receipt satellites."
+      ]
+    },
+    {
+      "state": "movement-top",
+      "label": "06 Model Movement top",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/19-movement-top-production.png",
+      "selectedObjectId": "cmrpjmo680000qln16seq014z",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"authority-model-update-movement\"]",
+        "[data-testid=\"model-update-movement-top\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Same presentation component as reference: MovementView."
+      ]
+    },
+    {
+      "state": "movement-recent",
+      "label": "07 Recent movement cards",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/20-movement-recent-production.png",
+      "selectedObjectId": "cmrpjmo680000qln16seq014z",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-recent-movement\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Same presentation component as reference: MovementView."
+      ]
+    },
+    {
+      "state": "report-overlay-top",
+      "label": "08 Report overlay top",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/21-report-overlay-top-production.png",
+      "selectedObjectId": "cmrpjmo680000qln16seq014z",
+      "reportId": "cmrpjmo680000qln16seq014z",
+      "selectors": [
+        "button[name=\"Open Model Movement report\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Opened from shared MovementView with live report identity."
+      ]
+    },
+    {
+      "state": "report-overlay-lower",
+      "label": "09 Report overlay lower content",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/22-report-overlay-lower-production.png",
+      "selectedObjectId": "cmrpjmo680000qln16seq014z",
+      "reportId": "cmrpjmo680000qln16seq014z",
+      "selectors": [
+        "[data-testid=\"report-overlay-canonical-id\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Live report overlay lower content."
+      ]
+    },
+    {
+      "state": "report-overlay-close",
+      "label": "10 Overlay close/return state",
+      "surface": "production",
+      "route": "/",
+      "screenshotPath": "/Users/user/ai-companion-worktrees/desktop-reference-authority-inspector-restoration-001/docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/23-report-overlay-close-production.png",
+      "selectedObjectId": "cmrpjmo680000qln16seq014z",
+      "reportId": null,
+      "selectors": [
+        "[data-testid=\"model-update-movement-top\"]"
+      ],
+      "scrollTop": null,
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "notes": [
+        "Closing the overlay returns to shared MovementView without Map detour."
+      ]
+    }
+  ],
+  "fixtureCleanup": {
+    "deletedLinks": 3,
+    "deletedModelUpdates": 2,
+    "deletedEvidence": 4,
+    "deletedClaims": 1,
+    "deletedConclusions": 1,
+    "remainingModelUpdates": 0,
+    "remainingLinks": 0
+  }
+}

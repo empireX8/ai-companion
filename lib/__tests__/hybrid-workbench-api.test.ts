@@ -1772,6 +1772,9 @@ describe("hybrid workbench data api", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
     const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
     const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
+    const runtimeSource = readSource(
+      "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
+    );
 
     expect(hookSource).toContain("useOrvekExploreChat");
     expect(hookSource).toContain("buildFreeExploreChatProductionDataApi");
@@ -1779,7 +1782,9 @@ describe("hybrid workbench data api", () => {
     expect(hookSource).toContain("sendHandlerAvailable: exploreChatSendReady");
     expect(hookSource).toContain("sendMessage");
     expect(workbenchSource).toContain("OrvekPageHandlersProvider");
-    expect(shellSource).toContain("handlers={handlers}");
+    expect(shellSource).toContain("CanonicalLiveRuntimeEntry");
+    expect(runtimeSource).toContain("OrvekPageHandlersProvider");
+    expect(runtimeSource).toContain("value={handlers}");
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
   });
 

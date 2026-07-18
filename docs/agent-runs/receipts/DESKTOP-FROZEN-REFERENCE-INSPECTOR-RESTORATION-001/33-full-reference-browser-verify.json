@@ -1,0 +1,125 @@
+{
+  "at": "2026-07-18T15:53:16.511Z",
+  "reviewUserId": "user_3GfkY153edzcz5FzJhlCMFybtmc",
+  "pass": true,
+  "failReason": null,
+  "checks": {
+    "afterSeedUrl": "http://localhost:3000/dev/orvek-v0-canonical-live?fullReferenceSeeded=1",
+    "compositionApi": {
+      "status": 200,
+      "leadTitle": "Use v0 architecture prototype before final design",
+      "objectCount": 67,
+      "mapCats": 8,
+      "timelineGroups": 5,
+      "decisionGroups": 4,
+      "exploreQ": 4,
+      "exploreInv": 3,
+      "exploreFw": 2,
+      "hasWorkbench": true
+    },
+    "today": {
+      "lead": true,
+      "report": true,
+      "movements": true,
+      "whatChangedFallback": false
+    },
+    "map": {
+      "sections": [
+        {
+          "s": "Patterns",
+          "ok": true
+        },
+        {
+          "s": "Claims",
+          "ok": true
+        },
+        {
+          "s": "Active conflicts",
+          "ok": true
+        },
+        {
+          "s": "Goals / directions",
+          "ok": true
+        },
+        {
+          "s": "Background / Context",
+          "ok": true
+        },
+        {
+          "s": "Active questions",
+          "ok": true
+        },
+        {
+          "s": "Model updates",
+          "ok": true
+        },
+        {
+          "s": "Uncertainty",
+          "ok": true
+        }
+      ],
+      "claim": true,
+      "empty": false
+    },
+    "decisions": {
+      "sections": [
+        {
+          "s": "Active",
+          "ok": true
+        },
+        {
+          "s": "Chosen",
+          "ok": true
+        },
+        {
+          "s": "Outcome due",
+          "ok": true
+        },
+        {
+          "s": "Reviewed",
+          "ok": true
+        }
+      ],
+      "lead": true,
+      "empty": false
+    },
+    "timeline": {
+      "sections": [
+        {
+          "s": "Today",
+          "ok": true
+        },
+        {
+          "s": "This week",
+          "ok": true
+        },
+        {
+          "s": "Last week",
+          "ok": true
+        },
+        {
+          "s": "Earlier",
+          "ok": true
+        },
+        {
+          "s": "Imported history",
+          "ok": true
+        }
+      ]
+    },
+    "exploreQuestions": {
+      "hasList": true,
+      "empty": false
+    },
+    "exploreInvestigations": {
+      "hasList": true,
+      "empty": false
+    },
+    "exploreFieldwork": {
+      "hasList": true,
+      "empty": false
+    },
+    "referenceReachable": true
+  },
+  "seedUrl": "http://localhost:3000/dev/orvek-v0-canonical-live/seed-full-reference-round-trip"
+}

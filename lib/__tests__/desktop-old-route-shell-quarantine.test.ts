@@ -12,8 +12,9 @@ const ACTIVE_ROOT_CHAIN = [
   "app/(root)/layout.tsx",
   "components/layout/AppShell.tsx",
   "components/orvek-workbench/OrvekWorkbenchShell.tsx",
+  "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
   "components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts",
-  "components/orvek-v0/workbench.tsx",
+  "components/orvek-v0-canonical/workbench.tsx",
 ] as const;
 
 const OLD_SHELL_COMPONENTS = [
@@ -45,11 +46,11 @@ const QUARANTINED_LEGACY_ROUTE_PAGES = [
 ] as const;
 
 const ACTIVE_V0_PAGES = [
-  "components/orvek-v0/pages/today.tsx",
-  "components/orvek-v0/pages/map.tsx",
-  "components/orvek-v0/pages/timeline.tsx",
-  "components/orvek-v0/pages/decisions.tsx",
-  "components/orvek-v0/pages/explore.tsx",
+  "components/orvek-v0-canonical/pages/today.tsx",
+  "components/orvek-v0-canonical/pages/map.tsx",
+  "components/orvek-v0-canonical/pages/timeline.tsx",
+  "components/orvek-v0-canonical/pages/decisions.tsx",
+  "components/orvek-v0-canonical/pages/explore.tsx",
 ] as const;
 
 const STORE_NAV_ACTIONS = [
@@ -94,20 +95,25 @@ function relativeFromRoot(absolutePath: string): string {
 }
 
 describe("desktop old-route / old-shell quarantine audit", () => {
-  it("1 — root hard-swap chain mounts Workbench and ignores route children", () => {
+  it("1 — root hard-swap chain mounts CanonicalWorkbench and ignores route children", () => {
     const layout = readSource("app/(root)/layout.tsx");
     const appShell = readSource("components/layout/AppShell.tsx");
     const shell = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
+    const runtime = readSource(
+      "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
+    );
     const hybridHook = readSource(
       "components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts",
     );
-    const workbench = readSource("components/orvek-v0/workbench.tsx");
+    const workbench = readSource("components/orvek-v0-canonical/workbench.tsx");
 
     expect(layout).toContain("AppShell");
     expect(appShell).toContain("OrvekWorkbenchShell");
     expect(shell).toContain("void children");
-    expect(shell).toContain("useOrvekHybridWorkbenchDataApi");
-    expect(shell).toContain("<Workbench dataApi={dataApi} handlers={handlers} />");
+    expect(shell).toContain("CanonicalLiveRuntimeEntry");
+    expect(runtime).toContain("useOrvekHybridWorkbenchDataApi");
+    expect(runtime).toContain("CanonicalWorkbench");
+    expect(runtime).toContain("buildCanonicalLiveRuntimeData");
     expect(hybridHook).toContain("buildHybridWorkbenchDataApi");
     expect(workbench).toContain("OrvekShellLayout");
     expect(workbench).toContain("<PageContent />");
@@ -124,7 +130,7 @@ describe("desktop old-route / old-shell quarantine audit", () => {
 
   it("3 — root shell does not mount quarantined route-first page containers", () => {
     const shell = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
-    const workbench = readSource("components/orvek-v0/workbench.tsx");
+    const workbench = readSource("components/orvek-v0-canonical/workbench.tsx");
 
     for (const container of QUARANTINED_ROUTE_CONTAINERS) {
       expect(shell).not.toContain(container);
@@ -155,9 +161,13 @@ describe("desktop old-route / old-shell quarantine audit", () => {
 
     expect(sidebar).toContain("setPage");
     expect(sidebar).not.toContain("router.push");
+    expect(topBar).toContain("useRouter");
     expect(topBar).toContain("setPage");
     expect(topBar).toContain("setOverlay");
-    expect(topBar).not.toContain("router.push");
+    expect(topBar).toContain('router.push("/journal-chat")');
+    expect(topBar).toContain('router.push("/your-map")');
+    expect(topBar).toContain('router.push("/timeline")');
+    expect(topBar).toContain("openCommandPalette");
   });
 
   it("5 — legacy route files exist but remain quarantined from root ownership", () => {
@@ -188,7 +198,7 @@ describe("desktop old-route / old-shell quarantine audit", () => {
 
     expect(hybridHook).toContain("buildMapProductionDataApi");
     expect(hybridHook).toContain("fetchYourMapConclusions");
-    expect(shell).toContain("useOrvekHybridWorkbenchDataApi");
+    expect(shell).toContain("CanonicalLiveRuntimeEntry");
     expect(shell).not.toContain("OrvekMapPage");
     expect(quarantinedMapPage).toContain("OrvekV0PageShell");
     expect(quarantinedMapPage).not.toContain("useOrvekHybridWorkbenchDataApi");
@@ -196,25 +206,27 @@ describe("desktop old-route / old-shell quarantine audit", () => {
 
   it("7 — reference route remains bare mock Workbench without hybrid wiring", () => {
     const referenceRoute = readSource("app/dev/orvek-v0-reference/page.tsx");
-    const workbench = readSource("components/orvek-v0/workbench.tsx");
+    const frozenWorkbench = readSource("components/orvek-v0-reference-frozen/workbench.tsx");
 
     expect(referenceRoute).toContain('data-testid="orvek-v0-reference-route"');
-    expect(referenceRoute).toContain("<Workbench />");
+    expect(referenceRoute).toContain("<FrozenReferenceWorkbench />");
+    expect(referenceRoute).toContain("FrozenReferenceWorkbench");
     expect(referenceRoute).not.toContain("useOrvekHybridWorkbenchDataApi");
     expect(referenceRoute).not.toContain("handlers=");
     expect(referenceRoute).not.toContain("buildHybridWorkbenchDataApi");
-    expect(workbench).toContain("createMockOrvekDataApi");
+    expect(frozenWorkbench).toContain("createFrozenReferenceDataApi");
+    expect(frozenWorkbench).not.toContain("ProductionInspectorBridge");
   });
 
-  it("8 — production hybrid hook starts from the empty API while reference workbench keeps mock fallback", () => {
+  it("8 — production hybrid hook starts from the empty API while inactive parallel workbench keeps mock fallback", () => {
     const mockApi = readSource("lib/orvek-v0/mock-api.ts");
-    const workbench = readSource("components/orvek-v0/workbench.tsx");
+    const parallelWorkbench = readSource("components/orvek-v0/workbench.tsx");
     const hybridHook = readSource(
       "components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts",
     );
 
     expect(mockApi).toContain("export function createMockOrvekDataApi");
-    expect(workbench).toContain("createMockOrvekDataApi");
+    expect(parallelWorkbench).toContain("createMockOrvekDataApi");
     expect(hybridHook).toContain("EMPTY_ORVEK_DATA_API");
     expect(hybridHook).not.toContain("createMockOrvekDataApi");
   });
@@ -226,20 +238,21 @@ describe("desktop old-route / old-shell quarantine audit", () => {
   });
 
   it("10 — Free Explore honesty guards from PR #97/#99 remain intact", () => {
-    const explorePage = readSource("components/orvek-v0/pages/explore.tsx");
-    const evidencePanel = readSource("components/orvek-v0/evidence-panel.tsx");
+    const explorePage = readSource("components/orvek-v0-canonical/pages/explore.tsx");
+    const evidencePanel = readSource("components/orvek-v0-authority/evidence-panel.tsx");
     const hybridApi = readSource("lib/orvek-v0/production/hybrid-workbench-api.ts");
 
-    expect(explorePage).toContain("allowReferenceSample = referenceSurface === true");
+    expect(explorePage).toContain("referenceSurface === true");
     expect(explorePage).toContain("freeExploreSendHandlerAvailable");
     expect(evidencePanel).toContain("showReferenceConversationMovement = exploreActive && !hasLiveExploreChat");
     expect(evidencePanel).toContain("showLiveConversationMovementEmpty");
+    expect(evidencePanel).toContain("referenceConversationMovement = data.exploreMovement ?? []");
     expect(hybridApi).toContain("mergeFreeExploreChatShellState");
     expect(hybridApi).toContain("looksLikeAuthOrSessionBootError");
   });
 
   it("11 — direct workbench routes sync the shared shell page from the pathname", () => {
-    const workbench = readSource("components/orvek-v0/workbench.tsx");
+    const workbench = readSource("components/orvek-v0-canonical/workbench.tsx");
 
     expect(workbench).toContain("usePathname");
     expect(workbench).toContain("resolveWorkbenchPageFromPathname");

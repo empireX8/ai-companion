@@ -1,10 +1,44 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+
+import { useCommandPalette } from "@/components/command/CommandPaletteContext"
+import { formatModelStatusCardCopy } from "@/lib/canonical-reference-model-status-card"
+import { useOrvekData } from "@/lib/orvek-v0/data-provider"
+import { isProductionDisplay, ORVEK_DEFERRED_ACTION_CLASS } from "@/lib/orvek-v0/display-contract"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { Plus, Search, Download, Activity, Clock } from "lucide-react"
 
 export function TopBar() {
   const { setOverlay, setPage, select, setInspectorTab } = useWorkbench()
+  const data = useOrvekData()
+  const isProduction = isProductionDisplay(data)
+  const importReviewReady =
+    (data.importReview?.candidates?.length ?? 0) > 0 &&
+    Boolean(data.importReview?.sourceObjectId)
+  const importEnabled = !isProduction || importReviewReady
+  const modelStatus = data.modelStatusCard ?? null
+  const modelStatusCopy = modelStatus
+    ? formatModelStatusCardCopy(modelStatus)
+    : null
+  const router = useRouter()
+  const { open: openCommandPalette } = useCommandPalette()
+
+  function openModelStatusDestination() {
+    if (modelStatus?.destination.kind === "workbench-page") {
+      setPage(modelStatus.destination.page)
+      return
+    }
+    if (modelStatus?.destination.kind === "route") {
+      router.push(modelStatus.destination.href)
+      return
+    }
+    if (isProduction) {
+      router.push("/your-map")
+      return
+    }
+    setPage("map")
+  }
 
   return (
     <header className="flex h-[60px] shrink-0 items-center gap-3 px-4 sm:px-5">
@@ -19,7 +53,13 @@ export function TopBar() {
 
       <button
         type="button"
-        onClick={() => setOverlay("capture")}
+        onClick={() => {
+          if (isProduction) {
+            router.push("/journal-chat")
+            return
+          }
+          setOverlay("capture")
+        }}
         className="o-calm inline-flex items-center gap-1.5 rounded-full bg-action px-3.5 py-1.5 text-sm font-semibold text-action-foreground shadow-[0_2px_8px_-2px_rgba(0,0,0,0.4)] hover:brightness-[1.05] active:scale-[0.98]"
       >
         <Plus className="size-4" aria-hidden />
@@ -28,7 +68,13 @@ export function TopBar() {
 
       <button
         type="button"
-        onClick={() => setOverlay("search")}
+        onClick={() => {
+          if (isProduction) {
+            openCommandPalette()
+            return
+          }
+          setOverlay("search")
+        }}
         className="o-calm group flex min-w-0 flex-1 items-center gap-2 rounded-full bg-white/[0.05] px-3.5 py-1.5 text-left text-sm text-muted-foreground hover:bg-white/[0.08]"
       >
         <Search className="size-4 shrink-0" aria-hidden />
@@ -40,8 +86,22 @@ export function TopBar() {
 
       <button
         type="button"
-        onClick={() => setOverlay("import")}
-        className="o-calm inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-sm font-medium text-foreground hover:bg-white/[0.08]"
+        data-testid="orvek-import-button"
+        onClick={() => {
+          if (importEnabled) {
+            setOverlay("import")
+          }
+        }}
+        disabled={!importEnabled}
+        aria-disabled={!importEnabled}
+        title={
+          importEnabled
+            ? undefined
+            : "Import review unavailable until an import-review batch is present"
+        }
+        className={`o-calm inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-sm font-medium text-foreground hover:bg-white/[0.08] ${
+          !importEnabled ? ORVEK_DEFERRED_ACTION_CLASS : ""
+        }`}
       >
         <Download className="size-4 text-primary" aria-hidden />
         <span className="hidden sm:inline">Import</span>
@@ -51,7 +111,8 @@ export function TopBar() {
       <div className="hidden items-stretch gap-1.5 lg:flex">
         <button
           type="button"
-          onClick={() => setPage("map")}
+          data-testid="orvek-model-status-card"
+          onClick={openModelStatusDestination}
           className="o-calm flex items-center gap-2 rounded-[10px] bg-action-muted/70 px-2.5 py-1.5 text-left ring-1 ring-inset ring-action/15 hover:bg-action-muted"
         >
           <span className="relative flex size-2.5 items-center justify-center">
@@ -60,14 +121,20 @@ export function TopBar() {
           </span>
           <span className="leading-tight">
             <span className="block text-[11px] font-semibold text-action-foreground">
-              Model moved · 4 places
+              {modelStatusCopy?.title ?? "Model movement"}
             </span>
-            <span className="block text-[10px] text-muted-foreground">7 questions · 3 reviews open</span>
+            <span className="block text-[10px] text-muted-foreground">
+              {modelStatusCopy?.meta ?? "Open your map"}
+            </span>
           </span>
         </button>
         <button
           type="button"
           onClick={() => {
+            if (isProduction) {
+              router.push("/timeline")
+              return
+            }
             setPage("timeline")
             select("t1")
             setInspectorTab("movement")
@@ -76,8 +143,12 @@ export function TopBar() {
         >
           <Clock className="size-3.5 text-muted-foreground" aria-hidden />
           <span className="leading-tight">
-            <span className="block text-[11px] font-medium text-foreground">Synced 2h ago</span>
-            <span className="block text-[10px] text-muted-foreground">Context profile current</span>
+            <span className="block text-[11px] font-medium text-foreground">
+              {isProduction ? "Timeline" : "Synced 2h ago"}
+            </span>
+            <span className="block text-[10px] text-muted-foreground">
+              {isProduction ? "How the model evolved" : "Context profile current"}
+            </span>
           </span>
         </button>
       </div>
@@ -85,10 +156,11 @@ export function TopBar() {
       {/* compact status for small screens */}
       <button
         type="button"
-        onClick={() => setPage("map")}
+        onClick={openModelStatusDestination}
         className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-action-muted px-2.5 py-1 text-xs font-medium text-action-foreground ring-1 ring-inset ring-action/15 lg:hidden"
       >
-        <Activity className="size-3.5" aria-hidden />4 moved
+        <Activity className="size-3.5" aria-hidden />
+        {modelStatusCopy?.compactLabel ?? "Map"}
       </button>
     </header>
   )

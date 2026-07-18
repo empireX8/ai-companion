@@ -1,0 +1,46 @@
+{
+  "at": "2026-07-18T17:27:09.789Z",
+  "pass": true,
+  "failReason": "",
+  "checks": {
+    "api": {
+      "status": 200,
+      "modelStatusCard": {
+        "meta": "7 questions · 3 reviews open",
+        "title": "Model moved · 4 places",
+        "destination": {
+          "kind": "workbench-page",
+          "page": "map"
+        },
+        "compactLabel": "4 moved",
+        "openReviewCount": 3,
+        "openQuestionCount": 7,
+        "movementPlaceCount": 4
+      }
+    },
+    "live": {
+      "title": true,
+      "meta": true,
+      "genericTitle": false,
+      "genericMeta": false
+    },
+    "mapDestination": {
+      "url": "http://localhost:3000/dev/orvek-v0-canonical-live",
+      "mapHeading": true,
+      "stayedOnCanonicalLive": true,
+      "notYourMapRoute": true
+    },
+    "afterNavigation": {
+      "title": true,
+      "meta": true,
+      "genericTitle": false,
+      "genericMeta": false
+    },
+    "reference": {
+      "title": true,
+      "meta": true,
+      "genericTitle": false,
+      "genericMeta": false
+    }
+  }
+}

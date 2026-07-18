@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import {
   fetchInspectorEvidenceLinks,
+  fetchInspectorInvestigationDetail,
   fetchInspectorUserMapDetail,
   INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT,
   type InspectorEvidenceLinkItem,
@@ -20,6 +21,10 @@ import {
 } from "@/lib/actions-api";
 import { buildDecisionsProductionDataApi } from "@/lib/orvek-v0/production/decisions-api";
 import { buildInvestigationsProductionDataApi } from "@/lib/orvek-v0/production/investigations-api";
+import {
+  enrichmentFromInspectorInvestigationDetail,
+  type InvestigationRowEnrichment,
+} from "@/lib/orvek-v0/production/investigations-presentation";
 import { buildActiveQuestionsProductionDataApi } from "@/lib/orvek-v0/production/active-questions-api";
 import { buildExperimentProductionDataApi } from "@/lib/orvek-v0/production/experiment-api";
 import { buildTodayProductionDataApi } from "@/lib/orvek-v0/production/today-api";
@@ -41,14 +46,16 @@ import {
 import { updateWorkbenchHistory } from "@/lib/orvek-v0/workbench-route-history";
 import { EMPTY_ORVEK_DATA_API } from "@/lib/orvek-v0/empty-api";
 import {
-  fetchTodayReentrySnapshot,
   type TodayReentrySnapshot,
 } from "@/lib/today-reentry";
 import {
-  buildModelMovementDepthIndex,
   type ModelMovementDepthById,
 } from "@/lib/model-movement-report-contract";
-import { fetchTodayMovementDepth } from "@/lib/today-movement-depth";
+import { hydrateTodayProductionData } from "@/lib/orvek-v0/production/today-hydration";
+import {
+  fetchCanonicalWorkbenchBundle,
+} from "@/lib/canonical-today-composition-client";
+import type { CanonicalWorkbenchBundle } from "@/lib/canonical-today-composition";
 import type { UserMapConclusionPublicApiDetailItem } from "@/lib/public-intelligence-safe-slice";
 import type { UserMapConclusionPublicApiListItem } from "@/lib/public-intelligence-safe-slice";
 import {
@@ -183,6 +190,8 @@ export function useOrvekHybridWorkbenchDataApi() {
   const [snapshot, setSnapshot] = useState<TodayReentrySnapshot>(EMPTY_SNAPSHOT);
   const [movementDepthById, setMovementDepthById] = useState<ModelMovementDepthById>({});
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(true);
+  const [canonicalWorkbench, setCanonicalWorkbench] =
+    useState<CanonicalWorkbenchBundle | null>(null);
 
   const [mapItems, setMapItems] = useState<UserMapConclusionPublicApiListItem[]>([]);
   const [mapLoadError, setMapLoadError] = useState<string | null>(null);
@@ -224,6 +233,12 @@ export function useOrvekHybridWorkbenchDataApi() {
   const [exploreInvestigationItems, setExploreInvestigationItems] = useState<
     ExploreInvestigationItem[]
   >([]);
+  const [investigationEnrichments, setInvestigationEnrichments] = useState<
+    Record<string, InvestigationRowEnrichment>
+  >({});
+  const [investigationLinkedObjects, setInvestigationLinkedObjects] = useState<OrvekObject[]>(
+    [],
+  );
   const [isLoadingInvestigations, setIsLoadingInvestigations] = useState(true);
 
   const [surfacedEvidenceDepth, setSurfacedEvidenceDepth] =
@@ -240,18 +255,20 @@ export function useOrvekHybridWorkbenchDataApi() {
     void (async () => {
       setIsLoadingSnapshot(true);
       try {
-        const [next, movementDepth] = await Promise.all([
-          fetchTodayReentrySnapshot(),
-          fetchTodayMovementDepth(),
+        const [hydrated, compositionBundle] = await Promise.all([
+          hydrateTodayProductionData(),
+          fetchCanonicalWorkbenchBundle(),
         ]);
         if (!cancelled) {
-          setSnapshot(next);
-          setMovementDepthById(buildModelMovementDepthIndex(movementDepth));
+          setSnapshot(hydrated.snapshot);
+          setMovementDepthById(hydrated.movementDepthById);
+          setCanonicalWorkbench(compositionBundle);
         }
       } catch {
         if (!cancelled) {
           setSnapshot(EMPTY_SNAPSHOT);
           setMovementDepthById({});
+          setCanonicalWorkbench(null);
         }
       } finally {
         if (!cancelled) {
@@ -457,12 +474,29 @@ export function useOrvekHybridWorkbenchDataApi() {
           throw new Error("Explore session did not become ready before investigation hydration.");
         }
         const nextItems = await fetchExploreInvestigationItems();
+        const enrichments: Record<string, InvestigationRowEnrichment> = {};
+        const linkedObjects: OrvekObject[] = [];
+
+        await Promise.all(
+          nextItems.map(async (item) => {
+            const detail = await fetchInspectorInvestigationDetail(item.id);
+            if (!detail) return;
+            const mapped = enrichmentFromInspectorInvestigationDetail(detail);
+            enrichments[item.id] = mapped.enrichment;
+            linkedObjects.push(...mapped.linkedObjects);
+          }),
+        );
+
         if (!cancelled) {
           setExploreInvestigationItems(nextItems);
+          setInvestigationEnrichments(enrichments);
+          setInvestigationLinkedObjects(linkedObjects);
         }
       } catch {
         if (!cancelled) {
           setExploreInvestigationItems([]);
+          setInvestigationEnrichments({});
+          setInvestigationLinkedObjects([]);
         }
       } finally {
         if (!cancelled) {
@@ -885,6 +919,7 @@ export function useOrvekHybridWorkbenchDataApi() {
       isLoading: isLoadingSnapshot,
       briefingDate: DISPLAY_DATE,
       movementDepthById,
+      canonicalWorkbench,
     });
 
     const mapApi = buildMapProductionDataApi({
@@ -941,7 +976,10 @@ export function useOrvekHybridWorkbenchDataApi() {
     };
 
     const investigationsApi = {
-      ...buildInvestigationsProductionDataApi(exploreInvestigationItems),
+      ...buildInvestigationsProductionDataApi(exploreInvestigationItems, {
+        enrichments: investigationEnrichments,
+        linkedObjects: investigationLinkedObjects,
+      }),
       investigationsIsLoading: isLoadingInvestigations,
     };
 
@@ -959,13 +997,15 @@ export function useOrvekHybridWorkbenchDataApi() {
 
     return applySurfacedEvidenceDepthGate({
       api: asHybridShell(hybridApi),
-      overlay: surfacedEvidenceDepth,
+      // Explicit Today composition owns resurfaced ordering — do not replace with depth overlay.
+      overlay: canonicalWorkbench ? null : surfacedEvidenceDepth,
     });
   }, [
     baseApi,
     isLoadingSnapshot,
     snapshot,
     movementDepthById,
+    canonicalWorkbench,
     mapItems,
     mapIsLoading,
     mapLoadError,
@@ -995,6 +1035,8 @@ export function useOrvekHybridWorkbenchDataApi() {
     activeQuestionItems,
     isLoadingActiveQuestions,
     exploreInvestigationItems,
+    investigationEnrichments,
+    investigationLinkedObjects,
     isLoadingInvestigations,
     freeExploreChatApi,
     surfacedEvidenceDepth,

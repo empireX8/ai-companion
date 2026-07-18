@@ -36,6 +36,9 @@ const AUTHENTICATED_LEGACY_ALLOWED_ROUTE_PREFIXES = [
 const INTERNAL_OR_DEV_PRESERVED_ROUTE_PREFIXES = [
   "/internal/user-map/review",
   "/dev/orvek-v0-reference",
+  "/dev/orvek-v0-canonical-reference",
+  "/dev/orvek-v0-canonical-live",
+  "/dev/orvek-v0-parallel-production-rollback",
 ] as const;
 
 function normalizePathname(pathname: string): string {

@@ -16,6 +16,7 @@ export function buildInvestigationsProductionDataApi(
   options: {
     linkedAliases?: Array<{ linkedObjectType: string; linkedObjectId: string }>;
     enrichments?: Record<string, InvestigationRowEnrichment>;
+    linkedObjects?: OrvekObject[];
   } = {},
 ): OrvekDataApi {
   const objects: Record<string, OrvekObject> = {};
@@ -35,6 +36,12 @@ export function buildInvestigationsProductionDataApi(
     const alias = buildLinkedInvestigationObjectAlias(link);
     if (alias) {
       objects[link.linkedObjectId] = alias;
+    }
+  }
+
+  for (const linked of options.linkedObjects ?? []) {
+    if (linked?.id && !objects[linked.id]) {
+      objects[linked.id] = linked;
     }
   }
 

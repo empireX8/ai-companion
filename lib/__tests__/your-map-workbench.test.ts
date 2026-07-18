@@ -36,10 +36,12 @@ describe("your-map workbench", () => {
     const referenceWorkbenchSource = readSource("components/orvek-v0/workbench.tsx");
 
     expect(appShellSource).toContain("OrvekWorkbenchShell");
-    expect(shellSource).toContain("Workbench");
-    expect(shellSource).toContain("useOrvekHybridWorkbenchDataApi");
-    expect(shellSource).toContain("DurableActionsRefreshProvider");
-    expect(shellSource).toContain("useOrvekHybridWorkbenchDataApi");
+    expect(shellSource).toContain("CanonicalLiveRuntimeEntry");
+    const runtimeSource = readSource(
+      "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
+    );
+    expect(runtimeSource).toContain("useOrvekHybridWorkbenchDataApi");
+    expect(runtimeSource).toContain("DurableActionsRefreshProvider");
     expect(shellSource).not.toContain("RouteTopBar");
     expect(shellSource).not.toContain("RouteSidebar");
     expect(shellSource).not.toContain("ProductionInspectorAside");

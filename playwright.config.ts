@@ -7,7 +7,7 @@ const DESKTOP_PARITY_READY_URL = `${DESKTOP_PARITY_BASE_URL}/sign-in`;
 
 export default defineConfig({
   testDir: "./scripts",
-  testMatch: /(?:v0-route-smoke|movement-report-completion|durable-actions-assault|explore-grounding-movement-assault|explore-send-readiness-isolated|investigations-production-assault|desktop-production-parity-closure)\.playwright\.ts/,
+  testMatch: /(?:v0-route-smoke|movement-report-completion|durable-actions-assault|explore-grounding-movement-assault|explore-send-readiness-isolated|investigations-production-assault|desktop-production-parity-closure|desktop-frozen-reference-inspector-restoration)\.playwright\.ts/,
   timeout: 300_000,
   retries: 0,
   expect: {
@@ -18,9 +18,9 @@ export default defineConfig({
     trace: "off",
   },
   webServer: {
-    command: `npm run build && PORT=${DESKTOP_PARITY_PORT} npm run start`,
+    command: `NODE_OPTIONS=--max-old-space-size=8192 npm run build && PORT=${DESKTOP_PARITY_PORT} npm run start`,
     url: DESKTOP_PARITY_READY_URL,
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     timeout: 600_000,
   },
 });

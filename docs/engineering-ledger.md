@@ -218,6 +218,9 @@
   3. **Promotion does NOT create ModelUpdate records** — never in this slice. ModelUpdate creation is deferred until a candidate becomes user-visible.
   4. **`rejected`** = dark engine determined candidate does not meet gates. Remains queryable. Evidence preserved. Can re-propose via new cycle.
   5. **`held_for_more_evidence`** = passed baseline gates but insufficient for promotion. Waiting for more evidence.
+
+---
+
   6. **`expired`** = timed out without sufficient evidence. Remains queryable. Can re-propose via new cycle. Expiry policy (timeout duration) deferred.
   7. **`superseded`** = replaced by newer candidate. Terminal state. Evidence preserved. Orthogonal to `UserMapConclusionStatus.superseded`.
   8. **Evidence/provenance must remain attached** through all lifecycle transitions. No transition may delete or detach evidence links.
@@ -1843,3 +1846,20 @@ Optional future slices per `docs/phase2-final-acceptance-post-governance-contrac
 - **Deep Research PDF:** Not in workspace at authoring; synthesis via 3C-1, R1, agent brief
 - **Next step:** 3C-R3 — Web/Mobile Surface Role Contract (recommended)
 - **Verification (this docs contract):** `git diff --check`: pass; `npx tsc --noEmit`: pass; `npm run build`: pass; `bash scripts/check-trust-language.sh`: pass; `bash scripts/check-legacy-surfaces.sh`: pass. Docs-only — no test run required.
+
+---
+
+## DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001
+
+- **Status:** complete — **FULL REFERENCE ROUND-TRIP — HUMAN PASS WITH MINOR DEVIATIONS** (Kay, 2026-07-18)
+- **Scope:** Restore the desktop Orvek Inspector / workbench to frozen v0 reference authority; prove full reference model can persist and render through production → canonical-live.
+- **Runtime behavior:** `/dev/orvek-v0-reference` serves frozen reference; `/dev/orvek-v0-canonical-live` hydrates full-reference composition from production persistence; Map header, model-status card, and Import review travel through provider contracts.
+- **Human acceptance receipt:** `docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/37-full-reference-round-trip-human-pass.md`
+- **What this proves:** Production can represent and display the complete canonical reference model.
+- **What this does not prove:** Automatic generation from ChatGPT imports (next separate campaign).
+- **What remains partial / out of scope:**
+  - known dead controls inherited from the reference (Import Accept/Reject local-only; Escape on OverlayShell)
+  - minor non-blocking visual deviations (~10%)
+  - full-reference seed left in place (not cleaned)
+  - separate intelligence contradiction receipt unchanged
+- **Next step:** Commit this campaign; start automatic import materialisation as a separate campaign.

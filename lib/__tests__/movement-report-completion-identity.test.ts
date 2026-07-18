@@ -53,7 +53,7 @@ function readSource(relativePath: string): string {
 }
 
 describe("movement report completion — production identity", () => {
-  it("does not stamp rep-weekly into primary action route intents", () => {
+  it("stamps the live report id into the weekly continuation action", () => {
     const props = mapTodayDataToV0Props({
       snapshot: READY_SNAPSHOT,
       movementDepthById: READY_DEPTH,
@@ -65,7 +65,7 @@ describe("movement report completion — production identity", () => {
       (action) => action.label === "Continue from what changed",
     );
 
-    expect(continueAction?.reportId).toBeUndefined();
+    expect(continueAction?.reportId).toBe(RUNTIME_MODEL_UPDATE_ID);
     expect(props.report?.reportId).toBe(RUNTIME_MODEL_UPDATE_ID);
     expect(props.report?.reportId).not.toBe(REFERENCE_WEEKLY_REPORT_ID);
   });

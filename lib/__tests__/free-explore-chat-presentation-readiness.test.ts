@@ -263,13 +263,18 @@ describe("free explore chat presentation readiness", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
     const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
     const shellSource = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
+    const runtimeSource = readSource(
+      "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
+    );
 
     expect(hookSource).toContain("useOrvekExploreChat");
     expect(hookSource).toContain("buildFreeExploreChatProductionDataApi");
     expect(hookSource).toContain("freeExploreChatApi");
     expect(hookSource).toContain("sendHandlerAvailable: exploreChatSendReady");
     expect(hookSource).toContain("sendMessage");
-    expect(shellSource).toContain("handlers={handlers}");
+    expect(shellSource).toContain("CanonicalLiveRuntimeEntry");
+    expect(runtimeSource).toContain("OrvekPageHandlersProvider");
+    expect(runtimeSource).toContain("value={handlers}");
     expect(hookSource).not.toContain("OrvekPageHandlersProvider");
     expect(workbenchSource).toContain("OrvekPageHandlersProvider");
   });

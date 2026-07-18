@@ -1,0 +1,114 @@
+{
+  "verdict": "PASS",
+  "failReason": null,
+  "keepSeed": true,
+  "checks": [
+    {
+      "id": "today-briefing-title",
+      "state": "Today initial",
+      "classification": "PASS",
+      "detail": "Live briefing uses movement-count headline",
+      "fixtureShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/01-today-fixture.png",
+      "liveShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/01-today-live.png"
+    },
+    {
+      "id": "today-semantic-titles",
+      "state": "Today initial / NOW / movements",
+      "classification": "PASS",
+      "detail": "Today shows core twin titles (3/16 global hits so far)",
+      "liveShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/01-today-live.png"
+    },
+    {
+      "id": "inspector-evidence",
+      "state": "Evidence / Context",
+      "classification": "PASS",
+      "detail": "Inspector Evidence/Context sections present",
+      "liveShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/03-evidence-live.png"
+    },
+    {
+      "id": "linked-navigation",
+      "state": "Linked object",
+      "classification": "PASS",
+      "detail": "MU Evidence receipt LinkedRow navigable"
+    },
+    {
+      "id": "back-restoration",
+      "state": "Back",
+      "classification": "PASS",
+      "detail": "Back control restored prior selection path"
+    },
+    {
+      "id": "model-movement",
+      "state": "Model Movement",
+      "classification": "PASS",
+      "detail": "Movement tab shows movement content",
+      "liveShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/05-movement-live.png"
+    },
+    {
+      "id": "report-overlay",
+      "state": "Report overlay",
+      "classification": "PASS",
+      "detail": "Report overlay opened on live identity",
+      "liveShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/06-report-live.png"
+    },
+    {
+      "id": "map-composition",
+      "state": "Map",
+      "classification": "PASS",
+      "detail": "Map rails + twin object titles present",
+      "liveShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/07-map-live.png"
+    },
+    {
+      "id": "decisions",
+      "state": "Decision",
+      "classification": "PASS",
+      "detail": "Decisions rail populated",
+      "liveShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/08-decisions-live.png"
+    },
+    {
+      "id": "active-questions",
+      "state": "Active Question",
+      "classification": "PASS",
+      "detail": "Active Questions show twin titles",
+      "liveShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/09-aq-live.png"
+    },
+    {
+      "id": "investigations",
+      "state": "Investigation",
+      "classification": "PASS",
+      "detail": "Investigations show twin content",
+      "liveShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/10-inv-live.png"
+    },
+    {
+      "id": "explore-free",
+      "state": "Explore",
+      "classification": "PASS",
+      "detail": "Free Explore does not show fixture conversation",
+      "liveShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/11-explore-live.png"
+    },
+    {
+      "id": "timeline",
+      "state": "Timeline",
+      "classification": "PASS",
+      "detail": "Timeline groups present (projected, not densograph t1–t14)",
+      "liveShot": "docs/agent-runs/receipts/DESKTOP-FROZEN-REFERENCE-INSPECTOR-RESTORATION-001/screenshots/step8-semantic-twin/12-timeline-live.png"
+    }
+  ],
+  "notes": [
+    "Seeded twin for user_3GfsC3U59zEc1FzcOYadDRpM1rS; MUs=dev-semantic-twin-user_3GfsC3U59zEc1FzcOYadDRpM1rS-model-update-mu-1,dev-semantic-twin-user_3GfsC3U59zEc1FzcOYadDRpM1rS-model-update-mu-2,dev-semantic-twin-user_3GfsC3U59zEc1FzcOYadDRpM1rS-model-update-aq-1-movement; reportCandidate=dev-semantic-twin-user_3GfsC3U59zEc1FzcOYadDRpM1rS-model-update-mu-1",
+    "Semantic title hits on last live body sample: 3; missing sample: Let it express itself visually before design., You often need visual expression before locking architecture., Speed vs depth, Scope reopening under uncertainty, Build Orvek into a private intelligence system, Does public visibility trigger overbuilding?, Does visual prototyping reduce architecture uncertainty?, Which features are essential for first public value?",
+    "Fixture baseline captured: true",
+    "KEEP_SEED: user=user_3GfsC3U59zEc1FzcOYadDRpM1rS email=semantic-twin-primary-1784373826231@example.com password=Twin-1784373826231-Aa1!. Cleanup: SEMANTIC_TWIN_CLEANUP=1"
+  ],
+  "seeded": {
+    "userId": "user_3GfsC3U59zEc1FzcOYadDRpM1rS",
+    "email": "semantic-twin-primary-1784373826231@example.com",
+    "password": "Twin-1784373826231-Aa1!",
+    "modelUpdateIds": [
+      "dev-semantic-twin-user_3GfsC3U59zEc1FzcOYadDRpM1rS-model-update-mu-1",
+      "dev-semantic-twin-user_3GfsC3U59zEc1FzcOYadDRpM1rS-model-update-mu-2",
+      "dev-semantic-twin-user_3GfsC3U59zEc1FzcOYadDRpM1rS-model-update-aq-1-movement"
+    ],
+    "reportCandidateId": "dev-semantic-twin-user_3GfsC3U59zEc1FzcOYadDRpM1rS-model-update-mu-1"
+  }
+}

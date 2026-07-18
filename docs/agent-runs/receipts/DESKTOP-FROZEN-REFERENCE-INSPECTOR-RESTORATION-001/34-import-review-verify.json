@@ -1,0 +1,8 @@
+{
+  "at": "2026-07-18T17:30:25.772Z",
+  "pass": false,
+  "failReason": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('#identifier-field, input[name=\"identifier\"], input[autocomplete=\"username\"], input[type=\"email\"]').first()\n",
+  "checks": {
+    "compositionId": "dev-exact-rt-user_3GfkY153edzcz5FzJhlCMFybtmc-today-composition"
+  }
+}

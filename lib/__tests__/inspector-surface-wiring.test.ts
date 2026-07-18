@@ -87,16 +87,15 @@ describe("inspector surface wiring", () => {
   it("mounts one production Inspector while preserving the isolated reference Inspector", () => {
     const workbench = readSource("components/orvek-v0/workbench.tsx");
     const referenceRoute = readSource("app/dev/orvek-v0-reference/page.tsx");
-    const inspectorSource = readSource("components/inspector/WorkbenchInspector.tsx");
+    const frozenWorkbench = readSource("components/orvek-v0-reference-frozen/workbench.tsx");
 
-    expect(workbench).toContain(
-      "inspector={productionInspector ? <WorkbenchInspector /> : <EvidencePanel />}"
-    );
+    expect(workbench).toContain("inspector={<EvidencePanel />}");
     expect(workbench).toContain("<ProductionInspectorBridge>");
-    expect(inspectorSource).toContain("Desktop keeps an honest empty Inspector instead of collapsing to nothing.");
-    expect(inspectorSource).toContain('<InspectorChrome className="hidden w-[min(100%,380px)] lg:flex" />');
-    expect(referenceRoute).toContain("<Workbench />");
+    expect(workbench).not.toContain("WorkbenchInspector");
+    expect(referenceRoute).toContain("<FrozenReferenceWorkbench />");
     expect(referenceRoute).not.toContain("dataApi=");
+    expect(frozenWorkbench).toContain('inspector={<EvidencePanel />}');
+    expect(frozenWorkbench).not.toContain("ProductionInspectorBridge");
   });
 
   it("wires Your Map workbench list selection to usermap_conclusion inspector context", () => {
@@ -240,6 +239,29 @@ describe("inspector surface wiring", () => {
     expect(modelUpdatePanel).not.toContain("Movement summary");
     expect(modelUpdatePanel).not.toContain("What Would Change This Conclusion");
     expect(modelUpdatePanel).not.toContain("What would change this");
+  });
+
+  it("hydrates live model_update depth through the shared authority inspector", () => {
+    const authoritySource = readSource("components/orvek-v0-authority/evidence-panel.tsx");
+    const presentationSource = readSource(
+      "lib/orvek-v0/production/model-update-inspector-presentation.ts",
+    );
+
+    expect(authoritySource).toContain("useProductionModelUpdateInspector");
+    expect(authoritySource).toContain("fetchInspectorModelUpdateDetail");
+    expect(authoritySource).toContain("loadAffectedObjectContext");
+    expect(authoritySource).toContain("stickyInspectorOverlayRef");
+    expect(authoritySource).toContain("composeProductionModelUpdateCanonicalViewModel");
+    expect(authoritySource).toContain("<ObjectDetail");
+    expect(authoritySource).toContain("<MovementView");
+    expect(authoritySource).not.toContain("function ProductionModelUpdateEvidenceDetail");
+    expect(authoritySource).not.toContain("function ProductionModelUpdateMovementView");
+    expect(authoritySource).toContain("pendingInspectorScrollTop");
+    expect(authoritySource).not.toContain("Full affected-object detail is not exposed");
+    expect(authoritySource).not.toContain("WorkbenchInspector");
+    expect(presentationSource).toContain("composeProductionModelUpdateCanonicalViewModel");
+    expect(presentationSource).not.toMatch(/["']Reference item["']/);
+    expect(presentationSource).not.toMatch(/["']Linked pattern["']/);
   });
 
   it("clears cross-surface inspector selection on navigation", () => {

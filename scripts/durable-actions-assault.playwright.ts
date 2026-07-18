@@ -20,7 +20,7 @@ type EnvMap = Record<string, string>;
 
 const ROOT = resolve(process.cwd());
 const LOCAL_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/companion";
-const ORIGIN = "http://localhost:3000";
+const ORIGIN = process.env.DESKTOP_PARITY_BASE_URL ?? "http://localhost:3100";
 
 const FIXTURE_CONCLUSION_TITLE = "Durable actions assault correctable conclusion";
 const FIXTURE_ORIGINAL_ASSERTION =
@@ -279,15 +279,10 @@ test.describe("durable user actions browser proof", () => {
     await expect(titleLocator).toBeVisible({ timeout: 60_000 });
     await refreshSessionToken();
     await refreshAuthCookies(context, baseURL);
-    const detailResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes(`/api/user-map/conclusions/${FIXTURE_CORRECTABLE_CONCLUSION_ID}`) &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-      { timeout: 30_000 }
-    );
     await titleLocator.click();
-    await detailResponsePromise;
+    await expect(
+      page.getByTestId("orvek-v0-map-page").getByTestId("durable-correction-chip-this-is-wrong")
+    ).toBeVisible({ timeout: 30_000 });
   }
 
   test("correction journey persists through reload and inspector", async ({ browser, baseURL }) => {

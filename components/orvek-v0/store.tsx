@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -13,12 +14,21 @@ export type OrvekPage = "today" | "map" | "decisions" | "timeline" | "explore"
 export type OrvekOverlay = "capture" | "import" | "search" | null
 export type InspectorTab = "evidence" | "movement"
 
+export type WorkbenchHistoryEntry = {
+  selectedId: string
+  inspectorTab: InspectorTab
+  trailLabel: string | null
+  scrollTop: number
+}
+
 interface WorkbenchValue {
   page: OrvekPage
   setPage: (p: OrvekPage) => void
   selectedId: string | null
   /** select an object; optional tab defaults to evidence */
   select: (id: string | null, tab?: InspectorTab) => void
+  /** push a linked object onto Inspector history and keep a return target */
+  pushSelection: (id: string, tab?: InspectorTab, trailLabel?: string | null) => void
   inspectorTab: InspectorTab
   /** True when the current tab came from select(id, tab) or an explicit Inspector UI click. */
   inspectorTabExplicit: boolean
@@ -35,6 +45,15 @@ interface WorkbenchValue {
   /** true while an Explore conversation is producing possible movement */
   exploreActive: boolean
   setExploreActive: (v: boolean) => void
+  canGoBack: boolean
+  backTarget: WorkbenchHistoryEntry | null
+  goBack: () => void
+  /** Latest Inspector body scrollTop; EvidencePanel keeps this current. */
+  captureInspectorScrollTop: () => number
+  setInspectorScrollTopCapture: (getter: (() => number) | null) => void
+  /** ScrollTop to restore after Back; EvidencePanel consumes this once. */
+  pendingInspectorScrollTop: number | null
+  consumePendingInspectorScrollTop: () => number | null
 }
 
 const WorkbenchContext = createContext<WorkbenchValue | null>(null)
@@ -49,6 +68,27 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [corrections, setCorrections] = useState<Record<string, string>>({})
   const [extractions, setExtractions] = useState<Record<string, string>>({})
   const [exploreActive, setExploreActive] = useState(false)
+  const [history, setHistory] = useState<WorkbenchHistoryEntry[]>([])
+  const [pendingInspectorScrollTop, setPendingInspectorScrollTop] = useState<number | null>(
+    null,
+  )
+  const scrollTopGetterRef = useRef<(() => number) | null>(null)
+  const pendingScrollRef = useRef<number | null>(null)
+
+  const setInspectorScrollTopCapture = useCallback((getter: (() => number) | null) => {
+    scrollTopGetterRef.current = getter
+  }, [])
+
+  const captureInspectorScrollTop = useCallback(() => {
+    return scrollTopGetterRef.current?.() ?? 0
+  }, [])
+
+  const consumePendingInspectorScrollTop = useCallback(() => {
+    const value = pendingScrollRef.current
+    pendingScrollRef.current = null
+    setPendingInspectorScrollTop(null)
+    return value
+  }, [])
 
   const setInspectorTab = useCallback((tab: InspectorTab) => {
     setInspectorTabState(tab)
@@ -59,7 +99,34 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     setSelectedId(id)
     setInspectorTabExplicit(tab !== undefined)
     setInspectorTabState(tab ?? "evidence")
+    setHistory([])
+    pendingScrollRef.current = 0
+    setPendingInspectorScrollTop(0)
   }, [])
+  const pushSelection = useCallback(
+    (id: string, tab?: InspectorTab, trailLabel?: string | null) => {
+      const scrollTop = scrollTopGetterRef.current?.() ?? 0
+      setHistory((prev) =>
+        selectedId
+          ? [
+              ...prev,
+              {
+                selectedId,
+                inspectorTab,
+                trailLabel: trailLabel?.trim() || null,
+                scrollTop,
+              },
+            ]
+          : prev,
+      )
+      setSelectedId(id)
+      setInspectorTabExplicit(tab !== undefined)
+      setInspectorTabState(tab ?? "evidence")
+      pendingScrollRef.current = 0
+      setPendingInspectorScrollTop(0)
+    },
+    [inspectorTab, selectedId],
+  )
   const setPage = useCallback((p: OrvekPage) => setPageState(p), [])
   const openReport = useCallback((id: string | null) => setReportId(id), [])
   const applyCorrection = useCallback((objectId: string, label: string) => {
@@ -68,6 +135,20 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const setExtraction = useCallback((id: string, value: string) => {
     setExtractions((prev) => ({ ...prev, [id]: value }))
   }, [])
+  const goBack = useCallback(() => {
+    setHistory((prev) => {
+      const nextEntry = prev[prev.length - 1] ?? null
+      if (!nextEntry) {
+        return prev
+      }
+      setSelectedId(nextEntry.selectedId)
+      setInspectorTabExplicit(true)
+      setInspectorTabState(nextEntry.inspectorTab)
+      pendingScrollRef.current = nextEntry.scrollTop
+      setPendingInspectorScrollTop(nextEntry.scrollTop)
+      return prev.slice(0, -1)
+    })
+  }, [])
 
   const value = useMemo<WorkbenchValue>(
     () => ({
@@ -75,6 +156,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       setPage,
       selectedId,
       select,
+      pushSelection,
       inspectorTab,
       inspectorTabExplicit,
       setInspectorTab,
@@ -88,12 +170,20 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       setExtraction,
       exploreActive,
       setExploreActive,
+      canGoBack: history.length > 0,
+      backTarget: history[history.length - 1] ?? null,
+      goBack,
+      captureInspectorScrollTop,
+      setInspectorScrollTopCapture,
+      pendingInspectorScrollTop,
+      consumePendingInspectorScrollTop,
     }),
     [
       page,
       setPage,
       selectedId,
       select,
+      pushSelection,
       inspectorTab,
       inspectorTabExplicit,
       overlay,
@@ -104,6 +194,12 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       extractions,
       setExtraction,
       exploreActive,
+      history,
+      goBack,
+      captureInspectorScrollTop,
+      setInspectorScrollTopCapture,
+      pendingInspectorScrollTop,
+      consumePendingInspectorScrollTop,
     ],
   )
 

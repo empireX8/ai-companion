@@ -127,12 +127,12 @@ describe("free explore post-send side-effect audit", () => {
 
   it("keeps reference route mock-only and send-disabled", () => {
     const referencePageSource = readSource("app/dev/orvek-v0-reference/page.tsx");
-    const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
+    const frozenWorkbenchSource = readSource("components/orvek-v0-reference-frozen/workbench.tsx");
 
-    expect(referencePageSource).toContain("<Workbench />");
+    expect(referencePageSource).toContain("<FrozenReferenceWorkbench />");
     expect(referencePageSource).not.toContain("handlers=");
     expect(referencePageSource).not.toContain("useOrvekHybridWorkbenchDataApi");
-    expect(workbenchSource).toContain("createMockOrvekDataApi");
+    expect(frozenWorkbenchSource).toContain("createFrozenReferenceDataApi");
   });
 
   it("keeps root hard-swapped workbench and quarantines legacy /explore UI", () => {
@@ -142,7 +142,7 @@ describe("free explore post-send side-effect audit", () => {
     const workbenchSource = readSource("components/orvek-v0/workbench.tsx");
 
     expect(appShellSource).toContain("OrvekWorkbenchShell");
-    expect(shellSource).toContain("useOrvekHybridWorkbenchDataApi");
+    expect(shellSource).toContain("CanonicalLiveRuntimeEntry");
     expect(shellSource).not.toContain("OrvekExplorePage");
     expect(exploreRouteSource).toContain("OrvekExplorePage");
     expect(workbenchSource).toContain("<ExplorePage />");
@@ -162,17 +162,17 @@ describe("free explore post-send side-effect audit", () => {
   });
 
   it("withholds reference inspector movement cards during live Free Explore chat", () => {
-    const evidencePanelSource = readSource("components/orvek-v0/evidence-panel.tsx");
+    const evidencePanelSource = readSource("components/orvek-v0-authority/evidence-panel.tsx");
 
     expect(evidencePanelSource).toContain("hasLiveExploreChatFromProvider");
     expect(evidencePanelSource).toContain("showReferenceConversationMovement");
     expect(evidencePanelSource).toContain("showLiveConversationMovementEmpty");
     expect(evidencePanelSource).toContain("EXPLORE_CONVERSATION_MOVEMENT_EMPTY_COPY");
     expect(evidencePanelSource).toMatch(
-      /showReferenceConversationMovement\s*&&\s*\([\s\S]*EXPLORE_MOVEMENT\.map/,
+      /showReferenceConversationMovement\s*&&\s*\([\s\S]*referenceConversationMovement\.map/,
     );
     expect(evidencePanelSource).not.toMatch(
-      /exploreActive\s*&&\s*\([\s\S]*EXPLORE_MOVEMENT\.map/,
+      /exploreActive\s*&&\s*\([\s\S]*referenceConversationMovement\.map/,
     );
   });
 });
