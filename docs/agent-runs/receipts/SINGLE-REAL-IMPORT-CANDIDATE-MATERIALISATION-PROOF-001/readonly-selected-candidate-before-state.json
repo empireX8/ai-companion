@@ -1,0 +1,96 @@
+{
+  "campaign": "SINGLE-REAL-IMPORT-CANDIDATE-MATERIALISATION-PROOF-001",
+  "phase": "before_state",
+  "userId": "user_34TUYA53pI1QRLK73O22Kve1a1G",
+  "queriedAt": "2026-07-19T13:35:21.049Z",
+  "mode": "read_only",
+  "mutationsPerformed": false,
+  "prismaClientRoot": "/Users/user/ai-companion",
+  "selectedKey": {
+    "sourceTable": "ReferenceItem",
+    "id": "3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+    "reviewKey": "reference_item:3a6163dd-0f85-4bf5-8eb8-924579f1db62"
+  },
+  "confirmation": {
+    "noMutationPerformed": true,
+    "scriptContainsNoWriteCalls": true
+  },
+  "counts": {
+    "pendingCandidateTotal": 54,
+    "referenceItemCandidateTotal": 29,
+    "contradictionNodeCandidateTotal": 25,
+    "patternClaimTotal": 7,
+    "activeReferenceTotal": 0,
+    "completedImportBatches": 1
+  },
+  "selectedRow": {
+    "sourceTable": "ReferenceItem",
+    "id": "3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+    "reviewKey": "reference_item:3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+    "type": "preference",
+    "status": "candidate",
+    "confidence": "low",
+    "titleOrStatement": "I think prefer chicken burgers to beef burgers 😳",
+    "provenance": {
+      "sourceSessionOrigin": "IMPORTED_ARCHIVE",
+      "sourceSessionId": "7dd386eb-e6ba-493a-856d-fc8815895248",
+      "sourceMessageId": "d1060934-f19d-4693-b255-d23570af50e1",
+      "conversationLabel": "Revealing life-changing news",
+      "chatgptConversationExternalId": "6941704f-1ef8-8326-957f-2aeab6ae089a",
+      "importBatchIds": [
+        "cmp2ftxhj0000qlsyxi55jo20"
+      ],
+      "importBatchIdPrimary": "cmp2ftxhj0000qlsyxi55jo20"
+    },
+    "sourceExcerpt": "I think prefer chicken burgers to beef burgers 😳",
+    "createdAt": "2026-05-12T09:40:35.076Z",
+    "updatedAt": "2026-05-12T09:40:35.076Z",
+    "passesMindContextQualityGate": true
+  },
+  "existingRelatedObjects": {
+    "understandingEvidenceLinks": [],
+    "modelUpdates": [],
+    "contradictionReferenceLinks": [],
+    "note": "ReferenceItem accept does not create UELs or ModelUpdates (schema target gaps)."
+  },
+  "providerVisibleStateBeforeAcceptance": {
+    "destination": "Orvek Map → Background / Context rail (mind_context) + Inspector when selected",
+    "providerPath": [
+      "OrvekMapPage / useOrvekHybridWorkbenchDataApi",
+      "fetchMindContextSnapshot → GET /api/reference/list?status=active&limit=50",
+      "buildMindContextDisplayItems(snapshot, 3)",
+      "mapMapDataToV0Props / buildMapProductionDataApi context rail"
+    ],
+    "activeQualityReferenceMemories": [],
+    "mapContextRailTop3Preview": [
+      {
+        "kind": "pattern",
+        "id": "cmp2fylmz00f3qlsympmfpdtp",
+        "updatedAt": "2026-07-12T19:13:41.633Z",
+        "preview": "Recovery pattern: \"We're making progress though.\""
+      },
+      {
+        "kind": "pattern",
+        "id": "cmp2fylgk00euqlsyayvoxp8b",
+        "updatedAt": "2026-07-12T19:13:41.063Z",
+        "preview": "Repetitive loop (assistant/process loop) across sessions: \"Yeah, facts, I agree. And that's what I've been trying to do this time around, just commit to the be\""
+      },
+      {
+        "kind": "pattern",
+        "id": "cmp2fylfj00ejqlsy8zkc84or",
+        "updatedAt": "2026-07-12T19:13:40.510Z",
+        "preview": "Repetitive loop (cognitive overload loop) across sessions: \"I wish I could learn at the pace I could think, but then again maybe I'm just in a state of overstim"
+      }
+    ],
+    "selectedCurrentlyVisibleOnMap": false,
+    "todayConsumesReferenceItems": false,
+    "timelineConsumesReferenceItems": false
+  },
+  "integrity": {
+    "selectedIsImportDerived": true,
+    "patternClaimTotalExpectedBaseline": 7,
+    "patternClaimTotalObserved": 7,
+    "mutationsPerformed": false
+  },
+  "verdict": "BEFORE_STATE_CAPTURED_READ_ONLY"
+}

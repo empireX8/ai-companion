@@ -42,6 +42,7 @@ export async function GET(request: Request) {
         createdAt: true,
         updatedAt: true,
         sourceSessionId: true,
+        sourceMessageId: true,
         supersedesId: true,
         supersedes: { select: { statement: true } },
       },

@@ -116,4 +116,13 @@ export interface OrvekObject {
   /** Production inspector bridge — maps selection to stored evidence object. */
   inspectorObjectType?: string
   inspectorObjectId?: string
+
+  /**
+   * Accepted active ReferenceItems for Map profile sections
+   * (e.g. Preferences / interests → KNOWN PREFERENCES).
+   * Not ModelUpdates; not fabricated evidence links.
+   */
+  profileFacts?: import("@/lib/map-profile-facts").MapProfileFact[]
+  profileFactsHeading?: string
+  profileFactsEmptyCopy?: string
 }

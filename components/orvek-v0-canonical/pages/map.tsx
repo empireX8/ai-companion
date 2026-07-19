@@ -7,6 +7,7 @@ import { useWorkbench } from "@/components/orvek-v0/store"
 import { MapPageHeaderStats } from "@/components/orvek-v0/MapPageHeaderStats"
 import { SectionLabel, TYPE_META } from "@/components/orvek-v0/primitives"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
+import { profileSectionMappingForObject } from "@/lib/map-profile-facts"
 import {
   GitCompareArrows,
 } from "lucide-react"
@@ -23,7 +24,8 @@ const CORRECTIONS = [
 export function MapPage() {
   const { select, applyCorrection, corrections, setInspectorTab } = useWorkbench()
   const { getObject, getObjects, mapCategories, mapDefaultSelectedId } = useCanonicalData()
-  const { mapHeader } = useOrvekData()
+  const data = useOrvekData()
+  const { mapHeader } = data
   const [localId, setLocalId] = useState(mapDefaultSelectedId)
 
   const obj = getObject(localId)
@@ -159,6 +161,56 @@ export function MapPage() {
                 </p>
               </div>
             )}
+
+            {(() => {
+              const profileSection = profileSectionMappingForObject(obj)
+              if (!profileSection || data.referenceSurface === true) {
+                return null
+              }
+              const facts = obj.profileFacts ?? []
+              const heading =
+                obj.profileFactsHeading ?? profileSection.factsHeading
+              const emptyCopy =
+                obj.profileFactsEmptyCopy ?? profileSection.emptyFactsCopy
+              return (
+                <div
+                  className="mt-5"
+                  data-testid="map-profile-facts"
+                  data-profile-section={profileSection.sectionObjectId}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {heading}
+                  </p>
+                  {facts.length === 0 ? (
+                    <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+                      {emptyCopy}
+                    </p>
+                  ) : (
+                    <ul className="mt-2 space-y-2.5">
+                      {facts.map((fact) => (
+                        <li
+                          key={fact.id}
+                          className="o-material rounded-[10px] px-3.5 py-3"
+                          data-testid="map-profile-fact"
+                          data-reference-item-id={fact.id}
+                        >
+                          <p className="text-[14px] leading-relaxed text-foreground text-pretty">
+                            {fact.statement}
+                          </p>
+                          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                            {[
+                              `type: ${fact.referenceType}`,
+                              `confidence: ${fact.confidence}`,
+                              `provenance: ${fact.provenanceLabel}`,
+                            ].join(" · ")}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )
+            })()}
 
             {obj.whyItMatters && (
               <DetailBlock label="Why Orvek thinks this">{obj.whyItMatters}</DetailBlock>
