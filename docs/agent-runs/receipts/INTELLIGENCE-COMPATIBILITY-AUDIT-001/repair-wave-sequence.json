@@ -1,0 +1,186 @@
+{
+  "campaign": "INTELLIGENCE-COMPATIBILITY-AUDIT-001",
+  "principle": "dependency_and_leverage_not_visual_prominence",
+  "clarificationReceipt": "15-wave-sequencing-clarification.md",
+  "notFirst": ["chatgpt_uploader", "global_mock_cleanup", "WAVE-2.1_until_WAVE-1.1_passes"],
+  "recommendedNextImplementationCampaign": {
+    "id": "WAVE-1.1",
+    "title": "ContradictionNode → canonical Map Active-conflicts live projection",
+    "rationale": "CN accept write path is implemented and unit-proven, but Map Active conflicts is driven by disputed UserMapConclusion only — not ContradictionNode. Wave 2.1 Map-conflict proof is invalid until this read path exists; composition seed also blocks live Map merge.",
+    "dbMutation": "forbidden",
+    "then": {
+      "id": "WAVE-2.1",
+      "title": "Single genuine ContradictionNode accept → Map conflict → ModelUpdate proof",
+      "prerequisite": "WAVE-1.1 PASS"
+    }
+  },
+  "decision": {
+    "option": "C",
+    "hypotheses": {
+      "A_wave1_already_complete": false,
+      "B_wave1_inside_wave2_1": false,
+      "C_wave2_1_premature_wave1_1_required": true
+    }
+  },
+  "waves": [
+    {
+      "id": 0,
+      "name": "Controlling unmask readiness",
+      "goal": "Document composition presence; define cutover gates",
+      "pathways": ["architecture map"],
+      "surfaces": [],
+      "genuineRecords": ["composition row", "gate counts"],
+      "dbMutation": "forbidden",
+      "mockRemoval": "none",
+      "humanVerification": "receipt review",
+      "successVerdict": "Kay knows seed masks; Import live",
+      "outOfScope": ["deleting composition"],
+      "status": "complete_this_audit"
+    },
+    {
+      "id": "1.R",
+      "name": "Residual foundational translation (deferred)",
+      "goal": "RI UEL/MU schema policy expansion; goal authority; ProfileArtifact fate",
+      "pathways": ["ReferenceItem materialisation gaps", "goal ontology", "ProfileArtifact policy"],
+      "surfaces": [],
+      "genuineRecords": ["chicken-burger RI", "pending samples", "203 ProfileArtifacts"],
+      "dbMutation": "prefer code-only; schema only if Kay authorises",
+      "mockRemoval": "none",
+      "humanVerification": "contract review",
+      "successVerdict": "written contracts; single goal read authority",
+      "outOfScope": ["bulk accepts", "uploader"],
+      "blocksWave11": false,
+      "blocksWave21": false,
+      "status": "deferred_non_blocking"
+    },
+    {
+      "id": "1.1",
+      "name": "ContradictionNode → Map Active-conflicts live projection",
+      "goal": "Project open ContradictionNode onto canonical Map Active conflicts with Inspector selection and composition-safe merge rule",
+      "pathways": ["W1-C CN→Map read projection", "W1-F composition conflicts exception"],
+      "surfaces": ["Map Active conflicts", "Inspector"],
+      "genuineRecords": ["25 pending CN read-only", "0 open CN"],
+      "dbMutation": "forbidden",
+      "mockRemoval": "none",
+      "humanVerification": "automated tests; optional non-Kay fixture; Kay accept reserved for 2.1",
+      "successVerdict": "open CN id appears on Map conflicts rail; candidates excluded; composition cannot wholly hide live conflicts",
+      "outOfScope": ["accept/reject", "goals", "ProfileArtifact", "RI MU schema", "uploader", "Wave 2.1 mutation"],
+      "status": "next"
+    },
+    {
+      "id": 2,
+      "name": "Distinct genuine-object proofs",
+      "goal": "One human-visible proof per object family",
+      "order": [
+        "WAVE-2.1 ContradictionNode accept → Map → MU (after 1.1)",
+        "Additional curated ReferenceItem accepts",
+        "PatternClaim live Map proof",
+        "UserMapConclusion + ModelUpdate visibility",
+        "SurfacedAction Decisions live list"
+      ],
+      "pathways": ["CN", "RI", "PatternClaim", "UM", "MU", "SurfacedAction"],
+      "surfaces": ["Import", "Map", "Decisions", "Timeline"],
+      "genuineRecords": ["25 CN", "28 RI pending", "7 PatternClaims", "1 UM", "1 MU", "7 SurfacedActions"],
+      "dbMutation": "human accept/reject only under Kay gate",
+      "mockRemoval": "none until wave 3",
+      "humanVerification": "canonical surface visual pass per family",
+      "successVerdict": "each family proven without seed object ids",
+      "outOfScope": ["quality rewrite of all 53"],
+      "prerequisite": "WAVE-1.1 PASS before WAVE-2.1"
+    },
+    {
+      "id": 3,
+      "name": "Surface-by-surface production cutovers",
+      "goal": "Live providers own rails",
+      "order": ["Import(done)", "Map", "Timeline/Movement", "Decisions", "Explore rails", "Today", "Reports/badges"],
+      "pathways": ["hybrid merge cutover"],
+      "surfaces": ["Map", "Timeline", "Decisions", "Explore", "Today", "Reports", "Nav"],
+      "genuineRecords": ["post-wave-2 proofs"],
+      "dbMutation": "may delete/disable composition after Kay approval",
+      "mockRemoval": ["M1 per surface", "M2", "M3", "seed report"],
+      "humanVerification": "per-surface honest-empty or genuine-only",
+      "successVerdict": "no seed densograph on cut-over surfaces",
+      "outOfScope": ["Capture overlay", "uploader"]
+    },
+    {
+      "id": 4,
+      "name": "Extraction-quality improvements",
+      "goal": "Reduce noise; improve titles; gate PatternClaim auto-active",
+      "pathways": ["extraction", "candidate builders", "pattern batch"],
+      "surfaces": ["Import", "Map"],
+      "genuineRecords": ["pending 53", "future imports"],
+      "dbMutation": "reprocess policies carefully; no silent rewrite of accepted",
+      "mockRemoval": "none",
+      "humanVerification": "sampled candidates mostly useful",
+      "successVerdict": "quality sample improves",
+      "outOfScope": ["uploader UI"]
+    },
+    {
+      "id": 5,
+      "name": "Controlled natural-entry sequence",
+      "goal": "Prove journal-chat / Free Explore / durable controls",
+      "pathways": ["message after()", "explore", "durable PATCH"],
+      "surfaces": ["Explore", "Map", "Decisions", "Timeline"],
+      "genuineRecords": ["new supervised entries"],
+      "dbMutation": "yes under Kay supervision",
+      "mockRemoval": "none",
+      "humanVerification": "new entry → durable visible object",
+      "successVerdict": "natural entry end-to-end",
+      "outOfScope": ["voice/attachment polish", "Capture overlay"]
+    },
+    {
+      "id": 6,
+      "name": "Final mock/fallback removal",
+      "goal": "Remove full_reference composition and seed report from root",
+      "pathways": ["composition delete/disable"],
+      "surfaces": ["all root"],
+      "genuineRecords": ["post cutover"],
+      "dbMutation": "delete composition/report seed rows",
+      "mockRemoval": ["M1", "M15", "residual root fallbacks"],
+      "humanVerification": "root cannot show dev-exact-rt densograph",
+      "successVerdict": "root genuine-or-honest-empty",
+      "outOfScope": ["/dev frozen fixtures"]
+    },
+    {
+      "id": 7,
+      "name": "Current ChatGPT uploader",
+      "goal": "Re-enable honest archive upload into existing processors",
+      "pathways": ["upload API + queue"],
+      "surfaces": ["Import upload"],
+      "genuineRecords": ["new archives"],
+      "dbMutation": "yes on import",
+      "mockRemoval": "n/a",
+      "humanVerification": "new archive → candidates → review",
+      "successVerdict": "uploader live without seed",
+      "outOfScope": ["blind re-derive historical noise"],
+      "whyNotFirst": "pipeline already ran; materialisation/surface truth unfinished"
+    },
+    {
+      "id": 8,
+      "name": "Dead-button / interaction completion",
+      "goal": "Wire Track Decision / Log Conflict / Capture / chips",
+      "pathways": ["live entry UX"],
+      "surfaces": ["Decisions", "Map", "Capture"],
+      "genuineRecords": ["after durable targets exist"],
+      "dbMutation": "yes",
+      "mockRemoval": ["CaptureOverlay fake"],
+      "humanVerification": "buttons persist real objects",
+      "successVerdict": "no mock capture affordances",
+      "outOfScope": ["unrelated UI polish"]
+    },
+    {
+      "id": 9,
+      "name": "Security and production-readiness audit",
+      "goal": "Evidence leakage, auth, readiness",
+      "pathways": ["all"],
+      "surfaces": ["all"],
+      "genuineRecords": ["full account"],
+      "dbMutation": "forbidden during audit",
+      "mockRemoval": "n/a",
+      "humanVerification": "security PASS",
+      "successVerdict": "production readiness decision",
+      "outOfScope": ["feature work"],
+      "productionReadinessUntilThen": "NO"
+    }
+  ]
+}

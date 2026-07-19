@@ -1,0 +1,192 @@
+{
+  "campaign": "INTELLIGENCE-COMPATIBILITY-AUDIT-001",
+  "scope": "production_root_live_only",
+  "excluded": ["/dev frozen fixtures", "orvek-v0-canonical-reference", "parallel rollback"],
+  "kayComposition": {
+    "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-today-composition",
+    "source": "full_reference_round_trip_seed",
+    "present": true
+  },
+  "masks": [
+    {
+      "id": "M1",
+      "file": "lib/exact-fixture-round-trip-seed.ts + lib/canonical-today-composition.ts + hybrid-workbench-api.ts applyCompositionWorkbenchRails",
+      "fixtureOrCompositionId": "full_reference_round_trip_seed / dev-exact-rt-*",
+      "routeCondition": "CanonicalTodayComposition row exists for user",
+      "providerMerge": "replaces Today densograph; owns Map/Timeline/Decisions/Explore rails",
+      "affectedSurfaces": ["Today", "Map", "Timeline", "Decisions", "Explore", "Reports", "Model Movement cards", "headers"],
+      "genuineUnderneath": true,
+      "mode": "replace",
+      "honestEmpty": "N/A while present",
+      "removingNowBreaksContract": true
+    },
+    {
+      "id": "M2",
+      "file": "exact-fixture-round-trip-seed / composition workbench",
+      "fixtureOrCompositionId": "mapHeader receiptsLabel 243 / openQuestionsLabel 7",
+      "routeCondition": "composition workbench on root",
+      "providerMerge": "replaces live headerStats",
+      "affectedSurfaces": ["Map"],
+      "genuineUnderneath": true,
+      "mode": "replace",
+      "honestEmpty": "live 0 / —",
+      "removingNowBreaksContract": true
+    },
+    {
+      "id": "M3",
+      "file": "composition modelStatusCard",
+      "fixtureOrCompositionId": "4 places / 7 questions / 3 reviews",
+      "routeCondition": "composition workbench",
+      "providerMerge": "TopBar modelStatusCard",
+      "affectedSurfaces": ["Nav badges"],
+      "genuineUnderneath": true,
+      "mode": "replace",
+      "honestEmpty": "generic Model movement / Open your map",
+      "removingNowBreaksContract": true
+    },
+    {
+      "id": "M4",
+      "file": "composition importReview",
+      "fixtureOrCompositionId": "import-cand-ic1..ic4",
+      "routeCondition": "composition may embed",
+      "providerMerge": "OVERRIDDEN by live fetchImportReviewCandidates",
+      "affectedSurfaces": ["Import"],
+      "genuineUnderneath": true,
+      "mode": "live_overrides_seed",
+      "honestEmpty": "empty/disabled when no pending",
+      "removingNowBreaksContract": false
+    },
+    {
+      "id": "M5",
+      "file": "lib/orvek-v0/production/hybrid-workbench-api.ts",
+      "fixtureOrCompositionId": null,
+      "routeCondition": "shouldMerge*ProductionApi false",
+      "providerMerge": "shell emptyCopy withhold",
+      "affectedSurfaces": ["Map", "Timeline", "Decisions", "Experiment", "AQ", "Investigations"],
+      "genuineUnderneath": "maybe_in_flight",
+      "mode": "withhold",
+      "honestEmpty": true,
+      "removingNowBreaksContract": true
+    },
+    {
+      "id": "M6",
+      "file": "hybrid-workbench-api injectLiveMovementIdsIntoTimelineGroups",
+      "fixtureOrCompositionId": "live ModelUpdate ids",
+      "routeCondition": "Today ready; Timeline not fully merged",
+      "providerMerge": "supplement Today-lane timeline",
+      "affectedSurfaces": ["Timeline"],
+      "genuineUnderneath": true,
+      "mode": "supplement",
+      "honestEmpty": true,
+      "removingNowBreaksContract": false
+    },
+    {
+      "id": "M7",
+      "file": "lib/orvek-v0/production/today-evidence-pointer-depth-gate.ts",
+      "fixtureOrCompositionId": "blocks r6/r5/r2 auto-substitute",
+      "routeCondition": "production depth merge",
+      "providerMerge": "gate thin pointers",
+      "affectedSurfaces": ["Today", "Inspector"],
+      "genuineUnderneath": "partial",
+      "mode": "gate",
+      "honestEmpty": true,
+      "removingNowBreaksContract": true
+    },
+    {
+      "id": "M8",
+      "file": "lib/map-profile-facts.ts",
+      "fixtureOrCompositionId": "defaultSummary Interests/Constraints prose",
+      "routeCondition": "section missing + facts present",
+      "providerMerge": "static summary + live facts",
+      "affectedSurfaces": ["Map"],
+      "genuineUnderneath": "facts_yes_summary_static",
+      "mode": "supplement",
+      "honestEmpty": "emptyFactsCopy",
+      "removingNowBreaksContract": false
+    },
+    {
+      "id": "M9",
+      "file": "lib/orvek-v0/mock-api.ts",
+      "fixtureOrCompositionId": "createMockOrvekDataApi zip",
+      "routeCondition": "NOT production root base (EMPTY_ORVEK_DATA_API)",
+      "providerMerge": "tests/dev only",
+      "affectedSurfaces": [],
+      "genuineUnderneath": null,
+      "mode": "dev_only",
+      "honestEmpty": null,
+      "removingNowBreaksContract": false
+    },
+    {
+      "id": "M10",
+      "file": "components/orvek-v0-canonical/fixture-provider.ts",
+      "fixtureOrCompositionId": "full fixture densograph",
+      "routeCondition": "/dev referenceSurface true only",
+      "providerMerge": "N/A on root",
+      "affectedSurfaces": [],
+      "genuineUnderneath": null,
+      "mode": "fixture_only",
+      "honestEmpty": null,
+      "removingNowBreaksContract": false
+    },
+    {
+      "id": "M11",
+      "file": "components/orvek-v0/overlays.tsx REFERENCE_IMPORT_CANDIDATES",
+      "fixtureOrCompositionId": "ic1-ic4",
+      "routeCondition": "referenceSurface === true",
+      "providerMerge": "production uses live list",
+      "affectedSurfaces": ["Import"],
+      "genuineUnderneath": null,
+      "mode": "reference_only",
+      "honestEmpty": true,
+      "removingNowBreaksContract": false
+    },
+    {
+      "id": "M12",
+      "file": "components/orvek-v0/overlays.tsx CaptureOverlay",
+      "fixtureOrCompositionId": "fake local saved UX",
+      "routeCondition": "overlay capture (TopBar may route journal-chat instead)",
+      "providerMerge": "no API",
+      "affectedSurfaces": ["Capture"],
+      "genuineUnderneath": false,
+      "mode": "fake",
+      "honestEmpty": null,
+      "removingNowBreaksContract": false
+    },
+    {
+      "id": "M13",
+      "file": "overlays SearchOverlay",
+      "fixtureOrCompositionId": "m-loop-1,d1,ctx-current,mu-1,r5",
+      "routeCondition": "search overlay path unused by prod TopBar",
+      "providerMerge": "static zip",
+      "affectedSurfaces": ["Search"],
+      "genuineUnderneath": false,
+      "mode": "static",
+      "honestEmpty": null,
+      "removingNowBreaksContract": false
+    },
+    {
+      "id": "M14",
+      "file": "lib/reference-memory.ts",
+      "fixtureOrCompositionId": null,
+      "routeCondition": "no scored relevant memories",
+      "providerMerge": "inject up to 3 recent actives",
+      "affectedSurfaces": ["Chat interpretation"],
+      "genuineUnderneath": true,
+      "mode": "fallback_supplement",
+      "honestEmpty": "empty if zero actives",
+      "removingNowBreaksContract": true
+    },
+    {
+      "id": "M15",
+      "file": "CanonicalModelMovementReport seed row",
+      "fixtureOrCompositionId": "dev-exact-rt-…-report-weekly",
+      "routeCondition": "report overlay / composition",
+      "providerMerge": "seed report object",
+      "affectedSurfaces": ["Reports"],
+      "genuineUnderneath": false,
+      "mode": "fixture_only",
+      "honestEmpty": "no report",
+      "removingNowBreaksContract": true
+    }
+  ]
+}
