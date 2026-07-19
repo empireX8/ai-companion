@@ -1,6 +1,12 @@
 import type { UserMapConclusionPublicApiListItem } from "../public-intelligence-safe-slice";
 import type { InspectorEvidenceLinkItem } from "../inspector-object-api";
 import {
+  formatMapContradictionStatusLabel,
+  isMapOpenContradictionStatus,
+  mapContradictionObjectId,
+  type MapOpenContradictionItem,
+} from "../map-open-contradictions";
+import {
   MIND_CONTEXT_SECTION_LABEL,
   type MindContextDisplayItem,
 } from "../mind-context-surface";
@@ -61,6 +67,7 @@ export type V0MapOntologyRailKey =
 
 export type V0MapOntologyRailItemKind =
   | "conclusion"
+  | "contradiction"
   | "model_goal"
   | "mind_context"
   | "open_question"
@@ -208,6 +215,8 @@ export type V0MapViewProps = {
 
 export type MapMapDataInput = {
   items: UserMapConclusionPublicApiListItem[];
+  /** Open ContradictionNodes for Active conflicts — distinct from disputed UserMapConclusions. */
+  openContradictions?: MapOpenContradictionItem[];
   isLoading: boolean;
   loadError: string | null;
   selectedId: string | null;
@@ -325,6 +334,22 @@ function buildOntologyRailGroups(input: MapMapDataInput): V0MapOntologyRailGroup
       recentlyMoved: isRecentlyMoved(item),
       kind: isGoal ? "model_goal" : "conclusion",
       inspectorObjectId: isGoal ? item.id : null,
+    });
+  }
+
+  for (const item of input.openContradictions ?? []) {
+    if (!isMapOpenContradictionStatus(item.status)) {
+      continue;
+    }
+    push("conflicts", {
+      id: mapContradictionObjectId(item.id),
+      rawId: item.id,
+      title: item.title,
+      statusLabel: formatMapContradictionStatusLabel(item.status),
+      // Open status alone is not model movement.
+      recentlyMoved: false,
+      kind: "contradiction",
+      inspectorObjectId: item.id,
     });
   }
 

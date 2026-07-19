@@ -1,0 +1,693 @@
+{
+  "campaign": "INTELLIGENCE-COMPATIBILITY-AUDIT-001",
+  "userId": "user_34TUYA53pI1QRLK73O22Kve1a1G",
+  "queriedAt": "2026-07-19T22:56:18.559Z",
+  "mode": "read_only",
+  "mutationsPerformed": false,
+  "note": "Read-only inventory. No writes. No accept/reject. No content dumps of private messages.",
+  "gate": {
+    "pendingTotal": 53,
+    "referenceItemPendingImport": 28,
+    "contradictionNodePendingImport": 25,
+    "chickenBurgerActiveCount": 1,
+    "selectedReferenceItem": {
+      "id": "3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+      "type": "preference",
+      "status": "active",
+      "confidence": "low",
+      "statementPreview": "I think prefer chicken burgers to beef burgers \ud83d\ude33",
+      "sourceSessionId": "7dd386eb-e6ba-493a-856d-fc8815895248",
+      "sourceMessageId": "d1060934-f19d-4693-b255-d23570af50e1",
+      "updatedAt": "2026-07-19T14:14:39.275Z"
+    },
+    "patternClaims": 7,
+    "modelUpdates": 1,
+    "expected": {
+      "pendingTotal": 53,
+      "referenceItemPending": 28,
+      "contradictionNodePending": 25,
+      "chickenBurgerActive": 1,
+      "patternClaims": 7,
+      "selectedIdActive": true
+    },
+    "matchesExpected": true
+  },
+  "sessions": {
+    "byOrigin": {
+      "IMPORTED_ARCHIVE": 640,
+      "APP": 3
+    },
+    "importedWithExternalId": 640,
+    "importedWithImportedAt": 640
+  },
+  "messages": {
+    "imported": 18582,
+    "app": 44,
+    "total": 18626
+  },
+  "importUploadSessions": [
+    {
+      "id": "cmp2ftxhj0000qlsyxi55jo20",
+      "status": "complete",
+      "filename": "40b9316e0e050a69af42cdcee3e964123f9d815f765436dad2fc5a6737056417-2026-02-14-17-17-37-a42fc57a6fd947659002040efa706458.zip",
+      "sessionsCreated": 640,
+      "messagesCreated": 18582,
+      "contradictionsCreated": 25,
+      "processedConversations": 640,
+      "processedMessages": 18582,
+      "createdAt": "2026-05-12T09:38:11.502Z",
+      "finishedAt": "2026-05-12T09:41:37.814Z",
+      "provenance": "import_upload"
+    }
+  ],
+  "evidenceSpans": {
+    "onImportedMessages": 5922,
+    "onAppMessages": 19,
+    "total": 5941
+  },
+  "derivationRuns": {
+    "byScopeStatus": [
+      {
+        "_count": {
+          "_all": 22
+        },
+        "scope": "native",
+        "status": "completed"
+      },
+      {
+        "_count": {
+          "_all": 635
+        },
+        "scope": "import",
+        "status": "completed"
+      },
+      {
+        "_count": {
+          "_all": 20
+        },
+        "scope": "manual",
+        "status": "completed"
+      }
+    ],
+    "importCompleted": 635,
+    "importFailed": 0,
+    "nativeTotal": 22
+  },
+  "derivationArtifacts": [
+    {
+      "_count": {
+        "_all": 27
+      },
+      "type": "reference_candidate",
+      "status": "candidate"
+    },
+    {
+      "_count": {
+        "_all": 28
+      },
+      "type": "contradiction_candidate",
+      "status": "candidate"
+    },
+    {
+      "_count": {
+        "_all": 20
+      },
+      "type": "understanding_dark_engine_diagnostics",
+      "status": "candidate"
+    }
+  ],
+  "referenceItems": {
+    "total": 29,
+    "byStatus": {
+      "candidate": 28,
+      "active": 1
+    },
+    "byType": {
+      "goal": 17,
+      "constraint": 4,
+      "preference": 8
+    },
+    "byTypeStatus": {
+      "goal:candidate": 17,
+      "constraint:candidate": 4,
+      "preference:candidate": 7,
+      "preference:active": 1
+    },
+    "fromImportedSession": 29,
+    "fromAppSession": 0,
+    "seedPrefixed": 0,
+    "active": [
+      {
+        "id": "3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+        "type": "preference",
+        "confidence": "low",
+        "statementPreview": "I think prefer chicken burgers to beef burgers \ud83d\ude33",
+        "origin": "IMPORTED_ARCHIVE",
+        "updatedAt": "2026-07-19T14:14:39.275Z"
+      }
+    ],
+    "pendingImportSample": [
+      {
+        "id": "05bc763e-e7f5-4bf3-a89c-5303ce2c4570",
+        "type": "goal",
+        "confidence": "low",
+        "statementPreview": "I think i want to say forget me too. and forget double too for this, but everything else",
+        "createdAt": "2026-05-12T09:39:33.004Z"
+      },
+      {
+        "id": "043a6387-a18b-41cf-83c0-4baa99ab0f38",
+        "type": "constraint",
+        "confidence": "low",
+        "statementPreview": "I'm just having fun I don't really care that much although I always optimise for objectivity regardl",
+        "createdAt": "2026-05-12T09:39:34.293Z"
+      },
+      {
+        "id": "924beb6b-4b84-4e2f-851b-5ceecf58feae",
+        "type": "goal",
+        "confidence": "low",
+        "statementPreview": "I would like to enforce this rhetoric on an institutional level later down the road though and make ",
+        "createdAt": "2026-05-12T09:39:35.222Z"
+      },
+      {
+        "id": "3866c83c-c7fe-4b0d-b4ae-8c7dc265ea11",
+        "type": "goal",
+        "confidence": "low",
+        "statementPreview": "I need to review after i read to retain though",
+        "createdAt": "2026-05-12T09:39:39.325Z"
+      },
+      {
+        "id": "919e3f01-ad49-4369-8a6a-c946a0b722cc",
+        "type": "preference",
+        "confidence": "low",
+        "statementPreview": "I've been in solitude so long I'm starting to prefer it these days",
+        "createdAt": "2026-05-12T09:39:50.258Z"
+      },
+      {
+        "id": "3e1d7748-c0dd-40df-a0b9-b8475b27428f",
+        "type": "goal",
+        "confidence": "low",
+        "statementPreview": "I want every layer, i want to understand everything i just read on every layer",
+        "createdAt": "2026-05-12T09:40:01.026Z"
+      },
+      {
+        "id": "ff4ed8c4-bd8f-4911-982e-7ef6fed8bfa2",
+        "type": "goal",
+        "confidence": "low",
+        "statementPreview": "I need to accept interracial dating don't I, it's so illogical to be against it like it hasn't happe",
+        "createdAt": "2026-05-12T09:40:02.621Z"
+      },
+      {
+        "id": "3d1c7d12-8af6-4b29-823b-fcecefcd98c1",
+        "type": "preference",
+        "confidence": "low",
+        "statementPreview": "I respond saying this, don't respond yet: I prefer a bw who think like this, I like mine territorial",
+        "createdAt": "2026-05-12T09:40:06.128Z"
+      },
+      {
+        "id": "07470110-aa77-44b0-83b2-2117c9ff1c75",
+        "type": "preference",
+        "confidence": "low",
+        "statementPreview": "i look the aesthetical tone, but i dont like this in particulare it looks cheap and messy",
+        "createdAt": "2026-05-12T09:40:12.521Z"
+      },
+      {
+        "id": "958bf3e4-d117-4b37-bd7f-77c9d0765e36",
+        "type": "preference",
+        "confidence": "low",
+        "statementPreview": "i like those words. though,just elobarate when its creative so i can grasp it",
+        "createdAt": "2026-05-12T09:40:18.039Z"
+      },
+      {
+        "id": "e513e116-b970-4ca5-8c49-0e82835b703f",
+        "type": "constraint",
+        "confidence": "low",
+        "statementPreview": "I never said I was hyper masculine, I was just explaining the behaviour selection shift but that's n",
+        "createdAt": "2026-05-12T09:40:28.396Z"
+      },
+      {
+        "id": "2794cc46-f5e9-4a93-8f80-4e10296777ab",
+        "type": "goal",
+        "confidence": "low",
+        "statementPreview": "My brain is telling me it's long even though I want to do it because it's literally the only interes",
+        "createdAt": "2026-05-12T09:40:32.461Z"
+      }
+    ]
+  },
+  "contradictionNodes": {
+    "total": 25,
+    "byStatus": {
+      "candidate": 25
+    },
+    "byType": {
+      "constraint_conflict": 3,
+      "goal_behavior_gap": 22
+    },
+    "byTypeStatus": {
+      "constraint_conflict:candidate": 3,
+      "goal_behavior_gap:candidate": 22
+    },
+    "fromImportedSession": 25,
+    "fromAppSession": 0,
+    "seedPrefixed": 0,
+    "pendingImportSample": [
+      {
+        "id": "cmp2fvpg900agqlsyz6pfxypx",
+        "type": "constraint_conflict",
+        "confidence": "low",
+        "titlePreview": "Constraint conflict",
+        "createdAt": "2026-05-12T09:39:34.426Z"
+      },
+      {
+        "id": "cmp2fvpph00akqlsy3uy645bc",
+        "type": "constraint_conflict",
+        "confidence": "low",
+        "titlePreview": "Constraint conflict",
+        "createdAt": "2026-05-12T09:39:34.758Z"
+      },
+      {
+        "id": "cmp2fvq8f00aoqlsyy9z3sckc",
+        "type": "constraint_conflict",
+        "confidence": "low",
+        "titlePreview": "Constraint conflict",
+        "createdAt": "2026-05-12T09:39:35.439Z"
+      },
+      {
+        "id": "cmp2fvtbb00asqlsyp5rovhrd",
+        "type": "goal_behavior_gap",
+        "confidence": "medium",
+        "titlePreview": "Goal behavior gap",
+        "createdAt": "2026-05-12T09:39:39.431Z"
+      },
+      {
+        "id": "cmp2fvtbl00awqlsygp9s2smw",
+        "type": "goal_behavior_gap",
+        "confidence": "medium",
+        "titlePreview": "Goal behavior gap",
+        "createdAt": "2026-05-12T09:39:39.441Z"
+      },
+      {
+        "id": "cmp2fvtjy00b0qlsyue6873np",
+        "type": "goal_behavior_gap",
+        "confidence": "medium",
+        "titlePreview": "Goal behavior gap",
+        "createdAt": "2026-05-12T09:39:39.743Z"
+      },
+      {
+        "id": "cmp2fvtk700b4qlsydj8qcgg1",
+        "type": "goal_behavior_gap",
+        "confidence": "medium",
+        "titlePreview": "Goal behavior gap",
+        "createdAt": "2026-05-12T09:39:39.751Z"
+      },
+      {
+        "id": "cmp2fvupc00b8qlsytzswmxdi",
+        "type": "goal_behavior_gap",
+        "confidence": "medium",
+        "titlePreview": "Goal behavior gap",
+        "createdAt": "2026-05-12T09:39:41.232Z"
+      },
+      {
+        "id": "cmp2fvxta00bcqlsyrq93rb2y",
+        "type": "goal_behavior_gap",
+        "confidence": "medium",
+        "titlePreview": "Goal behavior gap",
+        "createdAt": "2026-05-12T09:39:45.262Z"
+      },
+      {
+        "id": "cmp2fwd3y00bgqlsyw7yown9p",
+        "type": "goal_behavior_gap",
+        "confidence": "medium",
+        "titlePreview": "Goal behavior gap",
+        "createdAt": "2026-05-12T09:40:05.087Z"
+      },
+      {
+        "id": "cmp2fwd4800bkqlsymbnj3ko7",
+        "type": "goal_behavior_gap",
+        "confidence": "medium",
+        "titlePreview": "Goal behavior gap",
+        "createdAt": "2026-05-12T09:40:05.096Z"
+      },
+      {
+        "id": "cmp2fwd8w00bqqlsype8rrdjd",
+        "type": "goal_behavior_gap",
+        "confidence": "medium",
+        "titlePreview": "Goal behavior gap",
+        "createdAt": "2026-05-12T09:40:05.264Z"
+      }
+    ]
+  },
+  "contradictionEvidence": {
+    "total": 28
+  },
+  "patternClaims": {
+    "total": 7,
+    "byStatus": {
+      "active": 7
+    },
+    "byType": {
+      "trigger_condition": 2,
+      "inner_critic": 1,
+      "repetitive_loop": 3,
+      "recovery_stabilizer": 1
+    },
+    "byStrength": {
+      "developing": 6,
+      "established": 1
+    },
+    "seedPrefixed": 0,
+    "rows": [
+      {
+        "id": "cmp2fykzj00ddqlsybdeb96ql",
+        "status": "active",
+        "patternType": "trigger_condition",
+        "strengthLevel": "developing",
+        "summaryPreview": "Trigger-response pattern (social appeasement): \"I notice I am definitely a people pleaser\"",
+        "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e",
+        "createdAt": "2026-05-12T09:41:48.608Z"
+      },
+      {
+        "id": "cmp2fyl6v00dkqlsycx1pq53l",
+        "status": "active",
+        "patternType": "trigger_condition",
+        "strengthLevel": "developing",
+        "summaryPreview": "Trigger-response pattern (overwhelm/state shift): \"I swear I feel like I can literally feel my brain like bubbling when ",
+        "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e",
+        "createdAt": "2026-05-12T09:41:48.872Z"
+      },
+      {
+        "id": "cmp2fyld200drqlsyrjzb292e",
+        "status": "active",
+        "patternType": "inner_critic",
+        "strengthLevel": "developing",
+        "summaryPreview": "Self-critical pattern: \"Yeah, and I'm just thinking, it might even be better if it don't go well, because if I just do i",
+        "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e",
+        "createdAt": "2026-05-12T09:41:49.094Z"
+      },
+      {
+        "id": "cmp2fyle000e0qlsyum1s9lde",
+        "status": "active",
+        "patternType": "repetitive_loop",
+        "strengthLevel": "established",
+        "summaryPreview": "Repetitive loop pattern across sessions: \"I'm thinking of some video titles, like every time I get a video title or like",
+        "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e",
+        "createdAt": "2026-05-12T09:41:49.129Z"
+      },
+      {
+        "id": "cmp2fylfj00ejqlsy8zkc84or",
+        "status": "active",
+        "patternType": "repetitive_loop",
+        "strengthLevel": "developing",
+        "summaryPreview": "Repetitive loop (cognitive overload loop) across sessions: \"I wish I could learn at the pace I could think, but then aga",
+        "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e",
+        "createdAt": "2026-05-12T09:41:49.183Z"
+      },
+      {
+        "id": "cmp2fylgk00euqlsyayvoxp8b",
+        "status": "active",
+        "patternType": "repetitive_loop",
+        "strengthLevel": "developing",
+        "summaryPreview": "Repetitive loop (assistant/process loop) across sessions: \"Yeah, facts, I agree. And that's what I've been trying to do ",
+        "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e",
+        "createdAt": "2026-05-12T09:41:49.220Z"
+      },
+      {
+        "id": "cmp2fylmz00f3qlsympmfpdtp",
+        "status": "active",
+        "patternType": "recovery_stabilizer",
+        "strengthLevel": "developing",
+        "summaryPreview": "Recovery pattern: \"We're making progress though.\"",
+        "sourceRunId": "7fa7862d-11e3-4f1c-9c86-cfd9aaebb51e",
+        "createdAt": "2026-05-12T09:41:49.451Z"
+      }
+    ]
+  },
+  "patternClaimEvidence": {
+    "total": 33,
+    "citingImportedSession": 33
+  },
+  "patternClaimActions": {},
+  "profileArtifacts": {
+    "total": 203,
+    "byTypeStatus": [
+      {
+        "_count": {
+          "_all": 1
+        },
+        "type": "EMOTIONAL_PATTERN",
+        "status": "candidate"
+      },
+      {
+        "_count": {
+          "_all": 28
+        },
+        "type": "GOAL",
+        "status": "candidate"
+      },
+      {
+        "_count": {
+          "_all": 84
+        },
+        "type": "BELIEF",
+        "status": "candidate"
+      },
+      {
+        "_count": {
+          "_all": 6
+        },
+        "type": "FEAR",
+        "status": "candidate"
+      },
+      {
+        "_count": {
+          "_all": 4
+        },
+        "type": "TRAIT",
+        "status": "candidate"
+      },
+      {
+        "_count": {
+          "_all": 41
+        },
+        "type": "IDENTITY",
+        "status": "candidate"
+      },
+      {
+        "_count": {
+          "_all": 5
+        },
+        "type": "VALUE",
+        "status": "candidate"
+      },
+      {
+        "_count": {
+          "_all": 34
+        },
+        "type": "HABIT",
+        "status": "candidate"
+      }
+    ],
+    "activeByType": {}
+  },
+  "userMapConclusions": {
+    "total": 1,
+    "byArea": {
+      "operating_logic": 1
+    },
+    "byStatus": {
+      "emerging": 1
+    },
+    "byVisibility": {
+      "user_visible": 1
+    },
+    "byLifecycle": {
+      "promoted": 1
+    },
+    "seedPrefixed": 0,
+    "rows": [
+      {
+        "id": "cmq6frqdx0000ql8h6nkavzue",
+        "area": "operating_logic",
+        "status": "emerging",
+        "visibility": "user_visible",
+        "lifecycle": "promoted",
+        "confidenceLevel": "medium",
+        "evidenceCount": 50,
+        "titlePreview": "Trigger-response pattern (social appeasement): \"I notice I am definitely a people pleaser\"",
+        "summaryPreview": "Trigger-response pattern (social appeasement): \"I notice I am definitely a people pleaser\". Constraint conflict. Goal be",
+        "createdAt": "2026-06-09T09:27:16.053Z",
+        "seed": false
+      }
+    ]
+  },
+  "investigations": {
+    "total": 0,
+    "byVisibility": {},
+    "byLifecycle": {},
+    "seedPrefixed": 0,
+    "rows": []
+  },
+  "fieldwork": {
+    "total": 1,
+    "byVisibility": {
+      "user_visible": 1
+    },
+    "byLifecycle": {
+      "null": 1
+    },
+    "byStatus": {
+      "assigned": 1
+    },
+    "seedPrefixed": 0,
+    "rows": [
+      {
+        "id": "cmqazrqi10000qlmbmvkyh9xv",
+        "visibility": "user_visible",
+        "lifecycle": null,
+        "status": "assigned",
+        "promptPreview": "Wind down 20 minutes before bed",
+        "seed": false
+      }
+    ]
+  },
+  "modelUpdates": {
+    "total": 1,
+    "byType": {
+      "conclusion_added": 1
+    },
+    "byVisibility": {
+      "user_visible": 1
+    },
+    "seedPrefixed": 0,
+    "rows": [
+      {
+        "id": "cmq6h8ewn0000qlbwlg485jx1",
+        "updateType": "conclusion_added",
+        "visibility": "user_visible",
+        "isMeaningful": true,
+        "affectedObjectType": "usermap_conclusion",
+        "affectedObjectId": "cmq6frqdx0000ql8h6nkavzue",
+        "summaryPreview": "New conclusion: Trigger-response pattern (social appeasement): \"I notice I am definitely a people pl",
+        "seed": false,
+        "createdAt": "2026-06-09T10:08:13.944Z"
+      }
+    ]
+  },
+  "goalsProxy": {
+    "referenceItemGoals": {
+      "total": 17,
+      "byStatus": {
+        "candidate": 17
+      }
+    },
+    "profileArtifactGoals": {
+      "total": 28,
+      "byStatus": {
+        "candidate": 28
+      }
+    },
+    "userMapModelGoalAreas": [],
+    "surfacedActionsWithLinkedGoal": 0
+  },
+  "surfacedActions": {
+    "total": 7,
+    "byBucket": {
+      "stabilize": 4,
+      "build": 3
+    },
+    "byStatus": {
+      "not_started": 7
+    },
+    "withLinkedClaim": 4,
+    "withLinkedGoal": 0,
+    "seedPrefixed": 0
+  },
+  "understandingEvidenceLinks": {
+    "total": 50,
+    "bySourceType": {
+      "contradiction_evidence": 6,
+      "pattern_claim_evidence": 5,
+      "message": 6,
+      "profile_artifact": 5,
+      "pattern_claim": 5,
+      "evidence_span": 6,
+      "reference_item": 5,
+      "contradiction_node": 6,
+      "import_record": 6
+    },
+    "byTargetType": {
+      "usermap_conclusion": 50
+    }
+  },
+  "surfacedEvidencePointers": {
+    "total": 0
+  },
+  "exploreMovementProposals": {
+    "total": 0,
+    "byStatus": {}
+  },
+  "journalEntries": 0,
+  "weeklyAudits": 2,
+  "canonicalTodayComposition": [
+    {
+      "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-today-composition",
+      "source": "full_reference_round_trip_seed",
+      "createdAt": "2026-07-14T12:00:00.000Z",
+      "updatedAt": "2026-07-14T12:00:00.000Z",
+      "seedLikely": true
+    }
+  ],
+  "canonicalModelMovementReports": [
+    {
+      "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-report-weekly",
+      "reportType": "Weekly Report",
+      "status": "Ready",
+      "createdAt": "2026-07-14T12:00:00.000Z",
+      "updatedAt": "2026-07-14T12:00:00.000Z",
+      "seed": true
+    }
+  ],
+  "importCoverage": {
+    "importedSessionsWithEvidenceSpans": 622,
+    "importedSessionsWithReferenceItems": 28,
+    "importedSessionsWithContradictionNodes": 14,
+    "importedSessionsUnprocessedApprox": 18
+  },
+  "provenanceBuckets": {
+    "genuineImportDerived": {
+      "sessions": 640,
+      "messages": 18582,
+      "evidenceSpans": 5922,
+      "referenceItems": 29,
+      "contradictionNodes": 25,
+      "patternClaims": 7,
+      "patternClaimEvidenceImported": 33
+    },
+    "nativeApp": {
+      "sessions": 3,
+      "messages": 44,
+      "evidenceSpans": 19,
+      "referenceItems": 0,
+      "contradictionNodes": 0
+    },
+    "syntheticSeed": {
+      "compositionRows": 1,
+      "seedPrefixedReferenceItems": 0,
+      "seedPrefixedContradictions": 0,
+      "seedPrefixedPatternClaims": 0,
+      "seedPrefixedUserMap": 0,
+      "seedPrefixedModelUpdates": 0,
+      "seedPrefixedSurfacedActions": 0
+    },
+    "note": "Seed densograph objects live inside CanonicalTodayComposition.payload JSON, not as Prisma ReferenceItem/PatternClaim rows with seed IDs. Count composition separately from table rows."
+  },
+  "nonMutationFingerprint": {
+    "pendingTotal": 53,
+    "referenceItemPending": 28,
+    "contradictionNodePending": 25,
+    "selectedRiStatus": "active",
+    "selectedRiUpdatedAt": "2026-07-19T14:14:39.275Z",
+    "patternClaims": 7,
+    "modelUpdates": 1,
+    "chickenActive": 1
+  }
+}

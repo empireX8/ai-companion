@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, type ReactNode } from "react"
 import { usePathname } from "next/navigation"
 
 import { OrvekDataProvider } from "@/lib/orvek-v0/data-provider"
@@ -95,10 +95,13 @@ export function CanonicalWorkbench({
   data,
   enableRouteSync,
   enableProductionBridge = false,
+  bootstrap = null,
 }: {
   data: CanonicalRuntimeData
   enableRouteSync?: boolean
   enableProductionBridge?: boolean
+  /** Optional client bootstrap rendered inside WorkbenchProvider (dev fixtures). */
+  bootstrap?: ReactNode
 }) {
   const routeSync = enableRouteSync ?? data.syncRoutesFromPathname
   const body = <WorkbenchInner enableRouteSync={routeSync} />
@@ -107,6 +110,7 @@ export function CanonicalWorkbench({
     <CanonicalDataProvider value={data}>
       <OrvekDataProvider value={data.orvekDataApi}>
         <WorkbenchProvider>
+          {bootstrap}
           {enableProductionBridge ? (
             <InspectorProvider syncNavigation={false}>
               <ProductionInspectorBridge>{body}</ProductionInspectorBridge>

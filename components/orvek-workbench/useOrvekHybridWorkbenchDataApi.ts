@@ -51,6 +51,11 @@ import {
   type MapProfileFact,
 } from "@/lib/map-profile-facts";
 import {
+  fetchMapOpenContradictions,
+  resolveMapContradictionSelectionId,
+  type MapOpenContradictionItem,
+} from "@/lib/map-open-contradictions";
+import {
   type TodayReentrySnapshot,
 } from "@/lib/today-reentry";
 import {
@@ -202,8 +207,12 @@ export function useOrvekHybridWorkbenchDataApi() {
     useState<CanonicalWorkbenchBundle | null>(null);
 
   const [mapItems, setMapItems] = useState<UserMapConclusionPublicApiListItem[]>([]);
+  const [openContradictions, setOpenContradictions] = useState<MapOpenContradictionItem[]>(
+    [],
+  );
   const [mapLoadError, setMapLoadError] = useState<string | null>(null);
   const [isLoadingMapList, setIsLoadingMapList] = useState(true);
+  const [isLoadingOpenContradictions, setIsLoadingOpenContradictions] = useState(true);
   const [mapSelectedId, setMapSelectedId] = useState<string | null>(null);
   const [mapDetail, setMapDetail] = useState<UserMapConclusionPublicApiDetailItem | null>(null);
   const [mapEvidence, setMapEvidence] = useState<InspectorEvidenceLinkItem[]>([]);
@@ -590,6 +599,33 @@ export function useOrvekHybridWorkbenchDataApi() {
     let cancelled = false;
 
     void (async () => {
+      setIsLoadingOpenContradictions(true);
+      try {
+        const next = await fetchMapOpenContradictions();
+        if (!cancelled) {
+          setOpenContradictions(next);
+        }
+      } catch {
+        if (!cancelled) {
+          // Do not invent fake conflicts; keep empty and preserve UMC map load.
+          setOpenContradictions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingOpenContradictions(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [durableActionsRevision, pathname]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
       setIsMindContextLoading(true);
       try {
         const [snapshot, profileFacts] = await Promise.all([
@@ -672,12 +708,20 @@ export function useOrvekHybridWorkbenchDataApi() {
         items: mapItems,
         preferredSelectionId: preferredMapSelectionId,
         mindContextItems,
+        openContradictions,
       }),
     );
-  }, [mapItems, mindContextItems, preferredMapSelectionId]);
+  }, [mapItems, mindContextItems, openContradictions, preferredMapSelectionId]);
 
   useEffect(() => {
     if (!mapSelectedId) {
+      setMapDetail(null);
+      setMapEvidence([]);
+      setIsMapDetailLoading(false);
+      return;
+    }
+
+    if (resolveMapContradictionSelectionId(mapSelectedId, openContradictions)) {
       setMapDetail(null);
       setMapEvidence([]);
       setIsMapDetailLoading(false);
@@ -722,7 +766,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     return () => {
       cancelled = true;
     };
-  }, [mapItems, mapSelectedId, durableActionsRevision]);
+  }, [mapItems, mapSelectedId, openContradictions, durableActionsRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -817,6 +861,7 @@ export function useOrvekHybridWorkbenchDataApi() {
 
   const mapIsLoading =
     isLoadingMapList ||
+    isLoadingOpenContradictions ||
     isMindContextLoading ||
     isMovementLoading ||
     isQuestionsLoading;
@@ -880,6 +925,7 @@ export function useOrvekHybridWorkbenchDataApi() {
   const handlers = useMemo((): OrvekPageHandlers => {
     const mapApi = buildMapProductionDataApi({
       items: mapItems,
+      openContradictions,
       isLoading: mapIsLoading,
       loadError: mapLoadError,
       selectedId: mapSelectedId,
@@ -911,14 +957,21 @@ export function useOrvekHybridWorkbenchDataApi() {
         }
 
         const nextSelectionId =
-          object.type === "context"
+          object.type === "context" ||
+          object.inspectorObjectType === "contradiction_node"
             ? inspectorObjectId
             : inspectorObjectId.replace(/^conclusion-/, "");
         const params = new URLSearchParams(searchParamsString);
         params.set("selected", nextSelectionId);
         const nextPath = `/your-map?${params.toString()}`;
 
-        setMapSelectedId(nextSelectionId);
+        setMapSelectedId(
+          object.inspectorObjectType === "contradiction_node"
+            ? railId.startsWith("contradiction-")
+              ? railId
+              : `contradiction-${inspectorObjectId}`
+            : nextSelectionId,
+        );
         updateWorkbenchHistory(nextPath, "replace");
       },
     };
@@ -951,6 +1004,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     mapDetail,
     mapEvidence,
     mapItems,
+    openContradictions,
     mapSelectedId,
     movementItems,
     mindContextItems,
@@ -974,6 +1028,7 @@ export function useOrvekHybridWorkbenchDataApi() {
 
     const mapApi = buildMapProductionDataApi({
       items: mapItems,
+      openContradictions,
       isLoading: mapIsLoading,
       loadError: mapLoadError,
       selectedId: mapSelectedId,
@@ -1066,6 +1121,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     movementDepthById,
     canonicalWorkbench,
     mapItems,
+    openContradictions,
     mapIsLoading,
     mapLoadError,
     mapSelectedId,
