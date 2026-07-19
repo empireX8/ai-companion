@@ -46,6 +46,11 @@ import {
 import { updateWorkbenchHistory } from "@/lib/orvek-v0/workbench-route-history";
 import { EMPTY_ORVEK_DATA_API } from "@/lib/orvek-v0/empty-api";
 import {
+  attachMapProfileFactsToDataApi,
+  fetchActiveMapProfileFacts,
+  type MapProfileFact,
+} from "@/lib/map-profile-facts";
+import {
   type TodayReentrySnapshot,
 } from "@/lib/today-reentry";
 import {
@@ -205,6 +210,7 @@ export function useOrvekHybridWorkbenchDataApi() {
   const [isMapDetailLoading, setIsMapDetailLoading] = useState(false);
   const [openQuestionsCount, setOpenQuestionsCount] = useState(0);
   const [mindContextItems, setMindContextItems] = useState<MindContextDisplayItem[]>([]);
+  const [mapProfileFacts, setMapProfileFacts] = useState<MapProfileFact[]>([]);
   const [mindContextSummaryCounts, setMindContextSummaryCounts] = useState({
     memories: 0,
     patterns: 0,
@@ -586,13 +592,17 @@ export function useOrvekHybridWorkbenchDataApi() {
     void (async () => {
       setIsMindContextLoading(true);
       try {
-        const snapshot = await fetchMindContextSnapshot();
+        const [snapshot, profileFacts] = await Promise.all([
+          fetchMindContextSnapshot(),
+          fetchActiveMapProfileFacts(),
+        ]);
         if (!cancelled) {
           setMindContextItems(buildMindContextDisplayItems(snapshot, 3));
           setMindContextSummaryCounts({
             memories: snapshot.memories.length,
             patterns: snapshot.activePatterns.length,
           });
+          setMapProfileFacts(profileFacts);
         }
       } finally {
         if (!cancelled) {
@@ -1035,9 +1045,14 @@ export function useOrvekHybridWorkbenchDataApi() {
       freeExploreChatApi,
     );
 
+    const withProfileFacts = attachMapProfileFactsToDataApi(
+      hybridApi,
+      mapProfileFacts,
+    );
+
     return applySurfacedEvidenceDepthGate({
       api: {
-        ...asHybridShell(hybridApi),
+        ...asHybridShell(withProfileFacts),
         // Override any composition/seed importReview with the live DB query.
         importReview,
       },
@@ -1061,6 +1076,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     isMindContextLoading,
     mindContextItems,
     mindContextSummaryCounts,
+    mapProfileFacts,
     isMovementLoading,
     movementItems,
     isQuestionsLoading,

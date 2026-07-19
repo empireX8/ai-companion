@@ -1,0 +1,137 @@
+{
+  "campaign": "SINGLE-REAL-IMPORT-CANDIDATE-MATERIALISATION-PROOF-001",
+  "phase": "after_state",
+  "userId": "user_34TUYA53pI1QRLK73O22Kve1a1G",
+  "queriedAt": "2026-07-19T14:14:48.274Z",
+  "mode": "read_only",
+  "mutationsPerformed": false,
+  "prismaClientRoot": "/Users/user/ai-companion-worktrees/desktop-single-real-import-materialisation-proof-001",
+  "selectedKey": {
+    "sourceTable": "ReferenceItem",
+    "id": "3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+    "reviewKey": "reference_item:3a6163dd-0f85-4bf5-8eb8-924579f1db62"
+  },
+  "lockedReviewKey": "reference_item:3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+  "confirmation": {
+    "noMutationPerformed": true,
+    "scriptContainsNoWriteCalls": true,
+    "scriptDoesNotPerformAcceptance": true
+  },
+  "schemaGaps": {
+    "modelUpdateExpected": false,
+    "understandingEvidenceLinkExpected": false,
+    "reason": "ReferenceItem accept only flips status to active. ModelUpdate.affectedObjectType and UnderstandingEvidenceLink cannot target reference_item."
+  },
+  "beforeStateFile": {
+    "path": "/Users/user/ai-companion-worktrees/desktop-single-real-import-materialisation-proof-001/docs/agent-runs/receipts/SINGLE-REAL-IMPORT-CANDIDATE-MATERIALISATION-PROOF-001/readonly-selected-candidate-before-state.json",
+    "present": true,
+    "parseError": null
+  },
+  "counts": {
+    "pendingCandidateTotal": 53,
+    "referenceItemCandidateTotal": 28,
+    "contradictionNodeCandidateTotal": 25,
+    "patternClaimTotal": 7,
+    "activeReferenceTotal": 1
+  },
+  "selectedRow": {
+    "id": "3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+    "reviewKey": "reference_item:3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+    "type": "preference",
+    "status": "active",
+    "confidence": "low",
+    "statement": "I think prefer chicken burgers to beef burgers 😳",
+    "provenance": {
+      "sourceSessionOrigin": "IMPORTED_ARCHIVE",
+      "sourceSessionId": "7dd386eb-e6ba-493a-856d-fc8815895248",
+      "sourceMessageId": "d1060934-f19d-4693-b255-d23570af50e1",
+      "conversationLabel": "Revealing life-changing news",
+      "chatgptConversationExternalId": "6941704f-1ef8-8326-957f-2aeab6ae089a"
+    },
+    "createdAt": "2026-05-12T09:40:35.076Z",
+    "updatedAt": "2026-07-19T14:14:39.275Z",
+    "passesMindContextQualityGate": true
+  },
+  "providerVisibleStateAfterAcceptance": {
+    "activeReferenceListContainsExactId": true,
+    "activeReferenceIds": [
+      "3a6163dd-0f85-4bf5-8eb8-924579f1db62"
+    ],
+    "mapContextRailTop3Preview": [
+      {
+        "kind": "memory",
+        "id": "3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+        "updatedAt": "2026-07-19T14:14:39.275Z",
+        "preview": "I think prefer chicken burgers to beef burgers 😳"
+      },
+      {
+        "kind": "pattern",
+        "id": "cmp2fylmz00f3qlsympmfpdtp",
+        "updatedAt": "2026-07-12T19:13:41.633Z",
+        "preview": "Recovery pattern: \"We're making progress though.\""
+      },
+      {
+        "kind": "pattern",
+        "id": "cmp2fylgk00euqlsyayvoxp8b",
+        "updatedAt": "2026-07-12T19:13:41.063Z",
+        "preview": "Repetitive loop (assistant/process loop) across sessions: \"Yeah, facts, I agree. And that's what I've been trying to do this time around, just commit to the be\""
+      }
+    ],
+    "mapProviderReceivesExactItem": true,
+    "todayConsumesReferenceItems": false,
+    "timelineConsumesReferenceItems": false,
+    "decisionsConsumesPreference": false
+  },
+  "relatedArtifacts": {
+    "understandingEvidenceLinks": [],
+    "modelUpdatesTargetingSelected": [],
+    "note": "None expected for ReferenceItem acceptance under current schema."
+  },
+  "durableObjectSnapshot": {
+    "patternClaimIds": [
+      "cmp2fykzj00ddqlsybdeb96ql",
+      "cmp2fyl6v00dkqlsycx1pq53l",
+      "cmp2fyld200drqlsyrjzb292e",
+      "cmp2fyle000e0qlsyum1s9lde",
+      "cmp2fylfj00ejqlsy8zkc84or",
+      "cmp2fylgk00euqlsyayvoxp8b",
+      "cmp2fylmz00f3qlsympmfpdtp"
+    ],
+    "modelUpdateIds": [
+      "cmq6h8ewn0000qlbwlg485jx1"
+    ],
+    "userMapConclusionIds": [
+      "cmq6frqdx0000ql8h6nkavzue"
+    ],
+    "activeReferenceIds": [
+      "3a6163dd-0f85-4bf5-8eb8-924579f1db62"
+    ]
+  },
+  "checks": {
+    "sameReferenceItemIdExists": true,
+    "statusChangedCandidateToActive": true,
+    "pendingTotal_54_to_53": true,
+    "referenceItemPending_29_to_28": true,
+    "contradictionNodePendingRemains_25": true,
+    "patternClaimsRemain_7": true,
+    "provenanceUnchanged": true,
+    "noDuplicateReferenceItemCreated": true,
+    "noUnrelatedCandidateStatusChangeHeuristic": {
+      "note": "Remaining import-derived ReferenceItem candidates should still be candidate; selected must not remain candidate.",
+      "selectedNotCandidate": true,
+      "contradictionPendingCountOk": true,
+      "otherRefsStillOnlyCandidateOrNonImport": true
+    },
+    "activeReferenceProviderReturnsExactItem": true,
+    "canonicalMapProviderReceivesIt": true,
+    "noModelUpdateClaimedOrCreatedForAccept": true,
+    "noUelClaimedOrCreatedForAccept": true,
+    "beforeCountsMatchExpectation": {
+      "pendingWas54": true,
+      "riWas29": true,
+      "cnWas25": true,
+      "pcWas7": true
+    }
+  },
+  "verdict": "PASS_GENUINE_REFERENCEITEM_ACCEPTANCE_MATERIALISED"
+}
