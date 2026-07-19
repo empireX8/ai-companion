@@ -616,6 +616,117 @@ function applyCompositionWorkbenchRails(
   };
 }
 
+/**
+ * Composition-safe Active-conflicts exception.
+ * Retains composition ownership of unrelated Map rails; overlays live
+ * ContradictionNode objects into the conflicts category only.
+ * Never replaces m-conflict-* seed rows with live ids; never global Map merge.
+ */
+export function mergeLiveContradictionConflicts(
+  baseApi: OrvekDataApi,
+  liveMapApi: OrvekDataApi,
+): OrvekDataApi {
+  const liveConflictEntries: Array<{ id: string; object: OrvekObject }> = [];
+  const seen = new Set<string>();
+
+  for (const category of liveMapApi.mapCategories ?? []) {
+    if (category.id !== "conflicts") {
+      continue;
+    }
+    for (const id of category.ids) {
+      if (!id || seen.has(id)) {
+        continue;
+      }
+      const object = liveMapApi.getObject(id);
+      if (!object || object.inspectorObjectType !== "contradiction_node") {
+        continue;
+      }
+      // Never treat seed densograph conflict ids as live CN projections.
+      if (id.startsWith("m-conflict-")) {
+        continue;
+      }
+      seen.add(id);
+      liveConflictEntries.push({ id, object });
+    }
+  }
+
+  if (liveConflictEntries.length === 0) {
+    return baseApi;
+  }
+
+  const liveById = new Map(liveConflictEntries.map((entry) => [entry.id, entry.object]));
+  for (const entry of liveConflictEntries) {
+    const rawId = entry.object.inspectorObjectId?.trim();
+    if (rawId && !liveById.has(rawId)) {
+      liveById.set(rawId, { ...entry.object, id: rawId });
+    }
+  }
+
+  const baseCategories = baseApi.mapCategories ?? [];
+  const conflictsIndex = baseCategories.findIndex((category) => category.id === "conflicts");
+  let nextCategories = baseCategories;
+
+  if (conflictsIndex >= 0) {
+    const existing = baseCategories[conflictsIndex]!;
+    const mergedIds = [...existing.ids];
+    const idSet = new Set(mergedIds);
+    for (const entry of liveConflictEntries) {
+      if (!idSet.has(entry.id)) {
+        idSet.add(entry.id);
+        mergedIds.push(entry.id);
+      }
+    }
+    nextCategories = baseCategories.map((category, index) =>
+      index === conflictsIndex ? { ...category, ids: mergedIds } : category,
+    );
+  } else {
+    nextCategories = [
+      ...baseCategories,
+      {
+        id: "conflicts",
+        label: "Active conflicts",
+        ids: liveConflictEntries.map((entry) => entry.id),
+      },
+    ];
+  }
+
+  const baseGetObject = baseApi.getObject.bind(baseApi);
+  const resolveLive = (id: string) => liveById.get(id) ?? baseGetObject(id);
+
+  const selectedLive =
+    baseApi.mapSelectedId && liveById.has(baseApi.mapSelectedId)
+      ? baseApi.mapSelectedId
+      : liveMapApi.mapSelectedId && liveById.has(liveMapApi.mapSelectedId)
+        ? liveMapApi.mapSelectedId
+        : baseApi.mapSelectedId;
+
+  return {
+    ...baseApi,
+    mapCategories: nextCategories,
+    mapSelectedId: selectedLive ?? baseApi.mapSelectedId,
+    mapHasContent: true,
+    getObject: (id) => {
+      if (!id) {
+        return undefined;
+      }
+      return resolveLive(id);
+    },
+    getObjects: (ids) => {
+      const resolved: OrvekObject[] = [];
+      for (const id of ids ?? []) {
+        if (!id) {
+          continue;
+        }
+        const object = resolveLive(id);
+        if (object) {
+          resolved.push(object);
+        }
+      }
+      return resolved;
+    },
+  };
+}
+
 export function buildHybridWorkbenchDataApi(
   baseApi: OrvekDataApi,
   todayApi?: OrvekDataApi,
@@ -649,13 +760,14 @@ export function buildHybridWorkbenchDataApi(
     freeExploreChatApi,
   );
   let api = baseApi;
+  let normalizedMapApi: OrvekDataApi | undefined;
 
   if (todayApi) {
     api = mergeTodayOverlay(api, todayApi);
   }
 
   if (mapApi) {
-    const normalizedMapApi = normalizeMapProductionDataApi(mapApi);
+    normalizedMapApi = normalizeMapProductionDataApi(mapApi);
     api = mergeMap
       ? mergeMapOverlay(api, normalizedMapApi)
       : mergeMapShellState(api, normalizedMapApi);
@@ -708,6 +820,11 @@ export function buildHybridWorkbenchDataApi(
 
   if (todayApi && compositionWorkbench) {
     api = applyCompositionWorkbenchRails(api, todayApi);
+  }
+
+  // Narrow conflicts overlay after composition ownership — does not global-merge Map.
+  if (normalizedMapApi) {
+    api = mergeLiveContradictionConflicts(api, normalizedMapApi);
   }
 
   return api;

@@ -10,6 +10,12 @@ import {
 } from "../../orvek-adapters/map";
 import { filterDefined } from "../../orvek-adapters/today";
 import type { InspectorSelectableObjectType } from "../../inspector-selection";
+import {
+  buildMapContradictionSidesSummary,
+  formatMapContradictionConfidenceLabel,
+  mapContradictionObjectId,
+  parseMapContradictionRawId,
+} from "../../map-open-contradictions";
 import { summarizeMindContextEvidence } from "../../mind-context-surface";
 import { PUBLIC_OBJECT_LINK_HREF_PREFIXES } from "../../public-continuity-registry";
 import { formatUserMapArea, formatUserMapStatus } from "../../public-intelligence-safe-slice";
@@ -97,6 +103,10 @@ function railItemToOrvekObject(
     item.kind === "conclusion" || item.kind === "model_goal"
       ? input.items.find((entry) => entry.id === item.rawId)
       : undefined;
+  const contradictionItem =
+    item.kind === "contradiction"
+      ? (input.openContradictions ?? []).find((entry) => entry.id === item.rawId)
+      : undefined;
   let summary = listItem?.summary?.trim() || mindContextItem?.title?.trim() || undefined;
   let whyItMatters: string | undefined;
   let supporting: string[] | undefined;
@@ -107,12 +117,41 @@ function railItemToOrvekObject(
   let detailHref: string | undefined;
   let missingEvidence: string[] | undefined;
   let whatWouldChange: string[] | undefined;
+  let subtype: OrvekObject["subtype"] | undefined;
 
   if (item.kind === "model_update") {
     type = "model-update";
     inspectorObjectType = "model_update";
   } else if (item.kind === "open_question") {
     type = "active-question";
+  } else if (item.kind === "contradiction") {
+    type = "map-object";
+    subtype = "conflict";
+    inspectorObjectType = "contradiction_node";
+    inspectorObjectId = item.rawId;
+    if (contradictionItem) {
+      summary = buildMapContradictionSidesSummary(contradictionItem) || undefined;
+      whyItMatters = "Active contradiction";
+      supporting = contradictionItem.sideA.trim()
+        ? [`Side A: ${contradictionItem.sideA.trim()}`]
+        : undefined;
+      conflicting = contradictionItem.sideB.trim()
+        ? [`Side B: ${contradictionItem.sideB.trim()}`]
+        : undefined;
+      confidence = formatMapContradictionConfidenceLabel(contradictionItem.confidence);
+      lastUpdated = contradictionItem.lastTouchedAt;
+      evidenceCount = contradictionItem.evidenceCount;
+      detailHref = `/your-map?selected=${encodeURIComponent(item.id)}`;
+      if (contradictionItem.evidenceCount <= 0) {
+        missingEvidence = ["No linked evidence count is recorded on this contradiction yet."];
+      }
+      if (contradictionItem.sessionOrigin) {
+        supporting = [
+          ...(supporting ?? []),
+          `Source: ${contradictionItem.sessionOrigin === "IMPORTED_ARCHIVE" ? "Imported archive" : "App session"}`,
+        ];
+      }
+    }
   } else if (item.kind === "mind_context") {
     type = "context";
     inspectorObjectType = "context_profile";
@@ -184,6 +223,7 @@ function railItemToOrvekObject(
     id: item.id,
     type,
     title: item.title,
+    subtype,
     summary,
     whyItMatters,
     supporting,
@@ -311,6 +351,17 @@ function resolveMapSelectedId(
   const selectedConclusionId = view.selectedId ?? view.detail?.id ?? input.selectedId ?? null;
 
   if (selectedConclusionId) {
+    const contradictionRailId =
+      parseMapContradictionRawId(selectedConclusionId) !== null
+        ? selectedConclusionId
+        : (input.openContradictions ?? []).some((entry) => entry.id === selectedConclusionId)
+          ? mapContradictionObjectId(selectedConclusionId)
+          : null;
+
+    if (contradictionRailId && objects[contradictionRailId]) {
+      return contradictionRailId;
+    }
+
     const normalizedSelectedId =
       input.items.find((entry) => entry.id === selectedConclusionId)?.id ??
       (selectedConclusionId.startsWith("goal-")
@@ -363,6 +414,12 @@ export function buildMapProductionDataApi(input: MapMapDataInput): OrvekDataApi 
           id: item.rawId,
         };
       } else if (item.kind === "model_goal") {
+        objects[item.rawId] = {
+          ...object,
+          id: item.rawId,
+        };
+      } else if (item.kind === "contradiction") {
+        // Raw CN id resolves for Inspector/URL selection without claiming UMC identity.
         objects[item.rawId] = {
           ...object,
           id: item.rawId,
