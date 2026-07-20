@@ -1,0 +1,120 @@
+{
+  "slice": "CEQR-003",
+  "campaign": "CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001",
+  "parentCampaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "baseline": "ad42a15",
+  "branch": "desktop-contradiction-context-qualifier-preservation-001",
+  "completedAt": "2026-07-20T19:10:00.000Z",
+  "ceqr001Landed": true,
+  "ceqr002Landed": true,
+  "contextAndQualifierPreservationStrengthened": true,
+  "partialComplianceClassA": false,
+  "deterministicConsistencyGates": true,
+  "deterministicSemanticKeywordFallback": false,
+  "silentReclassification": false,
+  "schemaShapeChanged": false,
+  "promptVersion": "contradiction-adjudication-prompt-v2",
+  "schemaVersion": "contradiction-adjudication-schema-v1",
+  "kernelContractVersion": "orvek-intelligence-kernel-v1",
+  "semanticRuntimeWired": false,
+  "modelAdjudicatorRuntimeWiring": false,
+  "objectivityRefereeRuntimeWiring": false,
+  "messageRouteModified": false,
+  "detectionModified": false,
+  "importModified": false,
+  "materialisationModified": false,
+  "schemaUnchanged": true,
+  "migrationAbsent": true,
+  "kayDbMutated": false,
+  "existing25Unchanged": true,
+  "ceqr004Implemented": false,
+  "ceqr005Blocked": true,
+  "productionReadiness": "NO",
+  "focusedTests": {
+    "command": "npx vitest run lib/__tests__/contradiction-adjudication-contract.test.ts",
+    "testFiles": { "passed": 1, "failed": 0 },
+    "tests": { "passed": 47, "failed": 0 },
+    "result": "PASS"
+  },
+  "typescript": {
+    "command": "npx tsc --noEmit",
+    "result": "PASS"
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "PASS"
+  },
+  "gitDiffCheck": "PASS",
+  "trustLanguageCheck": "PASS",
+  "legacySurfacesCheck": "PASS",
+  "fullSuite": {
+    "command": "npm test",
+    "testFiles": { "failed": 5, "passed": 304, "total": 309 },
+    "tests": { "failed": 7, "passed": 3960, "total": 3967 },
+    "classification": "pre_existing_baseline",
+    "baselineComparison": {
+      "ceqr002Baseline": "ad42a15 / CEQR-002 validation-summary",
+      "ceqr002FailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "ceqr002FailedTestCount": 7,
+      "ceqr002PassedTests": 3935,
+      "thisSliceFailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "thisSliceFailedTestCount": 7,
+      "thisSlicePassedTests": 3960,
+      "exactFileMatch": true,
+      "campaignCausedNewFailures": false,
+      "notes": "Passed test count rose from 3935→3960 due to CEQR-003 qualifier-preservation contract tests; failure set is an exact match to the CEQR-002 recorded baseline files."
+    }
+  },
+  "accountGate": {
+    "before": {
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true
+    },
+    "after": {
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true
+    }
+  },
+  "finalReviewGate": {
+    "partialComplianceClassifiedAsClassA": false,
+    "qualifiersPreservedInNormalizedSemanticOutput": true,
+    "contextScopeTimeModalityPreservationStrengthened": true,
+    "internallyInconsistentClassAAccepted": false,
+    "deterministicSemanticKeywordFallback": "NONE",
+    "runtimeModelWiring": "NONE",
+    "messageRouteModified": false,
+    "detectionImportModified": false,
+    "materialisationModified": false,
+    "objectivityRefereeImplementationAdded": false,
+    "schemaMigrationModified": false,
+    "kayDbMutated": false,
+    "existing25Changed": false,
+    "productionReadiness": "NO"
+  }
+}

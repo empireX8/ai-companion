@@ -1,9 +1,11 @@
 /**
- * ContradictionNode semantic adjudicator (CEQR-001).
+ * ContradictionNode semantic adjudicator (CEQR-001 + CEQR-003).
  *
  * Model-assisted structured adjudication + deterministic post-validation.
- * Returns an inspectable adjudication result only — no persistence, no
- * candidate eligibility decision, no createCandidate field.
+ * CEQR-003 strengthens context/qualifier preservation in the prompt contract
+ * and fail-closed internal consistency gates. Returns an inspectable
+ * adjudication result only — no persistence, no candidate eligibility
+ * decision, no createCandidate field.
  *
  * Depends on an injectable StructuredModelRunner (provider-agnostic).
  */
@@ -89,13 +91,43 @@ export function buildContradictionAdjudicationPrompt(
     "You determine what the evidence may mean. You do not persist objects. You do not decide candidate creation.",
     "",
     "Classification taxonomy:",
-    "- clear_contradiction: two propositions that cannot both be true at the same time under the same actor, timeframe, and modality",
+    "- clear_contradiction: two propositions that cannot both be true under materially matching actor, subject, timeframe, scope, context, and modality — after all material qualifiers are preserved",
     "- plausible_unresolved_tension: genuine pull where both sides may be partially true — NOT a ContradictionNode",
-    "- compatible_states: apparent contrast explained by scope/time/actor/modality/coexistence — NOT a ContradictionNode",
+    "- compatible_states: apparent contrast explained by scope/time/actor/modality/coexistence/qualifiers — NOT a ContradictionNode",
     "- insufficient_or_misaligned_context: missing scope, mispairing, unrelated overlap — NOT a ContradictionNode",
+    "",
+    "CONTROLLING PRINCIPLE — preserve before classifying:",
+    "Contradiction classification must compare the propositions the evidence actually supports, including their material qualifiers.",
+    "Do not classify a contradiction merely because unqualified summaries sound opposed.",
+    "Before normalizing or classifying, preserve: actor; subject; timeframe; context; scope; negation; modality; frequency; condition; exception; uncertainty; intention versus action; partial compliance; quoted or attributed speech; emotional/physiological state versus chosen reasoning or behaviour.",
+    "",
+    "Qualifier-preservation hard rules:",
+    "- Preserve all material qualifications before normalization. Normalized propositions must not silently erase conditions, exceptions, frequencies, time bounds, uncertainty, or partial compliance.",
+    "- Distinguish universal, habitual, occasional, and isolated claims (never/always vs usually/sometimes vs once).",
+    "- Distinguish desire, intention, obligation, attempt, capacity, action, and outcome (want/should/try ≠ completed behaviour).",
+    "- Distinguish present, past, future, and changed-belief claims; do not compare \"used to\" as simultaneous with \"now\".",
+    "- Preserve conditions, exceptions, and scope limits (\"when tired\", \"except on special occasions\", \"in meetings\").",
+    "- Preserve partial compliance. PARTIAL COMPLIANCE MUST NOT BE classified as clear_contradiction.",
+    "  Example: \"I need to review after I read\" vs \"I did review it after every read, but I did not do the question exercises\" → tension/obstacle/compatible, never clear_contradiction of \"did not review\".",
+    "- Preserve negation and nested negation. Do not flatten \"I'm not saying I never want help\" into \"I never want help\".",
+    "- Preserve attribution and quoted speech. Another person's statement is not the speaker's proposition unless endorsed.",
+    "- Avoid upgrading \"usually\" to \"always\"; \"sometimes\" to an unqualified claim; \"right now\" to a permanent trait.",
+    "- Avoid upgrading \"want/should/try\" to completed behaviour.",
+    "- Avoid reducing partial failure or a single lapse to total non-compliance or rejection of a general tendency.",
+    "- Use abstention (classification null + abstentionReason) when context, actor, scope, or attribution cannot be safely preserved.",
+    "- In rationale, explain which qualifiers materially affected classification.",
+    "- In whatWouldChangeClassification, state what missing information would change the classification.",
+    "",
+    "Compatibility flags (must be truthful; clear_contradiction forbids all of them being true):",
+    "- bothCanSimultaneouslyBeTrue",
+    "- changedBeliefOverTime",
+    "- intentionVersusOutcome",
+    "- goalVersusObstacle",
+    "- emotionalOrPhysiologicalVersusReasoningStandard",
     "",
     "Hard instructions:",
     "- Abstention is valid and preferred over weak classification. Set classification to null and provide abstentionReason when unsure.",
+    "- When classifying, abstentionReason must be null.",
     "- Class B (plausible_unresolved_tension) is not a ContradictionNode.",
     "- Class C (compatible_states) is not a ContradictionNode.",
     "- Class D (insufficient_or_misaligned_context) is not a ContradictionNode.",
@@ -107,6 +139,7 @@ export function buildContradictionAdjudicationPrompt(
     "- Token overlap is not proof of contradiction.",
     "- Different subjects, actors, scopes or sessions must not be forced together.",
     "- Candidate volume must never be preserved by lowering the meaning standard.",
+    "- Fill actor, subject, timeframe, modality, qualifications, and contextAndScope with non-blank truthful values for each classified or abstaining structured result.",
     "",
     "Evidence claims:",
     "- For each proposition provide sourceId, exactQuote, startOffset, endOffset.",
@@ -119,6 +152,7 @@ export function buildContradictionAdjudicationPrompt(
 
   const prompt = [
     "Adjudicate the following Side A and Side B source units.",
+    "Preserve material qualifiers on both sides before normalizing. Classify only the qualified propositions.",
     "",
     `Side A sourceId: ${sideA.sourceId}`,
     `Side A sessionId: ${sideA.sessionId}`,
@@ -156,10 +190,73 @@ function requiredPropositionPresent(
     if (!fields.modality.trim()) {
       return `Proposition ${side} modality is empty.`;
     }
+    if (!fields.qualifications.trim()) {
+      return `Proposition ${side} qualifications is empty.`;
+    }
     return null;
   };
 
+  if (!model.contextAndScope.trim()) {
+    return "contextAndScope is empty.";
+  }
+
   return check("A", model.propositionA) ?? check("B", model.propositionB);
+}
+
+/**
+ * Fail-closed internal consistency gates (CEQR-003).
+ * Rejects inconsistent structured output; never silently reclassifies.
+ * Does not decide semantic contradiction from keywords.
+ */
+export function collectSemanticConsistencyErrors(
+  model: ContradictionModelResult,
+): string[] {
+  const errors: string[] = [];
+  const abstentionText =
+    typeof model.abstentionReason === "string"
+      ? model.abstentionReason.trim()
+      : "";
+  const hasAffirmativeAbstention = abstentionText.length > 0;
+  const hasClassification = model.classification !== null;
+
+  // F. An abstaining result cannot also assert a non-null classification.
+  // G. A classified result cannot carry an affirmative abstention reason.
+  if (hasClassification && hasAffirmativeAbstention) {
+    errors.push(
+      "internal_inconsistency: non-null classification cannot coexist with affirmative abstentionReason.",
+    );
+  }
+
+  if (model.classification === "clear_contradiction") {
+    // A–E: clear_contradiction cannot coexist with compatibility flags.
+    if (model.bothCanSimultaneouslyBeTrue) {
+      errors.push(
+        "internal_inconsistency: clear_contradiction cannot coexist with bothCanSimultaneouslyBeTrue: true.",
+      );
+    }
+    if (model.changedBeliefOverTime) {
+      errors.push(
+        "internal_inconsistency: clear_contradiction cannot coexist with changedBeliefOverTime: true.",
+      );
+    }
+    if (model.intentionVersusOutcome) {
+      errors.push(
+        "internal_inconsistency: clear_contradiction cannot coexist with intentionVersusOutcome: true.",
+      );
+    }
+    if (model.goalVersusObstacle) {
+      errors.push(
+        "internal_inconsistency: clear_contradiction cannot coexist with goalVersusObstacle: true.",
+      );
+    }
+    if (model.emotionalOrPhysiologicalVersusReasoningStandard) {
+      errors.push(
+        "internal_inconsistency: clear_contradiction cannot coexist with emotionalOrPhysiologicalVersusReasoningStandard: true.",
+      );
+    }
+  }
+
+  return errors;
 }
 
 function buildAudit(args: {
@@ -317,6 +414,8 @@ export async function adjudicateContradiction(
   const propErr = requiredPropositionPresent(model);
   if (propErr) errors.push(propErr);
 
+  errors.push(...collectSemanticConsistencyErrors(model));
+
   const spanResult = validateDualSideEvidenceClaims({
     claimA: model.evidenceClaimA,
     claimB: model.evidenceClaimB,
@@ -327,11 +426,7 @@ export async function adjudicateContradiction(
     errors.push(`${spanResult.code}: ${spanResult.message}`);
   }
 
-  const isAbstaining =
-    model.classification === null ||
-    (typeof model.abstentionReason === "string" &&
-      model.abstentionReason.trim().length > 0 &&
-      model.classification === null);
+  const isAbstaining = model.classification === null;
 
   if (model.classification === "clear_contradiction") {
     if (!spanResult.ok) {
