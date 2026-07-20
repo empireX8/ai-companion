@@ -1,0 +1,69 @@
+{
+  "slice": "CEQR-001",
+  "campaign": "CONTRADICTION-SEMANTIC-ADJUDICATION-KERNEL-001",
+  "parentCampaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "baseline": "516f47f",
+  "branch": "desktop-intelligence-kernel-contradiction-adjudication-001",
+  "completedAt": "2026-07-20T13:52:00.000Z",
+  "sharedFoundationImplemented": true,
+  "firstProofObject": "ContradictionNode",
+  "runtimeWiring": false,
+  "liveDetectorUnchanged": true,
+  "liveMessageRouteUnchanged": true,
+  "importPathUnchanged": true,
+  "materialisationPathUnchanged": true,
+  "schemaUnchanged": true,
+  "migrationAbsent": true,
+  "candidateCreated": false,
+  "existing25Unchanged": true,
+  "decisionPostCalled": false,
+  "kayDbMutated": false,
+  "objectivityRefereeInterfaceExists": true,
+  "sharedAiObjectivityRefereeImplemented": false,
+  "productionReadiness": "NO",
+  "focusedTests": {
+    "command": "npx vitest run lib/__tests__/contradiction-adjudication-contract.test.ts",
+    "passed": 22,
+    "failed": 0,
+    "result": "PASS"
+  },
+  "typescript": {
+    "command": "npx tsc --noEmit",
+    "result": "PASS"
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "PASS"
+  },
+  "fullSuite": {
+    "command": "npm test",
+    "testFiles": { "failed": 5, "passed": 304, "total": 309 },
+    "tests": { "failed": 7, "passed": 3918, "total": 3925 },
+    "classification": "pre_existing_baseline",
+    "failedFiles": [
+      "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+      "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+      "lib/__tests__/orvek-adapters.test.ts",
+      "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+      "lib/__tests__/today-production-movement-depth.test.ts"
+    ],
+    "notes": "Failures are unrelated to CEQR-001 (SurfacedEvidencePointer / EvidencePointerSurfacingRationale schema pin expectations and Today/orvek adapter after-state honesty). CEQR-001 touched only new kernel/adjudicator/test/receipt paths; no edits to failing modules."
+  },
+  "gitDiffCheck": "PASS",
+  "accountGate": {
+    "before": { "matchesExpected": true, "pendingContradictionNodes": 25, "pendingTotal": 53 },
+    "after": { "matchesExpected": true, "pendingContradictionNodes": 25, "pendingTotal": 53 }
+  },
+  "versions": {
+    "kernelContractVersion": "orvek-intelligence-kernel-v1",
+    "contradictionAdjudicationSchemaVersion": "contradiction-adjudication-schema-v1",
+    "contradictionAdjudicationPromptVersion": "contradiction-adjudication-prompt-v1"
+  },
+  "modelRunner": {
+    "interface": "StructuredModelRunner",
+    "productionAdapter": "createAiSdkStructuredModelRunner",
+    "aiSdkApi": "generateText + Output.object",
+    "hardCodedProvider": false,
+    "liveCallsInTests": false
+  }
+}
