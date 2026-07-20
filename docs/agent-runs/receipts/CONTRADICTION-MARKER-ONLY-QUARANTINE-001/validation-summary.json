@@ -1,0 +1,109 @@
+{
+  "slice": "CEQR-002",
+  "campaign": "CONTRADICTION-MARKER-ONLY-QUARANTINE-001",
+  "parentCampaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "baseline": "03802eb",
+  "branch": "desktop-contradiction-marker-only-quarantine-001",
+  "completedAt": "2026-07-20T16:45:00.000Z",
+  "ceqr001LandedAt": "03802eb",
+  "markerOnlyCreationQuarantined": true,
+  "markersRemainNominationOnly": true,
+  "tokenOverlapEligibilityRemoved": true,
+  "behavioralRegexAffirmativeEligibilityRemoved": true,
+  "semanticRuntimeWired": false,
+  "modelAdjudicatorRuntimeWiring": false,
+  "objectivityRefereeRuntimeWiring": false,
+  "messageRouteModified": false,
+  "materialisationModified": false,
+  "schemaUnchanged": true,
+  "migrationAbsent": true,
+  "kayDbMutated": false,
+  "existing25Unchanged": true,
+  "ceqr003Implemented": false,
+  "ceqr004Implemented": false,
+  "ceqr005Blocked": true,
+  "productionReadiness": "NO",
+  "focusedTests": {
+    "command": "npx vitest run lib/__tests__/contradiction-detection.test.ts lib/__tests__/import-chatgpt.test.ts lib/__tests__/import-archive.test.ts lib/__tests__/contradiction-backfill.test.ts",
+    "testFiles": { "passed": 4, "failed": 0 },
+    "tests": { "passed": 167, "failed": 0 },
+    "result": "PASS"
+  },
+  "typescript": {
+    "command": "npx tsc --noEmit",
+    "result": "PASS"
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "PASS"
+  },
+  "gitDiffCheck": "PASS",
+  "trustLanguageCheck": "PASS",
+  "legacySurfacesCheck": "PASS",
+  "fullSuite": {
+    "command": "npm test",
+    "testFiles": { "failed": 5, "passed": 304, "total": 309 },
+    "tests": { "failed": 7, "passed": 3935, "total": 3942 },
+    "classification": "pre_existing_baseline",
+    "baselineComparison": {
+      "ceqr001Baseline": "03802eb / CEQR-001 validation-summary",
+      "ceqr001FailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "ceqr001FailedTestCount": 7,
+      "thisSliceFailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "thisSliceFailedTestCount": 7,
+      "exactFileMatch": true,
+      "campaignCausedNewFailures": false,
+      "notes": "Passed test count rose from 3918→3935 due to CEQR-002 quarantine tests; failure set is an exact match to the CEQR-001 recorded baseline files."
+    }
+  },
+  "accountGate": {
+    "before": {
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true
+    },
+    "after": {
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true
+    }
+  },
+  "finalReviewGate": {
+    "markerOnlyLiveCreation": 0,
+    "markerOnlyImportCreation": 0,
+    "tokenOverlapEligibility": "removed",
+    "behavioralRegexAffirmativeEligibility": "removed",
+    "modelAdjudicatorRuntimeWiring": "none",
+    "objectivityRefereeRuntimeWiring": "none",
+    "messageRouteModified": false,
+    "materialisationModified": false,
+    "schemaMigrationModified": false,
+    "kayDbMutated": false,
+    "existing25Changed": false,
+    "productionReadiness": "NO"
+  }
+}

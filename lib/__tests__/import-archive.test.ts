@@ -2,7 +2,6 @@ import type { PrismaClient } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP,
   createImportedContradictionFanoutState,
   extractChatGptConversations,
   importExtractedConversations,
@@ -908,10 +907,12 @@ describe("importExtractedConversations — import relevance gate", () => {
     });
 
     expect(result.errors).toEqual([]);
-    expect(result.contradictionsCreated).toBe(IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP);
-    expect(contradictionNodes).toHaveLength(IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP);
-    expect(diagnostics.reasonCodeCounts.imported_contradiction_fanout_rejected).toBe(2);
-    expect(diagnostics.reasonCodeCounts.contradiction_repeated_side_a).toBe(2);
+    // CEQR-002: marker-only detections are quarantined — zero persistable contradictions,
+    // so the fanout path is never reached from live import detection.
+    expect(result.contradictionsCreated).toBe(0);
+    expect(contradictionNodes).toHaveLength(0);
+    expect(diagnostics.reasonCodeCounts.imported_contradiction_fanout_rejected ?? 0).toBe(0);
+    expect(diagnostics.reasonCodeCounts.candidate_contradiction_created ?? 0).toBe(0);
   });
 
   it("enforces fanout cap across multiple importExtractedConversations calls (batch-like)", async () => {
@@ -1155,10 +1156,10 @@ describe("importExtractedConversations — import relevance gate", () => {
 
     expect(first.errors).toEqual([]);
     expect(second.errors).toEqual([]);
-    expect(first.contradictionsCreated).toBe(IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP);
+    // CEQR-002: marker-only creation quarantined — neither batch materializes CNs.
+    expect(first.contradictionsCreated).toBe(0);
     expect(second.contradictionsCreated).toBe(0);
-    expect(contradictionNodes).toHaveLength(IMPORTED_CONTRADICTION_SIDE_FANOUT_CAP);
-    expect(diagnostics.reasonCodeCounts.imported_contradiction_fanout_rejected).toBe(3);
-    expect(diagnostics.reasonCodeCounts.contradiction_repeated_side_a).toBe(3);
+    expect(contradictionNodes).toHaveLength(0);
+    expect(diagnostics.reasonCodeCounts.imported_contradiction_fanout_rejected ?? 0).toBe(0);
   });
 });

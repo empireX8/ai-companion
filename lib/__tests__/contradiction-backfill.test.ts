@@ -191,7 +191,7 @@ function makeBackfillDb() {
 }
 
 describe("backfillImportedContradictionsForUser", () => {
-  it("processes imported user messages and is safe to rerun", async () => {
+  it("scans imported messages but creates zero nodes under CEQR-002 marker quarantine", async () => {
     const { db, nodes, evidence } = makeBackfillDb();
 
     const first = await backfillImportedContradictionsForUser({
@@ -199,17 +199,19 @@ describe("backfillImportedContradictionsForUser", () => {
       db: db as never,
     });
 
+    // Prior expectation (pre-CEQR-002): marker + goal ref created a node.
+    // Invalid now: detectContradictions fails closed until semantic adjudication is wired.
     expect(first).toEqual({
       messagesScanned: 1,
-      messagesWithDetections: 1,
-      nodesCreated: 1,
-      evidenceCreated: 1,
+      messagesWithDetections: 0,
+      nodesCreated: 0,
+      evidenceCreated: 0,
       reusedExistingNodes: 0,
       duplicateEvidenceSkips: 0,
       terminalCollisionSkips: 0,
     });
-    expect(nodes).toHaveLength(1);
-    expect(evidence).toHaveLength(1);
+    expect(nodes).toHaveLength(0);
+    expect(evidence).toHaveLength(0);
 
     const second = await backfillImportedContradictionsForUser({
       userId: "u1",
@@ -218,14 +220,14 @@ describe("backfillImportedContradictionsForUser", () => {
 
     expect(second).toEqual({
       messagesScanned: 1,
-      messagesWithDetections: 1,
+      messagesWithDetections: 0,
       nodesCreated: 0,
       evidenceCreated: 0,
       reusedExistingNodes: 0,
-      duplicateEvidenceSkips: 1,
+      duplicateEvidenceSkips: 0,
       terminalCollisionSkips: 0,
     });
-    expect(nodes).toHaveLength(1);
-    expect(evidence).toHaveLength(1);
+    expect(nodes).toHaveLength(0);
+    expect(evidence).toHaveLength(0);
   });
 });

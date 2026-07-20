@@ -12,9 +12,11 @@ import {
   extractChatGptConversations,
   extractReferenceFromImportedMessage,
   importChatGptExport,
+  importExtractedConversations,
   parseJsonSafe,
   validateImportFile,
 } from "../import-chatgpt";
+import { createEmptyImportRunDiagnostics } from "../import-diagnostics";
 
 const SAMPLE_EXPORT = [
   {
@@ -362,44 +364,109 @@ describe("classifyImportedContradictionPair", () => {
     expect(result.reasons).toContain("contradiction_project_task_pair");
   });
 
-  it("accepts honesty-vs-conflict contradiction pair", () => {
+  // CEQR-002: prior "accepts" expectations were invalid — lack of rejection
+  // reasons is not semantic approval. Pairs quarantine until adjudication is wired.
+  it("quarantines honesty-vs-conflict pair (was marker/overlap acceptance)", () => {
     const result = classifyImportedContradictionPair({
       sideA: "I want honesty.",
       sideB: "I want honesty, but I avoid conflict.",
     });
 
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    expect(result.reasons.length).toBeGreaterThan(0);
   });
 
-  it("accepts independence-vs-approval contradiction pair", () => {
+  it("quarantines independence-vs-approval pair (was marker/overlap acceptance)", () => {
     const result = classifyImportedContradictionPair({
       sideA: "I value independence.",
       sideB: "I value independence, but I keep seeking approval.",
     });
 
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    expect(result.reasons.length).toBeGreaterThan(0);
   });
 
-  it("accepts simplify-life-vs-systems contradiction pair", () => {
+  it("quarantines simplify-life-vs-systems pair (was marker/overlap acceptance)", () => {
     const result = classifyImportedContradictionPair({
       sideA: "I want to simplify my life.",
       sideB: "I want to simplify my life, but I keep adding more systems.",
     });
 
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_semantic_adjudication_required");
   });
 
-  it("accepts coherence-vs-uncertainty contradiction pair", () => {
+  it("quarantines coherence-vs-uncertainty pair (was marker/overlap acceptance)", () => {
     const result = classifyImportedContradictionPair({
       sideA: "I want coherence.",
       sideB: "I want coherence, but I change direction whenever I feel uncertain.",
     });
 
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    expect(result.reasons.length).toBeGreaterThan(0);
+  });
+});
+
+describe("classifyImportedContradictionPair — CEQR-002 quarantine contracts", () => {
+  it("L: two shared tokens do not make an imported pair eligible", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want morning reading practice every weekday",
+      sideB: "Morning reading felt heavy so I watched something else",
+    });
+    expect(result.eligible).toBe(false);
+  });
+
+  it("M: high token overlap does not make an imported pair eligible", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want to simplify my life and remain focused on reading",
+      sideB: "I want to simplify my life and remain focused on reading, but I keep opening distractions",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_semantic_adjudication_required");
+  });
+
+  it("N: behavioral-admission phrasing does not make an imported pair eligible", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to finish this dense book for retention practice",
+      sideB: "but I skipped finishing this dense book for retention practice again",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_semantic_adjudication_required");
+  });
+
+  it("O: 'but I skipped...' does not create eligibility without semantic adjudication", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I need to finish reading this chapter tonight for retention",
+      sideB: "but I skipped finishing reading this chapter tonight for retention",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("contradiction_semantic_adjudication_required");
+  });
+
+  it("P: a pair with no hard rejection reason is not automatically eligible", () => {
+    const result = classifyImportedContradictionPair({
+      sideA: "I want to simplify my life.",
+      sideB: "I want to simplify my life, but I keep adding more systems.",
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toEqual(["contradiction_semantic_adjudication_required"]);
+  });
+
+  it("S: diagnostics reason distinguishes semantic quarantine from hard rejection", () => {
+    const quarantined = classifyImportedContradictionPair({
+      sideA: "I want to simplify my life.",
+      sideB: "I want to simplify my life, but I keep adding more systems.",
+    });
+    const hardRejected = classifyImportedContradictionPair({
+      sideA: "I feel a deep responsibility for ethnic and cultural survival.",
+      sideB: "We need to wire Stripe and Telegram to ship the MVP implementation.",
+    });
+
+    expect(quarantined.eligible).toBe(false);
+    expect(quarantined.reasons).toContain("contradiction_semantic_adjudication_required");
+    expect(hardRejected.eligible).toBe(false);
+    expect(hardRejected.reasons).not.toContain("contradiction_semantic_adjudication_required");
+    expect(hardRejected.reasons).toContain("contradiction_project_task_pair");
   });
 });
 
@@ -407,7 +474,7 @@ describe("classifyImportedContradictionPair", () => {
 //
 // Bad sideA cases: conversational corrections should never become contradiction sideA.
 // Bad sideB cases: greeting+planning messages with generic device/day-query signals.
-// Good cases: real behavioral failures must survive.
+// CEQR-002: even previously "good" behavioral pairs are not eligible without semantic adjudication.
 
 describe("classifyImportedContradictionPair — sideA conversational correction gate", () => {
   it("rejects 'i never said that in this conversation bruv' as sideA", () => {
@@ -494,14 +561,14 @@ describe("classifyImportedContradictionPair — sideB greeting/planning gate", (
   });
 });
 
-describe("classifyImportedContradictionPair — good pairs preserved (Step 15C regression guard)", () => {
-  it("keeps 'finish this book' + 'I didn't read again tonight because I kept scrolling'", () => {
+describe("classifyImportedContradictionPair — former good pairs quarantined (CEQR-002)", () => {
+  it("quarantines 'finish this book' + 'I didn't read again tonight because I kept scrolling'", () => {
     const result = classifyImportedContradictionPair({
       sideA: "I need to finish this book though",
       sideB: "I didn't read again tonight because I kept scrolling on my phone",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps 'review after reading to retain' + 'I skipped the review again and forgot most of it'", () => {
@@ -509,8 +576,8 @@ describe("classifyImportedContradictionPair — good pairs preserved (Step 15C r
       sideA: "I need to review after I read to retain",
       sideB: "I skipped the review again and forgot most of it",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps 'no weed while studying' + 'but I smoked before studying again'", () => {
@@ -518,8 +585,8 @@ describe("classifyImportedContradictionPair — good pairs preserved (Step 15C r
       sideA: "I don't want to use weed while studying",
       sideB: "but I smoked before studying again, it's hard to stop the habit",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps 'simplify my life and stay focused' + 'I opened social media again instead of reading'", () => {
@@ -527,8 +594,8 @@ describe("classifyImportedContradictionPair — good pairs preserved (Step 15C r
       sideA: "I need to simplify my life and stay focused",
       sideB: "I opened social media again instead of reading, I can't seem to stop",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps a durable constraint even when sideA uses 'never' in a durable sense", () => {
@@ -537,8 +604,8 @@ describe("classifyImportedContradictionPair — good pairs preserved (Step 15C r
       sideA: "I never want to skip a workout two days in a row",
       sideB: "but I skipped the gym again this week, three sessions missed",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps a constraint with 'I need to sleep before midnight' pattern", () => {
@@ -546,8 +613,8 @@ describe("classifyImportedContradictionPair — good pairs preserved (Step 15C r
       sideA: "I need to sleep before midnight to function properly",
       sideB: "but I stayed up until 2am again scrolling through my phone",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 });
 
@@ -758,8 +825,8 @@ describe("classifyImportedContradictionPair — required preserve examples (Step
       sideA: "I need to finish this book though",
       sideB: "I skipped reading again and watched videos instead",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps 'peak body nutrition' + 'ordered takeaway instead of eating clean' (behavioral admission)", () => {
@@ -767,8 +834,8 @@ describe("classifyImportedContradictionPair — required preserve examples (Step
       sideA: "My goal is peak body nutrition",
       sideB: "I ordered takeaway again instead of eating clean",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps 'simplify my life and remain focused' + 'kept opening new threads and drifting' (behavioral admission)", () => {
@@ -776,8 +843,8 @@ describe("classifyImportedContradictionPair — required preserve examples (Step
       sideA: "I need to simplify my life and remain focused",
       sideB: "I kept opening new threads and drifting into distractions",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps 'match tutorial pace' + 'skipped ahead in the tutorial' (topic overlap)", () => {
@@ -785,8 +852,8 @@ describe("classifyImportedContradictionPair — required preserve examples (Step
       sideA: "I want to match the pace of the tutorial and not skip basic steps",
       sideB: "I skipped ahead in the tutorial instead of following the course pace",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps 'review after reading to retain' + 'kept reading without reviewing' (behavioral admission)", () => {
@@ -794,8 +861,8 @@ describe("classifyImportedContradictionPair — required preserve examples (Step
       sideA: "I need to review after I read to retain though",
       sideB: "I kept reading without reviewing, so I didn't retain it",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 });
 
@@ -810,8 +877,8 @@ describe("classifyImportedContradictionPair — meaningful related pairs preserv
       sideA: "I need to finish this book though",
       sideB: "I skipped reading again and watched videos instead",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps 'peak body nutrition' + 'ordered takeaway again instead of eating clean'", () => {
@@ -819,8 +886,8 @@ describe("classifyImportedContradictionPair — meaningful related pairs preserv
       sideA: "My goal is peak body nutrition",
       sideB: "I ordered takeaway again instead of eating clean",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps 'simplify my life and remain focused' + 'kept opening new threads and drifting into distractions'", () => {
@@ -828,8 +895,8 @@ describe("classifyImportedContradictionPair — meaningful related pairs preserv
       sideA: "I need to simplify my life and remain focused",
       sideB: "I kept opening new threads and drifting into distractions",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 
   it("keeps 'match tutorial pace' + 'skipped ahead in the tutorial' (topic overlap escapes technical gate)", () => {
@@ -837,8 +904,8 @@ describe("classifyImportedContradictionPair — meaningful related pairs preserv
       sideA: "I want to match the pace of the tutorial and not skip basic steps",
       sideB: "I skipped ahead in the tutorial instead of following the course pace",
     });
-    expect(result.eligible).toBe(true);
-    expect(result.reasons).toEqual([]);
+    expect(result.eligible).toBe(false);
+    // CEQR-002: marker/overlap/regex no longer affirmative eligibility
   });
 });
 
@@ -1642,5 +1709,262 @@ describe("extractReferenceFromImportedMessage — residual noise guard (reject c
     });
     expect(created).toBe(false);
     expect((db as unknown as { _created: FullReferenceRow[] })._created).toHaveLength(0);
+  });
+});
+
+
+describe("importExtractedConversations — CEQR-002 marker-only quarantine", () => {
+  it("Q/R: marker-only imported messages create zero ContradictionNodes and no contradiction derivation artifacts", async () => {
+    const contradictionNodes: unknown[] = [];
+    const derivationArtifacts: Array<{ type: string }> = [];
+    let messageCounter = 0;
+
+    const tx = {
+      session: {
+        findUnique: async () => null,
+        create: async () => ({ id: "session_ceq002" }),
+      },
+      message: {
+        create: async ({ data }: { data: { role: string; content: string } }) => {
+          messageCounter += 1;
+          return { id: `msg_${messageCounter}`, role: data.role, content: data.content };
+        },
+      },
+      contradictionNode: {
+        findFirst: async () => null,
+        create: async ({ data }: { data: unknown }) => {
+          contradictionNodes.push(data);
+          return { id: `cn_${contradictionNodes.length}`, ...(data as object) };
+        },
+        update: async () => ({}),
+      },
+      contradictionEvidence: {
+        findFirst: async () => null,
+        create: async () => ({}),
+      },
+    };
+
+    const referenceRows: Array<{
+      id: string;
+      userId: string;
+      type: string;
+      statement: string;
+      status: string;
+      confidence: string;
+      updatedAt: Date;
+    }> = [
+      {
+        id: "ref_goal_1",
+        userId: "user_1",
+        type: "goal",
+        statement: "Work out five times per week",
+        status: "candidate",
+        confidence: "low",
+        updatedAt: new Date(),
+      },
+    ];
+
+    const db = {
+      $transaction: async (input: unknown) => {
+        if (typeof input === "function") {
+          return (input as (arg: typeof tx) => Promise<unknown>)(tx);
+        }
+        return Promise.resolve([]);
+      },
+      referenceItem: {
+        findMany: async () =>
+          referenceRows.map((row) => ({
+            id: row.id,
+            type: row.type,
+            statement: row.statement,
+          })),
+        create: async ({ data }: { data: (typeof referenceRows)[number] }) => {
+          referenceRows.push({
+            ...data,
+            id: `ref_${referenceRows.length + 1}`,
+            updatedAt: new Date(),
+          });
+          return data;
+        },
+      },
+      contradictionNode: {
+        findMany: async () => [],
+      },
+      derivationRun: {
+        create: async () => ({ id: "run_ceq002" }),
+        update: async () => ({}),
+      },
+      evidenceSpan: {
+        findUnique: async () => null,
+        create: async () => ({ id: "span_ceq002" }),
+      },
+      derivationArtifact: {
+        create: async ({ data }: { data: { type: string } }) => {
+          derivationArtifacts.push({ type: data.type });
+          return data;
+        },
+      },
+      artifactEvidenceLink: {
+        create: async () => ({}),
+      },
+      profileArtifact: {
+        findUnique: async () => null,
+        create: async () => ({ id: "artifact_ceq002" }),
+        update: async () => ({}),
+      },
+      profileArtifactEvidenceLink: {
+        create: async () => ({}),
+      },
+    } as unknown as PrismaClient;
+
+    const diagnostics = createEmptyImportRunDiagnostics();
+    const result = await importExtractedConversations({
+      userId: "user_1",
+      conversations: [
+        {
+          title: "marker only quarantine",
+          externalId: "conv-ceq002-1",
+          messages: [
+            {
+              role: "user",
+              content: "I failed and I skipped my workout again this week.",
+              createdAt: null,
+            },
+            {
+              role: "user",
+              content: "but I keep seeking approval even when I say I value independence.",
+              createdAt: null,
+            },
+          ],
+        },
+      ],
+      db,
+      diagnostics,
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.contradictionsCreated).toBe(0);
+    expect(contradictionNodes).toHaveLength(0);
+    expect(
+      derivationArtifacts.filter((artifact) => artifact.type === "contradiction_candidate")
+    ).toHaveLength(0);
+    expect(diagnostics.reasonCodeCounts.candidate_contradiction_created ?? 0).toBe(0);
+    // T: ReferenceItem extraction path remains available (seeded goal still queryable).
+    expect(referenceRows.some((row) => row.type === "goal")).toBe(true);
+  });
+
+  it("U: import path does not create or update ContradictionNodes for the existing 25 cohort", async () => {
+    const existingCandidates = Array.from({ length: 25 }, (_, i) => ({
+      id: `legacy_cn_${i + 1}`,
+      type: "goal_behavior_gap" as const,
+      sideA: `legacy side A ${i + 1}`,
+      sideB: `legacy side B ${i + 1}`,
+      status: "candidate",
+    }));
+    let contradictionUpdateCalls = 0;
+    let contradictionCreateCalls = 0;
+
+    const tx = {
+      session: {
+        findUnique: async () => null,
+        create: async () => ({ id: "session_u" }),
+      },
+      message: {
+        create: async ({ data }: { data: { role: string; content: string } }) => ({
+          id: "msg_u_1",
+          role: data.role,
+          content: data.content,
+        }),
+      },
+      contradictionNode: {
+        findFirst: async () => null,
+        create: async () => {
+          contradictionCreateCalls += 1;
+          return { id: "should_not_create" };
+        },
+        update: async () => {
+          contradictionUpdateCalls += 1;
+          return {};
+        },
+      },
+      contradictionEvidence: {
+        findFirst: async () => null,
+        create: async () => ({}),
+      },
+    };
+
+    const db = {
+      $transaction: async (input: unknown) => {
+        if (typeof input === "function") {
+          return (input as (arg: typeof tx) => Promise<unknown>)(tx);
+        }
+        return Promise.resolve([]);
+      },
+      referenceItem: {
+        findMany: async () => [
+          {
+            id: "ref_u",
+            type: "goal",
+            statement: "Work out five times per week",
+          },
+        ],
+        create: async () => ({}),
+      },
+      contradictionNode: {
+        findMany: async () =>
+          existingCandidates.map(({ id, type, sideA, sideB }) => ({
+            id,
+            type,
+            sideA,
+            sideB,
+          })),
+      },
+      derivationRun: {
+        create: async () => ({ id: "run_u" }),
+        update: async () => ({}),
+      },
+      evidenceSpan: {
+        findUnique: async () => null,
+        create: async () => ({ id: "span_u" }),
+      },
+      derivationArtifact: {
+        create: async () => ({}),
+      },
+      artifactEvidenceLink: {
+        create: async () => ({}),
+      },
+      profileArtifact: {
+        findUnique: async () => null,
+        create: async () => ({ id: "artifact_u" }),
+        update: async () => ({}),
+      },
+      profileArtifactEvidenceLink: {
+        create: async () => ({}),
+      },
+    } as unknown as PrismaClient;
+
+    const result = await importExtractedConversations({
+      userId: "user_1",
+      conversations: [
+        {
+          title: "existing 25 untouched",
+          externalId: "conv-u",
+          messages: [
+            {
+              role: "user",
+              content: "I failed and I skipped my workout again this week.",
+              createdAt: null,
+            },
+          ],
+        },
+      ],
+      db,
+      diagnostics: createEmptyImportRunDiagnostics(),
+    });
+
+    expect(result.contradictionsCreated).toBe(0);
+    expect(contradictionCreateCalls).toBe(0);
+    expect(contradictionUpdateCalls).toBe(0);
+    expect(existingCandidates).toHaveLength(25);
   });
 });
