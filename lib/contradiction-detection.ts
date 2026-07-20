@@ -43,6 +43,8 @@ type DetectionReference = {
   id: string;
   type: ReferenceType;
   statement: string;
+  sourceSessionId?: string | null;
+  sourceMessageId?: string | null;
 };
 
 type DetectionNode = {
@@ -66,6 +68,44 @@ export type ContradictionDetectionDb = {
     findMany: (args: unknown) => Promise<DetectionNode[]>;
   };
 };
+
+/**
+ * CEQR-004 same-session ReferenceItem query shape for the legacy detection path.
+ * Cross-session refs are excluded at the database filter — no user-wide fallback.
+ */
+export function buildLegacySameSessionReferenceQuery(args: {
+  userId: string;
+  sessionId: string;
+  referenceStatuses: ReferenceStatus[];
+}) {
+  return {
+    where: {
+      userId: args.userId,
+      status: { in: args.referenceStatuses },
+      type: {
+        in: ["goal", "constraint"] as const,
+      },
+      sourceSessionId: args.sessionId,
+    },
+    orderBy: [{ confidence: "desc" as const }, { updatedAt: "desc" as const }],
+    take: 50,
+    select: {
+      id: true,
+      type: true,
+      statement: true,
+      sourceSessionId: true,
+      sourceMessageId: true,
+      sourceMessage: {
+        select: {
+          id: true,
+          sessionId: true,
+          userId: true,
+          content: true,
+        },
+      },
+    },
+  };
+}
 
 const MAX_NOMINATIONS_PER_MESSAGE = 2;
 const MIN_DETECTION_LENGTH = 15;
@@ -260,11 +300,16 @@ export function nominateContradictionMarkersFromData({
 }
 
 /**
- * Legacy persistable detection path — fail closed (CEQR-002).
+ * Legacy persistable detection path — fail closed (CEQR-002 / CEQR-004).
  *
  * Markers, goal/constraint reference presence, token overlap, and textual
  * similarity do not authorize DetectedContradiction creation. Zero semantic
- * authorization ⇒ zero candidates. Semantic runtime is not wired in this slice.
+ * authorization ⇒ zero candidates.
+ *
+ * CEQR-004: same-session semantic selection lives in a dedicated selection
+ * module and is explicitly non-persistable. This legacy path must not cast
+ * selection results into DetectedContradiction or call materializeContradictions
+ * with them.
  */
 export function detectContradictionsFromData({
   messageContent,
@@ -280,11 +325,23 @@ export function detectContradictionsFromData({
 
 export async function detectContradictions({
   userId,
+  sessionId,
+  messageId,
   messageContent,
   referenceStatuses = ["active"],
   db = prismadb as unknown as ContradictionDetectionDb,
 }: {
   userId: string;
+  /**
+   * CEQR-004: required current-session boundary for Side A retrieval.
+   * Cross-session ReferenceItems must not enter the pool.
+   */
+  sessionId: string;
+  /**
+   * Optional current message id for provenance wiring / diagnostics.
+   * Not used to authorize persistence in CEQR-004.
+   */
+  messageId?: string;
   messageContent: string;
   /**
    * Which reference statuses to match against.
@@ -293,34 +350,26 @@ export async function detectContradictions({
    * extracted from imported history are available for contradiction detection
    * in the same import run (imported refs land as "candidate", never "active").
    *
-   * CEQR-002: references are still loaded for future semantic wiring / nomination
+   * CEQR-002/004: references are still loaded for nomination / selection
    * diagnostics, but the public path returns no persistable detections.
    */
   referenceStatuses?: ReferenceStatus[];
   db?: ContradictionDetectionDb;
 }): Promise<DetectedContradiction[]> {
+  void messageId;
   const content = messageContent.trim();
   if (content.length < MIN_DETECTION_LENGTH) {
     return [];
   }
 
   const [activeReferences, existingNodes] = await Promise.all([
-    db.referenceItem.findMany({
-      where: {
+    db.referenceItem.findMany(
+      buildLegacySameSessionReferenceQuery({
         userId,
-        status: { in: referenceStatuses },
-        type: {
-          in: ["goal", "constraint"],
-        },
-      },
-      orderBy: [{ confidence: "desc" }, { updatedAt: "desc" }],
-      take: 50,
-      select: {
-        id: true,
-        type: true,
-        statement: true,
-      },
-    }),
+        sessionId,
+        referenceStatuses,
+      })
+    ),
     db.contradictionNode.findMany({
       where: {
         userId,
@@ -339,7 +388,8 @@ export async function detectContradictions({
     }),
   ]);
 
-  // Fail closed until semantic adjudication is wired into this path.
+  // Fail closed: same-session retrieval is enforced above; persistable
+  // materialisation remains blocked until CEQR-005 + referee gates land.
   return detectContradictionsFromData({
     messageContent: content,
     activeReferences,

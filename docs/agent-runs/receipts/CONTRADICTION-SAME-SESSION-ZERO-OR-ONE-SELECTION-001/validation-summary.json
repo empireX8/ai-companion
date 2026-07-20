@@ -1,0 +1,127 @@
+{
+  "slice": "CEQR-004",
+  "campaign": "CONTRADICTION-SAME-SESSION-ZERO-OR-ONE-SELECTION-001",
+  "parentCampaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "baseline": "acf8956",
+  "branch": "desktop-contradiction-same-session-zero-or-one-selection-001",
+  "completedAt": "2026-07-20T20:25:00.000Z",
+  "ceqr001Landed": true,
+  "ceqr002Landed": true,
+  "ceqr003Landed": true,
+  "sameSessionOnly": true,
+  "crossSessionPairingImpossible": true,
+  "zeroOrOneSemanticSelection": true,
+  "fanOutProhibited": true,
+  "forcedOneProhibited": true,
+  "tokenOverlapEligibility": false,
+  "markerEligibility": false,
+  "semanticSelectionDistinctFromPersistence": true,
+  "persistableSelectedPair": false,
+  "durableContradictionNodeCreation": false,
+  "materialisationReceivesSelection": false,
+  "productionModelInvocationAdded": false,
+  "objectivityRefereeImplementationAdded": false,
+  "schemaUnchanged": true,
+  "migrationAbsent": true,
+  "kayDbMutated": false,
+  "existing25Unchanged": true,
+  "controlledNaturalEntryProofExecuted": false,
+  "ceqr005Blocked": true,
+  "productionReadiness": "NO",
+  "focusedTests": {
+    "command": "npx vitest run lib/__tests__/contradiction-source.test.ts lib/__tests__/contradiction-detection.test.ts lib/__tests__/contradiction-adjudication-contract.test.ts lib/__tests__/contradiction-backfill.test.ts",
+    "testFiles": { "passed": 4, "failed": 0 },
+    "tests": { "passed": 97, "failed": 0 },
+    "result": "PASS"
+  },
+  "relatedPathTests": {
+    "command": "npx vitest run lib/__tests__/import-archive.test.ts lib/__tests__/native-memory-reference-route.test.ts lib/__tests__/contradiction-backfill.test.ts",
+    "testFiles": { "passed": 3, "failed": 0 },
+    "tests": { "passed": 31, "failed": 0 },
+    "result": "PASS"
+  },
+  "typescript": {
+    "command": "npx tsc --noEmit",
+    "result": "PASS"
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "PASS"
+  },
+  "gitDiffCheck": "PASS",
+  "fullSuite": {
+    "command": "npx vitest run",
+    "testFiles": { "failed": 5, "passed": 304, "total": 309 },
+    "tests": { "failed": 7, "passed": 3990, "total": 3997 },
+    "classification": "pre_existing_baseline",
+    "baselineComparison": {
+      "ceqr003Baseline": "acf8956 / CEQR-003 validation-summary",
+      "ceqr003FailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "ceqr003FailedTestCount": 7,
+      "ceqr003PassedTests": 3960,
+      "thisSliceFailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "thisSliceFailedTestCount": 7,
+      "thisSlicePassedTests": 3990,
+      "exactFileMatch": true,
+      "campaignCausedNewFailures": false,
+      "notes": "Passed test count rose from 3960→3990 due to CEQR-004 same-session selection contract tests; failure set is an exact match to the CEQR-003 recorded baseline files."
+    }
+  },
+  "accountGate": {
+    "before": {
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true
+    },
+    "after": {
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true
+    }
+  },
+  "finalReviewGate": {
+    "crossSessionReferenceReachesAdjudication": false,
+    "crossSessionPairSelected": false,
+    "zeroEligibleProducesSelection": false,
+    "multipleEligibleFanOut": false,
+    "multipleEligibleForceFirstBest": false,
+    "tokenOverlapFallback": "NONE",
+    "markerEligibility": "NONE",
+    "oneValidSameSessionClassASemanticSelectionPossible": true,
+    "selectedResultPersistable": false,
+    "durableCnCreation": "NONE",
+    "materialisationReceivesCeqr004Selection": false,
+    "productionModelInvocationAdded": false,
+    "objectivityRefereeImplementationAdded": false,
+    "ceqr005MigrationAdded": false,
+    "schemaModified": false,
+    "kayDbMutated": false,
+    "existing25Changed": false,
+    "controlledNaturalEntryProofExecuted": false,
+    "productionReadiness": "NO"
+  }
+}

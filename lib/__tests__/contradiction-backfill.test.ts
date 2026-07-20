@@ -200,7 +200,8 @@ describe("backfillImportedContradictionsForUser", () => {
     });
 
     // Prior expectation (pre-CEQR-002): marker + goal ref created a node.
-    // Invalid now: detectContradictions fails closed until semantic adjudication is wired.
+    // Invalid now: detectContradictions fails closed for persistable detections
+    // even with session scope (CEQR-004). Marker-only backfill creation stays dead.
     expect(first).toEqual({
       messagesScanned: 1,
       messagesWithDetections: 0,

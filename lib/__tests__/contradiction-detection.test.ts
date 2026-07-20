@@ -332,11 +332,13 @@ describe("detectContradictions — referenceStatuses gate + quarantine", () => {
     prismaMock.contradictionNode.findMany.mockResolvedValue([]);
   });
 
-  it("defaults to querying only active references", async () => {
+  it("defaults to querying only active references within the current session", async () => {
     prismaMock.referenceItem.findMany.mockResolvedValue([]);
 
     await detectContradictions({
       userId: "u1",
+      sessionId: "session-1",
+      messageId: "msg-1",
       messageContent: "I failed to exercise this week",
     });
 
@@ -344,6 +346,7 @@ describe("detectContradictions — referenceStatuses gate + quarantine", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           status: { in: ["active"] },
+          sourceSessionId: "session-1",
         }),
       })
     );
@@ -354,6 +357,7 @@ describe("detectContradictions — referenceStatuses gate + quarantine", () => {
 
     await detectContradictions({
       userId: "u1",
+      sessionId: "session-1",
       messageContent: "I failed to exercise this week",
       referenceStatuses: ["active", "candidate"],
     });
@@ -362,20 +366,61 @@ describe("detectContradictions — referenceStatuses gate + quarantine", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           status: { in: ["active", "candidate"] },
+          sourceSessionId: "session-1",
         }),
+      })
+    );
+  });
+
+  it("CEQR-004: same-session query includes source provenance select and never omits sourceSessionId", async () => {
+    prismaMock.referenceItem.findMany.mockResolvedValue([]);
+
+    await detectContradictions({
+      userId: "u1",
+      sessionId: "session-live",
+      messageId: "msg-live",
+      messageContent: "I failed to exercise this week",
+    });
+
+    const query = prismaMock.referenceItem.findMany.mock.calls[0]?.[0] as {
+      where: Record<string, unknown>;
+      select: Record<string, unknown>;
+      take: number;
+    };
+
+    expect(query.where.sourceSessionId).toBe("session-live");
+    expect(query.where).not.toHaveProperty("OR");
+    expect(query.take).toBe(50);
+    expect(query.select).toEqual(
+      expect.objectContaining({
+        id: true,
+        type: true,
+        statement: true,
+        sourceSessionId: true,
+        sourceMessageId: true,
+        sourceMessage: {
+          select: {
+            id: true,
+            sessionId: true,
+            userId: true,
+            content: true,
+          },
+        },
       })
     );
   });
 
   it("abstains even when a candidate reference is included (CEQR-002: no marker-only creation)", async () => {
     // Prior expectation (pre-CEQR-002): returned goal_behavior_gap from marker + ref.
-    // Invalid now: markers nominate only; semantic adjudication is not wired.
+    // Invalid now: markers nominate only; semantic adjudication is not wired
+    // into the persistable DetectedContradiction path.
     prismaMock.referenceItem.findMany.mockResolvedValue([
       { id: "ref-1", type: "goal", statement: "I want to exercise five times a week" },
     ]);
 
     const detections = await detectContradictions({
       userId: "u1",
+      sessionId: "session-1",
       messageContent: "I failed to exercise this week — skipped every session.",
       referenceStatuses: ["active", "candidate"],
     });
@@ -388,6 +433,7 @@ describe("detectContradictions — referenceStatuses gate + quarantine", () => {
 
     const detections = await detectContradictions({
       userId: "u1",
+      sessionId: "session-1",
       messageContent: "I failed to exercise this week — skipped every session.",
     });
 
