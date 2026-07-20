@@ -23,8 +23,11 @@ import { validateDualSideEvidenceClaims } from "./orvek-intelligence-kernel/evid
 import type { StructuredModelRunner } from "./orvek-intelligence-kernel/model-runner";
 import {
   defaultRefereeStatus,
+  notRunObjectivityRefereeResult,
+  objectivityRefereeResultToStatus,
+  runObjectivityRefereeSafely,
   type ObjectivityReferee,
-  type ObjectivityRefereeEvaluation,
+  type ObjectivityRefereeResult,
 } from "./orvek-intelligence-kernel/objectivity-referee";
 import {
   contradictionModelResultSchema,
@@ -68,11 +71,16 @@ export type ContradictionAdjudicationResult =
   KernelAdjudicationResult<ValidatedContradictionSemantic> & {
     /**
      * Semantic clear_contradiction only — NOT a persistence decision.
-     * Always false in CEQR-001 (referee + selection + provenance not wired).
+     * Always null through CEQR-004 / referee dependency gate.
      */
     persistenceDecision: null;
     /** Explicitly never authored by the model as eligibility. */
     createCandidate: undefined;
+    /**
+     * Full inspectable Objectivity Referee result.
+     * ContinuationAllowed never authorises persistence.
+     */
+    referee: ObjectivityRefereeResult;
   };
 
 const SUPPORTED_PROPOSED_OBJECT_TYPES = new Set([
@@ -290,6 +298,7 @@ function envelope(args: {
   semantic: ValidatedContradictionSemantic | null;
   validation: DeterministicValidationResult;
   refereeStatus: RefereeStatus;
+  referee?: ObjectivityRefereeResult;
   audit: KernelAuditMetadata;
   abstentionReason: string | null;
   errorCode: ContradictionAdjudicationResult["errorCode"];
@@ -297,6 +306,7 @@ function envelope(args: {
 }): ContradictionAdjudicationResult {
   return {
     ...args,
+    referee: args.referee ?? notRunObjectivityRefereeResult(),
     persistenceDecision: null,
     createCandidate: undefined,
   };
@@ -497,24 +507,33 @@ export async function adjudicateContradiction(
     classification: model.classification,
   };
 
+  // Objectivity Referee runs only after deterministic validation succeeds.
+  // It evaluates a proposed ContradictionNode only for Class A semantics —
+  // it must never upgrade Class B/C/D into CN eligibility.
+  let referee = notRunObjectivityRefereeResult();
   let refereeStatus: RefereeStatus = defaultRefereeStatus();
-  let refereeEvaluation: ObjectivityRefereeEvaluation | null = null;
 
-  if (input.objectivityReferee) {
-    refereeEvaluation = await input.objectivityReferee.evaluate({
-      proposedObjectType: KERNEL_FIRST_PROOF_OBJECT,
-      validatedSemanticResult: semantic,
-      evidenceSummary: `${input.sideA.label} ↔ ${input.sideB.label}`,
-      confidence: semantic.confidence,
-      alternativeInterpretation: semantic.alternativeInterpretation,
-      qualificationContext: [
-        semantic.propositionA.qualifications,
-        semantic.propositionB.qualifications,
-        semantic.contextAndScope,
-      ].join(" | "),
-      validationWarnings: warnings,
+  if (
+    input.objectivityReferee &&
+    semantic.classification === "clear_contradiction"
+  ) {
+    referee = await runObjectivityRefereeSafely({
+      referee: input.objectivityReferee,
+      input: {
+        proposedObjectType: KERNEL_FIRST_PROOF_OBJECT,
+        validatedSemanticResult: semantic,
+        evidenceSummary: `${input.sideA.label} ↔ ${input.sideB.label}`,
+        confidence: semantic.confidence,
+        alternativeInterpretation: semantic.alternativeInterpretation,
+        qualificationContext: [
+          semantic.propositionA.qualifications,
+          semantic.propositionB.qualifications,
+          semantic.contextAndScope,
+        ].join(" | "),
+        validationWarnings: warnings,
+      },
     });
-    refereeStatus = refereeEvaluation.outcome;
+    refereeStatus = objectivityRefereeResultToStatus(referee);
   }
 
   const validation: DeterministicValidationResult = {
@@ -528,6 +547,7 @@ export async function adjudicateContradiction(
     semantic,
     validation,
     refereeStatus,
+    referee,
     audit: buildAudit({
       now,
       sourceIds,
