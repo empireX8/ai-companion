@@ -1496,6 +1496,11 @@ export async function importExtractedConversations({
           }
           const detections = await detectContradictions({
             userId,
+            // CEQR-004: each imported conversation is one Session — Side A
+            // retrieval is restricted to that session only (no cross-import
+            // or account-history fan-in).
+            sessionId: created.sessionId,
+            messageId: importedMessage.id,
             messageContent: importedMessage.content,
             // Include candidate references: every reference extracted during
             // this import run is created as "candidate", never "active". Without

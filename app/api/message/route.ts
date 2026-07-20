@@ -364,6 +364,8 @@ export async function POST(req: Request) {
         if (normalizedContent.length >= 15) {
           const detections = await detectContradictions({
             userId,
+            sessionId: session.id,
+            messageId: userMessage.id,
             messageContent: normalizedContent,
             db: prismadb as unknown as Parameters<typeof detectContradictions>[0]["db"],
           });

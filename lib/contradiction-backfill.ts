@@ -88,8 +88,14 @@ export async function backfillImportedContradictionsForUser({
   };
 
   for (const message of messages) {
+    // CEQR-004: session scope is supplied so retrieval cannot fan across
+    // sessions, but the legacy path still returns zero persistable detections
+    // until semantic selection + referee + dual-side lineage (CEQR-005) land.
+    // Do not revive marker-only backfill creation.
     const detections = await detectContradictions({
       userId,
+      sessionId: message.sessionId,
+      messageId: message.id,
       messageContent: message.content,
       referenceStatuses: ["active", "candidate"],
       db,
