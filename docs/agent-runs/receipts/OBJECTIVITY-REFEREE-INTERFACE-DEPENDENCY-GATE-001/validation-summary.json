@@ -1,0 +1,126 @@
+{
+  "slice": "OBJECTIVITY-REFEREE-INTERFACE-DEPENDENCY-GATE-001",
+  "campaign": "OBJECTIVITY-REFEREE-INTERFACE-DEPENDENCY-GATE-001",
+  "parentCampaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "baseline": "e608750",
+  "branch": "desktop-objectivity-referee-interface-dependency-gate-001",
+  "completedAt": "2026-07-20T21:25:00.000Z",
+  "gateClassification": "PASS_WITH_NARROW_PATCH",
+  "thisIsNotCeqr005": true,
+  "ceqr001Landed": true,
+  "ceqr002Landed": true,
+  "ceqr003Landed": true,
+  "ceqr004Landed": true,
+  "fiveOutcomesDistinct": true,
+  "executionStatesDistinguished": true,
+  "passMeansContinuationOnly": true,
+  "persistenceAuthorisationRemainsFalse": true,
+  "nonClassAUpgradeImpossible": true,
+  "productionRefereeImplementationAdded": false,
+  "productionProviderInvocationAdded": false,
+  "materialisationAdded": false,
+  "schemaUnchanged": true,
+  "migrationAbsent": true,
+  "kayDbMutated": false,
+  "existing25Unchanged": true,
+  "ceqr005Implemented": false,
+  "ceqr005InterfaceDependencySatisfied": true,
+  "durablePersistenceUnblocked": false,
+  "productionReadiness": "NO",
+  "objectivityRefereeInterfaceVersion": "objectivity-referee-interface-v1",
+  "kernelContractVersion": "orvek-intelligence-kernel-v1",
+  "focusedTests": {
+    "command": "npx vitest run lib/__tests__/objectivity-referee-interface-contract.test.ts lib/__tests__/contradiction-adjudication-contract.test.ts lib/__tests__/contradiction-source.test.ts",
+    "testFiles": { "passed": 3, "failed": 0 },
+    "tests": { "passed": 106, "failed": 0 },
+    "result": "PASS"
+  },
+  "typescript": {
+    "command": "npx tsc --noEmit",
+    "result": "PASS"
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "PASS"
+  },
+  "gitDiffCheck": "PASS",
+  "fullSuite": {
+    "command": "npx vitest run",
+    "testFiles": { "failed": 5, "passed": 305, "total": 310 },
+    "tests": { "failed": 7, "passed": 4018, "total": 4025 },
+    "classification": "pre_existing_baseline",
+    "baselineComparison": {
+      "ceqr004Baseline": "e608750 / CEQR-004 validation-summary",
+      "ceqr004FailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "ceqr004FailedTestCount": 7,
+      "ceqr004PassedTests": 3990,
+      "thisSliceFailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "thisSliceFailedTestCount": 7,
+      "thisSlicePassedTests": 4018,
+      "exactFileMatch": true,
+      "campaignCausedNewFailures": false,
+      "notes": "Passed files 304→305 and passed tests 3990→4018 from new objectivity-referee-interface-contract tests; failure set exact-matches CEQR-004 baseline."
+    }
+  },
+  "accountGate": {
+    "before": {
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true
+    },
+    "after": {
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true
+    }
+  },
+  "finalDependencyGate": {
+    "providerIndependentInterface": "PASS",
+    "exactFiveOutcomeUnion": "PASS",
+    "notRunDistinguishedFromAttemptedFailure": "PASS",
+    "invalidEvaluationDistinguished": "PASS",
+    "outcomeSpecificValidation": "PASS",
+    "fullEvaluationPreserved": "PASS",
+    "refereeExceptionFailsClosed": "PASS",
+    "nonClassAUpgradeImpossible": "PASS",
+    "invalidSpanBypassImpossible": "PASS",
+    "sameSessionBypassImpossible": "PASS",
+    "ambiguityOverrideImpossible": "PASS",
+    "passMeansContinuationOnly": "PASS",
+    "persistenceAuthorisationRemainsFalse": "PASS",
+    "productionRefereeImplementationAdded": "NO",
+    "productionProviderInvocationAdded": "NO",
+    "materialisationAdded": "NO",
+    "schemaMigrationChanged": "NO",
+    "kayDbMutated": "NO",
+    "existing25Changed": "NO",
+    "ceqr005Implemented": "NO",
+    "ceqr005InterfaceDependencySatisfied": "YES",
+    "durablePersistenceUnblocked": "NO",
+    "productionReadiness": "NO"
+  }
+}

@@ -67,9 +67,23 @@ export type ObjectivityRefereeOutcome =
   | "REQUEST_MORE_EVIDENCE"
   | "ABSTAIN";
 
+/**
+ * Summary referee status for audit compatibility.
+ *
+ * Prefer ObjectivityRefereeResult.executionState + outcome for full fidelity.
+ * - not_run: referee was not invoked
+ * - ObjectivityRefereeOutcome: completed with a validated outcome
+ * - execution_failed: referee threw/rejected
+ * - invalid_evaluation: referee returned a malformed/invalid evaluation
+ *
+ * Do not treat execution_failed or invalid_evaluation as not_run.
+ * Do not invent PASS for failures.
+ */
 export type RefereeStatus =
   | "not_run"
-  | ObjectivityRefereeOutcome;
+  | ObjectivityRefereeOutcome
+  | "execution_failed"
+  | "invalid_evaluation";
 
 export type KernelAuditMetadata = {
   processorVersion: string;

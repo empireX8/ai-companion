@@ -111,6 +111,11 @@ export type ContradictionSameSessionSelectionResult = {
   rejectionSummaries: SelectionRejectionSummary[];
   /** Aggregate referee status for the selected pair, else not_run. */
   refereeStatus: RefereeStatus;
+  /**
+   * Referee continuationAllowed from the selected pair only.
+   * Never means persistence authorisation.
+   */
+  refereeContinuationAllowed: boolean;
   persistenceDecision: null;
   persistable: false;
   persistenceAuthorised: false;
@@ -286,6 +291,7 @@ function emptyResult(
     eligibleCount: 0,
     rejectionSummaries: [],
     refereeStatus: defaultRefereeStatus(),
+    refereeContinuationAllowed: false,
     persistenceDecision: null,
     persistable: false,
     persistenceAuthorised: false,
@@ -459,6 +465,8 @@ export async function selectSameSessionContradictionPair(input: {
     eligibleCount: 1,
     rejectionSummaries,
     refereeStatus: only.adjudication.refereeStatus,
+    refereeContinuationAllowed:
+      only.adjudication.referee.continuationAllowed === true,
     persistenceDecision: null,
     persistable: false,
     persistenceAuthorised: false,
