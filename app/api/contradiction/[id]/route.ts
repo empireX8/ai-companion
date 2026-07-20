@@ -54,6 +54,8 @@ const CONTRADICTION_WITH_EVIDENCE = {
   lastTouchedAt: true,
   sourceSessionId: true,
   sourceMessageId: true,
+  sideASourceSpanId: true,
+  sideBSourceSpanId: true,
   evidence: {
     orderBy: {
       createdAt: "desc",

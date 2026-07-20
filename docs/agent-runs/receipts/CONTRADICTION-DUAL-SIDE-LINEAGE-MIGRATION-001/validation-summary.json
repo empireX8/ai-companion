@@ -1,0 +1,162 @@
+{
+  "slice": "CONTRADICTION-DUAL-SIDE-LINEAGE-MIGRATION-001",
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "campaignSlice": "CEQR-005",
+  "baseline": "f14c5fd",
+  "branch": "desktop-contradiction-dual-side-lineage-migration-001",
+  "completedAt": "2026-07-21T00:45:00.000Z",
+  "gateClassification": "PASS_WITH_NARROW_DEVIATION",
+  "narrowDeviation": {
+    "reason": "Prisma ContradictionNode gained sideASourceSpanId/sideBSourceSpanId; existing CONTRADICTION_WITH_EVIDENCE selects in contradiction API routes required those scalar fields for tsc/build assignability. No persistence wiring, no materialisation, no create/update writers.",
+    "files": [
+      "app/api/contradiction/route.ts",
+      "app/api/contradiction/[id]/route.ts"
+    ]
+  },
+  "designChosen": "A",
+  "ceqr001Landed": true,
+  "ceqr002Landed": true,
+  "ceqr003Landed": true,
+  "ceqr004Landed": true,
+  "objectivityRefereeInterfaceDependencySatisfied": true,
+  "exactSideARelationRepresented": true,
+  "exactSideBRelationRepresented": true,
+  "existingRowsSchemaCompatible": true,
+  "existing25Backfilled": false,
+  "bothNullLegacySupported": true,
+  "oneSidedLineageBlocked": true,
+  "sameSpanDualUseBlocked": true,
+  "productionPersistenceWired": false,
+  "materialisationChanged": false,
+  "productionProviderInvocationAdded": false,
+  "liveRefereeImplementationAdded": false,
+  "migrationApplied": false,
+  "kayDbMutated": false,
+  "existing25Changed": false,
+  "ceqr006Started": false,
+  "durablePersistenceUnblocked": false,
+  "productionReadiness": "NO",
+  "lineageContractVersion": "contradiction-dual-side-lineage-v1",
+  "migrationDirectory": "prisma/migrations/20260721003000_add_contradiction_dual_side_span_lineage",
+  "focusedTests": {
+    "command": "npx vitest run lib/__tests__/contradiction-dual-side-lineage.test.ts",
+    "testFiles": { "passed": 1, "failed": 0 },
+    "tests": { "passed": 48, "failed": 0 },
+    "result": "PASS"
+  },
+  "relatedTests": {
+    "command": "npx vitest run lib/__tests__/contradiction-adjudication-contract.test.ts lib/__tests__/objectivity-referee-interface-contract.test.ts lib/__tests__/contradiction-source.test.ts lib/__tests__/derivation-lifecycle.test.ts",
+    "testFiles": { "passed": 4, "failed": 0 },
+    "tests": { "passed": 132, "failed": 0 },
+    "result": "PASS"
+  },
+  "prismaValidate": "PASS",
+  "prismaGenerate": "PASS",
+  "typescript": {
+    "command": "npx tsc --noEmit",
+    "result": "PASS"
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "PASS"
+  },
+  "gitDiffCheck": "PASS",
+  "fullSuite": {
+    "command": "npx vitest run",
+    "testFiles": { "failed": 5, "passed": 306, "total": 311 },
+    "tests": { "failed": 7, "passed": 4066, "total": 4073 },
+    "classification": "pre_existing_baseline",
+    "baselineComparison": {
+      "objectivityRefereeGateBaseline": "f14c5fd / OBJECTIVITY-REFEREE-INTERFACE-DEPENDENCY-GATE-001",
+      "baselineFailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "baselineFailedTestCount": 7,
+      "baselinePassedFiles": 305,
+      "baselinePassedTests": 4018,
+      "thisSliceFailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "thisSliceFailedTestNames": [
+        "EvidencePointerSurfacingRationale schema model contracts > pins one rationale row per source object per user",
+        "EvidencePointerSurfacingRationale migration SQL contracts > pins source lookup uniqueness in migration SQL",
+        "orvek adapters > does not use movement summary as after state when depth after is missing",
+        "orvek adapters > mapTodayDataToV0Props maps movement without fabricating previous read or after state",
+        "SurfacedEvidencePointer schema model contracts > pins required indexes and one-pointer-per-source uniqueness",
+        "SurfacedEvidencePointer migration SQL contracts > pins Today read and source lookup indexes in migration SQL",
+        "Today adapter after-state honesty > uses explicit unavailable copy instead of movement summary when after is missing"
+      ],
+      "thisSliceFailedTestCount": 7,
+      "thisSlicePassedFiles": 306,
+      "thisSlicePassedTests": 4066,
+      "exactFailedFileMatch": true,
+      "exactFailedTestCountMatch": true,
+      "campaignCausedNewFailures": false,
+      "notes": "Passed files 305→306 and passed tests 4018→4066 from new contradiction-dual-side-lineage tests (+48) and suite variance; failure set exact-matches Objectivity Referee gate baseline (5 files / 7 tests)."
+    }
+  },
+  "accountGate": {
+    "before": {
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true
+    },
+    "after": {
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true
+    }
+  },
+  "finalCeqr005Gate": {
+    "designDecisionDocumented": "PASS",
+    "exactSideARelationRepresented": "PASS",
+    "exactSideBRelationRepresented": "PASS",
+    "existingRowsRemainSchemaCompatible": "PASS",
+    "existing25Backfilled": "NO",
+    "bothNullLegacyStateSupported": "PASS",
+    "oneSidedLineageBlocked": "PASS",
+    "sameSpanDualUseBlocked": "PASS",
+    "exactOffsetsValidated": "PASS",
+    "exactQuotesValidated": "PASS",
+    "exactContentHashValidated": "PASS",
+    "sourceIdsValidated": "PASS",
+    "messageOwnershipValidated": "PASS",
+    "sameSessionValidated": "PASS",
+    "classBCDBlocked": "PASS",
+    "invalidSemanticResultBlocked": "PASS",
+    "nonContinuingRefereeOutcomesBlocked": "PASS",
+    "passInterpretedAsLineageContinuationOnly": "PASS",
+    "fabricatedSpanFallbackAbsent": "PASS",
+    "productionPersistenceWired": "NO",
+    "materialisationChanged": "NO",
+    "routeImportChanged": "NARROW_SELECT_ONLY",
+    "productionProviderInvocationAdded": "NO",
+    "liveRefereeImplementationAdded": "NO",
+    "migrationApplied": "NO",
+    "kayDbMutated": "NO",
+    "existing25Changed": "NO",
+    "ceqr006Started": "NO",
+    "durablePersistenceUnblocked": "NO",
+    "productionReadiness": "NO"
+  }
+}
