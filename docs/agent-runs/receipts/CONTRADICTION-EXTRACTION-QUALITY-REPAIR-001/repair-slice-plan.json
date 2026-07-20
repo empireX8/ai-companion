@@ -1,0 +1,397 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "phase": "A",
+  "architectureClarification": "shared_orvek_intelligence_kernel",
+  "generatedAt": "2026-07-20T11:47:00.000Z",
+  "schemaVerdict": "B_EXISTING_SCHEMA_PARTIALLY_SUFFICIENT_BOUNDED_MIGRATION_REQUIRED",
+  "sideASpanProvenance": {
+    "sessionMessageAloneInsufficient": true,
+    "acceptableDesigns": [
+      "A_direct_sideASourceSpanId",
+      "B_guaranteed_chain_sideAReferenceItemId_link_evidence_to_exact_span"
+    ],
+    "migrationAuthorisedOnlyAfter": [
+      "CEQR-001",
+      "CEQR-002",
+      "CEQR-003",
+      "CEQR-004",
+      "kernel_io_contract",
+      "model_assisted_semantic_contract",
+      "deterministic_span_validation",
+      "contradiction_adjudicator_boundary",
+      "objectivity_referee_interface"
+    ],
+    "forbidden": [
+      "orphan_side_a_reference",
+      "fabricated_or_inferred_span",
+      "ai_text_without_mechanical_source_validation",
+      "ui_implying_symmetric_lineage_before_true"
+    ]
+  },
+  "recommendedCrossSessionPolicy": "same_session_zero_or_one_eligible_match_v1_cross_session_disabled",
+  "zeroOrOneMatchPolicy": {
+    "sameSessionRequired": true,
+    "selection": "zero_or_one",
+    "fanOutProhibited": true,
+    "forcedOneProhibited": true,
+    "rankingAmongIneligibleInsufficient": true,
+    "tokenOverlapAndMarkers": "retrieval_nomination_only_never_eligibility",
+    "noFallbackFromHighestOverlap": true
+  },
+  "existing25Treatment": {
+    "leaveUnchanged": true,
+    "excludeFromWave21Proof": true,
+    "acceptRejectAuthorised": false,
+    "bulkTransitionAuthorised": false,
+    "archivedTensionAuthorisedByPhaseA": false,
+    "doNotAssumeArchiveDispositionExistsOrApproved": true,
+    "deployDoesNotTransformIntoRepairedObjects": true,
+    "laterReclassificationMustBeVisiblyDistinct": true
+  },
+  "sharedIntelligenceKernel": {
+    "stages": [
+      "evidence_and_context_assembly",
+      "ai_semantic_proposition_extraction",
+      "candidate_object_classification_and_routing",
+      "object_specific_semantic_adjudication",
+      "shared_objectivity_referee",
+      "deterministic_evidence_and_schema_validation",
+      "persistence_lower_confidence_or_abstention",
+      "versioned_audit_receipt"
+    ],
+    "principle": "ai_determines_meaning_deterministic_code_verifies_provenance_schema_and_persistence",
+    "firstProofObject": "ContradictionNode",
+    "routerMustNotPersist": true,
+    "executionTiers": [
+      "tier1_lightweight_extraction_and_routing",
+      "tier2_object_specific_adjudication",
+      "tier3_objectivity_referee_and_persistence_gate",
+      "tier4_longitudinal_synthesis_and_model_movement"
+    ],
+    "paths": [
+      "immediate_capture",
+      "background_intelligence",
+      "promotion",
+      "read_path_no_full_model_rerun"
+    ]
+  },
+  "objectivityReferee": {
+    "existsToday": false,
+    "predecessors": [
+      "deterministic_objectivity_gates_dark_engine",
+      "reality_tracking_output_contract",
+      "deterministic_fallback_reports",
+      "dark_engine_evaluation"
+    ],
+    "allowedOutcomes": [
+      "PASS",
+      "PASS_WITH_LOWER_CONFIDENCE",
+      "ROUTE_TO_DIFFERENT_OBJECT_TYPE",
+      "REQUEST_MORE_EVIDENCE",
+      "ABSTAIN"
+    ],
+    "cannotBypassDeterministicValidation": true
+  },
+  "campaignScope": {
+    "may": [
+      "define_shared_kernel",
+      "implement_first_bounded_contradiction_path",
+      "minimum_shared_infrastructure_for_cn",
+      "controlled_natural_entry_proof"
+    ],
+    "mustNot": [
+      "rebuild_every_object_type",
+      "migrate_every_detector",
+      "full_multi_agent_system",
+      "intelligence_library",
+      "autonomous_background_without_bounded_triggers",
+      "opaque_all_powerful_referee_prompt",
+      "alter_existing_25_without_separate_authorisation"
+    ]
+  },
+  "productionReadiness": "NO",
+  "slices": [
+    {
+      "id": "CEQR-001",
+      "order": 1,
+      "name": "model_assisted_semantic_adjudication_kernel_foundation",
+      "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+      "dependsOn": [],
+      "description": "Model-assisted structured contradiction adjudication per semantic contract; not regex enlargement; minimum shared kernel I/O",
+      "filesLikely": [
+        "lib/orvek-intelligence-kernel/",
+        "lib/contradiction-adjudicator.ts",
+        "lib/contradiction-detection.ts",
+        "lib/import-chatgpt.ts"
+      ],
+      "schemaImpact": "none",
+      "databaseMutationImpact": "none_in_tests",
+      "testsRequired": [
+        "lib/__tests__/contradiction-adjudication-contract.test.ts"
+      ],
+      "humanGate": "kay_review_adjudication_contract",
+      "stopConditions": [
+        "du_bois_near_miss_not_false_class_a",
+        "model_encouraged_to_abstain",
+        "markers_not_eligibility"
+      ]
+    },
+    {
+      "id": "CEQR-002",
+      "order": 2,
+      "name": "marker_only_creation_quarantine",
+      "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+      "dependsOn": ["CEQR-001"],
+      "filesLikely": [
+        "lib/contradiction-detection.ts",
+        "lib/import-chatgpt.ts"
+      ],
+      "schemaImpact": "none",
+      "databaseMutationImpact": "new_candidates_only",
+      "testsRequired": [
+        "lib/__tests__/contradiction-detection.test.ts",
+        "lib/__tests__/import-chatgpt.test.ts"
+      ],
+      "humanGate": "none",
+      "stopConditions": [
+        "but_i_alone_insufficient",
+        "token_overlap_never_eligibility"
+      ]
+    },
+    {
+      "id": "CEQR-003",
+      "order": 3,
+      "name": "context_and_qualifier_preservation",
+      "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+      "dependsOn": ["CEQR-001"],
+      "filesLikely": [
+        "lib/contradiction-adjudicator.ts"
+      ],
+      "schemaImpact": "none",
+      "databaseMutationImpact": "none",
+      "testsRequired": [
+        "lib/__tests__/contradiction-adjudication-contract.test.ts"
+      ],
+      "humanGate": "edge_case_table_review",
+      "stopConditions": [
+        "partial_compliance_classified_b_not_a"
+      ]
+    },
+    {
+      "id": "CEQR-004",
+      "order": 4,
+      "name": "same_session_zero_or_one_eligible_selection",
+      "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+      "dependsOn": ["CEQR-002", "CEQR-003"],
+      "filesLikely": [
+        "lib/contradiction-detection.ts",
+        "app/api/message/route.ts",
+        "lib/import-chatgpt.ts"
+      ],
+      "schemaImpact": "none",
+      "databaseMutationImpact": "new_candidates_only",
+      "testsRequired": [
+        "lib/__tests__/contradiction-detection.test.ts",
+        "lib/__tests__/contradiction-source.test.ts"
+      ],
+      "humanGate": "confirm_natural_entry_proof_path",
+      "stopConditions": [
+        "cross_session_pairing_impossible",
+        "zero_eligible_means_no_candidate",
+        "fan_out_prohibited",
+        "forced_one_prohibited",
+        "no_fallback_from_highest_ineligible_overlap"
+      ]
+    },
+    {
+      "id": "CEQR-005",
+      "order": 5,
+      "name": "dual_side_exact_span_lineage_migration",
+      "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+      "dependsOn": [
+        "CEQR-001",
+        "CEQR-002",
+        "CEQR-003",
+        "CEQR-004",
+        "objectivity_referee_interface"
+      ],
+      "dependencyGate": "cannot_begin_until_kernel_io_model_contract_compatible_rejection_marker_quarantine_qualifiers_zero_or_one_provenance_objects_span_validation_adjudicator_boundary_and_referee_interface_established_and_tested",
+      "filesLikely": [
+        "lib/contradiction-materialization.ts",
+        "prisma/schema.prisma",
+        "prisma/migrations/",
+        "lib/import-candidate-review-actions.ts"
+      ],
+      "schemaImpact": "bounded_migration_side_a_and_side_b_exact_span_design_a_or_b",
+      "databaseMutationImpact": "migration_new_columns_new_candidates_no_legacy_25_backfill_required",
+      "testsRequired": [
+        "lib/__tests__/contradiction-materialization.test.ts",
+        "lib/__tests__/import-candidate-review.test.ts",
+        "lib/__tests__/contradiction-span-validation.test.ts"
+      ],
+      "humanGate": "migration_approval_after_dependency_gate",
+      "stopConditions": [
+        "exact_span_resolution_path_named_and_tested",
+        "no_orphan_side_a",
+        "no_fabricated_span",
+        "ui_does_not_imply_symmetry_until_true"
+      ]
+    },
+    {
+      "id": "CEQR-006",
+      "order": 6,
+      "name": "confidence_and_uncertainty_calibration",
+      "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+      "dependsOn": ["CEQR-001", "CEQR-004"],
+      "filesLikely": [
+        "lib/contradiction-adjudicator.ts",
+        "lib/contradiction-materialization.ts"
+      ],
+      "schemaImpact": "none",
+      "databaseMutationImpact": "new_candidates_only",
+      "testsRequired": [
+        "lib/__tests__/contradiction-adjudication-contract.test.ts"
+      ],
+      "humanGate": "none",
+      "stopConditions": [
+        "fixed_type_confidence_removed"
+      ]
+    },
+    {
+      "id": "CEQR-007",
+      "order": 7,
+      "name": "duplicate_prevention_hardening",
+      "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+      "dependsOn": ["CEQR-004"],
+      "filesLikely": [
+        "lib/contradiction-detection.ts",
+        "lib/contradiction-materialization.ts"
+      ],
+      "schemaImpact": "optional_unique_index",
+      "databaseMutationImpact": "none_for_legacy_rows",
+      "testsRequired": [
+        "lib/__tests__/contradiction-materialization.test.ts"
+      ],
+      "humanGate": "migration_if_unique_index",
+      "stopConditions": [
+        "reimport_idempotent"
+      ]
+    },
+    {
+      "id": "CEQR-008",
+      "order": 8,
+      "name": "import_review_dual_source_presentation",
+      "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+      "dependsOn": ["CEQR-005"],
+      "filesLikely": [
+        "lib/import-candidate-review-query.ts",
+        "lib/import-candidate-review-presentation.ts",
+        "components/inspector/panels/ImportInspectorPanel.tsx"
+      ],
+      "schemaImpact": "none",
+      "databaseMutationImpact": "none",
+      "testsRequired": [
+        "lib/__tests__/import-candidate-review.test.ts",
+        "lib/__tests__/import-candidate-review-wiring.test.ts"
+      ],
+      "humanGate": "kay_visual_review",
+      "stopConditions": [
+        "legacy_incomplete_lineage_warning_visible",
+        "no_false_symmetric_lineage_claim"
+      ]
+    },
+    {
+      "id": "CEQR-009",
+      "order": 9,
+      "name": "inspector_dual_source_presentation",
+      "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+      "dependsOn": ["CEQR-005"],
+      "filesLikely": [
+        "app/api/inspector/contradictions/[id]/route.ts",
+        "app/api/contradiction/[id]/route.ts",
+        "components/inspector/panels/ContradictionsInspectorPanel.tsx",
+        "lib/inspector-evidence-presentation.ts"
+      ],
+      "schemaImpact": "none",
+      "databaseMutationImpact": "none",
+      "testsRequired": [
+        "lib/__tests__/inspector-evidence-presentation.test.ts",
+        "lib/__tests__/inspector-surface-wiring.test.ts"
+      ],
+      "humanGate": "kay_visual_review",
+      "stopConditions": [
+        "open_cn_shows_both_exact_lineages_when_present"
+      ]
+    },
+    {
+      "id": "CEQR-010",
+      "order": 10,
+      "name": "controlled_natural_entry_proof",
+      "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+      "dependsOn": ["CEQR-006", "CEQR-007", "CEQR-008", "CEQR-009"],
+      "filesLikely": [
+        "docs/agent-runs/receipts/CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001/"
+      ],
+      "schemaImpact": "none",
+      "databaseMutationImpact": "kay_gated_new_message_and_candidate",
+      "testsRequired": [
+        "receipt_e2e_manual"
+      ],
+      "humanGate": "kay_author_and_accept",
+      "stopConditions": [
+        "one_proof_eligible_candidate_exists"
+      ]
+    },
+    {
+      "id": "CEQR-011",
+      "order": 11,
+      "name": "readonly_re_evaluation_existing_25",
+      "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+      "dependsOn": ["CEQR-001"],
+      "filesLikely": [
+        "docs/agent-runs/receipts/CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001/readonly-reclassify-existing-25.mjs"
+      ],
+      "schemaImpact": "none",
+      "databaseMutationImpact": "none",
+      "testsRequired": [
+        "script_output_matches_audit_counts"
+      ],
+      "humanGate": "kay_acknowledges_readonly_reclassification",
+      "stopConditions": [
+        "zero_proof_eligible_in_output",
+        "no_status_mutation",
+        "visibly_distinct_pre_repair_cohort"
+      ]
+    },
+    {
+      "id": "CEQR-012",
+      "order": 12,
+      "name": "wave_2_1_return_after_trustworthy_candidate",
+      "campaign": "SINGLE-REAL-CONTRADICTION-MATERIALISATION-PROOF-001",
+      "dependsOn": ["CEQR-010"],
+      "filesLikely": [
+        "docs/agent-runs/receipts/SINGLE-REAL-CONTRADICTION-MATERIALISATION-PROOF-001/"
+      ],
+      "schemaImpact": "none",
+      "databaseMutationImpact": "kay_accept_one_new_candidate",
+      "testsRequired": [
+        "bash scripts/verify-mindlab.sh",
+        "map_inspector_proof_receipt"
+      ],
+      "humanGate": "kay_accept",
+      "stopConditions": [
+        "open_genuine_cn_equals_1_truthful_lineage"
+      ]
+    }
+  ],
+  "deferredLaterCampaigns": [
+    "cross_session_temporal_belief_change",
+    "migrate_other_object_types_onto_kernel",
+    "existing_25_disposition_after_separate_authorisation",
+    "backfill_script_alignment",
+    "manual_post_contradiction_hygiene",
+    "unresolved_tension_object_type",
+    "intelligence_library",
+    "full_multi_agent_system"
+  ]
+}
