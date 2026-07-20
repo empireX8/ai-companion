@@ -1,6 +1,7 @@
 /**
- * CEQR-001 — model-assisted contradiction adjudication contract tests.
+ * CEQR-001 / CEQR-003 — model-assisted contradiction adjudication contract tests.
  * Injected fake model runners only; no live provider calls.
+ * CEQR-003 adds context/qualifier preservation and consistency-gate coverage.
  */
 
 import { readFileSync } from "fs";
@@ -9,8 +10,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   adjudicateContradiction,
+  buildContradictionAdjudicationPrompt,
   classificationAllowsContradictionNodeSemantics,
   classificationIsNonContradictionNode,
+  collectSemanticConsistencyErrors,
   CONTRADICTION_ADJUDICATION_PROMPT_VERSION,
   CONTRADICTION_ADJUDICATION_SCHEMA_VERSION,
   isPersistenceEligibleInCeqr001,
@@ -876,7 +879,7 @@ describe("CEQR-001 contradiction adjudication contract", () => {
       "contradiction-adjudication-schema-v1",
     );
     expect(CONTRADICTION_ADJUDICATION_PROMPT_VERSION).toBe(
-      "contradiction-adjudication-prompt-v1",
+      "contradiction-adjudication-prompt-v2",
     );
     expect(result.audit.kernelContractVersion).toBe(KERNEL_CONTRACT_VERSION);
     expect(result.audit.schemaVersion).toBe(
@@ -993,5 +996,1211 @@ describe("CEQR-001 runtime non-wiring boundary", () => {
     expect(adjudicator).not.toMatch(/@prisma\/client/);
     expect(adjudicator).not.toMatch(/prismadb/);
     expect(kernelIndex).not.toMatch(/@prisma\/client/);
+  });
+});
+
+describe("CEQR-003 context and qualifier preservation", () => {
+  it("prompt contract requires qualifier preservation instructions", () => {
+    const sideA = source({
+      sourceId: "src-prompt-a",
+      label: "A",
+      sourceText: "I usually avoid sugar.",
+    });
+    const sideB = source({
+      sourceId: "src-prompt-b",
+      label: "B",
+      sourceText: "I ate cake once at a birthday.",
+    });
+    const { system, prompt } = buildContradictionAdjudicationPrompt(sideA, sideB);
+
+    expect(system).toMatch(/preserve all material qualifications/i);
+    expect(system).toMatch(/PARTIAL COMPLIANCE MUST NOT BE classified as clear_contradiction/);
+    expect(system).toMatch(/usually.*always/i);
+    expect(system).toMatch(/want\/should\/try/);
+    expect(system).toMatch(/nested negation/i);
+    expect(system).toMatch(/attributed speech|attribution/i);
+    expect(system).toMatch(/abstention/i);
+    expect(system).toMatch(/qualifiers materially affected classification/i);
+    expect(system).toMatch(/what missing information would change/i);
+    expect(system).toContain(CONTRADICTION_ADJUDICATION_PROMPT_VERSION);
+    expect(prompt).toMatch(/Preserve material qualifiers/);
+  });
+
+  it("1. CLEAR CONTRADICTION — positive control remains valid", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-cc-a",
+      label: "Side A",
+      sourceText: "I never drink alcohol.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-cc-b",
+      label: "Side B",
+      sourceText: "I drank alcohol last night.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition: "Speaker never drinks alcohol",
+            actor: "speaker",
+            subject: "alcohol consumption",
+            timeframe: "habitual/always",
+            negation: true,
+            modality: "never",
+            qualifications: "universal claim; no exception stated",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker drank alcohol last night",
+            actor: "speaker",
+            subject: "alcohol consumption",
+            timeframe: "last night",
+            negation: false,
+            modality: "assertive past action",
+            qualifications: "isolated episode under universal claim",
+          },
+          bothCanSimultaneouslyBeTrue: false,
+          changedBeliefOverTime: false,
+          intentionVersusOutcome: false,
+          goalVersusObstacle: false,
+          emotionalOrPhysiologicalVersusReasoningStandard: false,
+          classification: "clear_contradiction",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.outcome).toBe("semantic_accepted");
+    expect(result.semantic?.classification).toBe("clear_contradiction");
+    expect(result.semantic?.bothCanSimultaneouslyBeTrue).toBe(false);
+    expect(result.semantic?.changedBeliefOverTime).toBe(false);
+    expect(result.semantic?.intentionVersusOutcome).toBe(false);
+    expect(result.semantic?.goalVersusObstacle).toBe(false);
+    expect(result.semantic?.emotionalOrPhysiologicalVersusReasoningStandard).toBe(
+      false,
+    );
+    assertNoPersistenceDecision(result);
+  });
+
+  it("2. PARTIAL COMPLIANCE — controlling stop condition never Class A", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-pc-a",
+      label: "Review need",
+      sourceText: "I need to review after I read to retain.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-pc-b",
+      label: "Partial review",
+      sourceText:
+        "I did review it after every read, but I did not do the question exercises.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition:
+              "Speaker needs to review after reading to retain",
+            actor: "speaker",
+            subject: "reading retention / review process",
+            timeframe: "ongoing practice",
+            negation: false,
+            modality: "need / goal",
+            qualifications: "goal commitment; not an absolute completed action claim",
+          },
+          propositionB: {
+            normalizedProposition:
+              "Speaker reviewed after every read but omitted question exercises",
+            actor: "speaker",
+            subject: "reading retention / review process",
+            timeframe: "recent study episode",
+            negation: false,
+            modality: "partial compliance / obstacle",
+            qualifications:
+              "did review it after every read; did not do the question exercises",
+          },
+          contextAndScope: "same speaker; review process with partial compliance",
+          bothCanSimultaneouslyBeTrue: true,
+          goalVersusObstacle: true,
+          classification: "plausible_unresolved_tension",
+          confidence: 0.74,
+          rationale:
+            "Partial compliance preserved: review occurred; question drills omitted. Goal vs obstacle — not 'did not review'.",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.outcome).toBe("semantic_accepted");
+    expect(result.semantic?.classification).not.toBe("clear_contradiction");
+    expect(["plausible_unresolved_tension", "compatible_states"]).toContain(
+      result.semantic?.classification,
+    );
+    expect(result.semantic?.propositionB.normalizedProposition).toMatch(
+      /reviewed after every read/i,
+    );
+    expect(result.semantic?.propositionB.qualifications).toMatch(
+      /did review it after every read/i,
+    );
+    expect(result.semantic?.propositionB.qualifications).toMatch(
+      /question exercises/i,
+    );
+    expect(result.semantic?.goalVersusObstacle).toBe(true);
+    assertNoPersistenceDecision(result);
+  });
+
+  it("3. FREQUENCY QUALIFIER — usually vs once not Class A", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-freq-a",
+      label: "Usually",
+      sourceText: "I usually avoid sugar.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-freq-b",
+      label: "Birthday cake",
+      sourceText: "I ate cake once at a birthday.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition: "Speaker usually avoids sugar",
+            actor: "speaker",
+            subject: "sugar intake",
+            timeframe: "habitual",
+            negation: false,
+            modality: "usually / habitual",
+            qualifications: "usually — not always; allows rare exceptions",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker ate cake once at a birthday",
+            actor: "speaker",
+            subject: "sugar intake",
+            timeframe: "one birthday occasion",
+            negation: false,
+            modality: "isolated past action",
+            qualifications: "once; birthday exception context",
+          },
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "compatible_states",
+          confidence: 0.85,
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).not.toBe("clear_contradiction");
+    expect(result.semantic?.propositionA.qualifications).toMatch(/usually/i);
+    expect(result.semantic?.propositionB.qualifications).toMatch(/birthday|once/i);
+  });
+
+  it("4. UNIVERSAL CLAIM CONTROL — never vs yesterday may remain Class A", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-univ-a",
+      label: "Never sugar",
+      sourceText: "I never eat sugar.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-univ-b",
+      label: "Cake yesterday",
+      sourceText: "I ate cake yesterday.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition: "Speaker never eats sugar",
+            actor: "speaker",
+            subject: "sugar intake",
+            timeframe: "universal / all time",
+            negation: true,
+            modality: "never",
+            qualifications: "universal claim; no exception stated",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker ate cake yesterday",
+            actor: "speaker",
+            subject: "sugar intake",
+            timeframe: "yesterday",
+            negation: false,
+            modality: "assertive past action",
+            qualifications: "single episode under universal claim",
+          },
+          bothCanSimultaneouslyBeTrue: false,
+          classification: "clear_contradiction",
+          confidence: 0.9,
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.outcome).toBe("semantic_accepted");
+    expect(result.semantic?.classification).toBe("clear_contradiction");
+    assertNoPersistenceDecision(result);
+  });
+
+  it("5. TEMPORAL CHANGE — used to / at the moment not Class A", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-temp-a",
+      label: "Past weekends",
+      sourceText: "I used to go out every weekend.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-temp-b",
+      label: "Present socialising",
+      sourceText: "At the moment I barely socialise.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition: "Speaker used to go out every weekend",
+            actor: "speaker",
+            subject: "socialising",
+            timeframe: "past habitual",
+            negation: false,
+            modality: "used to / past habit",
+            qualifications: "past tense; not present claim",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker barely socialises at the moment",
+            actor: "speaker",
+            subject: "socialising",
+            timeframe: "present phase",
+            negation: false,
+            modality: "present phase description",
+            qualifications: "at the moment — time-bounded",
+          },
+          changedBeliefOverTime: true,
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "compatible_states",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).not.toBe("clear_contradiction");
+    expect(result.semantic?.changedBeliefOverTime).toBe(true);
+  });
+
+  it("6. CURRENT PHASE QUALIFIER — exhausted phase vs normal energy", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-phase-a",
+      label: "Exhausted phase",
+      sourceText: "I'm in an exhausted phase at the moment.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-phase-b",
+      label: "Normal energy",
+      sourceText: "I am normally highly energetic.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition:
+              "Speaker is in an exhausted phase at the moment",
+            actor: "speaker",
+            subject: "energy level",
+            timeframe: "present phase",
+            negation: false,
+            modality: "present-phase description",
+            qualifications: "at the moment; phase-bounded",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker is normally highly energetic",
+            actor: "speaker",
+            subject: "energy level",
+            timeframe: "general baseline",
+            negation: false,
+            modality: "normally / baseline habit",
+            qualifications: "normally — baseline, not every present moment",
+          },
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "compatible_states",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).toBe("compatible_states");
+    expect(result.semantic?.propositionA.qualifications).toMatch(
+      /at the moment|phase/i,
+    );
+    expect(result.semantic?.propositionB.qualifications).toMatch(/normally/i);
+  });
+
+  it("7. INTENTION VERSUS OUTCOME — want vs missed once", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-intent-a",
+      label: "Want exercise",
+      sourceText: "I want to exercise every day.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-intent-b",
+      label: "Missed yesterday",
+      sourceText: "I missed yesterday.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition: "Speaker wants to exercise every day",
+            actor: "speaker",
+            subject: "exercise",
+            timeframe: "ongoing desire",
+            negation: false,
+            modality: "want / intention",
+            qualifications: "desire; not guaranteed completed behaviour",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker missed exercise yesterday",
+            actor: "speaker",
+            subject: "exercise",
+            timeframe: "yesterday",
+            negation: false,
+            modality: "isolated missed outcome",
+            qualifications: "single missed day",
+          },
+          intentionVersusOutcome: true,
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "plausible_unresolved_tension",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).not.toBe("clear_contradiction");
+    expect(result.semantic?.intentionVersusOutcome).toBe(true);
+  });
+
+  it("8. OBLIGATION VERSUS ACTION — should vs did not", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-obl-a",
+      label: "Should read",
+      sourceText: "I should read every evening.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-obl-b",
+      label: "Did not read",
+      sourceText: "I did not read last night.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition: "Speaker should read every evening",
+            actor: "speaker",
+            subject: "evening reading",
+            timeframe: "habitual obligation",
+            negation: false,
+            modality: "should / obligation",
+            qualifications: "obligation modality; not asserted completed habit",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker did not read last night",
+            actor: "speaker",
+            subject: "evening reading",
+            timeframe: "last night",
+            negation: true,
+            modality: "past non-action",
+            qualifications: "single night non-compliance with obligation",
+          },
+          intentionVersusOutcome: true,
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "plausible_unresolved_tension",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).not.toBe("clear_contradiction");
+    expect(result.semantic?.propositionA.modality).toMatch(/should|obligation/i);
+  });
+
+  it("9. ATTEMPT VERSUS GUARANTEE — try vs once raised voice", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-try-a",
+      label: "Try calm",
+      sourceText: "I try to stay calm during disagreements.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-try-b",
+      label: "Raised voice",
+      sourceText: "I raised my voice once.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition:
+              "Speaker tries to stay calm during disagreements",
+            actor: "speaker",
+            subject: "calm during disagreements",
+            timeframe: "habitual attempt",
+            negation: false,
+            modality: "try / attempt",
+            qualifications: "try — not guaranteed success",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker raised voice once",
+            actor: "speaker",
+            subject: "calm during disagreements",
+            timeframe: "one occasion",
+            negation: false,
+            modality: "isolated lapse",
+            qualifications: "once — isolated episode",
+          },
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "compatible_states",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).not.toBe("clear_contradiction");
+    expect(result.semantic?.propositionA.qualifications).toMatch(/try/i);
+    expect(result.semantic?.propositionB.qualifications).toMatch(/once/i);
+  });
+
+  it("10. CONDITION — when tired vs after sleeping well", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-cond-a",
+      label: "Tired driving",
+      sourceText: "I avoid driving when I'm tired.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-cond-b",
+      label: "Slept well drive",
+      sourceText: "I drove to the shop after sleeping well.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition: "Speaker avoids driving when tired",
+            actor: "speaker",
+            subject: "driving",
+            timeframe: "conditional habit",
+            negation: false,
+            modality: "conditional avoidance",
+            qualifications: "condition: when tired",
+          },
+          propositionB: {
+            normalizedProposition:
+              "Speaker drove to the shop after sleeping well",
+            actor: "speaker",
+            subject: "driving",
+            timeframe: "after sleeping well",
+            negation: false,
+            modality: "past action under rested condition",
+            qualifications: "condition satisfied: after sleeping well",
+          },
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "compatible_states",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).toBe("compatible_states");
+    expect(result.semantic?.propositionA.qualifications).toMatch(/when tired/i);
+  });
+
+  it("11. SCOPE DIFFERENCE — formal meetings vs close friends", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-scope-a",
+      label: "Meetings",
+      sourceText: "I struggle to speak in formal meetings.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-scope-b",
+      label: "Friends",
+      sourceText: "I talk easily with close friends.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition:
+              "Speaker struggles to speak in formal meetings",
+            actor: "speaker",
+            subject: "speaking ease",
+            timeframe: "ongoing",
+            negation: false,
+            modality: "scope-limited struggle",
+            qualifications: "scope: formal meetings",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker talks easily with close friends",
+            actor: "speaker",
+            subject: "speaking ease",
+            timeframe: "ongoing",
+            negation: false,
+            modality: "scope-limited ease",
+            qualifications: "scope: close friends",
+          },
+          contextAndScope: "formal-meeting vs close-friend scopes",
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "compatible_states",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).toBe("compatible_states");
+    expect(result.semantic?.propositionA.qualifications).toMatch(
+      /formal meetings/i,
+    );
+    expect(result.semantic?.propositionB.qualifications).toMatch(
+      /close friends/i,
+    );
+  });
+
+  it("12. SOMATIC RESPONSE VERSUS REASONING — not reactive preserved", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-soma-a",
+      label: "Objectivity",
+      sourceText:
+        "I'm just having fun I don't really care that much although I always optimise for objectivity regardless of what mode I'm operating in",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-soma-b",
+      label: "Identity trigger",
+      sourceText:
+        "I swear I feel like I can literally feel my brain like bubbling when I see something that starts to trigger my identity. I'm in a exhaustive faze at the moment and when I see something identity weaponed I'm not reactive but I also don't dwell on it enough to let it sit too much but I can literally feel like sensations in my brain bubbling like it's weird lol",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition:
+              "Speaker attempts to optimise for objectivity across modes",
+            actor: "speaker",
+            subject: "objectivity standard",
+            timeframe: "ongoing",
+            negation: false,
+            modality: "always / optimise",
+            qualifications: "reasoning standard; coexists with having fun",
+          },
+          propositionB: {
+            normalizedProposition:
+              "Speaker experiences identity-trigger sensations while remaining non-reactive in an exhaustive phase",
+            actor: "speaker",
+            subject: "identity-trigger somatic response",
+            timeframe: "present exhaustive phase",
+            negation: false,
+            modality: "descriptive sensation",
+            qualifications:
+              "not reactive; exhaustive phase; does not dwell; involuntary sensations",
+          },
+          bothCanSimultaneouslyBeTrue: true,
+          emotionalOrPhysiologicalVersusReasoningStandard: true,
+          classification: "compatible_states",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).toBe("compatible_states");
+    expect(result.semantic?.propositionB.qualifications).toMatch(/not reactive/i);
+    expect(result.semantic?.propositionB.qualifications).toMatch(
+      /exhaustive phase/i,
+    );
+    expect(result.semantic?.emotionalOrPhysiologicalVersusReasoningStandard).toBe(
+      true,
+    );
+  });
+
+  it("13. ATTRIBUTED SPEECH — brother says vs speaker enjoys", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-attr-a",
+      label: "Brother says",
+      sourceText: "My brother says I hate networking.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-attr-b",
+      label: "Speaker enjoys",
+      sourceText: "I enjoy networking.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition:
+              "Speaker reports that brother claims speaker hates networking",
+            actor: "brother (attributed); speaker reporting",
+            subject: "networking preference",
+            timeframe: "reported attribution",
+            negation: false,
+            modality: "attributed speech / report",
+            qualifications:
+              "brother's attribution; not endorsed as speaker's own claim",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker enjoys networking",
+            actor: "speaker",
+            subject: "networking preference",
+            timeframe: "present",
+            negation: false,
+            modality: "assertive preference",
+            qualifications: "speaker's own claim",
+          },
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "compatible_states",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).not.toBe("clear_contradiction");
+    expect(result.semantic?.propositionA.qualifications).toMatch(
+      /attribution|brother/i,
+    );
+  });
+
+  it("14. UNCERTAINTY — think I may prefer vs some projects", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-unc-a",
+      label: "May prefer alone",
+      sourceText: "I think I may prefer working alone.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-unc-b",
+      label: "Some projects",
+      sourceText: "I enjoy collaborating on some projects.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition:
+              "Speaker thinks they may prefer working alone",
+            actor: "speaker",
+            subject: "work preference",
+            timeframe: "uncertain present",
+            negation: false,
+            modality: "think / may — uncertainty",
+            qualifications: "uncertainty hedges: think, may",
+          },
+          propositionB: {
+            normalizedProposition:
+              "Speaker enjoys collaborating on some projects",
+            actor: "speaker",
+            subject: "work preference",
+            timeframe: "some projects",
+            negation: false,
+            modality: "limited-scope enjoyment",
+            qualifications: "some projects — limited scope",
+          },
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "compatible_states",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).not.toBe("clear_contradiction");
+    expect(result.semantic?.propositionA.qualifications).toMatch(
+      /uncertainty|think|may/i,
+    );
+    expect(result.semantic?.propositionB.qualifications).toMatch(/some projects/i);
+  });
+
+  it("15. EXPLICIT EXCEPTION — except special occasions vs wedding champagne", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-exc-a",
+      label: "Except occasions",
+      sourceText: "I do not drink except on special occasions.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-exc-b",
+      label: "Wedding champagne",
+      sourceText: "I had champagne at a wedding.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition:
+              "Speaker does not drink except on special occasions",
+            actor: "speaker",
+            subject: "alcohol",
+            timeframe: "habitual with exception",
+            negation: true,
+            modality: "rule with exception",
+            qualifications: "exception: special occasions",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker had champagne at a wedding",
+            actor: "speaker",
+            subject: "alcohol",
+            timeframe: "wedding occasion",
+            negation: false,
+            modality: "past action within exception",
+            qualifications: "wedding — special occasion fits exception",
+          },
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "compatible_states",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.semantic?.classification).toBe("compatible_states");
+    expect(result.semantic?.propositionA.qualifications).toMatch(
+      /special occasions/i,
+    );
+  });
+
+  it("16. NESTED NEGATION — not saying never want help", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-neg-a",
+      label: "Nested negation",
+      sourceText: "I'm not saying I never want help.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-neg-b",
+      label: "Asked for help",
+      sourceText: "I asked for help yesterday.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition:
+              "Speaker is not claiming they never want help",
+            actor: "speaker",
+            subject: "wanting help",
+            timeframe: "meta-statement",
+            negation: true,
+            modality: "nested negation / clarification",
+            qualifications:
+              "nested negation preserved; not flattened to 'never want help'",
+          },
+          propositionB: {
+            normalizedProposition: "Speaker asked for help yesterday",
+            actor: "speaker",
+            subject: "wanting help / asking",
+            timeframe: "yesterday",
+            negation: false,
+            modality: "past action",
+            qualifications: "compatible with not denying wanting help",
+          },
+          bothCanSimultaneouslyBeTrue: true,
+          classification: "compatible_states",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(["compatible_states", "insufficient_or_misaligned_context"]).toContain(
+      result.semantic?.classification,
+    );
+    expect(result.semantic?.propositionA.normalizedProposition).not.toMatch(
+      /^Speaker never wants help$/i,
+    );
+    expect(result.semantic?.propositionA.qualifications).toMatch(
+      /nested negation/i,
+    );
+  });
+
+  it("17. INTERNAL INCONSISTENCY — Class A + bothCanSimultaneouslyBeTrue", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-inc-a",
+      label: "A",
+      sourceText: "I never drink alcohol.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-inc-b",
+      label: "B",
+      sourceText: "I drank alcohol last night.",
+      sessionId: sideA.sessionId,
+    });
+
+    const fake = baseModelResult(sideA, sideB, {
+      classification: "clear_contradiction",
+      bothCanSimultaneouslyBeTrue: true,
+    });
+    expect(collectSemanticConsistencyErrors(fake).length).toBeGreaterThan(0);
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(fake),
+      now: FIXED_NOW,
+    });
+
+    expect(result.outcome).toBe("validation_failed");
+    expect(result.semantic).toBeNull();
+    expect(
+      result.validation.errors.some((e) =>
+        /bothCanSimultaneouslyBeTrue/i.test(e),
+      ),
+    ).toBe(true);
+    // No silent reclassification
+    expect(result.audit.semanticClassification).toBe("clear_contradiction");
+    assertNoPersistenceDecision(result);
+  });
+
+  it("18. INTERNAL INCONSISTENCY — Class A + goalVersusObstacle", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-gvo-a",
+      label: "A",
+      sourceText: "I need to review after I read to retain.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-gvo-b",
+      label: "B",
+      sourceText:
+        "I did review it after every read, but I did not do the question exercises.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          classification: "clear_contradiction",
+          goalVersusObstacle: true,
+          bothCanSimultaneouslyBeTrue: false,
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.outcome).toBe("validation_failed");
+    expect(result.semantic).toBeNull();
+    expect(
+      result.validation.errors.some((e) => /goalVersusObstacle/i.test(e)),
+    ).toBe(true);
+    assertNoPersistenceDecision(result);
+  });
+
+  it("19. INTERNAL INCONSISTENCY — classification + abstentionReason", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-abs-inc-a",
+      label: "A",
+      sourceText: "I never drink alcohol.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-abs-inc-b",
+      label: "B",
+      sourceText: "I drank alcohol last night.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          classification: "clear_contradiction",
+          abstentionReason: "Also unsure about actor scope.",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.outcome).toBe("validation_failed");
+    expect(result.semantic).toBeNull();
+    expect(
+      result.validation.errors.some((e) =>
+        /abstentionReason|classification cannot coexist/i.test(e),
+      ),
+    ).toBe(true);
+  });
+
+  it("20. VALID ABSTENTION — cannot safely preserve actor/scope/attribution", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-abs-ok-a",
+      label: "A",
+      sourceText: "Someone said something about networking.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-abs-ok-b",
+      label: "B",
+      sourceText: "Networking is fine sometimes.",
+      sessionId: sideA.sessionId,
+    });
+
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          classification: null,
+          confidence: 0.15,
+          abstentionReason:
+            "Cannot safely preserve actor, scope, or attribution; Side A attribution is ambiguous.",
+          rationale: "Unsafe to classify without clearer attribution.",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+
+    expect(result.outcome).toBe("abstained");
+    expect(result.semantic).toBeNull();
+    expect(result.abstentionReason).toMatch(/attribution|actor|scope/i);
+    expect(result.validation.status).toBe("valid");
+    assertNoPersistenceDecision(result);
+  });
+
+  it("21. EXACT EVIDENCE PROVENANCE — quote/offset/side still fail closed", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-prov-a",
+      label: "A",
+      sourceText: "I usually avoid sugar.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-prov-b",
+      label: "B",
+      sourceText: "I ate cake once at a birthday.",
+      sessionId: sideA.sessionId,
+    });
+
+    const good = baseModelResult(sideA, sideB, {
+      classification: "compatible_states",
+      bothCanSimultaneouslyBeTrue: true,
+      quoteA: "usually",
+      quoteB: "once at a birthday",
+    });
+
+    const pass = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(good),
+      now: FIXED_NOW,
+    });
+    expect(pass.outcome).toBe("semantic_accepted");
+    expect(pass.semantic?.evidenceClaimA.exactQuote).toBe("usually");
+    expect(pass.semantic?.evidenceClaimB.exactQuote).toBe("once at a birthday");
+
+    const fabricated = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner({
+        ...good,
+        evidenceClaimA: {
+          sourceId: sideA.sourceId,
+          exactQuote: "always avoid sugar",
+          startOffset: 0,
+          endOffset: 7,
+        },
+      }),
+      now: FIXED_NOW,
+    });
+    expect(fabricated.outcome).toBe("validation_failed");
+
+    const badOffsets = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner({
+        ...good,
+        evidenceClaimB: {
+          sourceId: sideB.sourceId,
+          exactQuote: "once at a birthday",
+          startOffset: 20,
+          endOffset: 5,
+        },
+      }),
+      now: FIXED_NOW,
+    });
+    expect(badOffsets.outcome).toBe("validation_failed");
+
+    const wrongSide = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner({
+        ...good,
+        evidenceClaimA: {
+          sourceId: sideB.sourceId,
+          exactQuote: sideB.sourceText,
+          startOffset: 0,
+          endOffset: sideB.sourceText.length,
+        },
+      }),
+      now: FIXED_NOW,
+    });
+    expect(wrongSide.outcome).toBe("validation_failed");
+  });
+
+  it("22. STRUCTURAL BOUNDARY — no new adjudicator/kernel imports on runtime paths", () => {
+    const root = process.cwd();
+    const read = (rel: string) => readFileSync(join(root, rel), "utf8");
+    for (const rel of [
+      "app/api/message/route.ts",
+      "lib/contradiction-detection.ts",
+      "lib/import-chatgpt.ts",
+      "lib/contradiction-materialization.ts",
+    ]) {
+      const src = read(rel);
+      expect(src).not.toMatch(/contradiction-adjudicator/);
+      expect(src).not.toMatch(/orvek-intelligence-kernel/);
+      expect(src).not.toMatch(/adjudicateContradiction/);
+      expect(src).not.toMatch(/collectSemanticConsistencyErrors/);
+    }
+  });
+
+  it("rejects blank qualifications and blank contextAndScope", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-blank-a",
+      label: "A",
+      sourceText: "I never drink alcohol.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-blank-b",
+      label: "B",
+      sourceText: "I drank alcohol last night.",
+      sessionId: sideA.sessionId,
+    });
+
+    const blankQual = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          propositionA: {
+            normalizedProposition: "Speaker never drinks",
+            actor: "speaker",
+            subject: "alcohol",
+            timeframe: "always",
+            negation: true,
+            modality: "never",
+            qualifications: "   ",
+          },
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+    expect(blankQual.outcome).toBe("validation_failed");
+    expect(
+      blankQual.validation.errors.some((e) => /qualifications is empty/i.test(e)),
+    ).toBe(true);
+
+    const blankScope = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner(
+        baseModelResult(sideA, sideB, {
+          contextAndScope: "",
+        }),
+      ),
+      now: FIXED_NOW,
+    });
+    expect(blankScope.outcome).toBe("validation_failed");
+    expect(
+      blankScope.validation.errors.some((e) => /contextAndScope is empty/i.test(e)),
+    ).toBe(true);
+  });
+
+  it("rejects Class A with each forbidden compatibility flag (A–E)", async () => {
+    const sideA = source({
+      sourceId: "ceqr3-flags-a",
+      label: "A",
+      sourceText: "I never drink alcohol.",
+    });
+    const sideB = source({
+      sourceId: "ceqr3-flags-b",
+      label: "B",
+      sourceText: "I drank alcohol last night.",
+      sessionId: sideA.sessionId,
+    });
+
+    const flags = [
+      "bothCanSimultaneouslyBeTrue",
+      "changedBeliefOverTime",
+      "intentionVersusOutcome",
+      "goalVersusObstacle",
+      "emotionalOrPhysiologicalVersusReasoningStandard",
+    ] as const;
+
+    for (const flag of flags) {
+      const result = await adjudicateContradiction({
+        sideA,
+        sideB,
+        modelRunner: fakeRunner(
+          baseModelResult(sideA, sideB, {
+            classification: "clear_contradiction",
+            bothCanSimultaneouslyBeTrue: false,
+            changedBeliefOverTime: false,
+            intentionVersusOutcome: false,
+            goalVersusObstacle: false,
+            emotionalOrPhysiologicalVersusReasoningStandard: false,
+            [flag]: true,
+          }),
+        ),
+        now: FIXED_NOW,
+      });
+      expect(result.outcome, flag).toBe("validation_failed");
+      expect(
+        result.validation.errors.some((e) => e.includes(flag)),
+        flag,
+      ).toBe(true);
+      expect(result.semantic, flag).toBeNull();
+    }
   });
 });

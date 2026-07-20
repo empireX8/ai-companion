@@ -7,8 +7,12 @@ export const KERNEL_CONTRACT_VERSION = "orvek-intelligence-kernel-v1" as const;
 export const CONTRADICTION_ADJUDICATION_SCHEMA_VERSION =
   "contradiction-adjudication-schema-v1" as const;
 
+/**
+ * CEQR-003: prompt wording materially strengthened for context/qualifier
+ * preservation. Schema shape unchanged (v1); kernel I/O unchanged (v1).
+ */
 export const CONTRADICTION_ADJUDICATION_PROMPT_VERSION =
-  "contradiction-adjudication-prompt-v1" as const;
+  "contradiction-adjudication-prompt-v2" as const;
 
 /** First proof object through the shared kernel. */
 export const KERNEL_FIRST_PROOF_OBJECT = "ContradictionNode" as const;

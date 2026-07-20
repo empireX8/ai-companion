@@ -1,0 +1,16 @@
+lib/contradiction-adjudicator.ts
+lib/orvek-intelligence-kernel/contracts.ts
+lib/__tests__/contradiction-adjudication-contract.test.ts
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/00-intake-and-scope.md
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/01-current-contract-gap.md
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/02-context-and-qualifier-preservation-contract.md
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/03-deterministic-consistency-gates.md
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/04-edge-case-classification-table.md
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/05-test-and-validation-results.md
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/06-runtime-and-database-nonmutation-gate.md
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/07-next-slice-boundary.md
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/account-gate-before.json
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/account-gate-after.json
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/changed-files.txt
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/validation-summary.json
+docs/agent-runs/receipts/CONTRADICTION-CONTEXT-QUALIFIER-PRESERVATION-001/readonly-account-gate.mjs
