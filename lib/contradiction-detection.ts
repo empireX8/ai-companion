@@ -4,6 +4,13 @@ import prismadb from "./prismadb";
 
 type DetectionConfidence = "low" | "medium";
 
+/**
+ * Persistable contradiction detection result.
+ *
+ * CEQR-002: the legacy public detection path returns zero of these until
+ * model-assisted semantic adjudication is wired (CEQR-004+). Marker / reference
+ * matches are nominations only — never DetectedContradiction.
+ */
 export type DetectedContradiction = {
   title: string;
   sideA: string;
@@ -11,6 +18,25 @@ export type DetectedContradiction = {
   type: ContradictionType;
   confidence: DetectionConfidence;
   existingNodeId?: string;
+};
+
+/**
+ * Explicit non-persistable nomination from rhetorical markers + goal/constraint
+ * reference presence. Useful as a retrieval hint for later semantic adjudication
+ * (CEQR-004). Must never be passed to materializeContradictions.
+ */
+export type ContradictionMarkerNomination = {
+  readonly kind: "marker_nomination";
+  readonly persistable: false;
+  readonly quarantineReason: "semantic_adjudication_required";
+  readonly markerFamily: "goal_mismatch" | "constraint_violation";
+  readonly markerMatched: string;
+  readonly referenceId: string;
+  readonly referenceType: ReferenceType;
+  readonly referenceStatement: string;
+  readonly messageContent: string;
+  /** Textual-similarity hint for duplicate checking only — not eligibility. */
+  readonly similarExistingNodeId?: string;
 };
 
 type DetectionReference = {
@@ -41,7 +67,7 @@ export type ContradictionDetectionDb = {
   };
 };
 
-const MAX_DETECTIONS_PER_MESSAGE = 2;
+const MAX_NOMINATIONS_PER_MESSAGE = 2;
 const MIN_DETECTION_LENGTH = 15;
 const GOAL_MISMATCH_MARKERS = [
   "i didn't",
@@ -49,8 +75,8 @@ const GOAL_MISMATCH_MARKERS = [
   "i avoided",
   "i skipped",
   "i procrastinated",
-];
-const CONSTRAINT_VIOLATION_MARKERS = ["but i", "however i", "even though"];
+] as const;
+const CONSTRAINT_VIOLATION_MARKERS = ["but i", "however i", "even though"] as const;
 
 const normalize = (value: string) =>
   value.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
@@ -83,6 +109,7 @@ const tokenOverlap = (left: string, right: string): number => {
   return overlap / Math.min(leftTokens.size, rightTokens.size);
 };
 
+/** Duplicate-checking similarity only — never contradiction eligibility. */
 const isSimilarText = (left: string, right: string): boolean => {
   const normalizedLeft = normalize(left);
   const normalizedRight = normalize(right);
@@ -106,7 +133,7 @@ const isSimilarText = (left: string, right: string): boolean => {
   return tokenOverlap(normalizedLeft, normalizedRight) >= 0.6;
 };
 
-const findExistingNodeId = (
+const findSimilarExistingNodeId = (
   existingNodes: DetectionNode[],
   type: ContradictionType,
   sideA: string,
@@ -122,14 +149,14 @@ const findExistingNodeId = (
   return match?.id;
 };
 
-const uniqueByStableKey = (items: DetectedContradiction[]) => {
+const uniqueNominationsByKey = (items: ContradictionMarkerNomination[]) => {
   const seen = new Set<string>();
-  const deduped: DetectedContradiction[] = [];
+  const deduped: ContradictionMarkerNomination[] = [];
 
   for (const item of items) {
-    const key = item.existingNodeId
-      ? `existing:${item.existingNodeId}`
-      : `new:${item.type}:${normalize(item.sideA)}:${normalize(item.sideB)}`;
+    const key = item.similarExistingNodeId
+      ? `existing:${item.similarExistingNodeId}`
+      : `nom:${item.markerFamily}:${item.referenceId}:${normalize(item.messageContent)}`;
     if (seen.has(key)) {
       continue;
     }
@@ -140,25 +167,37 @@ const uniqueByStableKey = (items: DetectedContradiction[]) => {
   return deduped;
 };
 
-export function detectContradictionsFromData({
+function firstMatchingMarker(
+  lowerContent: string,
+  markers: readonly string[]
+): string | undefined {
+  return markers.find((marker) => lowerContent.includes(marker));
+}
+
+/**
+ * Marker + reference nomination (retrieval hint only).
+ *
+ * CEQR-002: nominations are never DetectedContradiction and are never
+ * persistable. Callers must not cast these to DetectedContradiction.
+ */
+export function nominateContradictionMarkersFromData({
   messageContent,
   activeReferences,
   existingNodes,
-}: DetectFromDataParams): DetectedContradiction[] {
+}: DetectFromDataParams): ContradictionMarkerNomination[] {
   const content = messageContent.trim();
   if (content.length < MIN_DETECTION_LENGTH) {
     return [];
   }
 
   const lowerContent = content.toLowerCase();
-  const hasGoalMismatchSignal = GOAL_MISMATCH_MARKERS.some((marker) =>
-    lowerContent.includes(marker)
-  );
-  const hasConstraintViolationSignal = CONSTRAINT_VIOLATION_MARKERS.some((marker) =>
-    lowerContent.includes(marker)
+  const goalMarker = firstMatchingMarker(lowerContent, GOAL_MISMATCH_MARKERS);
+  const constraintMarker = firstMatchingMarker(
+    lowerContent,
+    CONSTRAINT_VIOLATION_MARKERS
   );
 
-  if (!hasGoalMismatchSignal && !hasConstraintViolationSignal) {
+  if (!goalMarker && !constraintMarker) {
     return [];
   }
 
@@ -167,49 +206,76 @@ export function detectContradictionsFromData({
     (item) => item.type === "constraint"
   );
 
-  const detections: DetectedContradiction[] = [];
+  const nominations: ContradictionMarkerNomination[] = [];
 
-  if (hasGoalMismatchSignal) {
+  if (goalMarker) {
     for (const reference of goalReferences) {
-      const existingNodeId = findExistingNodeId(
+      const similarExistingNodeId = findSimilarExistingNodeId(
         existingNodes,
         "goal_behavior_gap",
         reference.statement,
         content
       );
 
-      detections.push({
-        title: "Goal behavior gap",
-        sideA: reference.statement,
-        sideB: content,
-        type: "goal_behavior_gap",
-        confidence: "medium",
-        ...(existingNodeId ? { existingNodeId } : {}),
+      nominations.push({
+        kind: "marker_nomination",
+        persistable: false,
+        quarantineReason: "semantic_adjudication_required",
+        markerFamily: "goal_mismatch",
+        markerMatched: goalMarker,
+        referenceId: reference.id,
+        referenceType: reference.type,
+        referenceStatement: reference.statement,
+        messageContent: content,
+        ...(similarExistingNodeId ? { similarExistingNodeId } : {}),
       });
     }
   }
 
-  if (hasConstraintViolationSignal) {
+  if (constraintMarker) {
     for (const reference of constraintReferences) {
-      const existingNodeId = findExistingNodeId(
+      const similarExistingNodeId = findSimilarExistingNodeId(
         existingNodes,
         "constraint_conflict",
         reference.statement,
         content
       );
 
-      detections.push({
-        title: "Constraint conflict",
-        sideA: reference.statement,
-        sideB: content,
-        type: "constraint_conflict",
-        confidence: "low",
-        ...(existingNodeId ? { existingNodeId } : {}),
+      nominations.push({
+        kind: "marker_nomination",
+        persistable: false,
+        quarantineReason: "semantic_adjudication_required",
+        markerFamily: "constraint_violation",
+        markerMatched: constraintMarker,
+        referenceId: reference.id,
+        referenceType: reference.type,
+        referenceStatement: reference.statement,
+        messageContent: content,
+        ...(similarExistingNodeId ? { similarExistingNodeId } : {}),
       });
     }
   }
 
-  return uniqueByStableKey(detections).slice(0, MAX_DETECTIONS_PER_MESSAGE);
+  return uniqueNominationsByKey(nominations).slice(0, MAX_NOMINATIONS_PER_MESSAGE);
+}
+
+/**
+ * Legacy persistable detection path — fail closed (CEQR-002).
+ *
+ * Markers, goal/constraint reference presence, token overlap, and textual
+ * similarity do not authorize DetectedContradiction creation. Zero semantic
+ * authorization ⇒ zero candidates. Semantic runtime is not wired in this slice.
+ */
+export function detectContradictionsFromData({
+  messageContent,
+  activeReferences: _activeReferences,
+  existingNodes: _existingNodes,
+}: DetectFromDataParams): DetectedContradiction[] {
+  void messageContent;
+  void _activeReferences;
+  void _existingNodes;
+  // Explicit abstention: nomination helpers exist separately and are non-persistable.
+  return [];
 }
 
 export async function detectContradictions({
@@ -226,6 +292,9 @@ export async function detectContradictions({
    * Pass ["active", "candidate"] in the import pipeline so that references
    * extracted from imported history are available for contradiction detection
    * in the same import run (imported refs land as "candidate", never "active").
+   *
+   * CEQR-002: references are still loaded for future semantic wiring / nomination
+   * diagnostics, but the public path returns no persistable detections.
    */
   referenceStatuses?: ReferenceStatus[];
   db?: ContradictionDetectionDb;
@@ -270,6 +339,7 @@ export async function detectContradictions({
     }),
   ]);
 
+  // Fail closed until semantic adjudication is wired into this path.
   return detectContradictionsFromData({
     messageContent: content,
     activeReferences,

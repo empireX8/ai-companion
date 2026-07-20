@@ -297,9 +297,15 @@ export type ImportedContradictionRejectionReason =
   | "contradiction_conversational_sideA"
   | "contradiction_weak_behavior_sideB"
   | "contradiction_unrelated_pair"
-  | "contradiction_technical_sideB";
+  | "contradiction_technical_sideB"
+  /** CEQR-002: pair not hard-rejected, but marker/overlap/regex is not semantic approval. */
+  | "contradiction_semantic_adjudication_required";
 
 export type ImportedContradictionPairAssessment = {
+  /**
+   * CEQR-002: always false until semantic adjudication is wired into import.
+   * Lack of rejection reasons is not eligibility.
+   */
   eligible: boolean;
   reasons: ImportedContradictionRejectionReason[];
 };
@@ -712,33 +718,13 @@ export function classifyImportedContradictionPair(
     OPERATIONAL_TASK_VERBS_PATTERN.test(sideA) ||
     OPERATIONAL_TASK_VERBS_PATTERN.test(sideB);
 
-  // ── Step 15D: General imported-only relation gate ──────────────────────────
+  // ── Imported pair relation / noise gates (rejection-only) ───────────────────
   //
-  // The gates above catch specific patterns (technical sideB, greeting sideB,
-  // conversational sideA) but miss the general case where sideA and sideB are
-  // simply unrelated topics. A contradiction should only be created when sideB
-  // expresses behavior/state meaningfully related to sideA's goal/constraint.
-  //
-  // This gate checks whether sideA and sideB share at least 2 meaningful tokens.
-  // If they don't, the pair is rejected as unrelated — regardless of whether
-  // either side triggered a specific pattern gate.
-  //
-  // Exception: pairs where sideB describes a personal behavioral failure are
-  // presumed related to whatever sideA expresses, since the speaker is admitting
-  // to an action that contradicts a prior goal/constraint. This covers both
-  // "but I skipped..." and plain "I skipped reading again..." patterns.
-  // The pattern matches:
-  //   - "but I [failure verb]" (explicit contrast)
-  //   - "I [failure verb] again" (repeated failure)
-  //   - "I kept [gerund]" (ongoing failure pattern)
-  //   - "I [failure verb] ... instead of" (substitution failure)
-  // It deliberately excludes "but I keep getting ideas" (not a failure) by
-  // requiring the failure verb to be a concrete action, not a generic "keep".
-  const SIDE_B_BEHAVIORAL_FAILURE_PATTERN =
-    /\b(?:but\s+)?i\s+(?:(?:kept|keep)\s+(?:\w+(?:\s+\w+){0,3}\s+and\s+)?(?:scrolling|seeking|adding|switching|changing|drifting|procrastinating|putting|pushing|finding|repeating|staying|going|coming|making|doing|eating|smoking|drinking|buying|spending|wasting|ignoring|avoiding|skipping|forgetting|missing|losing|giving|letting|stopping|starting|reading|watching)|(?:skipped|ordered|smoked|stayed|opened|went|bought|ate|drank|spent|wasted|ignored|avoided|forgot|missed|lost|gave|stopped|started|changed|avoided|read)\s+\w+(?:\s+again|\s+instead|\s+yet|\s+last|\s+this|\s+the|\s+my)?|(?:change|avoid)\s+\w+(?:\s+whenever|\s+if|\s+to|\s+in|\s+at|\s+for|\s+on|\s+with|\s+by|\s+from|\s+as|\s+but|\s+and|\s+or|\s+because|\s+so|\s+yet|\s+though|\s+although|\s+while|\s+when|\s+where|\s+who|\s+which|\s+that|\s+what|\s+how|\s+why)?)\b/i;
-  const sideBIsBehavioralAdmission = SIDE_B_BEHAVIORAL_FAILURE_PATTERN.test(sideB);
+  // Token overlap may inform *rejection* (unrelated / cross-topic). It never
+  // authorizes eligibility. Behavioral-admission regexes are not affirmative
+  // contradiction signals (CEQR-002). No rejection reasons ≠ semantic approval.
   const overlapCount = contradictionPairOverlapCount(sideA, sideB);
-  const generalUnrelatedPair = !sideBIsBehavioralAdmission && overlapCount < 2;
+  const generalUnrelatedPair = overlapCount < 2;
 
   const crossTopicPair =
     (((sideAReflective && sideBTechnicalDomain) ||
@@ -759,12 +745,9 @@ export function classifyImportedContradictionPair(
   // Also rejects social-filler and time-filler sideBs via isWeakSideBChatter.
   const sideBIsWeakChatter = isWeakSideBChatter(sideB);
 
-  // Import-only sideB technical gate: screenshot/tutorial/debug chatter is rejected when it shares
-  // no topic tokens with sideA. The overlap escape allows "skipped ahead in the tutorial" to remain
-  // eligible when sideA is also about tutorial pace ("tutorial" token present in both).
+  // Import-only sideB technical gate: screenshot/tutorial/debug chatter is never affirmative
+  // eligibility. Overlap does not rescue technical sideB into a contradiction candidate.
   const sideBIsTechnicalChatter = SCREENSHOT_TUTORIAL_SIDE_B_PATTERN.test(sideB);
-  const sideBTechnicalAndUnrelated =
-    sideBIsTechnicalChatter && contradictionPairOverlapCount(sideA, sideB) === 0;
 
   const rejectionReasons: ImportedContradictionRejectionReason[] = [];
 
@@ -790,9 +773,11 @@ export function classifyImportedContradictionPair(
   if (sideBIsWeakChatter) {
     rejectionReasons.push("contradiction_weak_behavior_sideB");
   }
-  if (sideBTechnicalAndUnrelated) {
+  if (sideBIsTechnicalChatter) {
     rejectionReasons.push("contradiction_technical_sideB");
-    rejectionReasons.push("contradiction_unrelated_pair");
+    if (overlapCount === 0) {
+      rejectionReasons.push("contradiction_unrelated_pair");
+    }
   }
   if (generalUnrelatedPair) {
     rejectionReasons.push("contradiction_unrelated_pair");
@@ -802,7 +787,12 @@ export function classifyImportedContradictionPair(
     return { eligible: false, reasons: rejectionReasons };
   }
 
-  return { eligible: true, reasons: [] };
+  // CEQR-002 fail-closed: markers, token overlap, and absence of rejection reasons
+  // do not establish a contradiction. Semantic adjudication is not wired here.
+  return {
+    eligible: false,
+    reasons: ["contradiction_semantic_adjudication_required"],
+  };
 }
 
 function normalizeContradictionSideAnchor(value: string) {
@@ -1523,12 +1513,22 @@ export async function importExtractedConversations({
             const pairAssessment = classifyImportedContradictionPair(detection);
             if (!pairAssessment.eligible) {
               if (diagnostics) {
-                incrementReasonCodeCount(diagnostics, "imported_contradiction_rejected");
+                const isSemanticQuarantine = pairAssessment.reasons.includes(
+                  "contradiction_semantic_adjudication_required"
+                );
+                incrementReasonCodeCount(
+                  diagnostics,
+                  isSemanticQuarantine
+                    ? "imported_contradiction_quarantined"
+                    : "imported_contradiction_rejected"
+                );
                 for (const reason of pairAssessment.reasons) {
                   incrementReasonCodeCount(diagnostics, reason);
                 }
                 pushDiagnosticSample(diagnostics, "rejected", {
-                  reason: "imported_contradiction_rejected",
+                  reason: isSemanticQuarantine
+                    ? "contradiction_semantic_adjudication_required"
+                    : "imported_contradiction_rejected",
                   snippet: `${detection.sideA} || ${detection.sideB}`,
                   sessionId: created.sessionId,
                   messageId: importedMessage.id,

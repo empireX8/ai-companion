@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { detectContradictions, detectContradictionsFromData } from "../contradiction-detection";
+import {
+  detectContradictions,
+  detectContradictionsFromData,
+  nominateContradictionMarkersFromData,
+  type ContradictionMarkerNomination,
+  type DetectedContradiction,
+} from "../contradiction-detection";
 
 const prismaMock = vi.hoisted(() => ({
   referenceItem: {
@@ -13,9 +19,199 @@ const prismaMock = vi.hoisted(() => ({
 
 vi.mock("../prismadb", () => ({ default: prismaMock }));
 
-describe("detectContradictionsFromData", () => {
-  it("detects goal mismatch contradictions", () => {
-    const detections = detectContradictionsFromData({
+/**
+ * CEQR-002 — marker-only creation quarantine.
+ *
+ * Previous expectations that marker + goal/constraint reference created a
+ * DetectedContradiction are invalid: markers are nomination hints only.
+ * Zero semantic authorization ⇒ zero persistable detections.
+ */
+describe("detectContradictionsFromData — CEQR-002 marker-only quarantine", () => {
+  it("A: 'but I' alone creates no contradiction", () => {
+    expect(
+      detectContradictionsFromData({
+        messageContent: "but I mean that in a different way today.",
+        activeReferences: [
+          {
+            id: "ref-1",
+            type: "constraint",
+            statement: "Stay calm under pressure",
+          },
+        ],
+        existingNodes: [],
+      })
+    ).toEqual([]);
+  });
+
+  it("B: 'however I' alone creates no contradiction", () => {
+    expect(
+      detectContradictionsFromData({
+        messageContent: "however I still feel the same pull toward approval.",
+        activeReferences: [
+          {
+            id: "ref-1",
+            type: "constraint",
+            statement: "Do not seek approval",
+          },
+        ],
+        existingNodes: [],
+      })
+    ).toEqual([]);
+  });
+
+  it("C: 'even though' alone creates no contradiction", () => {
+    expect(
+      detectContradictionsFromData({
+        messageContent: "even though I care about honesty in hard talks.",
+        activeReferences: [
+          {
+            id: "ref-1",
+            type: "constraint",
+            statement: "Speak honestly",
+          },
+        ],
+        existingNodes: [],
+      })
+    ).toEqual([]);
+  });
+
+  it("D: 'I didn't...' plus active goal reference creates no contradiction", () => {
+    expect(
+      detectContradictionsFromData({
+        messageContent: "I didn't finish the chapter I planned for tonight.",
+        activeReferences: [
+          {
+            id: "ref-1",
+            type: "goal",
+            statement: "Finish reading this book",
+          },
+        ],
+        existingNodes: [],
+      })
+    ).toEqual([]);
+  });
+
+  it("E: 'I failed...' plus active goal reference creates no contradiction", () => {
+    expect(
+      detectContradictionsFromData({
+        messageContent: "I failed and I skipped my workout again this week.",
+        activeReferences: [
+          {
+            id: "ref-1",
+            type: "goal",
+            statement: "Work out five times per week",
+          },
+        ],
+        existingNodes: [],
+      })
+    ).toEqual([]);
+  });
+
+  it("F: superficially plausible goal/behaviour pair still abstains without semantic adjudication", () => {
+    expect(
+      detectContradictionsFromData({
+        messageContent:
+          "I skipped reading again tonight because I kept scrolling on my phone instead.",
+        activeReferences: [
+          {
+            id: "ref-1",
+            type: "goal",
+            statement: "I need to finish this book though",
+          },
+        ],
+        existingNodes: [],
+      })
+    ).toEqual([]);
+  });
+
+  it("G: multiple matching goal or constraint references do not fan out into candidates", () => {
+    expect(
+      detectContradictionsFromData({
+        messageContent: "I failed to keep either commitment this week.",
+        activeReferences: [
+          { id: "ref-1", type: "goal", statement: "Work out five times per week" },
+          { id: "ref-2", type: "goal", statement: "Read every evening" },
+          { id: "ref-3", type: "constraint", statement: "No late nights" },
+        ],
+        existingNodes: [],
+      })
+    ).toEqual([]);
+  });
+
+  it("H: high token overlap does not create eligibility", () => {
+    expect(
+      detectContradictionsFromData({
+        messageContent:
+          "I failed to finish this book though I need to finish this book though tonight.",
+        activeReferences: [
+          {
+            id: "ref-1",
+            type: "goal",
+            statement: "I need to finish this book though",
+          },
+        ],
+        existingNodes: [],
+      })
+    ).toEqual([]);
+  });
+
+  it("I: existing-node textual similarity does not bypass quarantine or authorize evidence update", () => {
+    expect(
+      detectContradictionsFromData({
+        messageContent: "I failed and I skipped my workout again this week.",
+        activeReferences: [
+          {
+            id: "ref-1",
+            type: "goal",
+            statement: "Work out five times per week",
+          },
+        ],
+        existingNodes: [
+          {
+            id: "node-1",
+            type: "goal_behavior_gap",
+            sideA: "Work out five times per week",
+            sideB: "I skipped my workouts again this week.",
+          },
+        ],
+      })
+    ).toEqual([]);
+  });
+
+  it("J: short / no-marker / no-reference cases continue returning no detections", () => {
+    expect(
+      detectContradictionsFromData({
+        messageContent: "too short",
+        activeReferences: [
+          { id: "ref-1", type: "goal", statement: "Work out five times per week" },
+        ],
+        existingNodes: [],
+      })
+    ).toEqual([]);
+
+    expect(
+      detectContradictionsFromData({
+        messageContent: "I completed my workout and meal prep on schedule.",
+        activeReferences: [
+          { id: "ref-1", type: "goal", statement: "Work out five times per week" },
+        ],
+        existingNodes: [],
+      })
+    ).toEqual([]);
+
+    expect(
+      detectContradictionsFromData({
+        messageContent: "I failed and I skipped my workout again this week.",
+        activeReferences: [],
+        existingNodes: [],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe("nominateContradictionMarkersFromData — non-persistable nominations", () => {
+  it("K: nominations are explicitly non-persistable and not DetectedContradiction", () => {
+    const nominations = nominateContradictionMarkersFromData({
       messageContent: "I failed and I skipped my workout again this week.",
       activeReferences: [
         {
@@ -23,47 +219,64 @@ describe("detectContradictionsFromData", () => {
           type: "goal",
           statement: "Work out five times per week",
         },
-      ],
-      existingNodes: [],
-    });
-
-    expect(detections).toHaveLength(1);
-    expect(detections[0]).toMatchObject({
-      type: "goal_behavior_gap",
-      confidence: "medium",
-      sideA: "Work out five times per week",
-    });
-    expect(detections[0].existingNodeId).toBeUndefined();
-  });
-
-  it("returns empty when there is no reference conflict signal", () => {
-    const detections = detectContradictionsFromData({
-      messageContent: "I completed my workout and meal prep on schedule.",
-      activeReferences: [
         {
-          id: "ref-1",
+          id: "ref-2",
           type: "goal",
-          statement: "Work out five times per week",
+          statement: "Read every evening",
         },
       ],
       existingNodes: [],
     });
 
-    expect(detections).toEqual([]);
+    expect(nominations.length).toBeGreaterThan(0);
+    for (const nomination of nominations) {
+      expect(nomination.kind).toBe("marker_nomination");
+      expect(nomination.persistable).toBe(false);
+      expect(nomination.quarantineReason).toBe("semantic_adjudication_required");
+      // Structural proof: nomination is not a DetectedContradiction shape.
+      expect("type" in nomination).toBe(false);
+      expect("sideA" in nomination).toBe(false);
+      expect("sideB" in nomination).toBe(false);
+      expect("confidence" in nomination).toBe(false);
+      expect("title" in nomination).toBe(false);
+    }
+
+    const asUnknown: unknown = nominations[0];
+    const wronglyTreatedAsDetection = asUnknown as DetectedContradiction;
+    // Even if cast, materialization requires DetectedContradiction fields that nominations lack.
+    expect(wronglyTreatedAsDetection.type).toBeUndefined();
+    expect(wronglyTreatedAsDetection.sideA).toBeUndefined();
+    expect(wronglyTreatedAsDetection.sideB).toBeUndefined();
+
+    const persistableCheck = (n: ContradictionMarkerNomination) => n.persistable;
+    expect(persistableCheck(nominations[0]!)).toBe(false);
   });
 
-  it("returns empty when activeReferences list is empty (no goals/constraints)", () => {
-    const detections = detectContradictionsFromData({
-      messageContent: "I failed and I skipped my workout again this week.",
-      activeReferences: [],
+  it("does not fan out beyond the nomination cap and never yields DetectedContradiction", () => {
+    const nominations = nominateContradictionMarkersFromData({
+      messageContent: "but I keep avoiding the hard conversation again today.",
+      activeReferences: [
+        { id: "c1", type: "constraint", statement: "Speak honestly" },
+        { id: "c2", type: "constraint", statement: "Stay calm" },
+        { id: "c3", type: "constraint", statement: "Do not seek approval" },
+      ],
       existingNodes: [],
     });
 
-    expect(detections).toEqual([]);
+    expect(nominations.length).toBeLessThanOrEqual(2);
+    expect(detectContradictionsFromData({
+      messageContent: "but I keep avoiding the hard conversation again today.",
+      activeReferences: [
+        { id: "c1", type: "constraint", statement: "Speak honestly" },
+        { id: "c2", type: "constraint", statement: "Stay calm" },
+        { id: "c3", type: "constraint", statement: "Do not seek approval" },
+      ],
+      existingNodes: [],
+    })).toEqual([]);
   });
 
-  it("matches existing node and returns append-not-create detection", () => {
-    const detections = detectContradictionsFromData({
+  it("records similarExistingNodeId as a duplicate hint only — public path still abstains", () => {
+    const nominations = nominateContradictionMarkersFromData({
       messageContent: "I failed and I skipped my workout again this week.",
       activeReferences: [
         {
@@ -82,18 +295,38 @@ describe("detectContradictionsFromData", () => {
       ],
     });
 
-    expect(detections).toHaveLength(1);
-    expect(detections[0].existingNodeId).toBe("node-1");
+    expect(nominations[0]?.similarExistingNodeId).toBe("node-1");
+    expect(nominations[0]?.persistable).toBe(false);
+    expect(
+      detectContradictionsFromData({
+        messageContent: "I failed and I skipped my workout again this week.",
+        activeReferences: [
+          {
+            id: "ref-1",
+            type: "goal",
+            statement: "Work out five times per week",
+          },
+        ],
+        existingNodes: [
+          {
+            id: "node-1",
+            type: "goal_behavior_gap",
+            sideA: "Work out five times per week",
+            sideB: "I skipped my workouts again this week.",
+          },
+        ],
+      })
+    ).toEqual([]);
   });
 });
 
 // ── detectContradictions (async DB path) ─────────────────────────────────────
 //
-// These tests verify the referenceStatuses gate: the import pipeline must pass
-// ["active", "candidate"] so that references extracted during import are
-// visible to contradiction detection in the same run.
+// referenceStatuses gate remains: import still passes ["active", "candidate"].
+// CEQR-002: even when candidate refs are visible, marker-only logic yields no
+// persistable DetectedContradiction.
 
-describe("detectContradictions — referenceStatuses gate", () => {
+describe("detectContradictions — referenceStatuses gate + quarantine", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     prismaMock.contradictionNode.findMany.mockResolvedValue([]);
@@ -134,9 +367,9 @@ describe("detectContradictions — referenceStatuses gate", () => {
     );
   });
 
-  it("detects a goal_behavior_gap when a candidate reference is included", async () => {
-    // Simulates the import path: the goal was just extracted as "candidate"
-    // and is visible because referenceStatuses includes "candidate".
+  it("abstains even when a candidate reference is included (CEQR-002: no marker-only creation)", async () => {
+    // Prior expectation (pre-CEQR-002): returned goal_behavior_gap from marker + ref.
+    // Invalid now: markers nominate only; semantic adjudication is not wired.
     prismaMock.referenceItem.findMany.mockResolvedValue([
       { id: "ref-1", type: "goal", statement: "I want to exercise five times a week" },
     ]);
@@ -147,19 +380,15 @@ describe("detectContradictions — referenceStatuses gate", () => {
       referenceStatuses: ["active", "candidate"],
     });
 
-    expect(detections).toHaveLength(1);
-    expect(detections[0]!.type).toBe("goal_behavior_gap");
-    expect(detections[0]!.sideA).toBe("I want to exercise five times a week");
+    expect(detections).toEqual([]);
   });
 
   it("returns empty when only candidate references exist but default statuses used", async () => {
-    // Simulates live-chat path: candidate references are not visible by default.
     prismaMock.referenceItem.findMany.mockResolvedValue([]);
 
     const detections = await detectContradictions({
       userId: "u1",
       messageContent: "I failed to exercise this week — skipped every session.",
-      // No referenceStatuses → defaults to ["active"] → mock returns []
     });
 
     expect(detections).toEqual([]);
