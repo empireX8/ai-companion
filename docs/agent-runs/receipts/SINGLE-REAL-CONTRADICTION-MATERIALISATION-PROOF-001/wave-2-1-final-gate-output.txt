@@ -1,0 +1,96 @@
+Wrote /Users/user/ai-companion-worktrees/desktop-single-real-contradiction-proof-001/docs/agent-runs/receipts/INTELLIGENCE-COMPATIBILITY-AUDIT-001/readonly-intelligence-inventory.json
+{
+  "gate": {
+    "pendingTotal": 53,
+    "referenceItemPendingImport": 28,
+    "contradictionNodePendingImport": 25,
+    "chickenBurgerActiveCount": 1,
+    "selectedReferenceItem": {
+      "id": "3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+      "type": "preference",
+      "status": "active",
+      "confidence": "low",
+      "statementPreview": "I think prefer chicken burgers to beef burgers 😳",
+      "sourceSessionId": "7dd386eb-e6ba-493a-856d-fc8815895248",
+      "sourceMessageId": "d1060934-f19d-4693-b255-d23570af50e1",
+      "updatedAt": "2026-07-19T14:14:39.275Z"
+    },
+    "patternClaims": 7,
+    "modelUpdates": 1,
+    "expected": {
+      "pendingTotal": 53,
+      "referenceItemPending": 28,
+      "contradictionNodePending": 25,
+      "chickenBurgerActive": 1,
+      "patternClaims": 7,
+      "selectedIdActive": true
+    },
+    "matchesExpected": true
+  },
+  "sessions": {
+    "IMPORTED_ARCHIVE": 640,
+    "APP": 3
+  },
+  "messages": {
+    "imported": 18582,
+    "app": 44,
+    "total": 18626
+  },
+  "evidenceSpans": {
+    "onImportedMessages": 5922,
+    "onAppMessages": 19,
+    "total": 5941
+  },
+  "referenceItems": {
+    "total": 29,
+    "byStatus": {
+      "candidate": 28,
+      "active": 1
+    },
+    "byType": {
+      "goal": 17,
+      "constraint": 4,
+      "preference": 8
+    }
+  },
+  "contradictionNodes": {
+    "total": 25,
+    "byStatus": {
+      "candidate": 25
+    }
+  },
+  "patternClaims": 7,
+  "userMapConclusions": 1,
+  "modelUpdates": 1,
+  "goalsProxy": {
+    "referenceItemGoals": {
+      "total": 17,
+      "byStatus": {
+        "candidate": 17
+      }
+    },
+    "profileArtifactGoals": {
+      "total": 28,
+      "byStatus": {
+        "candidate": 28
+      }
+    },
+    "userMapModelGoalAreas": [],
+    "surfacedActionsWithLinkedGoal": 0
+  },
+  "composition": [
+    {
+      "id": "dev-exact-rt-user_34TUYA53pI1QRLK73O22Kve1a1G-today-composition",
+      "source": "full_reference_round_trip_seed",
+      "createdAt": "2026-07-14T12:00:00.000Z",
+      "updatedAt": "2026-07-14T12:00:00.000Z",
+      "seedLikely": true
+    }
+  ],
+  "coverage": {
+    "importedSessionsWithEvidenceSpans": 622,
+    "importedSessionsWithReferenceItems": 28,
+    "importedSessionsWithContradictionNodes": 14,
+    "importedSessionsUnprocessedApprox": 18
+  }
+}
