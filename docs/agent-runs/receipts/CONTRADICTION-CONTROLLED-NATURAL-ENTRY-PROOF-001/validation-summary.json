@@ -1,0 +1,82 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-CONTROLLED-NATURAL-ENTRY-PROOF-001",
+  "campaignSlice": "CEQR-010",
+  "phase": "independent_review_correction",
+  "classification": "PASS_WITH_KNOWN_BASELINE_FAILURES",
+  "baselineCommit": "22e786bdf77aed7e736a34a44e1b91ec2c0b9839",
+  "providerMode": "deterministic_injected_runners_only",
+  "liveProviderUsed": false,
+  "liveObjectivityRefereeExists": false,
+  "ordinaryMessageSendWired": false,
+  "importWired": false,
+  "corrections": {
+    "persistedInputNaturalEntryBoundary": true,
+    "authorisedPlanEgressRemoved": true,
+    "honestPostWritePresentationFailure": true,
+    "gateStoppedAtNullOnSuccess": true,
+    "crossSessionMappingCorrected": true,
+    "injectedTransactionNotActualIsolatedDb": true
+  },
+  "focusedTests": {
+    "filesPassed": 1,
+    "testsPassed": 35
+  },
+  "relatedTests": {
+    "filesPassed": 12,
+    "testsPassed": 334
+  },
+  "fullSuite": {
+    "filesFailed": 5,
+    "filesPassed": 314,
+    "filesTotal": 319,
+    "testsFailed": 7,
+    "testsPassed": 4246,
+    "testsTotal": 4253,
+    "knownBaseline": {
+      "filesFailed": 5,
+      "filesPassed": 313,
+      "testsFailed": 7,
+      "testsPassed": 4211
+    },
+    "failingSetUnchanged": true,
+    "failingFiles": [
+      "canonical-fixture-composition-gate.test.ts",
+      "evidence-pointer-surfacing-rationale-schema.test.ts",
+      "orvek-adapters.test.ts",
+      "surfaced-evidence-pointer-schema.test.ts",
+      "today-production-movement-depth.test.ts"
+    ]
+  },
+  "typescript": "pass",
+  "eslintChangedFiles": "pass",
+  "build": "pass",
+  "gitDiffCheck": "pass",
+  "accountGate": {
+    "beforeLabel": "controlled-natural-entry-proof-before",
+    "afterLabel": "controlled-natural-entry-proof-after",
+    "beforeMatchesExpected": true,
+    "afterMatchesExpected": true,
+    "contradictionNodeTotal": 25,
+    "candidateTotal": 25,
+    "evidenceSpans": 5941,
+    "completeExactDualSide": 0,
+    "invalidPartial": 0,
+    "legacyBothNull": 25,
+    "accountMutated": false
+  },
+  "schemaChanged": false,
+  "migrationAdded": false,
+  "proofEstablishes": {
+    "architecture": true,
+    "executableOrchestration": true,
+    "deterministicRefereeExecution": true,
+    "injectedTransactionalPersistenceBoundary": true,
+    "actualIsolatedDatabasePersistence": false,
+    "controlledPersistedInputNaturalEntryConstruction": true,
+    "realProviderExecution": false,
+    "naturalProductionUiEntry": false,
+    "productionReady": false
+  },
+  "productionReady": false
+}
