@@ -198,6 +198,9 @@ model ContradictionNode {
   @@index([userId, createdAt])
   @@index([sideASourceSpanId])
   @@index([sideBSourceSpanId])
+  /// CEQR-007: exact ordered repaired dual-side identity.
+  /// PostgreSQL UNIQUE treats NULLs as distinct, so legacy both-null rows remain permitted.
+  @@unique([userId, sideASourceSpanId, sideBSourceSpanId], map: "ContradictionNode_user_sideA_sideB_span_uniq")
 }
 
 model ContradictionReferenceLink {

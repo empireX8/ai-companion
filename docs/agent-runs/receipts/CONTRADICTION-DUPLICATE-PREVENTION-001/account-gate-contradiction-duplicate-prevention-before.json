@@ -1,0 +1,212 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-DUPLICATE-PREVENTION-001",
+  "campaignSlice": "CEQR-007",
+  "phase": "contradiction_duplicate_prevention_001",
+  "label": "contradiction-duplicate-prevention-before",
+  "userId": "user_34TUYA53pI1QRLK73O22Kve1a1G",
+  "queriedAt": "2026-07-21T13:17:45.295Z",
+  "mode": "read_only",
+  "mutationsPerformed": false,
+  "decisionPostCalled": false,
+  "writerInvokedAgainstAccount": false,
+  "expected": {
+    "pendingTotal": 53,
+    "referenceItemPendingImport": 28,
+    "contradictionNodePendingImport": 25,
+    "contradictionNodeTotal": 25,
+    "openGenuineContradictionNodes": 0,
+    "chickenBurgerActiveCount": 1,
+    "selectedReferenceItemStatus": "active",
+    "patternClaims": 7,
+    "modelUpdates": 1,
+    "understandingEvidenceLinks": 50,
+    "evidenceSpans": 5941,
+    "completeExactDualSideRows": 0,
+    "invalidPartialRows": 0,
+    "legacyIncompleteRows": 25,
+    "completePairDuplicateGroups": 0
+  },
+  "observed": {
+    "pendingTotal": 53,
+    "referenceItemPendingImport": 28,
+    "contradictionNodePendingImport": 25,
+    "contradictionNodeTotal": 25,
+    "openGenuineContradictionNodes": 0,
+    "chickenBurgerActiveCount": 1,
+    "selectedReferenceItem": {
+      "id": "3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+      "type": "preference",
+      "status": "active",
+      "confidence": "low",
+      "statement": "I think prefer chicken burgers to beef burgers 😳",
+      "updatedAt": "2026-07-19T14:14:39.275Z"
+    },
+    "patternClaims": 7,
+    "modelUpdates": 1,
+    "understandingEvidenceLinks": 50,
+    "evidenceSpans": 5941,
+    "contradictionNodesByStatus": {
+      "candidate": 25
+    },
+    "lineageCounts": {
+      "complete_exact_dual_side": 0,
+      "legacy_incomplete": 25,
+      "invalid_partial": 0
+    },
+    "completePairDuplicateGroups": 0,
+    "contradictionNodeIdsAndSpanFks": [
+      {
+        "id": "cmp2fvpg900agqlsyz6pfxypx",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fvpph00akqlsy3uy645bc",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fvq8f00aoqlsyy9z3sckc",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fvtbb00asqlsyp5rovhrd",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fvtbl00awqlsygp9s2smw",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fvtjy00b0qlsyue6873np",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fvtk700b4qlsydj8qcgg1",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fvupc00b8qlsytzswmxdi",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fvxta00bcqlsyrq93rb2y",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fwd3y00bgqlsyw7yown9p",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fwd4800bkqlsymbnj3ko7",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fwd8w00bqqlsype8rrdjd",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fwd9600buqlsyt0glz33l",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fx1ot00c0qlsyccy0awnl",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fx1p400c4qlsyuk45tk83",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fx40n00c8qlsyong7tzqn",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fx40z00ccqlsyj6l6u4yq",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fx5al00cgqlsy5b3t82hm",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fx5sd00ckqlsyi5ylvtn9",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fx5so00coqlsya6arp0z3",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fx96900csqlsyknuylw3d",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fx99h00cwqlsy1gcslv59",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fx9dq00d0qlsy8pkjd09p",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fxj6q00d4qlsyk2ia0rpe",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      },
+      {
+        "id": "cmp2fxjho00daqlsyf3ud9vi7",
+        "status": "candidate",
+        "sideASourceSpanId": null,
+        "sideBSourceSpanId": null
+      }
+    ]
+  },
+  "matchesExpected": true
+}

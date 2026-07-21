@@ -1,0 +1,32 @@
+{
+  "matchesExpectedBefore": true,
+  "matchesExpectedAfter": true,
+  "contradictionNodeTotal": {
+    "before": 25,
+    "after": 25,
+    "same": true
+  },
+  "evidenceSpans": {
+    "before": 5941,
+    "after": 5941,
+    "same": true
+  },
+  "lineageCounts": {
+    "before": {
+      "complete_exact_dual_side": 0,
+      "legacy_incomplete": 25,
+      "invalid_partial": 0
+    },
+    "after": {
+      "complete_exact_dual_side": 0,
+      "legacy_incomplete": 25,
+      "invalid_partial": 0
+    }
+  },
+  "completePairDuplicateGroups": {
+    "before": 0,
+    "after": 0
+  },
+  "idsEqual": true,
+  "spanFkRowsEqual": true
+}
