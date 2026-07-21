@@ -1,0 +1,128 @@
+{
+  "slice": "CONTRADICTION-DUPLICATE-PREVENTION-001",
+  "campaignSlice": "CEQR-007",
+  "baseline": "f2ad32d7c8310d88eccbe16cf770d7c34e3806c4",
+  "branch": "desktop-contradiction-duplicate-prevention-001",
+  "gateClassification": "PASS_WITH_KNOWN_BASELINE_FAILURES",
+  "exactDuplicateIdentity": "userId+sideASourceSpanId+sideBSourceSpanId",
+  "fuzzySemanticDeduplication": false,
+  "livePersistenceWiring": false,
+  "productionReadiness": "NO",
+  "ceqr008Started": false,
+  "ceqr009Started": false,
+  "migrationApplied": true,
+  "migrationDirectory": "prisma/migrations/20260721140000_add_contradiction_exact_dual_side_unique",
+  "kayDbRowMutation": false,
+  "existing25Untouched": true,
+  "focusedTests": {
+    "command": "npx vitest run lib/__tests__/contradiction-repaired-persistence.test.ts lib/__tests__/contradiction-persistence-plan.test.ts lib/__tests__/contradiction-duplicate-prevention-schema.test.ts",
+    "testFiles": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests": {
+      "passed": 64,
+      "failed": 0
+    },
+    "result": "PASS"
+  },
+  "relatedTests": {
+    "tests": {
+      "passed": 217,
+      "failed": 0
+    },
+    "result": "PASS"
+  },
+  "prismaValidate": "PASS",
+  "typescript": "PASS",
+  "eslintChangedTs": "PASS",
+  "build": "PASS",
+  "gitDiffCheck": "PASS",
+  "prohibitedPathScan": "PASS",
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "classification": "PASS_WITH_KNOWN_BASELINE_FAILURES",
+  "queriedAt": "2026-07-21T13:54:02.000Z",
+  "fullSuite": {
+    "testFilesFailed": 5,
+    "testFilesPassed": 310,
+    "testFilesTotal": 315,
+    "testsFailed": 7,
+    "testsPassed": 4172,
+    "testsTotal": 4179,
+    "baseline": {
+      "testFilesFailed": 5,
+      "testsFailed": 7,
+      "testFilesPassed": 309,
+      "testsPassed": 4160
+    },
+    "failureSetUnchanged": true,
+    "passingDelta": {
+      "testFiles": 1,
+      "tests": 12
+    },
+    "failingFiles": [
+      "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+      "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+      "lib/__tests__/orvek-adapters.test.ts",
+      "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+      "lib/__tests__/today-production-movement-depth.test.ts"
+    ],
+    "failingTests": [
+      "canonical-fixture-composition-gate.test.ts [file load]",
+      "EvidencePointerSurfacingRationale schema model contracts > pins one rationale row per source object per user",
+      "EvidencePointerSurfacingRationale migration SQL contracts > pins source lookup uniqueness in migration SQL",
+      "orvek adapters > does not use movement summary as after state when depth after is missing",
+      "orvek adapters > mapTodayDataToV0Props maps movement without fabricating previous read or after state",
+      "SurfacedEvidencePointer schema model contracts > pins required indexes and one-pointer-per-source uniqueness",
+      "SurfacedEvidencePointer migration SQL contracts > pins Today read and source lookup indexes in migration SQL",
+      "Today adapter after-state honesty > uses explicit unavailable copy instead of movement summary when after is missing"
+    ]
+  },
+  "accountGate": {
+    "before": {
+      "label": "contradiction-duplicate-prevention-before",
+      "matchesExpected": true,
+      "contradictionNodeTotal": 25,
+      "evidenceSpans": 5941,
+      "completePairDuplicateGroups": 0,
+      "lineageCounts": {
+        "complete_exact_dual_side": 0,
+        "legacy_incomplete": 25,
+        "invalid_partial": 0
+      }
+    },
+    "after": {
+      "label": "contradiction-duplicate-prevention-after",
+      "matchesExpected": true,
+      "contradictionNodeTotal": 25,
+      "evidenceSpans": 5941,
+      "completePairDuplicateGroups": 0,
+      "lineageCounts": {
+        "complete_exact_dual_side": 0,
+        "legacy_incomplete": 25,
+        "invalid_partial": 0
+      }
+    },
+    "idsUnchanged": true,
+    "spanFkRowsUnchanged": true
+  },
+  "migration": {
+    "name": "20260721140000_add_contradiction_exact_dual_side_unique",
+    "applied": true,
+    "preflightDuplicateGroups": 0,
+    "indexMap": "ContradictionNode_user_sideA_sideB_span_uniq"
+  },
+  "boundaries": {
+    "exactRepairedDuplicatePrevention": "implemented_and_proven_focused",
+    "fuzzySemanticDeduplication": "not_implemented",
+    "ceqr008_009": "not_started",
+    "productionReadiness": "NO"
+  },
+  "reviewCorrection": {
+    "name": "CEQR-007 EvidenceSpan empty-state race proof",
+    "writerRedesigned": false,
+    "schemaChanged": false,
+    "newTest": "concurrent same-plan invocations from empty spans recover exact node after EvidenceSpan P2002",
+    "harness": "makeSpanRaceFakeDb"
+  }
+}

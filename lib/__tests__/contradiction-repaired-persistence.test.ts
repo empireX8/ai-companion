@@ -1,6 +1,7 @@
 /**
- * CONTRADICTION-PERSISTENCE-WIRING-001 — repaired transactional writer tests.
- * Injected fakes only. No prismadb. No live account writes.
+ * CONTRADICTION-DUPLICATE-PREVENTION-001 (CEQR-007) — repaired transactional
+ * writer tests with exact ordered dual-side duplicate prevention.
+ * Injected fakes only. No prismadb. No live account writes. ESM imports only.
  */
 
 import { createHash } from "node:crypto";
@@ -259,17 +260,143 @@ function makeAuthorisedPlan(): ContradictionPersistenceAuthorisedPlan {
   return built.plan;
 }
 
+type ExistingExactNodeSeed = {
+  id: string;
+  userId: string;
+  sideASourceSpanId: string | null;
+  sideBSourceSpanId: string | null;
+  title?: string;
+};
+
+
+function makeAuthorisedPlanWithSideAQuote(quoteA: string, contentA: string): ContradictionPersistenceAuthorisedPlan {
+  const sideA = source({
+    sourceId: "src-a-alt",
+    sourceText: contentA,
+    label: "Side A alt",
+    messageId: "message-a-alt",
+    sourceType: "goal",
+  });
+  const sideB = source({
+    sourceId: "src-b",
+    sourceText: CONTENT_B,
+    label: "Side B",
+    messageId: MSG_B,
+    sourceType: "message",
+  });
+  const claimA = claimAt(sideA, quoteA, 0);
+  const claimB = claimAt(sideB, QUOTE_B, "Preface. ".length);
+  const selectedPair: SemanticallySelectedContradictionPair = {
+    sideA,
+    sideB,
+    referenceId: "ref-alt",
+    semanticallySelected: true,
+    persistable: false,
+    persistenceAuthorised: false,
+    adjudication: buildAdjudication({ sideA, sideB, claimA, claimB }),
+  };
+
+  const hashA = sha(quoteA);
+  const hashB = sha(QUOTE_B);
+  const lineage: ValidatedDualSideLineage = {
+    lineageContractVersion: CONTRADICTION_DUAL_SIDE_LINEAGE_VERSION,
+    userId: USER,
+    sessionId: SESSION,
+    sideA: {
+      role: "A",
+      sourceId: sideA.sourceId,
+      sessionId: SESSION,
+      messageId: "message-a-alt",
+      exactQuote: quoteA,
+      startOffset: 0,
+      endOffset: quoteA.length,
+      contentHash: hashA,
+    },
+    sideB: {
+      role: "B",
+      sourceId: sideB.sourceId,
+      sessionId: SESSION,
+      messageId: MSG_B,
+      exactQuote: QUOTE_B,
+      startOffset: claimB.startOffset,
+      endOffset: claimB.endOffset,
+      contentHash: hashB,
+    },
+    refereeOutcome: "PASS",
+    adjustedConfidence: null,
+    spanEnsureDescriptors: {
+      sideA: {
+        userId: USER,
+        messageId: "message-a-alt",
+        charStart: 0,
+        charEnd: quoteA.length,
+        contentHash: hashA,
+      },
+      sideB: {
+        userId: USER,
+        messageId: MSG_B,
+        charStart: claimB.startOffset,
+        charEnd: claimB.endOffset,
+        contentHash: hashB,
+      },
+    },
+  };
+
+  const lineageResult: DualSideLineageResult = {
+    ok: true,
+    lineageReadyForPersistenceGate: true,
+    continuationReady: true,
+    validatedDualSideLineage: lineage,
+    persistable: false,
+    persistenceAuthorised: false,
+    createCandidate: undefined,
+    persistenceDecision: null,
+  };
+
+  const confidenceResult = calibrateContradictionConfidence({
+    modelReportedConfidence: 0.72,
+    adjudicationOutcome: "semantic_accepted",
+    deterministicValidationStatus: "valid",
+    semanticPresent: true,
+    semanticClassification: "clear_contradiction",
+    refereeExecutionState: "completed",
+    refereeOutcome: "PASS",
+    refereeAdjustedConfidence: null,
+    refereeValidationErrors: [],
+    refereeContinuationAllowed: true,
+  });
+
+  const built = buildContradictionPersistencePlan({
+    selectedPair,
+    lineageResult,
+    confidenceResult,
+  });
+  if (!built.ok) throw new Error(`expected authorised plan: ${built.code}`);
+  return built.plan;
+}
+
 function makeFakeDb(options?: {
   existingSpans?: ContradictionRepairedSpanRow[];
+  existingNodes?: ExistingExactNodeSeed[];
   failSideBCreate?: boolean;
   failNodeCreate?: boolean;
   nodeCreateReturnsEmptyId?: boolean;
   forceSameSpanId?: boolean;
+  /** Both concurrent callers observe absent, then both attempt create. */
+  raceMode?: boolean;
+  /** Throw P2002 on node create without inserting a durable node. */
+  throwUnresolvedNodeP2002?: boolean;
   messageOverrides?: Record<
     string,
     Partial<{ userId: string; sessionId: string; content: string }>
   >;
   omitMessageIds?: string[];
+  extraMessages?: Array<{
+    id: string;
+    userId: string;
+    sessionId: string;
+    content: string;
+  }>;
 }) {
   const messages = new Map([
     [
@@ -292,6 +419,10 @@ function makeFakeDb(options?: {
     ],
   ]);
 
+  for (const extra of options?.extraMessages ?? []) {
+    messages.set(extra.id, extra);
+  }
+
   for (const [id, override] of Object.entries(options?.messageOverrides ?? {})) {
     const current = messages.get(id);
     if (current) messages.set(id, { ...current, ...override });
@@ -303,9 +434,42 @@ function makeFakeDb(options?: {
   const spans: ContradictionRepairedSpanRow[] = [
     ...(options?.existingSpans ?? []),
   ];
-  const nodes: Array<Record<string, unknown>> = [];
+  const nodes: Array<Record<string, unknown>> = [
+    ...(options?.existingNodes ?? []).map((n) => ({ ...n })),
+  ];
   let spanSeq = spans.length;
-  let nodeSeq = 0;
+  let nodeSeq = nodes.length;
+  // Serialize node creates so concurrent losers observe the unique conflict.
+  let nodeCreateChain: Promise<void> = Promise.resolve();
+
+  let raceObservers = 0;
+  let releaseRaceObservers: (() => void) | null = null;
+  const raceBarrier = options?.raceMode
+    ? new Promise<void>((resolve) => {
+        releaseRaceObservers = resolve;
+      })
+    : null;
+
+  function findExactNodeRow(where: {
+    userId: string;
+    sideASourceSpanId: string;
+    sideBSourceSpanId: string;
+  }) {
+    return (
+      nodes.find(
+        (n) =>
+          n.userId === where.userId &&
+          n.sideASourceSpanId === where.sideASourceSpanId &&
+          n.sideBSourceSpanId === where.sideBSourceSpanId,
+      ) ?? null
+    );
+  }
+
+  function throwP2002(message: string): never {
+    const err = new Error(message);
+    Object.assign(err, { code: "P2002" });
+    throw err;
+  }
 
   const tx = {
     message: {
@@ -355,6 +519,18 @@ function makeFakeDb(options?: {
           if (options?.failSideBCreate && data.messageId === MSG_B) {
             throw new Error("simulated Side B span failure");
           }
+          const existing = spans.find(
+            (s) =>
+              s.messageId === data.messageId &&
+              s.charStart === data.charStart &&
+              s.charEnd === data.charEnd &&
+              s.contentHash === data.contentHash,
+          );
+          if (existing) {
+            throwP2002(
+              "Unique constraint failed on EvidenceSpan messageId_charStart_charEnd_contentHash",
+            );
+          }
           const id = options?.forceSameSpanId
             ? "forced-same-span-id"
             : `span-${++spanSeq}`;
@@ -365,16 +541,90 @@ function makeFakeDb(options?: {
       ),
     },
     contradictionNode: {
+      findFirst: vi.fn(
+        async ({
+          where,
+        }: {
+          where: {
+            userId: string;
+            sideASourceSpanId: string;
+            sideBSourceSpanId: string;
+          };
+        }) => {
+          if (options?.raceMode && raceBarrier) {
+            const found = findExactNodeRow(where);
+            if (found) {
+              return {
+                id: String(found.id),
+                userId: String(found.userId),
+                sideASourceSpanId:
+                  (found.sideASourceSpanId as string | null) ?? null,
+                sideBSourceSpanId:
+                  (found.sideBSourceSpanId as string | null) ?? null,
+              };
+            }
+            raceObservers += 1;
+            if (raceObservers >= 2 && releaseRaceObservers) {
+              releaseRaceObservers();
+            }
+            await raceBarrier;
+            // Both callers observed absence before either create — keep returning null.
+            return null;
+          }
+
+          const found = findExactNodeRow(where);
+          if (!found) return null;
+          return {
+            id: String(found.id),
+            userId: String(found.userId),
+            sideASourceSpanId:
+              (found.sideASourceSpanId as string | null) ?? null,
+            sideBSourceSpanId:
+              (found.sideBSourceSpanId as string | null) ?? null,
+          };
+        },
+      ),
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
-        if (options?.failNodeCreate) {
-          throw new Error("simulated node create failure");
+        const run = async () => {
+          if (options?.failNodeCreate) {
+            throw new Error("simulated node create failure");
+          }
+          if (options?.throwUnresolvedNodeP2002) {
+            throwP2002(
+              "Unique constraint failed on ContradictionNode_user_sideA_sideB_span_uniq",
+            );
+          }
+          if (options?.nodeCreateReturnsEmptyId) {
+            return { id: "" };
+          }
+          const existing = findExactNodeRow({
+            userId: String(data.userId),
+            sideASourceSpanId: String(data.sideASourceSpanId),
+            sideBSourceSpanId: String(data.sideBSourceSpanId),
+          });
+          if (existing) {
+            throwP2002(
+              "Unique constraint failed on ContradictionNode_user_sideA_sideB_span_uniq",
+            );
+          }
+          const id = `node-${++nodeSeq}`;
+          nodes.push({ id, ...data });
+          return { id };
+        };
+
+        // Chain creates: concurrent callers still both observe absent via findFirst,
+        // but the second create hits the unique conflict after the first commits.
+        const prior = nodeCreateChain;
+        let release!: () => void;
+        nodeCreateChain = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        await prior;
+        try {
+          return await run();
+        } finally {
+          release();
         }
-        if (options?.nodeCreateReturnsEmptyId) {
-          return { id: "" };
-        }
-        const id = `node-${++nodeSeq}`;
-        nodes.push({ id, ...data });
-        return { id };
       }),
     },
   };
@@ -383,13 +633,46 @@ function makeFakeDb(options?: {
   const db: ContradictionRepairedPersistenceDb = {
     ...tx,
     $transaction: vi.fn(async (callback) => {
-      const snapshotSpans = spans.map((s) => ({ ...s }));
-      const snapshotNodes = nodes.map((n) => ({ ...n }));
+      // Track rows inserted by THIS transaction only (concurrent winners must survive).
+      const ownedSpanIds = new Set<string>();
+      const ownedNodeIds = new Set<string>();
+      const trackingTx = {
+        ...tx,
+        evidenceSpan: {
+          ...tx.evidenceSpan,
+          create: async (args: {
+            data: {
+              userId: string;
+              messageId: string;
+              charStart: number;
+              charEnd: number;
+              contentHash: string;
+            };
+            select: { id: true };
+          }) => {
+            const created = await tx.evidenceSpan.create(args);
+            ownedSpanIds.add(created.id);
+            return created;
+          },
+        },
+        contradictionNode: {
+          ...tx.contradictionNode,
+          create: async (args: { data: Record<string, unknown>; select: { id: true } }) => {
+            const created = await tx.contradictionNode.create(args);
+            ownedNodeIds.add(created.id);
+            return created;
+          },
+        },
+      };
       try {
-        return await callback(tx);
+        return await callback(trackingTx);
       } catch (error) {
-        spans.splice(0, spans.length, ...snapshotSpans);
-        nodes.splice(0, nodes.length, ...snapshotNodes);
+        for (let i = spans.length - 1; i >= 0; i -= 1) {
+          if (ownedSpanIds.has(spans[i].id)) spans.splice(i, 1);
+        }
+        for (let i = nodes.length - 1; i >= 0; i -= 1) {
+          if (ownedNodeIds.has(String(nodes[i].id))) nodes.splice(i, 1);
+        }
         rolledBack.value = true;
         throw error;
       }
@@ -399,7 +682,336 @@ function makeFakeDb(options?: {
   return { db, spans, nodes, rolledBack, tx };
 }
 
-describe("CONTRADICTION-PERSISTENCE-WIRING-001 repaired persistence writer", () => {
+function deferred(): {
+  promise: Promise<void>;
+  resolve: () => void;
+} {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+
+/**
+ * Specialized harness for EvidenceSpan Side A create race from empty state.
+ * Separate from makeFakeDb raceMode (node-create race with pre-seeded spans).
+ */
+function makeSpanRaceFakeDb() {
+  const messages = new Map([
+    [
+      MSG_A,
+      {
+        id: MSG_A,
+        userId: USER,
+        sessionId: SESSION,
+        content: CONTENT_A,
+      },
+    ],
+    [
+      MSG_B,
+      {
+        id: MSG_B,
+        userId: USER,
+        sessionId: SESSION,
+        content: CONTENT_B,
+      },
+    ],
+  ]);
+
+  const spans: ContradictionRepairedSpanRow[] = [];
+  const nodes: Array<Record<string, unknown>> = [];
+  let spanSeq = 0;
+  let nodeSeq = 0;
+
+  let sideAAbsentObservations = 0;
+  const bothObservedAbsent = deferred();
+  let winnerTxCommitted = false;
+  const winnerCommitted = deferred();
+  let spanCreateAttempts = 0;
+  let spanP2002Thrown = 0;
+  let spanP2002OnEvidenceSpanCreate = false;
+  let recoveryWaitedUntilWinnerCommit = false;
+  let sideACreateWinnerId: string | null = null;
+
+  function isSideAKey(key: {
+    messageId: string;
+    charStart: number;
+    charEnd: number;
+    contentHash: string;
+  }) {
+    return (
+      key.messageId === MSG_A &&
+      key.charStart === 0 &&
+      key.charEnd === QUOTE_A.length &&
+      key.contentHash === sha(QUOTE_A)
+    );
+  }
+
+  function findExactNodeRow(where: {
+    userId: string;
+    sideASourceSpanId: string;
+    sideBSourceSpanId: string;
+  }) {
+    return (
+      nodes.find(
+        (n) =>
+          n.userId === where.userId &&
+          n.sideASourceSpanId === where.sideASourceSpanId &&
+          n.sideBSourceSpanId === where.sideBSourceSpanId,
+      ) ?? null
+    );
+  }
+
+  function throwP2002(message: string): never {
+    const err = new Error(message);
+    Object.assign(err, { code: "P2002" });
+    throw err;
+  }
+
+  const tx = {
+    message: {
+      findUnique: vi.fn(
+        async ({ where }: { where: { id: string } }) =>
+          messages.get(where.id) ?? null,
+      ),
+    },
+    evidenceSpan: {
+      findUnique: vi.fn(
+        async ({
+          where,
+        }: {
+          where: {
+            messageId_charStart_charEnd_contentHash: {
+              messageId: string;
+              charStart: number;
+              charEnd: number;
+              contentHash: string;
+            };
+          };
+        }) => {
+          const key = where.messageId_charStart_charEnd_contentHash;
+          const found =
+            spans.find(
+              (s) =>
+                s.messageId === key.messageId &&
+                s.charStart === key.charStart &&
+                s.charEnd === key.charEnd &&
+                s.contentHash === key.contentHash,
+            ) ?? null;
+
+          if (found) return found;
+
+          // Side A absent barrier: both callers must observe absence before either create.
+          if (isSideAKey(key)) {
+            sideAAbsentObservations += 1;
+            if (sideAAbsentObservations >= 2) {
+              bothObservedAbsent.resolve();
+            }
+            await bothObservedAbsent.promise;
+            // Keep returning null so both proceed to create (not mid-tx re-find of winner).
+            return null;
+          }
+
+          return null;
+        },
+      ),
+      create: vi.fn(
+        async ({
+          data,
+        }: {
+          data: {
+            userId: string;
+            messageId: string;
+            charStart: number;
+            charEnd: number;
+            contentHash: string;
+          };
+        }) => {
+          if (isSideAKey(data)) {
+            spanCreateAttempts += 1;
+            if (spanCreateAttempts === 1) {
+              const id = `span-${++spanSeq}`;
+              const row: ContradictionRepairedSpanRow = { id, ...data };
+              spans.push(row);
+              sideACreateWinnerId = id;
+              return { id };
+            }
+            // Loser: wait until winning transaction fully commits (spans + node).
+            await winnerCommitted.promise;
+            recoveryWaitedUntilWinnerCommit = winnerTxCommitted;
+            spanP2002Thrown += 1;
+            spanP2002OnEvidenceSpanCreate = true;
+            throwP2002(
+              "Unique constraint failed on EvidenceSpan messageId_charStart_charEnd_contentHash",
+            );
+          }
+
+          // Side B (and any non-Side-A) create — winner path only in this harness.
+          const existing = spans.find(
+            (s) =>
+              s.messageId === data.messageId &&
+              s.charStart === data.charStart &&
+              s.charEnd === data.charEnd &&
+              s.contentHash === data.contentHash,
+          );
+          if (existing) {
+            throwP2002(
+              "Unique constraint failed on EvidenceSpan messageId_charStart_charEnd_contentHash",
+            );
+          }
+          const id = `span-${++spanSeq}`;
+          const row: ContradictionRepairedSpanRow = { id, ...data };
+          spans.push(row);
+          return { id };
+        },
+      ),
+    },
+    contradictionNode: {
+      findFirst: vi.fn(
+        async ({
+          where,
+        }: {
+          where: {
+            userId: string;
+            sideASourceSpanId: string;
+            sideBSourceSpanId: string;
+          };
+        }) => {
+          const found = findExactNodeRow(where);
+          if (!found) return null;
+          return {
+            id: String(found.id),
+            userId: String(found.userId),
+            sideASourceSpanId:
+              (found.sideASourceSpanId as string | null) ?? null,
+            sideBSourceSpanId:
+              (found.sideBSourceSpanId as string | null) ?? null,
+          };
+        },
+      ),
+      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const existing = findExactNodeRow({
+          userId: String(data.userId),
+          sideASourceSpanId: String(data.sideASourceSpanId),
+          sideBSourceSpanId: String(data.sideBSourceSpanId),
+        });
+        if (existing) {
+          throwP2002(
+            "Unique constraint failed on ContradictionNode_user_sideA_sideB_span_uniq",
+          );
+        }
+        const id = `node-${++nodeSeq}`;
+        nodes.push({ id, ...data });
+        return { id };
+      }),
+      update: vi.fn(async () => {
+        throw new Error("contradictionNode.update must not be called");
+      }),
+    },
+    contradictionEvidence: {
+      create: vi.fn(async () => {
+        throw new Error("contradictionEvidence.create must not be called");
+      }),
+    },
+    modelUpdate: {
+      create: vi.fn(async () => {
+        throw new Error("modelUpdate.create must not be called");
+      }),
+    },
+  };
+
+  const rolledBack = { value: false };
+  const db: ContradictionRepairedPersistenceDb = {
+    ...tx,
+    $transaction: vi.fn(async (callback) => {
+      const ownedSpanIds = new Set<string>();
+      const ownedNodeIds = new Set<string>();
+      const trackingTx = {
+        ...tx,
+        evidenceSpan: {
+          ...tx.evidenceSpan,
+          create: async (args: {
+            data: {
+              userId: string;
+              messageId: string;
+              charStart: number;
+              charEnd: number;
+              contentHash: string;
+            };
+            select: { id: true };
+          }) => {
+            const created = await tx.evidenceSpan.create(args);
+            ownedSpanIds.add(created.id);
+            return created;
+          },
+        },
+        contradictionNode: {
+          ...tx.contradictionNode,
+          create: async (args: {
+            data: Record<string, unknown>;
+            select: { id: true };
+          }) => {
+            const created = await tx.contradictionNode.create(args);
+            ownedNodeIds.add(created.id);
+            return created;
+          },
+        },
+      };
+      try {
+        const result = await callback(trackingTx);
+        // Signal only after the entire winning transaction commits (spans + node).
+        if (!winnerTxCommitted && spans.length === 2 && nodes.length === 1) {
+          winnerTxCommitted = true;
+          winnerCommitted.resolve();
+        }
+        return result;
+      } catch (error) {
+        for (let i = spans.length - 1; i >= 0; i -= 1) {
+          if (ownedSpanIds.has(spans[i].id)) spans.splice(i, 1);
+        }
+        for (let i = nodes.length - 1; i >= 0; i -= 1) {
+          if (ownedNodeIds.has(String(nodes[i].id))) nodes.splice(i, 1);
+        }
+        rolledBack.value = true;
+        throw error;
+      }
+    }),
+  };
+
+  return {
+    db,
+    spans,
+    nodes,
+    rolledBack,
+    tx,
+    harness: {
+      get sideAAbsentObservations() {
+        return sideAAbsentObservations;
+      },
+      get spanCreateAttempts() {
+        return spanCreateAttempts;
+      },
+      get spanP2002Thrown() {
+        return spanP2002Thrown;
+      },
+      get spanP2002OnEvidenceSpanCreate() {
+        return spanP2002OnEvidenceSpanCreate;
+      },
+      get winnerTxCommitted() {
+        return winnerTxCommitted;
+      },
+      get recoveryWaitedUntilWinnerCommit() {
+        return recoveryWaitedUntilWinnerCommit;
+      },
+      get sideACreateWinnerId() {
+        return sideACreateWinnerId;
+      },
+    },
+  };
+}
+
+describe("CONTRADICTION-DUPLICATE-PREVENTION-001 repaired persistence writer", () => {
   describe("module boundary", () => {
     it("does not import prismadb, materialisation, detection, or routes", () => {
       const sourceText = readFileSync(
@@ -445,7 +1057,8 @@ describe("CONTRADICTION-PERSISTENCE-WIRING-001 repaired persistence writer", () 
       expect(result.sideBSpanOutcome).toBe("created");
       expect(result.status).toBe("candidate");
       expect(result.recommendedStorageConfidence).toBe("medium");
-      expect(result.contradictionDeduplicationProven).toBe(false);
+      expect(result.contradictionDeduplicationProven).toBe(true);
+      expect(result.contradictionNodeOutcome).toBe("created");
       expect(spans).toHaveLength(2);
       expect(nodes).toHaveLength(1);
       expect(nodes[0]).toMatchObject({
@@ -713,6 +1326,340 @@ describe("CONTRADICTION-PERSISTENCE-WIRING-001 repaired persistence writer", () 
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.code).toBe("message_content_inconsistent");
+    });
+  });
+
+
+  describe("CEQR-007 exact duplicate prevention", () => {
+    it("sequential second invocation reuses the same node without a second create", async () => {
+      const plan = makeAuthorisedPlan();
+      const { db, nodes, spans, tx } = makeFakeDb();
+
+      const first = await persistRepairedContradictionCandidate({ plan, db });
+      expect(first.ok).toBe(true);
+      if (!first.ok) return;
+      expect(first.contradictionNodeOutcome).toBe("created");
+      expect(first.writeExecuted).toBe(true);
+      expect(first.contradictionDeduplicationProven).toBe(true);
+
+      const second = await persistRepairedContradictionCandidate({ plan, db });
+      expect(second.ok).toBe(true);
+      if (!second.ok) return;
+      expect(second.contradictionNodeOutcome).toBe("reused");
+      expect(second.writeExecuted).toBe(false);
+      expect(second.contradictionDeduplicationProven).toBe(true);
+      expect(second.contradictionNodeId).toBe(first.contradictionNodeId);
+      expect(second.sideASourceSpanId).toBe(first.sideASourceSpanId);
+      expect(second.sideBSourceSpanId).toBe(first.sideBSourceSpanId);
+      expect(nodes).toHaveLength(1);
+      expect(spans).toHaveLength(2);
+      expect(tx.contradictionNode.create).toHaveBeenCalledTimes(1);
+    });
+
+    it("allows a different Side A span to create a different node", async () => {
+      const plan1 = makeAuthorisedPlan();
+      const quoteAlt = "I refuse alcohol entirely";
+      const contentAlt = `${quoteAlt} and other text`;
+      const plan2 = makeAuthorisedPlanWithSideAQuote(quoteAlt, contentAlt);
+      const { db, nodes } = makeFakeDb({
+        extraMessages: [
+          {
+            id: "message-a-alt",
+            userId: USER,
+            sessionId: SESSION,
+            content: contentAlt,
+          },
+        ],
+      });
+
+      const first = await persistRepairedContradictionCandidate({ plan: plan1, db });
+      expect(first.ok).toBe(true);
+      if (!first.ok) return;
+
+      const second = await persistRepairedContradictionCandidate({ plan: plan2, db });
+      expect(second.ok).toBe(true);
+      if (!second.ok) return;
+      expect(second.contradictionNodeOutcome).toBe("created");
+      expect(second.contradictionNodeId).not.toBe(first.contradictionNodeId);
+      expect(second.sideASourceSpanId).not.toBe(first.sideASourceSpanId);
+      expect(second.sideBSourceSpanId).toBe(first.sideBSourceSpanId);
+      expect(nodes).toHaveLength(2);
+    });
+
+
+    it("allows a different Side B span identity to create a different node", async () => {
+      const plan = makeAuthorisedPlan();
+      const { db, nodes } = makeFakeDb({
+        existingSpans: [
+          {
+            id: "span-a",
+            userId: USER,
+            messageId: MSG_A,
+            charStart: plan.sideASpanEnsureDescriptor.charStart,
+            charEnd: plan.sideASpanEnsureDescriptor.charEnd,
+            contentHash: plan.sideASpanEnsureDescriptor.contentHash,
+          },
+          {
+            id: "span-b-other",
+            userId: USER,
+            messageId: MSG_B,
+            charStart: 0,
+            charEnd: 1,
+            contentHash: sha(CONTENT_B.slice(0, 1)),
+          },
+        ],
+        existingNodes: [
+          {
+            id: "node-other-b",
+            userId: USER,
+            sideASourceSpanId: "span-a",
+            sideBSourceSpanId: "span-b-other",
+          },
+        ],
+      });
+
+      const result = await persistRepairedContradictionCandidate({ plan, db });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.contradictionNodeOutcome).toBe("created");
+      expect(result.contradictionNodeId).not.toBe("node-other-b");
+      expect(nodes).toHaveLength(2);
+      expect(
+        nodes.filter(
+          (n) =>
+            n.sideASourceSpanId === result.sideASourceSpanId &&
+            n.sideBSourceSpanId === result.sideBSourceSpanId,
+        ),
+      ).toHaveLength(1);
+    });
+
+    it("legacy null-null nodes do not block exact repaired creation", async () => {
+      const plan = makeAuthorisedPlan();
+      const { db, nodes } = makeFakeDb({
+        existingNodes: [
+          {
+            id: "legacy-null-1",
+            userId: USER,
+            sideASourceSpanId: null,
+            sideBSourceSpanId: null,
+            title: "legacy",
+          },
+          {
+            id: "legacy-null-2",
+            userId: USER,
+            sideASourceSpanId: null,
+            sideBSourceSpanId: null,
+            title: "legacy-2",
+          },
+        ],
+      });
+
+      const result = await persistRepairedContradictionCandidate({ plan, db });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.contradictionNodeOutcome).toBe("created");
+      expect(nodes).toHaveLength(3);
+      expect(nodes.filter((n) => n.sideASourceSpanId == null)).toHaveLength(2);
+      expect(
+        nodes.find((n) => n.id === result.contradictionNodeId)?.sideASourceSpanId,
+      ).toBeTruthy();
+    });
+
+    it("fails closed on malformed existing exact row (wrong userId)", async () => {
+      const plan = makeAuthorisedPlan();
+      const spans = [
+        {
+          id: "span-a",
+          userId: USER,
+          messageId: MSG_A,
+          charStart: plan.sideASpanEnsureDescriptor.charStart,
+          charEnd: plan.sideASpanEnsureDescriptor.charEnd,
+          contentHash: plan.sideASpanEnsureDescriptor.contentHash,
+        },
+        {
+          id: "span-b",
+          userId: USER,
+          messageId: MSG_B,
+          charStart: plan.sideBSpanEnsureDescriptor.charStart,
+          charEnd: plan.sideBSpanEnsureDescriptor.charEnd,
+          contentHash: plan.sideBSpanEnsureDescriptor.contentHash,
+        },
+      ];
+
+      // Blank id fails integrity after exact-key lookup.
+      const { db: dbBlank, nodes: blankNodes } = makeFakeDb({
+        existingSpans: spans,
+        existingNodes: [
+          {
+            id: "   ",
+            userId: USER,
+            sideASourceSpanId: "span-a",
+            sideBSourceSpanId: "span-b",
+          },
+        ],
+      });
+
+      const blank = await persistRepairedContradictionCandidate({
+        plan,
+        db: dbBlank,
+      });
+      expect(blank.ok).toBe(false);
+      if (blank.ok) return;
+      expect(blank.code).toBe("existing_node_mismatch");
+      expect(blankNodes).toHaveLength(1);
+
+      // Wrong userId on a row returned by findFirst: patch findFirst to return mismatched row.
+      const { db: dbMismatch, nodes: mismatchNodes, tx } = makeFakeDb({
+        existingSpans: spans,
+      });
+      tx.contradictionNode.findFirst = vi.fn(async () => ({
+        id: "forged",
+        userId: "intruder",
+        sideASourceSpanId: "span-a",
+        sideBSourceSpanId: "span-b",
+      }));
+
+      const mismatched = await persistRepairedContradictionCandidate({
+        plan,
+        db: dbMismatch,
+      });
+      expect(mismatched.ok).toBe(false);
+      if (mismatched.ok) return;
+      expect(mismatched.code).toBe("existing_node_mismatch");
+      expect(mismatchNodes).toHaveLength(0);
+    });
+
+    it("concurrent same-plan invocations from empty spans recover exact node after EvidenceSpan P2002", async () => {
+      const plan = makeAuthorisedPlan();
+      const { db, nodes, spans, tx, harness } = makeSpanRaceFakeDb();
+
+      expect(spans).toHaveLength(0);
+      expect(nodes).toHaveLength(0);
+
+      const [a, b] = await Promise.all([
+        persistRepairedContradictionCandidate({ plan, db }),
+        persistRepairedContradictionCandidate({ plan, db }),
+      ]);
+
+      expect(harness.sideAAbsentObservations).toBe(2);
+      expect(harness.spanCreateAttempts).toBe(2);
+      expect(harness.spanP2002Thrown).toBe(1);
+      expect(harness.spanP2002OnEvidenceSpanCreate).toBe(true);
+      expect(harness.winnerTxCommitted).toBe(true);
+      expect(harness.recoveryWaitedUntilWinnerCommit).toBe(true);
+      expect(harness.sideACreateWinnerId).toBeTruthy();
+
+      expect(a.ok).toBe(true);
+      expect(b.ok).toBe(true);
+      if (!a.ok || !b.ok) return;
+
+      expect(a.contradictionNodeId).toBe(b.contradictionNodeId);
+      const outcomes = [a.contradictionNodeOutcome, b.contradictionNodeOutcome].sort();
+      expect(outcomes).toEqual(["created", "reused"]);
+      const created = a.contradictionNodeOutcome === "created" ? a : b;
+      const reused = a.contradictionNodeOutcome === "reused" ? a : b;
+      expect(created.writeExecuted).toBe(true);
+      expect(reused.writeExecuted).toBe(false);
+      expect(created.contradictionDeduplicationProven).toBe(true);
+      expect(reused.contradictionDeduplicationProven).toBe(true);
+      expect(nodes).toHaveLength(1);
+      expect(spans).toHaveLength(2);
+      expect(
+        new Set(spans.map((s) => `${s.messageId}:${s.charStart}:${s.charEnd}:${s.contentHash}`)).size,
+      ).toBe(2);
+      expect(new Set(nodes.map((n) => String(n.id))).size).toBe(1);
+      expect(tx.contradictionNode.create).toHaveBeenCalledTimes(1);
+      expect(tx.contradictionNode.update).not.toHaveBeenCalled();
+      expect(tx.contradictionEvidence.create).not.toHaveBeenCalled();
+      expect(tx.modelUpdate.create).not.toHaveBeenCalled();
+    });
+
+    it("concurrent same-plan invocations result in one durable node via P2002 recovery", async () => {
+      const plan = makeAuthorisedPlan();
+      // Pre-seed exact spans so the race is on ContradictionNode create only
+      // (avoids span P2002 aborting one caller before the node findFirst barrier).
+      const { db, nodes, spans, tx } = makeFakeDb({
+        raceMode: true,
+        existingSpans: [
+          {
+            id: "span-a",
+            userId: USER,
+            messageId: MSG_A,
+            charStart: plan.sideASpanEnsureDescriptor.charStart,
+            charEnd: plan.sideASpanEnsureDescriptor.charEnd,
+            contentHash: plan.sideASpanEnsureDescriptor.contentHash,
+          },
+          {
+            id: "span-b",
+            userId: USER,
+            messageId: MSG_B,
+            charStart: plan.sideBSpanEnsureDescriptor.charStart,
+            charEnd: plan.sideBSpanEnsureDescriptor.charEnd,
+            contentHash: plan.sideBSpanEnsureDescriptor.contentHash,
+          },
+        ],
+      });
+
+      const [a, b] = await Promise.all([
+        persistRepairedContradictionCandidate({ plan, db }),
+        persistRepairedContradictionCandidate({ plan, db }),
+      ]);
+
+      expect(a.ok).toBe(true);
+      expect(b.ok).toBe(true);
+      if (!a.ok || !b.ok) return;
+
+      expect(a.contradictionNodeId).toBe(b.contradictionNodeId);
+      const outcomes = [a.contradictionNodeOutcome, b.contradictionNodeOutcome].sort();
+      expect(outcomes).toEqual(["created", "reused"]);
+      const created = a.contradictionNodeOutcome === "created" ? a : b;
+      const reused = a.contradictionNodeOutcome === "reused" ? a : b;
+      expect(created.writeExecuted).toBe(true);
+      expect(reused.writeExecuted).toBe(false);
+      expect(created.contradictionDeduplicationProven).toBe(true);
+      expect(reused.contradictionDeduplicationProven).toBe(true);
+      expect(nodes).toHaveLength(1);
+      expect(spans).toHaveLength(2);
+      expect(tx.contradictionNode.create.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("unique-conflict recovery fails when no complete exact node is resolvable", async () => {
+      const plan = makeAuthorisedPlan();
+      const { db } = makeFakeDb({
+        existingSpans: [
+          {
+            id: "span-a",
+            userId: USER,
+            messageId: MSG_A,
+            charStart: plan.sideASpanEnsureDescriptor.charStart,
+            charEnd: plan.sideASpanEnsureDescriptor.charEnd,
+            contentHash: plan.sideASpanEnsureDescriptor.contentHash,
+          },
+          {
+            id: "span-b",
+            userId: USER,
+            messageId: MSG_B,
+            charStart: plan.sideBSpanEnsureDescriptor.charStart,
+            charEnd: plan.sideBSpanEnsureDescriptor.charEnd,
+            contentHash: plan.sideBSpanEnsureDescriptor.contentHash,
+          },
+        ],
+        throwUnresolvedNodeP2002: true,
+      });
+
+      const result = await persistRepairedContradictionCandidate({ plan, db });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.code).toBe("unique_conflict_unresolved");
+      expect(result.writeExecuted).toBe(false);
+    });
+
+    it("avoids CommonJS require calls in this test file", () => {
+      const sourceText = readFileSync(
+        join(process.cwd(), "lib/__tests__/contradiction-repaired-persistence.test.ts"),
+        "utf8",
+      );
+      expect(sourceText).not.toMatch(/(?:^|[^\w.$])require\s*\(\s*["'`]/m);
     });
   });
 
