@@ -1,0 +1,171 @@
+{
+  "slice": "CONTRADICTION-CONFIDENCE-CALIBRATION-001",
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "campaignSlice": "CEQR-006",
+  "baseline": "4883a59",
+  "branch": "desktop-contradiction-confidence-calibration-001",
+  "completedAt": "2026-07-21T10:30:00.000Z",
+  "gateClassification": "PASS_WITH_KNOWN_BASELINE_FAILURES",
+  "policyVersion": "contradiction-confidence-policy-v1",
+  "isEmpiricalCalibration": false,
+  "modelReportedConfidenceIsProbabilityEstimate": false,
+  "ceqr001Landed": true,
+  "ceqr002Landed": true,
+  "ceqr003Landed": true,
+  "ceqr004Landed": true,
+  "objectivityRefereeInterfaceDependencySatisfied": true,
+  "ceqr005Landed": true,
+  "ceqr006Started": true,
+  "ceqr006CompletedPurePolicy": true,
+  "productionPersistenceWired": false,
+  "materialisationChanged": false,
+  "productionProviderInvocationAdded": false,
+  "liveRefereeImplementationAdded": false,
+  "schemaChanged": false,
+  "migrationChanged": false,
+  "migrationApplied": false,
+  "kayDbMutated": false,
+  "existing25Changed": false,
+  "ceqr007Started": false,
+  "ceqr008Started": false,
+  "ceqr009Started": false,
+  "ceqr010Started": false,
+  "durablePersistenceUnblocked": false,
+  "productionReadiness": "NO",
+  "thresholds": {
+    "candidateFloor": 0.5,
+    "bandMediumMin": 0.5,
+    "bandHighMin": 0.8,
+    "belowFloorBehaviour": "ok_true_meetsCandidateFloor_false_continuationReady_false",
+    "okDistinctFromContinuationReady": true,
+    "refereeGateEvidenceMandatory": true,
+    "bandMapperExported": false,
+    "authoritativePublicEntryPoint": "calibrateContradictionConfidence"
+  },
+  "focusedTests": {
+    "command": "npx vitest run lib/__tests__/contradiction-confidence-calibration.test.ts",
+    "testFiles": { "passed": 1, "failed": 0 },
+    "tests": { "passed": 42, "failed": 0 },
+    "result": "PASS"
+  },
+  "relatedTests": {
+    "command": "npx vitest run lib/__tests__/contradiction-adjudication-contract.test.ts lib/__tests__/objectivity-referee-interface-contract.test.ts lib/__tests__/contradiction-source.test.ts lib/__tests__/contradiction-dual-side-lineage.test.ts lib/__tests__/contradiction-detection.test.ts lib/__tests__/contradiction-materialization.test.ts",
+    "testFiles": { "passed": 6, "failed": 0 },
+    "tests": { "passed": 175, "failed": 0 },
+    "result": "PASS"
+  },
+  "typescript": {
+    "command": "npx tsc --noEmit",
+    "result": "PASS"
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "PASS"
+  },
+  "gitDiffCheck": "PASS",
+  "fullSuite": {
+    "command": "npx vitest run",
+    "testFiles": { "failed": 5, "passed": 307, "total": 312 },
+    "tests": { "failed": 7, "passed": 4108, "total": 4115 },
+    "classification": "PASS_WITH_KNOWN_BASELINE_FAILURES",
+    "baselineComparison": {
+      "ceqr005Baseline": "4883a59 / CONTRADICTION-DUAL-SIDE-LINEAGE-MIGRATION-001 recorded suite",
+      "baselineFailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "baselineFailedTestCount": 7,
+      "baselinePassedFiles": 306,
+      "baselinePassedTests": 4066,
+      "thisSliceFailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "thisSliceFailedTestNames": [
+        "EvidencePointerSurfacingRationale schema model contracts > pins one rationale row per source object per user",
+        "EvidencePointerSurfacingRationale migration SQL contracts > pins source lookup uniqueness in migration SQL",
+        "orvek adapters > does not use movement summary as after state when depth after is missing",
+        "orvek adapters > mapTodayDataToV0Props maps movement without fabricating previous read or after state",
+        "SurfacedEvidencePointer schema model contracts > pins required indexes and one-pointer-per-source uniqueness",
+        "SurfacedEvidencePointer migration SQL contracts > pins Today read and source lookup indexes in migration SQL",
+        "Today adapter after-state honesty > uses explicit unavailable copy instead of movement summary when after is missing"
+      ],
+      "thisSliceFailedTestCount": 7,
+      "thisSlicePassedFiles": 307,
+      "thisSlicePassedTests": 4108,
+      "exactFailedFileMatch": true,
+      "exactFailedTestCountMatch": true,
+      "campaignCausedNewFailures": false,
+      "notes": "Passed files 306→307 and passed tests 4066→4108 from contradiction-confidence-calibration tests (+42) after review correction; failure set exact-matches CEQR-005 baseline (5 files / 7 tests)."
+    }
+  },
+  "reviewCorrection": {
+    "okDistinctFromContinuationReady": true,
+    "belowFloorContinuationReady": false,
+    "refereeGateEvidenceMandatory": true,
+    "missingRefereeValidationFailsClosed": true,
+    "singlePublicEntryPoint": "calibrateContradictionConfidence",
+    "bandMapperInternal": true,
+    "persistable": false,
+    "persistenceAuthorised": false,
+    "productionReadiness": "NO"
+  },
+  "accountGate": {
+    "before": {
+      "label": "ceqr-006-before",
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true,
+      "mutationsPerformed": false
+    },
+    "after": {
+      "label": "ceqr-006-after",
+      "matchesExpected": true,
+      "pendingTotal": 53,
+      "pendingReferenceItems": 28,
+      "pendingContradictionNodes": 25,
+      "openGenuine": 0,
+      "patternClaims": 7,
+      "modelUpdates": 1,
+      "understandingEvidenceLinks": 50,
+      "chickenBurgerActive": true,
+      "mutationsPerformed": false
+    }
+  },
+  "finalCeqr006Gate": {
+    "confidencePathAuditCompleted": "PASS",
+    "fixedTypeLabelsNotConsumedByPolicy": "PASS",
+    "authoritativePolicyModuleCreated": "PASS",
+    "policyIsNotEmpiricalCalibration": "PASS",
+    "okDistinctFromContinuationReady": "PASS",
+    "belowFloorNotContinuationReady": "PASS",
+    "refereeGateEvidenceMandatory": "PASS",
+    "bandMapperInternal": "PASS",
+    "persistableAlwaysFalse": "PASS",
+    "persistenceAuthorisedAlwaysFalse": "PASS",
+    "productionPersistenceWired": "NO",
+    "materialisationChanged": "NO",
+    "routeImportChanged": "NO",
+    "productionProviderInvocationAdded": "NO",
+    "liveRefereeImplementationAdded": "NO",
+    "schemaChanged": "NO",
+    "migrationApplied": "NO",
+    "kayDbMutated": "NO",
+    "existing25Changed": "NO",
+    "ceqr007Started": "NO",
+    "durablePersistenceUnblocked": "NO",
+    "productionReadiness": "NO"
+  }
+}
