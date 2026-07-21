@@ -1,0 +1,118 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-LIVE-PROVIDER-REFEREE-EXECUTION-001",
+  "campaignSlice": "CEQR-011",
+  "exactBase": "c9a0c09941c6819b1fd53e864983e4a1eeee65f7",
+  "classification": "HOLD_LIVE_SEMANTIC_PROOF_NOT_OBTAINED",
+  "supersededPriorClaim": {
+    "file": "live-execution-receipt.SUPERSEDED-pre-correction.json",
+    "priorClaim": "PASS_LIVE_PROVIDER_REFEREE_EXECUTION_PROVEN",
+    "reason": "adjudicator evidence-output mutation removed; PASS eligibility requires strict compatible no-write"
+  },
+  "providerDecision": {
+    "status": "PASS_PROVIDER_PATH_FOUND",
+    "providerId": "openai",
+    "adapter": "createAiSdkStructuredModelRunner",
+    "sdk": "@ai-sdk/openai",
+    "credentialEnv": "OPENAI_API_KEY",
+    "optInEnv": "RUN_LIVE_CONTRADICTION_PROVIDER_PROOF"
+  },
+  "independenceLevel": "separate_call_same_provider_same_model",
+  "adjudicator": {
+    "providerId": "openai",
+    "modelId": "gpt-4o-mini",
+    "maxRetries": 0,
+    "timeoutMs": 45000
+  },
+  "referee": {
+    "providerId": "openai",
+    "modelId": "gpt-4o-mini",
+    "maxRetries": 0,
+    "timeoutMs": 45000
+  },
+  "evidenceOutputMutated": false,
+  "providerAttemptCountExact": true,
+  "liveCallCounts": {
+    "adjudicator": 3,
+    "referee": 0,
+    "total": 3,
+    "maxTotal": 8
+  },
+  "liveExecution": {
+    "clearContradictionWriteProven": false,
+    "compatibleCaseNoWrite": false,
+    "ambiguousCaseNoWrite": true,
+    "unsafeMutationDetected": false,
+    "realAccountMutated": false,
+    "productionIngestionWired": false,
+    "isolatedDatabasePersistenceProven": false,
+    "productionReady": false,
+    "classificationHint": "HOLD_LIVE_SEMANTIC_PROOF_NOT_OBTAINED"
+  },
+  "passPredicate": {
+    "requires": [
+      "clearContradictionWriteProven",
+      "compatibleCaseNoWrite_strict",
+      "totalCallCount_within_budget",
+      "no_unsafe_mutation"
+    ],
+    "met": false
+  },
+  "accountGate": {
+    "beforeMatchesExpected": true,
+    "afterMatchesExpected": true,
+    "contradictionNodeTotal": 25,
+    "candidateTotal": 25,
+    "evidenceSpans": 5941,
+    "completeExactDualSide": 0,
+    "invalidPartial": 0,
+    "legacyIncomplete": 25,
+    "duplicateCompletePairGroups": 0,
+    "userIdInReceipt": "[REDACTED_ACCOUNT_ID]"
+  },
+  "validation": {
+    "focusedNewTests": {
+      "files": 2,
+      "passed": 52,
+      "failed": 0
+    },
+    "relatedSuites": {
+      "files": 8,
+      "passed": 271,
+      "failed": 0
+    },
+    "fullVitest": {
+      "testFilesFailed": 5,
+      "testFilesPassed": 316,
+      "testsFailed": 7,
+      "testsPassed": 4298,
+      "knownFailureSetExpanded": false
+    },
+    "tscNoEmit": "pass",
+    "eslintChangedFiles": "pass_with_scripts_ignore_warning_only",
+    "productionBuild": "pass",
+    "gitDiffCheck": "pass",
+    "secretPatternScan": "pass",
+    "personalIdentifierScan": "pass"
+  },
+  "limitations": [
+    "active slice is not the whole project",
+    "ordinary message/import paths remain unwired",
+    "existing 25 contradiction rows remain untouched",
+    "actual isolated-database persistence remains unproven",
+    "production readiness is NO",
+    "unmodified live provider output did not establish a valid clear candidate"
+  ],
+  "privacyCorrection": {
+    "realAccountIdInSliceCode": false,
+    "accountReceiptsRedacted": true,
+    "nodeSpanIdsOmittedFromReceipts": true,
+    "nestedAccountGateDirsRemoved": true,
+    "exitCodeMapping": {
+      "PASS": 0,
+      "skipped": 3,
+      "HOLD": 4,
+      "FAIL_UNSAFE": 5
+    }
+  }
+}

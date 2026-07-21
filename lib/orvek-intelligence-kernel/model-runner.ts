@@ -57,11 +57,24 @@ export type AiSdkStructuredRunnerOptions = {
   providerId: string;
   modelId: string;
   temperature?: number;
+  /**
+   * Optional AI SDK maxRetries. When omitted, the SDK default applies (currently 2).
+   * Pass 0 to disable retries so one runner invocation equals one provider attempt.
+   */
+  maxRetries?: number;
+  /**
+   * Optional native AI SDK timeout in milliseconds (passed as `timeout`).
+   * When omitted, the SDK default (no explicit timeout) applies.
+   */
+  timeoutMs?: number;
 };
 
 /**
  * Production adapter using the installed AI SDK (`generateText` + `Output.object`).
  * Unused by automated tests. Model is injected by the caller — no hard-coded name.
+ *
+ * Optional `maxRetries` / `timeoutMs` are backward-compatible: omitting them
+ * preserves prior SDK-default behaviour for existing callers.
  */
 export function createAiSdkStructuredModelRunner(
   options: AiSdkStructuredRunnerOptions,
@@ -87,6 +100,12 @@ export function createAiSdkStructuredModelRunner(
           prompt: request.prompt,
           temperature: options.temperature ?? 0,
           abortSignal: request.abortSignal,
+          ...(options.maxRetries !== undefined
+            ? { maxRetries: options.maxRetries }
+            : {}),
+          ...(options.timeoutMs !== undefined
+            ? { timeout: options.timeoutMs }
+            : {}),
           output: Output.object({
             schema: request.schema,
             name: request.schemaName,
