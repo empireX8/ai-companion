@@ -1,0 +1,5 @@
+lib/contradiction-persistence-plan.ts
+lib/contradiction-repaired-persistence.ts
+lib/__tests__/contradiction-persistence-plan.test.ts
+lib/__tests__/contradiction-repaired-persistence.test.ts
+docs/agent-runs/receipts/CONTRADICTION-PERSISTENCE-WIRING-001/

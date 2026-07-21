@@ -1,0 +1,120 @@
+{
+  "slice": "CONTRADICTION-PERSISTENCE-WIRING-001",
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "campaignSlice": "unnumbered-persistence-wiring-before-CEQR-007",
+  "baseline": "f21ade9",
+  "branch": "desktop-contradiction-persistence-wiring-001",
+  "completedAt": "2026-07-21T13:12:00.000Z",
+  "gateClassification": "PASS_WITH_KNOWN_BASELINE_FAILURES",
+  "reviewCorrection": {
+    "priorClassification": "FAIL_BLOCKED_WITH_NARROW_SEMANTIC_AUTHORITY_REPAIR",
+    "semanticAuthority": "SemanticallySelectedContradictionPair",
+    "lineageAuthority": "CEQR-005 validatedDualSideLineage",
+    "confidenceAuthority": "CEQR-006 calibrateContradictionConfidence",
+    "bindingRequired": true,
+    "propositionsFromAdjudicationOnly": true,
+    "titleDeterministicDisplayLabel": true,
+    "typeDerivedFromSideASourceType": true,
+    "typeMapping": {
+      "goal": "goal_behavior_gap",
+      "constraint": "constraint_conflict"
+    },
+    "planIdentity": "module_private_WeakSet_deep_freeze",
+    "versionStringIsNotCredential": true,
+    "persistedSourceMessageId": null,
+    "persistedSourceSessionId": "sharedSessionId",
+    "dualSpanFksAreProvenanceAuthority": true
+  },
+  "persistencePlanVersion": "contradiction-persistence-plan-v1",
+  "supportedLineageContractVersion": "contradiction-dual-side-lineage-v1",
+  "supportedConfidencePolicyVersion": "contradiction-confidence-policy-v1",
+  "legacyMaterialiserReused": false,
+  "separateRepairedWriter": true,
+  "productionRouteInvokesWriter": false,
+  "writerInvokedAgainstKayAccount": false,
+  "kayDbMutated": false,
+  "existing25Changed": false,
+  "completeExactDualSideRealAccountCount": 0,
+  "invalidPartialRealAccountCount": 0,
+  "contradictionEvidenceCreatedByRepairedWriter": false,
+  "schemaChanged": false,
+  "migrationChanged": false,
+  "migrationApplied": false,
+  "providerInvoked": false,
+  "ceqr007Started": false,
+  "contradictionDeduplicationProven": false,
+  "productionReadiness": "NO",
+  "focusedTests": {
+    "command": "npx vitest run lib/__tests__/contradiction-persistence-plan.test.ts lib/__tests__/contradiction-repaired-persistence.test.ts",
+    "testFiles": { "passed": 2, "failed": 0 },
+    "tests": { "passed": 52, "failed": 0 },
+    "result": "PASS"
+  },
+  "relatedTests": {
+    "command": "npx vitest run lib/__tests__/contradiction-source.test.ts lib/__tests__/contradiction-dual-side-lineage.test.ts lib/__tests__/contradiction-confidence-calibration.test.ts lib/__tests__/contradiction-adjudication-contract.test.ts lib/__tests__/objectivity-referee-interface-contract.test.ts lib/__tests__/contradiction-materialization.test.ts lib/__tests__/contradiction-detection.test.ts",
+    "testFiles": { "passed": 7, "failed": 0 },
+    "tests": { "passed": 217, "failed": 0 },
+    "result": "PASS"
+  },
+  "prismaValidate": { "command": "npx prisma validate", "result": "PASS" },
+  "prismaGenerate": { "required": false, "result": "SKIPPED_SCHEMA_UNCHANGED" },
+  "typescript": { "command": "npx tsc --noEmit", "result": "PASS" },
+  "build": { "command": "npm run build", "result": "PASS" },
+  "gitDiffCheck": "PASS",
+  "prohibitedPathScan": {
+    "roots": ["app", "lib/orvek-v0", "lib/understanding-dark-engine"],
+    "hits": [],
+    "result": "PASS"
+  },
+  "fullSuite": {
+    "command": "npx vitest run",
+    "testFiles": { "failed": 5, "passed": 309, "total": 314 },
+    "tests": { "failed": 7, "passed": 4160, "total": 4167 },
+    "classification": "PASS_WITH_KNOWN_BASELINE_FAILURES",
+    "baselineComparison": {
+      "preCorrectionBaseline": "4151 passed tests / 309 passed files / 5 failed files / 7 failed tests",
+      "thisSliceFailedFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "thisSliceFailedTestCount": 7,
+      "thisSlicePassedFiles": 309,
+      "thisSlicePassedTests": 4160,
+      "exactFailedFileMatch": true,
+      "exactFailedTestCountMatch": true,
+      "campaignCausedNewFailures": false,
+      "notes": "Passed tests 4151→4160 (+9) from semantic-authority review-correction test additions; failure set unchanged (5 files / 7 tests)."
+    }
+  },
+  "accountGate": {
+    "before": {
+      "label": "contradiction-persistence-wiring-before",
+      "matchesExpected": true,
+      "completeExactDualSide": 0,
+      "invalidPartial": 0,
+      "legacyIncomplete": 25
+    },
+    "after": {
+      "label": "contradiction-persistence-wiring-after",
+      "matchesExpected": true,
+      "completeExactDualSide": 0,
+      "invalidPartial": 0,
+      "legacyIncomplete": 25
+    },
+    "beforeAfterMatch": true
+  },
+  "explicitStatements": {
+    "implementsRepairedPersistenceCapabilityButNotLiveWired": true,
+    "noProductionRouteInvokesWriter": true,
+    "kayAccountDatabaseNotMutated": true,
+    "existing25Untouched": true,
+    "exactDualSideStoredRowsRemainZero": true,
+    "duplicatePreventionUnprovenBelongsToCeqr007": true,
+    "noProviderInvoked": true,
+    "noSchemaOrMigrationChanged": true,
+    "productionReadiness": "NO"
+  }
+}
