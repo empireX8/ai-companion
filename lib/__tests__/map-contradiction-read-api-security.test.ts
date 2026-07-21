@@ -69,6 +69,11 @@ vi.mock("@/lib/understanding-links", async () => {
   return actual;
 });
 
+vi.mock("@/lib/contradiction-dual-source-presentation", async () => {
+  const actual = await import("../contradiction-dual-source-presentation");
+  return actual;
+});
+
 describe("GET /api/contradiction Map open read security", () => {
   beforeEach(() => {
     authMock.mockReset();

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Trash2, TrendingUp } from "lucide-react";
 
+import { ContradictionDualSourceView } from "@/components/contradiction/ContradictionDualSourceView";
 import { DomainListSlot } from "@/components/layout/DomainListSlot";
 import { ContradictionListPanel } from "../_components/ContradictionListPanel";
 import type { ContradictionListItem } from "@/lib/nodes-api";
@@ -15,9 +16,12 @@ type CandidatePage = {
 };
 
 async function fetchCandidates(): Promise<ContradictionListItem[]> {
-  const res = await fetch("/api/contradiction?status=candidate&page=1&limit=50", {
-    cache: "no-store",
-  });
+  const res = await fetch(
+    "/api/contradiction?status=candidate&page=1&limit=50&includeDualSource=true",
+    {
+      cache: "no-store",
+    },
+  );
   if (!res.ok) throw new Error("Failed to load candidates");
   const data = (await res.json()) as CandidatePage;
   return data.items;
@@ -252,15 +256,31 @@ export default function CandidatesPage() {
                     </div>
                   </div>
 
-                  <div className="mb-4 grid grid-cols-2 gap-2">
-                    <div className="rounded bg-muted/50 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Side A</p>
-                      <p className="mt-0.5 text-xs text-foreground">{item.sideA}</p>
-                    </div>
-                    <div className="rounded bg-muted/50 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Side B</p>
-                      <p className="mt-0.5 text-xs text-foreground">{item.sideB}</p>
-                    </div>
+                  <div className="mb-4">
+                    {item.dualSource ? (
+                      <ContradictionDualSourceView
+                        interpretationA={item.sideA}
+                        interpretationB={item.sideB}
+                        dualSource={item.dualSource}
+                        showLegacyAsSingleNotice
+                        copySurface="candidate"
+                      />
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded bg-muted/50 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                            Side A interpretation
+                          </p>
+                          <p className="mt-0.5 text-xs text-foreground">{item.sideA}</p>
+                        </div>
+                        <div className="rounded bg-muted/50 px-3 py-2">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                            Side B interpretation
+                          </p>
+                          <p className="mt-0.5 text-xs text-foreground">{item.sideB}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2">

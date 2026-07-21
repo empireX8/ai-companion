@@ -21,6 +21,7 @@ import {
   useOptionalOrvekData,
 } from "@/lib/orvek-v0/data-provider";
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types";
+import { ContradictionDualSourceView } from "@/components/contradiction/ContradictionDualSourceView";
 import {
   fetchInspectorContradiction,
   fetchInspectorEvidenceLinks,
@@ -871,19 +872,13 @@ function RelatedSignalSection({ item }: { item: InspectorContradictionProjection
           { label: "Evidence", value: String(item.evidenceCount) },
         ]}
       />
-      <div className="mt-3 space-y-2">
-        <div>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Side A</div>
-          <div className="mt-1 text-[13px] leading-relaxed">
-            <ReadoutText value={item.sideA} muted />
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Side B</div>
-          <div className="mt-1 text-[13px] leading-relaxed">
-            <ReadoutText value={item.sideB} muted />
-          </div>
-        </div>
+      <div className="mt-3">
+        <ContradictionDualSourceView
+          interpretationA={item.sideA}
+          interpretationB={item.sideB}
+          dualSource={item.dualSource}
+          showLegacyAsSingleNotice
+        />
       </div>
     </SectionBlock>
   );
@@ -1515,18 +1510,12 @@ function ContradictionEvidencePanel({
             { label: "Last touched", value: formatDateTime(item.lastTouchedAt) },
           ]}
         />
-        <div>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Side A</div>
-          <div className="mt-1 text-[13px] leading-relaxed">
-            <ReadoutText value={item.sideA} muted />
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Side B</div>
-          <div className="mt-1 text-[13px] leading-relaxed">
-            <ReadoutText value={item.sideB} muted />
-          </div>
-        </div>
+        <ContradictionDualSourceView
+          interpretationA={item.sideA}
+          interpretationB={item.sideB}
+          dualSource={item.dualSource}
+          showLegacyAsSingleNotice
+        />
       </section>
       <SourceObjectSections object={sourceObject} />
       <p className="px-5 pt-4 text-[12px] text-muted-foreground">
