@@ -1,0 +1,44 @@
+{
+  "campaign": "CONTRADICTION-DUAL-SIDE-LINEAGE-MIGRATION-001",
+  "slice": "CONTRADICTION-DUAL-SIDE-LINEAGE-MIGRATION-001",
+  "phase": "ceqr_005_dual_side_lineage",
+  "label": "after",
+  "userId": "user_34TUYA53pI1QRLK73O22Kve1a1G",
+  "queriedAt": "2026-07-20T23:42:09.382Z",
+  "mode": "read_only",
+  "mutationsPerformed": false,
+  "decisionPostCalled": false,
+  "expected": {
+    "pendingTotal": 53,
+    "referenceItemPendingImport": 28,
+    "contradictionNodePendingImport": 25,
+    "openGenuineContradictionNodes": 0,
+    "chickenBurgerActiveCount": 1,
+    "selectedReferenceItemStatus": "active",
+    "patternClaims": 7,
+    "modelUpdates": 1,
+    "understandingEvidenceLinks": 50
+  },
+  "observed": {
+    "pendingTotal": 53,
+    "referenceItemPendingImport": 28,
+    "contradictionNodePendingImport": 25,
+    "openGenuineContradictionNodes": 0,
+    "chickenBurgerActiveCount": 1,
+    "selectedReferenceItem": {
+      "id": "3a6163dd-0f85-4bf5-8eb8-924579f1db62",
+      "type": "preference",
+      "status": "active",
+      "confidence": "low",
+      "statement": "I think prefer chicken burgers to beef burgers 😳",
+      "updatedAt": "2026-07-19T14:14:39.275Z"
+    },
+    "patternClaims": 7,
+    "modelUpdates": 1,
+    "understandingEvidenceLinks": 50,
+    "contradictionNodesByStatus": {
+      "candidate": 25
+    }
+  },
+  "matchesExpected": true
+}

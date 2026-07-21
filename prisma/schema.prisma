@@ -182,6 +182,12 @@ model ContradictionNode {
   sourceMessageId String?
   sourceSession   Session?                     @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
   sourceMessage   Message?                     @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  /// CEQR-005 repaired exact Side A EvidenceSpan lineage (nullable for legacy pre-repair cohort).
+  sideASourceSpanId String?
+  /// CEQR-005 repaired exact Side B EvidenceSpan lineage (nullable for legacy pre-repair cohort).
+  sideBSourceSpanId String?
+  sideASourceSpan   EvidenceSpan?              @relation("ContradictionNodeSideASourceSpan", fields: [sideASourceSpanId], references: [id], onDelete: Restrict)
+  sideBSourceSpan   EvidenceSpan?              @relation("ContradictionNodeSideBSourceSpan", fields: [sideBSourceSpanId], references: [id], onDelete: Restrict)
   evidence        ContradictionEvidence[]
   referenceLinks  ContradictionReferenceLink[]
 
@@ -190,6 +196,8 @@ model ContradictionNode {
   @@index([userId, escalationLevel, weight])
   @@index([userId, lastEscalatedAt])
   @@index([userId, createdAt])
+  @@index([sideASourceSpanId])
+  @@index([sideBSourceSpanId])
 }
 
 model ContradictionReferenceLink {
@@ -390,6 +398,10 @@ model EvidenceSpan {
   createdAt            DateTime                      @default(now())
   artifactLinks        ArtifactEvidenceLink[]
   profileArtifactLinks ProfileArtifactEvidenceLink[]
+  /// Reverse relation: ContradictionNodes that cite this span as exact Side A lineage (CEQR-005).
+  contradictionNodesAsSideA ContradictionNode[]      @relation("ContradictionNodeSideASourceSpan")
+  /// Reverse relation: ContradictionNodes that cite this span as exact Side B lineage (CEQR-005).
+  contradictionNodesAsSideB ContradictionNode[]      @relation("ContradictionNodeSideBSourceSpan")
 
   @@unique([messageId, charStart, charEnd, contentHash])
   @@index([userId, messageId])
