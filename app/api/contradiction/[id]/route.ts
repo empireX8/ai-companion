@@ -21,6 +21,10 @@ import {
   ContradictionSourceError,
   resolveContradictionSource,
 } from "@/lib/contradiction-source";
+import {
+  createPrismaDualSourcePresentationReader,
+  resolveContradictionDualSourcePresentation,
+} from "@/lib/contradiction-dual-source-presentation";
 import prismadb from "@/lib/prismadb";
 import { serverLogMetric } from "@/lib/metrics-server";
 import {
@@ -137,9 +141,22 @@ export async function GET(
         })
       : null;
 
+    // Exact Side A / Side B sources resolve only from ordered span FKs.
+    // Do not use evidence[].spanId (legacy first-span-by-message heuristic).
+    const dualSource = await resolveContradictionDualSourcePresentation({
+      userId,
+      node: {
+        id: node.id,
+        sideASourceSpanId: node.sideASourceSpanId,
+        sideBSourceSpanId: node.sideBSourceSpanId,
+      },
+      reader: createPrismaDualSourcePresentationReader(prismadb),
+    });
+
     return NextResponse.json({
       ...node,
       evidence: evidenceWithSpans,
+      dualSource,
       cooldownActive: cooldown.active,
       cooldownUntil: cooldown.until?.toISOString() ?? null,
       ...(includeUnderstandingLinks

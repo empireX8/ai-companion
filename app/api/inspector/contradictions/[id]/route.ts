@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { ContradictionStatus } from "@prisma/client";
 
+import {
+  createPrismaDualSourcePresentationReader,
+  resolveContradictionDualSourcePresentation,
+} from "@/lib/contradiction-dual-source-presentation";
 import prismadb from "@/lib/prismadb";
 
 export const dynamic = "force-dynamic";
@@ -42,12 +46,24 @@ export async function GET(
         evidenceCount: true,
         lastEvidenceAt: true,
         lastTouchedAt: true,
+        sideASourceSpanId: true,
+        sideBSourceSpanId: true,
       },
     });
 
     if (!row) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+
+    const dualSource = await resolveContradictionDualSourcePresentation({
+      userId,
+      node: {
+        id: row.id,
+        sideASourceSpanId: row.sideASourceSpanId,
+        sideBSourceSpanId: row.sideBSourceSpanId,
+      },
+      reader: createPrismaDualSourcePresentationReader(prismadb),
+    });
 
     return NextResponse.json({
       item: {
@@ -59,6 +75,7 @@ export async function GET(
         evidenceCount: row.evidenceCount,
         lastEvidenceAt: row.lastEvidenceAt?.toISOString() ?? null,
         lastTouchedAt: row.lastTouchedAt.toISOString(),
+        dualSource,
       },
     });
   } catch (error) {

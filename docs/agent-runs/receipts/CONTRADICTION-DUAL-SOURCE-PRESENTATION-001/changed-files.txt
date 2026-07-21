@@ -1,0 +1,17 @@
+app/(root)/(routes)/contradictions/candidates/page.tsx
+app/api/contradiction/[id]/route.ts
+app/api/contradiction/route.ts
+app/api/inspector/contradictions/[id]/route.ts
+components/contradiction/ContradictionDualSourceView.tsx
+components/inspector/panels/ContradictionsInspectorPanel.tsx
+components/inspector/panels/SelectedObjectEvidencePanel.tsx
+lib/contradiction-dual-source-presentation-contract.ts
+lib/contradiction-dual-source-presentation.ts
+lib/inspector-object-api.ts
+lib/nodes-api.ts
+lib/__tests__/contradiction-dual-source-presentation.test.ts
+lib/__tests__/contradiction-dual-source-presentation-ui.test.ts
+lib/__tests__/contradiction-dual-source-routes.test.ts
+lib/__tests__/map-contradiction-read-api-security.test.ts
+lib/__tests__/phase1c-understanding-links-existing-endpoints.test.ts
+docs/agent-runs/receipts/CONTRADICTION-DUAL-SOURCE-PRESENTATION-001/

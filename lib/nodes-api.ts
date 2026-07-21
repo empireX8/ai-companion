@@ -1,3 +1,5 @@
+import type { ContradictionDualSourcePresentation } from "./contradiction-dual-source-presentation-contract";
+
 export type ContradictionListStatus = "open" | "snoozed" | "explored";
 export type ContradictionTerminalStatus =
   | "resolved"
@@ -24,6 +26,10 @@ export type ContradictionListItem = {
   snoozedUntil: string | null;
   sourceSessionId?: string | null;
   sessionOrigin?: "APP" | "IMPORTED_ARCHIVE" | null;
+  sideASourceSpanId?: string | null;
+  sideBSourceSpanId?: string | null;
+  /** Present only when list was fetched with includeDualSource=true. */
+  dualSource?: ContradictionDualSourcePresentation;
 };
 
 export type ContradictionDetail = {
@@ -42,6 +48,9 @@ export type ContradictionDetail = {
   snoozedUntil: string | null;
   cooldownActive: boolean;
   cooldownUntil: string | null;
+  sideASourceSpanId?: string | null;
+  sideBSourceSpanId?: string | null;
+  dualSource?: ContradictionDualSourcePresentation;
   evidence: Array<{
     id: string;
     createdAt: string;

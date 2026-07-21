@@ -1,0 +1,1300 @@
+
+ RUN  v3.2.4 /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001
+
+ ✓ lib/__tests__/contradiction-dual-side-lineage.test.ts (48 tests) 56ms
+ ✓ lib/__tests__/contradiction-adjudication-contract.test.ts (47 tests) 66ms
+ ✓ lib/__tests__/contradiction-repaired-persistence.test.ts (31 tests) 235ms
+ ✓ lib/__tests__/import-chatgpt.test.ts (132 tests) 201ms
+ ✓ lib/__tests__/understanding-engine-phase1b-api.test.ts (55 tests) 1569ms
+   ✓ Understanding Engine Phase 1B API routes > requires auth for user-map conclusions list  669ms
+ ✓ lib/__tests__/packet3-smoke.test.ts (33 tests) 267ms
+ ✓ lib/__tests__/import-archive.test.ts (17 tests) 154ms
+ ✓ lib/__tests__/understanding-dark-engine-user-map-candidate-persistence.test.ts (18 tests) 372ms
+stdout | lib/__tests__/understanding-dark-engine-app-message-candidate-bridge.test.ts > APP message internal candidate bridge > passes triggerEvidenceAt into runtime eligibility resolution
+[APP_MESSAGE_CANDIDATE_BRIDGE] No structured UserMap, Investigation, Fieldwork, or ModelUpdate candidate proposal in dark-run output; abstaining. { userId: 'user-1', messageId: 'msg-1' }
+
+stdout | lib/__tests__/understanding-dark-engine-app-message-candidate-bridge.test.ts > APP message internal candidate bridge > writes nothing when dark-run output lacks structured proposal data
+[APP_MESSAGE_CANDIDATE_BRIDGE] No structured UserMap, Investigation, Fieldwork, or ModelUpdate candidate proposal in dark-run output; abstaining. { userId: 'user-1', messageId: 'msg-1' }
+
+stdout | lib/__tests__/understanding-dark-engine-app-message-candidate-bridge.test.ts > APP message internal candidate bridge > returns skipped_model_update_persistence_blocked when ModelUpdate persistence blocks
+[APP_MESSAGE_CANDIDATE_BRIDGE] ModelUpdate persistence blocked; no candidate written. {
+  userId: 'user-1',
+  messageId: 'msg-1',
+  blockedWriteReasons: [ 'UNRESOLVED_AFFECTED_OBJECT_OWNERSHIP' ],
+  persistedModelUpdateId: null,
+  candidatesWritten: 0
+}
+
+stdout | lib/__tests__/understanding-dark-engine-app-message-candidate-bridge.test.ts > APP message internal candidate bridge > returns skipped_model_update_persistence_blocked for duplicate ModelUpdate candidate
+[APP_MESSAGE_CANDIDATE_BRIDGE] ModelUpdate persistence blocked; no candidate written. {
+  userId: 'user-1',
+  messageId: 'msg-1',
+  blockedWriteReasons: [ 'DUPLICATE_CANDIDATE' ],
+  persistedModelUpdateId: 'mu-existing',
+  candidatesWritten: 0
+}
+
+stdout | lib/__tests__/understanding-dark-engine-app-message-candidate-bridge.test.ts > APP message internal candidate bridge > returns skipped_fieldwork_persistence_blocked when Fieldwork persistence blocks
+[APP_MESSAGE_CANDIDATE_BRIDGE] Fieldwork persistence blocked; no candidate written. {
+  userId: 'user-1',
+  messageId: 'msg-1',
+  blockedWriteReasons: [ 'UNRESOLVED_LINKED_OBJECT_OWNERSHIP' ],
+  persistedFieldworkAssignmentId: null,
+  candidatesWritten: 0
+}
+
+stdout | lib/__tests__/understanding-dark-engine-app-message-candidate-bridge.test.ts > APP message internal candidate bridge > returns skipped_fieldwork_persistence_blocked for duplicate Fieldwork candidate
+[APP_MESSAGE_CANDIDATE_BRIDGE] Fieldwork persistence blocked; no candidate written. {
+  userId: 'user-1',
+  messageId: 'msg-1',
+  blockedWriteReasons: [ 'DUPLICATE_CANDIDATE' ],
+  persistedFieldworkAssignmentId: 'fw-existing',
+  candidatesWritten: 0
+}
+
+stdout | lib/__tests__/understanding-dark-engine-app-message-candidate-bridge.test.ts > APP message internal candidate bridge > returns skipped_investigation_persistence_blocked when Investigation persistence blocks
+[APP_MESSAGE_CANDIDATE_BRIDGE] Investigation persistence blocked; no candidate written. {
+  userId: 'user-1',
+  messageId: 'msg-1',
+  blockedWriteReasons: [ 'INSUFFICIENT_LINKABLE_EVIDENCE_COUNT' ],
+  persistedInvestigationId: null,
+  candidatesWritten: 0
+}
+
+stdout | lib/__tests__/understanding-dark-engine-app-message-candidate-bridge.test.ts > APP message internal candidate bridge > returns skipped_investigation_persistence_blocked for duplicate Investigation candidate
+[APP_MESSAGE_CANDIDATE_BRIDGE] Investigation persistence blocked; no candidate written. {
+  userId: 'user-1',
+  messageId: 'msg-1',
+  blockedWriteReasons: [ 'DUPLICATE_CANDIDATE' ],
+  persistedInvestigationId: 'inv-existing',
+  candidatesWritten: 0
+}
+
+stderr | lib/__tests__/understanding-dark-engine-app-message-candidate-bridge.test.ts > APP message internal candidate bridge > writes nothing when harness fails
+[APP_MESSAGE_CANDIDATE_BRIDGE] Harness failed; skipping candidate persistence. { userId: 'user-1', messageId: 'msg-1', failureCount: 1 }
+
+ ✓ lib/__tests__/actions-feedback.test.ts (59 tests) 455ms
+ ✓ lib/__tests__/understanding-dark-engine-app-message-candidate-bridge.test.ts (27 tests) 374ms
+ ✓ lib/__tests__/pattern-claim-lifecycle.test.ts (39 tests) 151ms
+ ✓ lib/__tests__/hybrid-workbench-api.test.ts (64 tests) 592ms
+ ✓ lib/__tests__/eval-patterns.test.ts (59 tests) 2192ms
+   ✓ reporting and regression gates > keeps message-level and grouped-level sections distinct in the report object  526ms
+   ✓ reporting and regression gates > writes a deterministic review queue artifact for flagged grouped claims  340ms
+stdout | lib/__tests__/understanding-dark-engine-import-completion-candidate-bridge.test.ts > import completion internal candidate bridge > passes triggerEvidenceAt into runtime eligibility resolution
+[IMPORT_COMPLETION_CANDIDATE_BRIDGE] No structured UserMap, Investigation, Fieldwork, or ModelUpdate candidate proposal in dark-run output; abstaining. { userId: 'user-1', sessionId: 'ses-1' }
+
+stdout | lib/__tests__/understanding-dark-engine-import-completion-candidate-bridge.test.ts > import completion internal candidate bridge > writes nothing when dark-run output lacks structured proposal data
+[IMPORT_COMPLETION_CANDIDATE_BRIDGE] No structured UserMap, Investigation, Fieldwork, or ModelUpdate candidate proposal in dark-run output; abstaining. { userId: 'user-1', sessionId: 'ses-1' }
+
+stdout | lib/__tests__/understanding-dark-engine-import-completion-candidate-bridge.test.ts > import completion internal candidate bridge > returns skipped_model_update_persistence_blocked when ModelUpdate persistence blocks
+[IMPORT_COMPLETION_CANDIDATE_BRIDGE] ModelUpdate persistence blocked; no candidate written. {
+  userId: 'user-1',
+  sessionId: 'ses-1',
+  blockedWriteReasons: [ 'UNRESOLVED_AFFECTED_OBJECT_OWNERSHIP' ],
+  persistedModelUpdateId: null,
+  candidatesWritten: 0
+}
+
+stdout | lib/__tests__/understanding-dark-engine-import-completion-candidate-bridge.test.ts > import completion internal candidate bridge > returns skipped_model_update_persistence_blocked for duplicate ModelUpdate candidate
+[IMPORT_COMPLETION_CANDIDATE_BRIDGE] ModelUpdate persistence blocked; no candidate written. {
+  userId: 'user-1',
+  sessionId: 'ses-1',
+  blockedWriteReasons: [ 'DUPLICATE_CANDIDATE' ],
+  persistedModelUpdateId: 'mu-existing',
+  candidatesWritten: 0
+}
+
+stdout | lib/__tests__/understanding-dark-engine-import-completion-candidate-bridge.test.ts > import completion internal candidate bridge > returns skipped_fieldwork_persistence_blocked when Fieldwork persistence blocks
+[IMPORT_COMPLETION_CANDIDATE_BRIDGE] Fieldwork persistence blocked; no candidate written. {
+  userId: 'user-1',
+  sessionId: 'ses-1',
+  blockedWriteReasons: [ 'UNRESOLVED_LINKED_OBJECT_OWNERSHIP' ],
+  persistedFieldworkAssignmentId: null,
+  candidatesWritten: 0
+}
+
+stdout | lib/__tests__/understanding-dark-engine-import-completion-candidate-bridge.test.ts > import completion internal candidate bridge > returns skipped_fieldwork_persistence_blocked for duplicate Fieldwork candidate
+[IMPORT_COMPLETION_CANDIDATE_BRIDGE] Fieldwork persistence blocked; no candidate written. {
+  userId: 'user-1',
+  sessionId: 'ses-1',
+  blockedWriteReasons: [ 'DUPLICATE_CANDIDATE' ],
+  persistedFieldworkAssignmentId: 'fw-existing',
+  candidatesWritten: 0
+}
+
+stdout | lib/__tests__/understanding-dark-engine-import-completion-candidate-bridge.test.ts > import completion internal candidate bridge > returns skipped_investigation_persistence_blocked when Investigation persistence blocks
+[IMPORT_COMPLETION_CANDIDATE_BRIDGE] Investigation persistence blocked; no candidate written. {
+  userId: 'user-1',
+  sessionId: 'ses-1',
+  blockedWriteReasons: [ 'INSUFFICIENT_LINKABLE_EVIDENCE_COUNT' ],
+  persistedInvestigationId: null,
+  candidatesWritten: 0
+}
+
+stdout | lib/__tests__/understanding-dark-engine-import-completion-candidate-bridge.test.ts > import completion internal candidate bridge > returns skipped_investigation_persistence_blocked for duplicate Investigation candidate
+[IMPORT_COMPLETION_CANDIDATE_BRIDGE] Investigation persistence blocked; no candidate written. {
+  userId: 'user-1',
+  sessionId: 'ses-1',
+  blockedWriteReasons: [ 'DUPLICATE_CANDIDATE' ],
+  persistedInvestigationId: 'inv-existing',
+  candidatesWritten: 0
+}
+
+stderr | lib/__tests__/understanding-dark-engine-import-completion-candidate-bridge.test.ts > import completion internal candidate bridge > writes nothing when no-write evaluation harness fails
+[IMPORT_COMPLETION_CANDIDATE_BRIDGE] Harness failed; skipping candidate persistence. { userId: 'user-1', sessionId: 'ses-1', failureCount: 1 }
+
+stdout | lib/__tests__/understanding-dark-engine-import-completion-candidate-bridge.test.ts > import completion internal candidate bridge > returns blocked persistence reasons without a persisted conclusion id
+[IMPORT_COMPLETION_CANDIDATE_BRIDGE] UserMap persistence blocked; no candidate written. {
+  userId: 'user-1',
+  sessionId: 'ses-1',
+  blockedWriteReasons: [ 'INSUFFICIENT_LINKABLE_EVIDENCE_COUNT' ]
+}
+
+ ✓ lib/__tests__/understanding-dark-engine-import-completion-candidate-bridge.test.ts (24 tests) 254ms
+ ✓ lib/__tests__/candidate-loop-runtime-smoke.test.ts (4 tests) 238ms
+ ✓ lib/__tests__/pattern-visible-abstention.test.ts (44 tests) 221ms
+ ✓ lib/__tests__/understanding-dark-engine-model-update-candidate-persistence.test.ts (12 tests) 413ms
+ ✓ lib/__tests__/contradiction-source.test.ts (31 tests) 172ms
+ ✓ lib/__tests__/profile-derivation.test.ts (99 tests) 219ms
+ ✓ lib/__tests__/understanding-dark-engine-evidence-packet.test.ts (18 tests) 219ms
+ ✓ lib/__tests__/pattern-abstention-calibration.test.ts (45 tests) 70ms
+ ✓ lib/__tests__/understanding-dark-engine-fieldwork-candidate-persistence.test.ts (11 tests) 402ms
+ ✓ lib/__tests__/understanding-dark-engine-investigation-candidate-persistence.test.ts (10 tests) 501ms
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active
+[CHAT_TIMING_SERVER][native-memory-1] request_received 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active
+[CHAT_TIMING_SERVER][native-memory-1] auth_complete 3
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active
+[CHAT_TIMING_SERVER][native-memory-1] session_lookup_start 85
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active
+[CHAT_TIMING_SERVER][native-memory-1] session_lookup_done 87
+[CHAT_TIMING_SERVER][native-memory-1] model: gpt-4o-mini mode: standard
+[CHAT_TIMING_SERVER][native-memory-1] memory_manager_init_start 88
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active
+[CHAT_TIMING_SERVER][native-memory-1] memory_manager_init_done 88
+[CHAT_TIMING_SERVER][native-memory-1] user_message_create_start 89
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active
+[CHAT_TIMING_SERVER][native-memory-1] user_message_create_done 94
+[CHAT_TIMING_SERVER][native-memory-1] memory_reads_start 95
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active
+[CHAT_TIMING_SERVER][native-memory-1] memory_reads_done 97
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active
+[CHAT_TIMING_SERVER][native-memory-1] contradiction_detection_start (async) 108
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active
+[CHAT_TIMING_SERVER][native-memory-1] reference_and_contradictions_start 111
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active
+[CHAT_TIMING_SERVER][native-memory-1] reference_and_contradictions_done 112
+[CHAT_TIMING_SERVER][native-memory-1] [CHAT_CONTEXT] memories: retrieved=0 relevant=0 injected=0 fallback=false
+[CHAT_TIMING_SERVER][native-memory-1] [CHAT_CONTEXT] tensions: retrieved=0 relevant=0 injected=0
+[CHAT_TIMING_SERVER][native-memory-1] fallback_messages_start 112
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active
+[CHAT_TIMING_SERVER][native-memory-1] fallback_messages_done 117
+[CHAT_TIMING_SERVER][native-memory-1] context_payload systemPrompt=103chars hasRefMemory=false hasTopContradictions=false hasSessionTranscript=false hasUserMemory=false
+[CHAT_TIMING_SERVER][native-memory-1] model_call_start mode=standard 117
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > captures support-style native remember prompts as pending preferences
+[CHAT_TIMING_SERVER][native-memory-2] request_received 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > captures support-style native remember prompts as pending preferences
+[CHAT_TIMING_SERVER][native-memory-2] auth_complete 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > captures support-style native remember prompts as pending preferences
+[CHAT_TIMING_SERVER][native-memory-2] session_lookup_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > captures support-style native remember prompts as pending preferences
+[CHAT_TIMING_SERVER][native-memory-2] session_lookup_done 2
+[CHAT_TIMING_SERVER][native-memory-2] model: gpt-4o-mini mode: standard
+[CHAT_TIMING_SERVER][native-memory-2] memory_manager_init_start 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > captures support-style native remember prompts as pending preferences
+[CHAT_TIMING_SERVER][native-memory-2] memory_manager_init_done 2
+[CHAT_TIMING_SERVER][native-memory-2] user_message_create_start 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > captures support-style native remember prompts as pending preferences
+[CHAT_TIMING_SERVER][native-memory-2] user_message_create_done 2
+[CHAT_TIMING_SERVER][native-memory-2] memory_reads_start 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > captures support-style native remember prompts as pending preferences
+[CHAT_TIMING_SERVER][native-memory-2] memory_reads_done 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > captures support-style native remember prompts as pending preferences
+[CHAT_TIMING_SERVER][native-memory-2] contradiction_detection_start (async) 6
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > captures support-style native remember prompts as pending preferences
+[CHAT_TIMING_SERVER][native-memory-2] reference_and_contradictions_start 6
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > captures support-style native remember prompts as pending preferences
+[CHAT_TIMING_SERVER][native-memory-2] reference_and_contradictions_done 7
+[CHAT_TIMING_SERVER][native-memory-2] [CHAT_CONTEXT] memories: retrieved=0 relevant=0 injected=0 fallback=false
+[CHAT_TIMING_SERVER][native-memory-2] [CHAT_CONTEXT] tensions: retrieved=0 relevant=0 injected=0
+[CHAT_TIMING_SERVER][native-memory-2] fallback_messages_start 7
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > captures support-style native remember prompts as pending preferences
+[CHAT_TIMING_SERVER][native-memory-2] fallback_messages_done 7
+[CHAT_TIMING_SERVER][native-memory-2] context_payload systemPrompt=113chars hasRefMemory=false hasTopContradictions=false hasSessionTranscript=false hasUserMemory=false
+[CHAT_TIMING_SERVER][native-memory-2] model_call_start mode=standard 7
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not create a memory candidate for plain support-style phrasing without explicit remember intent
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] request_received 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not create a memory candidate for plain support-style phrasing without explicit remember intent
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] auth_complete 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not create a memory candidate for plain support-style phrasing without explicit remember intent
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] session_lookup_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not create a memory candidate for plain support-style phrasing without explicit remember intent
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] session_lookup_done 1
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] model: gpt-4o-mini mode: standard
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] memory_manager_init_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not create a memory candidate for plain support-style phrasing without explicit remember intent
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] memory_manager_init_done 1
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] user_message_create_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not create a memory candidate for plain support-style phrasing without explicit remember intent
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] user_message_create_done 1
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] memory_reads_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not create a memory candidate for plain support-style phrasing without explicit remember intent
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] memory_reads_done 1
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] reference_and_contradictions_start 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not create a memory candidate for plain support-style phrasing without explicit remember intent
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] reference_and_contradictions_done 3
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] [CHAT_CONTEXT] memories: retrieved=0 relevant=0 injected=0 fallback=false
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] [CHAT_CONTEXT] tensions: retrieved=0 relevant=0 injected=0
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] fallback_messages_start 3
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] contradiction_detection_start (async) 3
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] fallback_messages_done 3
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] context_payload systemPrompt=92chars hasRefMemory=false hasTopContradictions=false hasSessionTranscript=false hasUserMemory=false
+[CHAT_TIMING_SERVER][native-memory-plain-support-1] model_call_start mode=standard 3
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for assistant messages
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] request_received 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for assistant messages
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] auth_complete 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for assistant messages
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] session_lookup_start 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for assistant messages
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] session_lookup_done 0
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] model: gpt-4o-mini mode: standard
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] memory_manager_init_start 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for assistant messages
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] memory_manager_init_done 0
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] user_message_create_start 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for assistant messages
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] user_message_create_done 0
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] memory_reads_start 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for assistant messages
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] memory_reads_done 1
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] reference_and_contradictions_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for assistant messages
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] reference_and_contradictions_done 2
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] [CHAT_CONTEXT] memories: retrieved=0 relevant=0 injected=0 fallback=false
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] [CHAT_CONTEXT] tensions: retrieved=0 relevant=0 injected=0
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] fallback_messages_start 2
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] contradiction_detection_start (async) 2
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] fallback_messages_done 2
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] context_payload systemPrompt=77chars hasRefMemory=false hasTopContradictions=false hasSessionTranscript=false hasUserMemory=false
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] model_call_start mode=standard 2
+[CHAT_TIMING_SERVER][native-memory-assistant-profile-1] response_complete 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for imported-archive sessions in this route
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] request_received 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for imported-archive sessions in this route
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] auth_complete 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for imported-archive sessions in this route
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] session_lookup_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for imported-archive sessions in this route
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] session_lookup_done 1
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] model: gpt-4o-mini mode: standard
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] memory_manager_init_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for imported-archive sessions in this route
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] memory_manager_init_done 1
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] user_message_create_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for imported-archive sessions in this route
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] user_message_create_done 2
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] memory_reads_start 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for imported-archive sessions in this route
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] memory_reads_done 2
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] reference_and_contradictions_start 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for imported-archive sessions in this route
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] contradiction_detection_start (async) 2
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] reference_and_contradictions_done 2
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] [CHAT_CONTEXT] memories: retrieved=0 relevant=0 injected=0 fallback=false
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] [CHAT_CONTEXT] tensions: retrieved=0 relevant=0 injected=0
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] fallback_messages_start 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not call profile processing for imported-archive sessions in this route
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] fallback_messages_done 3
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] context_payload systemPrompt=77chars hasRefMemory=false hasTopContradictions=false hasSessionTranscript=false hasUserMemory=false
+[CHAT_TIMING_SERVER][native-memory-imported-session-profile-1] model_call_start mode=standard 3
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > runs APP candidate bridge for APP explore_chat user messages
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] request_received 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > runs APP candidate bridge for APP explore_chat user messages
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] auth_complete 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > runs APP candidate bridge for APP explore_chat user messages
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] session_lookup_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > runs APP candidate bridge for APP explore_chat user messages
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] session_lookup_done 1
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] model: gpt-4o-mini mode: standard
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] memory_manager_init_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > runs APP candidate bridge for APP explore_chat user messages
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] memory_manager_init_done 1
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] user_message_create_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > runs APP candidate bridge for APP explore_chat user messages
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] user_message_create_done 1
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] memory_reads_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > runs APP candidate bridge for APP explore_chat user messages
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] memory_reads_done 2
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] reference_and_contradictions_start 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > runs APP candidate bridge for APP explore_chat user messages
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] reference_and_contradictions_done 2
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] [CHAT_CONTEXT] memories: retrieved=0 relevant=0 injected=0 fallback=false
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] [CHAT_CONTEXT] tensions: retrieved=0 relevant=0 injected=0
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] fallback_messages_start 2
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] contradiction_detection_start (async) 2
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] fallback_messages_done 2
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] context_payload systemPrompt=77chars hasRefMemory=false hasTopContradictions=false hasSessionTranscript=false hasUserMemory=false
+[CHAT_TIMING_SERVER][native-memory-explore-trigger-1] model_call_start mode=standard 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not run APP candidate bridge for unsupported APP surface types
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] request_received 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not run APP candidate bridge for unsupported APP surface types
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] auth_complete 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not run APP candidate bridge for unsupported APP surface types
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] session_lookup_start 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not run APP candidate bridge for unsupported APP surface types
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] session_lookup_done 0
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] model: gpt-4o-mini mode: standard
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] memory_manager_init_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not run APP candidate bridge for unsupported APP surface types
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] memory_manager_init_done 1
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] user_message_create_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not run APP candidate bridge for unsupported APP surface types
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] user_message_create_done 1
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] memory_reads_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not run APP candidate bridge for unsupported APP surface types
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] memory_reads_done 1
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] reference_and_contradictions_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not run APP candidate bridge for unsupported APP surface types
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] contradiction_detection_start (async) 1
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] reference_and_contradictions_done 1
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] [CHAT_CONTEXT] memories: retrieved=0 relevant=0 injected=0 fallback=false
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] [CHAT_CONTEXT] tensions: retrieved=0 relevant=0 injected=0
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] fallback_messages_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > does not run APP candidate bridge for unsupported APP surface types
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] fallback_messages_done 2
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] context_payload systemPrompt=67chars hasRefMemory=false hasTopContradictions=false hasSessionTranscript=false hasUserMemory=false
+[CHAT_TIMING_SERVER][native-memory-unsupported-surface-1] model_call_start mode=standard 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation successful when APP candidate bridge throws
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] request_received 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation successful when APP candidate bridge throws
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] auth_complete 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation successful when APP candidate bridge throws
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] session_lookup_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation successful when APP candidate bridge throws
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] session_lookup_done 1
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] model: gpt-4o-mini mode: standard
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] memory_manager_init_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation successful when APP candidate bridge throws
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] memory_manager_init_done 1
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] user_message_create_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation successful when APP candidate bridge throws
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] user_message_create_done 1
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] memory_reads_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation successful when APP candidate bridge throws
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] memory_reads_done 1
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] reference_and_contradictions_start 2
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation successful when APP candidate bridge throws
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] reference_and_contradictions_done 2
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] [CHAT_CONTEXT] memories: retrieved=0 relevant=0 injected=0 fallback=false
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] [CHAT_CONTEXT] tensions: retrieved=0 relevant=0 injected=0
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] fallback_messages_start 2
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] contradiction_detection_start (async) 2
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] fallback_messages_done 2
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] context_payload systemPrompt=82chars hasRefMemory=false hasTopContradictions=false hasSessionTranscript=false hasUserMemory=false
+[CHAT_TIMING_SERVER][native-memory-bridge-failure-1] model_call_start mode=standard 2
+
+stderr | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation successful when APP candidate bridge throws
+[MESSAGE_APP_CANDIDATE_BRIDGE_ERROR][native-memory-bridge-failure-1] Error: bridge-failed
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/native-memory-reference-route.test.ts:664:7
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation and native derivation alive when profile processing fails
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] request_received 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation and native derivation alive when profile processing fails
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] auth_complete 0
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation and native derivation alive when profile processing fails
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] session_lookup_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation and native derivation alive when profile processing fails
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] session_lookup_done 1
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] model: gpt-4o-mini mode: standard
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] memory_manager_init_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation and native derivation alive when profile processing fails
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] memory_manager_init_done 1
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] user_message_create_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation and native derivation alive when profile processing fails
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] user_message_create_done 1
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] memory_reads_start 1
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation and native derivation alive when profile processing fails
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] memory_reads_done 1
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] reference_and_contradictions_start 2
+
+stderr | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation and native derivation alive when profile processing fails
+[MESSAGE_PROFILE_BG_ERROR][native-memory-profile-failure-1] Error: profile boom
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/native-memory-reference-route.test.ts:707:56
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runFiles (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1787:3)
+
+stdout | lib/__tests__/native-memory-reference-route.test.ts > native chat memory/reference capture > keeps message creation and native derivation alive when profile processing fails
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] reference_and_contradictions_done 3
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] [CHAT_CONTEXT] memories: retrieved=0 relevant=0 injected=0 fallback=false
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] [CHAT_CONTEXT] tensions: retrieved=0 relevant=0 injected=0
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] fallback_messages_start 3
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] contradiction_detection_start (async) 3
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] fallback_messages_done 3
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] context_payload systemPrompt=78chars hasRefMemory=false hasTopContradictions=false hasSessionTranscript=false hasUserMemory=false
+[CHAT_TIMING_SERVER][native-memory-profile-failure-1] model_call_start mode=standard 3
+
+ ✓ lib/__tests__/native-memory-reference-route.test.ts (13 tests) 889ms
+   ✓ native chat memory/reference capture > creates a pending preference candidate from an explicit native remember-this message and keeps the pattern trigger path active  502ms
+   ✓ native chat memory/reference capture > keeps manual memory saving behavior unchanged  310ms
+ ✓ lib/__tests__/contradiction-persistence-plan.test.ts (30 tests) 232ms
+ ✓ lib/__tests__/behavioral-filter.test.ts (79 tests) 603ms
+stderr | lib/__tests__/live-evidence-depth-publish-route-wiring.test.ts > live evidence depth publish route wiring > publish helper captures unexpected materializer failure without failing publish
+[EVIDENCE_DEPTH_PUBLISH_MATERIALIZATION_ERROR] Error: db_write_failed
+    at materializeEvidenceDepthForPublish (/Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/live-evidence-depth-publish-route-wiring.test.ts:704:15)
+    at publishModelUpdateCandidate (/Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/model-update-candidate-publish-helper.ts:176:44)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/live-evidence-depth-publish-route-wiring.test.ts:701:20
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+
+ ✓ lib/__tests__/live-evidence-depth-publish-route-wiring.test.ts (17 tests) 352ms
+ ✓ lib/__tests__/repetitive-loop-aggregation.test.ts (31 tests) 371ms
+ ✓ lib/__tests__/live-evidence-depth-runtime-validation.test.ts (15 tests) 450ms
+ ✓ lib/__tests__/objectivity-referee-interface-contract.test.ts (28 tests) 317ms
+ ✓ lib/__tests__/trigger-condition-detector.test.ts (33 tests) 484ms
+ ✓ lib/__tests__/timeline-aggregation.test.ts (49 tests) 341ms
+ ✓ lib/__tests__/pattern-rationale-minimality.test.ts (19 tests) 683ms
+ ✓ lib/__tests__/contradiction-confidence-calibration.test.ts (42 tests) 32ms
+ ✓ lib/__tests__/pattern-rerun-debug.test.ts (5 tests) 324ms
+ ✓ lib/__tests__/pattern-quote-selection.test.ts (71 tests) 286ms
+ ✓ lib/__tests__/phase1c-understanding-links-existing-endpoints.test.ts (11 tests) 2037ms
+   ✓ Phase 1C includeUnderstandingLinks gating > patterns: include flag matrix keeps default shape and skips link query unless true  848ms
+   ✓ Phase 1C includeUnderstandingLinks gating > contradiction list: include flag matrix keeps paginated shape and skips link query unless true  737ms
+ ✓ lib/__tests__/understanding-dark-engine-evaluation-harness.test.ts (14 tests) 353ms
+ ✓ lib/__tests__/live-evidence-depth-authoring-caller-wiring.test.ts (21 tests) 1053ms
+   ✓ internal ModelUpdate candidate create route > returns 401 when unauthenticated  378ms
+ ✓ lib/__tests__/pattern-review-routing.test.ts (21 tests) 1101ms
+   ✓ 8. buildEvalReport produces reviewRouting in the report > report.reviewRouting is non-null when grouped entries exist  615ms
+ ✓ lib/__tests__/pattern-family-adapters.test.ts (45 tests) 591ms
+ ✓ lib/__tests__/action-layer.test.ts (45 tests) 153ms
+ ✓ lib/__tests__/native-derivation-trigger.test.ts (11 tests) 37ms
+ ✓ lib/__tests__/pattern-claim-replay.test.ts (28 tests) 317ms
+ ✓ lib/__tests__/investigations-presentation-readiness.test.ts (19 tests) 180ms
+ ✓ lib/__tests__/trust-language.test.ts (136 tests) 615ms
+ ✓ lib/__tests__/seed-lower-family-validation-fixtures.test.ts (14 tests) 317ms
+ ✓ lib/__tests__/actions-route-debug-ranking.test.ts (8 tests) 1371ms
+   ✓ GET /api/actions debugRanking simulation gate > keeps default response shape unchanged when debugRanking is not requested  1137ms
+ ✓ lib/__tests__/internal-user-map-review-workbench.test.tsx (18 tests) 826ms
+ ✓ lib/__tests__/live-evidence-depth-graphslot-link-source.test.ts (14 tests) 172ms
+ ✓ lib/__tests__/live-evidence-depth-authoring-path.test.ts (18 tests) 302ms
+ ✓ lib/__tests__/understanding-dark-engine-objectivity-gates.test.ts (11 tests) 145ms
+ ✓ lib/__tests__/behavioral-filter-phase3.test.ts (53 tests) 207ms
+ ✓ lib/__tests__/understanding-dark-engine-no-write-orchestrator.test.ts (13 tests) 420ms
+ ✓ lib/__tests__/pattern-rationale-sufficiency.test.ts (12 tests) 214ms
+ ✓ lib/__tests__/candidate-lifecycle-diagnostics.test.ts (15 tests) 101ms
+ ❯ lib/__tests__/orvek-adapters.test.ts (12 tests | 2 failed) 274ms
+   ✓ orvek adapters > mapTodayDataToV0Props keeps v0 geometry slots with honest empty copy 5ms
+   ✓ orvek adapters > mapTodayDataToV0Props uses movement depth for delta log and live report id 90ms
+   × orvek adapters > does not use movement summary as after state when depth after is missing 24ms
+     → expected 'Headline only' not to be 'Headline only' // Object.is equality
+   × orvek adapters > mapTodayDataToV0Props maps movement without fabricating previous read or after state 11ms
+     → expected 'Updated summary' to be 'Updated read is not available yet — o…' // Object.is equality
+   ✓ orvek adapters > mapTodayDataToV0Props adds workbench-native intent metadata while keeping href fallbacks 34ms
+   ✓ orvek adapters > mapExploreDataToV0Props keeps draft review and published movement as separate view slots 1ms
+   ✓ orvek adapters > mapWhatChangedDataToV0Props maps primary and earlier without beforeSummary 1ms
+   ✓ orvek adapters > mapMapDataToV0Props maps groups and preserves real conclusion ids 7ms
+   ✓ orvek adapters > mapDecisionsDataToV0Props preserves fieldwork and explore handoff links 34ms
+   ✓ orvek adapters > mapDecisionsDataToV0Props preserves action ids, statuses, and stage index 12ms
+   ✓ orvek adapters > mapTimelineDataToV0Props routes inspector targets only for supported objects 16ms
+   ✓ orvek adapters > mapTimelineDataToV0Props groups stream rows with honest empty copy 5ms
+ ✓ lib/__tests__/map-profile-facts.test.ts (18 tests) 218ms
+ ✓ lib/__tests__/active-questions-presentation-readiness.test.ts (17 tests) 159ms
+ ✓ lib/__tests__/inspector-surface-wiring.test.ts (16 tests) 197ms
+ ✓ lib/__tests__/pattern-faithfulness-baseline.test.ts (31 tests) 1834ms
+   ✓ 7. regression gates include faithfulness by default > buildEvalReport includes faithfulness_floor gate by default  393ms
+ ✓ lib/__tests__/live-evidence-depth-write-hook.test.ts (17 tests) 139ms
+ ✓ lib/__tests__/free-explore-chat-tab-alignment.test.ts (18 tests) 306ms
+ ✓ lib/__tests__/map-production-api.test.ts (13 tests) 172ms
+ ✓ lib/__tests__/internal-user-map-review-operator-actions.test.ts (20 tests) 19ms
+ ✓ lib/__tests__/free-explore-chat-presentation-readiness.test.ts (21 tests) 121ms
+ ✓ lib/__tests__/import-reconcile.test.ts (17 tests) 21ms
+ ✓ lib/__tests__/map-contradiction-projection.test.ts (12 tests) 231ms
+ ✓ lib/__tests__/investigations-tab-alignment.test.ts (16 tests) 222ms
+ ✓ lib/__tests__/investigation-publish-helper.test.ts (14 tests) 72ms
+ ✓ lib/__tests__/contradiction-detection.test.ts (18 tests) 418ms
+ ✓ lib/__tests__/explore-grounding-movement-assault.test.ts (5 tests) 1154ms
+   ✓ explore grounding movement assault contract > creates rejects and publishes explore movement proposals idempotently  362ms
+ ✓ lib/__tests__/import-candidate-review.test.ts (11 tests) 93ms
+ ✓ lib/__tests__/actions-v1.test.ts (12 tests) 185ms
+ ✓ lib/__tests__/fieldwork-publish-helper.test.ts (11 tests) 126ms
+ ✓ lib/__tests__/free-explore-chat-send-draft-stream.test.ts (20 tests) 89ms
+ ✓ lib/__tests__/candidate-lifecycle-persistence.test.ts (15 tests) 133ms
+ ✓ lib/__tests__/contradiction-dual-source-routes.test.ts (8 tests) 1513ms
+   ✓ CEQR-008/009 contradiction dual-source route projection > 19: candidate list dual-source projection is opt-in  1225ms
+ ✓ lib/__tests__/live-evidence-depth-runtime-fixture.test.ts (15 tests) 373ms
+ ✓ lib/__tests__/live-evidence-depth-rationale-source.test.ts (14 tests) 343ms
+ ✓ lib/__tests__/candidate-lifecycle-transitions.test.ts (51 tests) 96ms
+ ✓ lib/__tests__/investigations-hybrid-fetch.test.ts (13 tests) 180ms
+ ✓ lib/__tests__/live-evidence-depth-linkage.test.ts (16 tests) 320ms
+ ✓ lib/__tests__/explore-investigations-route.test.ts (16 tests) 790ms
+   ✓ /api/explore/investigations public list contract > requires auth for the Explore Investigations list route  538ms
+ ✓ lib/__tests__/active-questions-watch-for-route.test.ts (5 tests) 748ms
+   ✓ /api/active-questions and /api/watch-for safe mobile list routes > requires auth for active-questions and watch-for list routes  558ms
+ ✓ lib/__tests__/candidate-creation-runtime-validation.test.ts (8 tests) 102ms
+ ✓ lib/__tests__/live-evidence-depth-write-path.test.ts (15 tests) 240ms
+ ✓ lib/__tests__/active-questions-watch-for-detail-route.test.ts (5 tests) 849ms
+   ✓ /api/active-questions/[id] and /api/watch-for/[id] safe mobile detail routes > requires auth for active-questions and watch-for detail routes  759ms
+ ✓ lib/__tests__/free-explore-chat-hybrid-fetch.test.ts (10 tests) 275ms
+ ✓ lib/__tests__/library-surface.test.ts (8 tests) 662ms
+   ✓ library-surface receipt alignment > does not fabricate action receipts or call actions route for receipt rows  450ms
+ ✓ lib/__tests__/active-questions-tab-alignment.test.ts (13 tests) 281ms
+stderr | lib/__tests__/import-upload-queue.test.ts > onImportComplete hook — pattern orchestrator call > fails open when import completion candidate bridge throws after pattern derivation
+[IMPORT_COMPLETION_CANDIDATE_BRIDGE_ERROR] {
+  sessionId: 'ses-elig-2',
+  userId: 'user-1',
+  error: 'candidate bridge crash'
+}
+
+ ✓ lib/__tests__/import-upload-queue.test.ts (11 tests) 240ms
+ ✓ lib/__tests__/active-questions-hybrid-fetch.test.ts (12 tests) 270ms
+ ✓ lib/__tests__/inspector-evidence-presentation.test.ts (11 tests) 191ms
+ ✓ lib/__tests__/active-questions-watch-for-evidence-route.test.ts (5 tests) 740ms
+   ✓ /api/active-questions/[id]/evidence and /api/watch-for/[id]/evidence > requires auth  720ms
+ ✓ lib/__tests__/history-synthesis.test.ts (18 tests) 351ms
+ ✓ lib/__tests__/journal-entries-routes.test.ts (10 tests) 1361ms
+   ✓ /api/journal/entries routes > creates an entry  1258ms
+ ✓ lib/__tests__/import-upload-service.test.ts (6 tests) 33ms
+ ✓ lib/__tests__/canonical-live-provider.test.ts (6 tests) 14ms
+ ✓ lib/__tests__/explore-conversation-review.test.ts (7 tests) 1363ms
+   ✓ /api/explore/sessions/[id]/review-items > blocks unauthenticated requests with 401  850ms
+ ✓ lib/__tests__/contradiction-evidence.test.ts (10 tests) 16ms
+ ✓ lib/__tests__/contradiction-dual-source-presentation.test.ts (17 tests) 153ms
+ ✓ lib/__tests__/fieldwork-bridge-alignment.test.ts (11 tests) 110ms
+ ✓ lib/__tests__/pattern-claim-faithfulness.test.ts (20 tests) 179ms
+ ✓ lib/__tests__/understanding-dark-engine-user-map-candidate-proposal.test.ts (13 tests) 129ms
+ ✓ lib/__tests__/model-update-candidate-publish-helper.test.ts (17 tests) 127ms
+stderr | lib/__tests__/phase3-internal-user-map-review-page.test.ts > Phase 3 internal user-map review page > fails when User Map list fails even if Investigation list would succeed
+[INTERNAL_USER_MAP_REVIEW_PAGE_ERROR] Error: user map list failed
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/phase3-internal-user-map-review-page.test.ts:483:7
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+
+ ✓ lib/__tests__/phase3-internal-user-map-review-page.test.ts (10 tests) 512ms
+ ✓ lib/__tests__/understanding-evidence-links-candidate-visibility-guard.test.ts (11 tests) 763ms
+   ✓ generic evidence-links candidate visibility guard > GET by targetType+targetId returns no rows for internal_only UserMap targets  676ms
+ ✓ lib/__tests__/derivation-lifecycle.test.ts (26 tests) 107ms
+ ✓ lib/__tests__/timeline-links.test.ts (21 tests) 94ms
+ ✓ lib/__tests__/today-reentry.test.ts (19 tests) 164ms
+ ✓ lib/__tests__/pattern-claim-evidence.test.ts (24 tests) 227ms
+ ✓ lib/__tests__/understanding-dark-engine-fieldwork-candidate-proposal.test.ts (10 tests) 177ms
+ ✓ lib/__tests__/understanding-engine-phase1a-schema.test.ts (26 tests) 88ms
+ ✓ lib/__tests__/what-changed-reality-report.test.ts (8 tests) 358ms
+   ✓ what-changed reality report > handles emotionally vague input without reassurance, therapy framing, or motivational fog  338ms
+ ✓ lib/__tests__/timeline-route.test.ts (6 tests) 1211ms
+   ✓ /api/timeline > returns imported conversation activity from imported sessions inside the 90-day window  1045ms
+ ✓ lib/__tests__/phase2d-internal-no-write-dark-run-route.test.ts (7 tests) 991ms
+   ✓ Phase 2D internal no-write dark-run route > returns 401 when unauthenticated  935ms
+ ✓ lib/__tests__/evidence-inspector-depth-parity.test.ts (12 tests) 155ms
+ ✓ lib/__tests__/your-map-workbench.test.ts (12 tests) 102ms
+ ✓ lib/__tests__/discover-candidate-family-proposals.test.ts (10 tests) 64ms
+ ✓ lib/__tests__/experiment-presentation-readiness.test.ts (15 tests) 176ms
+ ✓ lib/__tests__/desktop-old-route-shell-quarantine.test.ts (13 tests) 1062ms
+   ✓ desktop old-route / old-shell quarantine audit > old shell components are not imported anywhere in app/components/lib source  914ms
+ ✓ lib/__tests__/pattern-detection-executor.test.ts (14 tests) 118ms
+ ✓ lib/__tests__/decisions-presentation-readiness.test.ts (15 tests) 248ms
+stderr | lib/__tests__/phase2n-internal-candidate-lifecycle-route.test.ts > Phase 2N internal candidate lifecycle route > returns 500 for unexpected errors
+[INTERNAL_CANDIDATE_LIFECYCLE_POST_ERROR] Error: Database connection failed
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/phase2n-internal-candidate-lifecycle-route.test.ts:294:7
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+
+ ✓ lib/__tests__/phase2n-internal-candidate-lifecycle-route.test.ts (12 tests) 888ms
+   ✓ Phase 2N internal candidate lifecycle route > returns 401 when unauthenticated  744ms
+ ✓ lib/__tests__/timeline-surface.test.ts (10 tests) 37ms
+ ✓ lib/__tests__/public-linked-object-continuity.test.ts (10 tests) 305ms
+ ✓ lib/__tests__/understanding-dark-engine-model-update-candidate-proposal.test.ts (7 tests) 156ms
+ ✓ lib/__tests__/pattern-review-queue.test.ts (10 tests) 1414ms
+   ✓ pattern review queue > all flagged groups appear exactly once and non-flagged groups are absent  525ms
+stderr | lib/__tests__/model-update-candidate-publish-public-safety.test.ts > ModelUpdate candidate publish public safety > includes published user_visible + isMeaningful true rows on public filters after publish
+[MODEL_UPDATE_SNAPSHOT_MATERIALIZATION_ERROR] TypeError: Cannot read properties of undefined (reading 'findFirst')
+    at resolveStoredEvidencePointerSurfacingRationale (/Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/live-evidence-depth-rationale-source.ts:207:63)
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/live-evidence-depth-rationale-source.ts:245:26
+    at resolveMovementRationaleForPublishedModelUpdate (/Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/model-movement-snapshot.ts:354:10)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at Module.publishModelUpdateCandidate (/Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/model-update-candidate-publish-helper.ts:153:31)
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/model-update-candidate-publish-public-safety.test.ts:256:5
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+
+stderr | lib/__tests__/model-update-candidate-publish-public-safety.test.ts > ModelUpdate candidate publish public safety > includes published user_visible + isMeaningful true rows on public filters after publish
+[EVIDENCE_DEPTH_PUBLISH_MATERIALIZATION_ERROR] TypeError: Cannot read properties of undefined (reading 'findFirst')
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/live-evidence-depth-publish-route-wiring.ts:128:48
+    at maybeMaterializeEvidenceDepthForPublishedModelUpdate (/Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/live-evidence-depth-publish-route-wiring.ts:244:32)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at Module.publishModelUpdateCandidate (/Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/model-update-candidate-publish-helper.ts:176:38)
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/model-update-candidate-publish-public-safety.test.ts:256:5
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+
+ ✓ lib/__tests__/phase2t-candidate-publish-helper.test.ts (10 tests) 177ms
+ ✓ lib/__tests__/model-update-candidate-publish-public-safety.test.ts (5 tests) 625ms
+   ✓ ModelUpdate candidate publish public safety > resolves supported affectedObjectType href on What Changed after publish  416ms
+ ✓ lib/__tests__/pattern-review-resolution.test.ts (10 tests) 186ms
+ ✓ lib/__tests__/reference-actions.test.ts (20 tests) 292ms
+ ✓ lib/__tests__/patterns-surface.test.ts (24 tests) 202ms
+ ✓ lib/__tests__/phase3-public-intelligence-safe-slice.test.ts (11 tests) 104ms
+ ✓ lib/__tests__/phase3-internal-user-map-review-api.test.ts (8 tests) 1381ms
+   ✓ Phase 3 internal user-map review candidates API > blocks unauthenticated requests with 401  991ms
+ ✓ lib/__tests__/today-production-api.test.ts (7 tests) 172ms
+ ✓ lib/__tests__/patterns-route-post-debug.test.ts (3 tests) 1005ms
+   ✓ POST /api/patterns debug instrumentation > keeps the normal response backward-compatible when debug is not requested  817ms
+ ✓ lib/__tests__/pattern-claim-refresh.test.ts (11 tests) 105ms
+ ✓ lib/__tests__/understanding-dark-engine-diagnostics-persistence.test.ts (2 tests) 275ms
+ ✓ lib/__tests__/discover-investigation-candidate-proposal.test.ts (8 tests) 16ms
+ ✓ lib/__tests__/today-movement-report-parity.test.ts (9 tests) 111ms
+ ✓ lib/__tests__/phase3-watch-for-page.test.ts (5 tests) 657ms
+   ✓ Phase 3 Watch For page > filters to authenticated user-owned watch-for records and shows honest empty state  513ms
+ ✓ lib/__tests__/model-update-inspector-presentation.test.ts (4 tests) 208ms
+ ✓ lib/__tests__/pattern-visible-summary.test.ts (17 tests) 131ms
+ ✓ lib/__tests__/phase3-what-changed-page.test.ts (3 tests) 385ms
+ ✓ lib/__tests__/pattern-visible-claim.test.ts (8 tests) 1112ms
+   ✓ /api/patterns visible projection > omits claims with no safe visible summary and keeps projected claims  822ms
+ ✓ lib/__tests__/understanding-dark-engine-investigation-candidate-proposal.test.ts (7 tests) 191ms
+ ✓ lib/__tests__/today-adapter-honesty.test.ts (8 tests) 109ms
+ ✓ lib/__tests__/today-surface.test.ts (14 tests) 37ms
+ ✓ lib/__tests__/what-changed-route.test.ts (4 tests) 1110ms
+   ✓ /api/what-changed > blocks unauthenticated requests with 401  788ms
+ ✓ lib/__tests__/today-workbench-routes.test.ts (17 tests) 65ms
+ ✓ lib/__tests__/pattern-build-gates.test.ts (31 tests) 168ms
+ ✓ lib/__tests__/validate-fieldwork-candidate-review-publish-flow.test.ts (7 tests) 231ms
+stderr | lib/__tests__/phase2q-internal-candidate-publish-route.test.ts > Phase 2Q internal candidate publish route > returns 500 for unexpected errors
+[INTERNAL_CANDIDATE_PUBLISH_POST_ERROR] Error: Database connection failed
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/phase2q-internal-candidate-publish-route.test.ts:240:7
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runFiles (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1787:3)
+
+ ✓ lib/__tests__/phase2q-internal-candidate-publish-route.test.ts (10 tests) 1312ms
+   ✓ Phase 2Q internal candidate publish route > returns 401 when unauthenticated  1089ms
+ ✓ lib/__tests__/pattern-batch-orchestrator.test.ts (10 tests) 87ms
+ ✓ lib/__tests__/phase3-active-questions-page.test.ts (5 tests) 710ms
+   ✓ Phase 3 Active Questions page > filters to authenticated user-owned investigation records and shows honest empty state  573ms
+ ✓ lib/__tests__/weekly-audit-locking.test.ts (15 tests) 242ms
+ ✓ lib/__tests__/your-map-runtime-profile-facts.test.ts (4 tests) 14ms
+ ✓ lib/__tests__/timeline-presentation-readiness.test.ts (15 tests) 136ms
+ ✓ lib/__tests__/desktop-hard-swap-regression-sweep.test.ts (10 tests) 26ms
+ ✓ lib/__tests__/experiment-hybrid-fetch.test.ts (11 tests) 159ms
+ ✓ lib/__tests__/pattern-llm-labeling-function.test.ts (8 tests) 267ms
+ ✓ lib/__tests__/validate-investigation-candidate-review-publish-flow.test.ts (6 tests) 247ms
+ ✓ lib/__tests__/reference-detail.test.ts (13 tests) 38ms
+ ✓ lib/__tests__/weekly-audit-invariants.test.ts (34 tests) 280ms
+ ✓ lib/__tests__/undo-manager.test.ts (19 tests) 284ms
+ ✓ lib/__tests__/what-changed-evidence-route.test.ts (5 tests) 1332ms
+   ✓ /api/what-changed/[id]/evidence > requires auth  839ms
+ ✓ lib/__tests__/internal-user-map-review-provenance.test.ts (4 tests) 248ms
+ ✓ lib/__tests__/action-feedback-signals.test.ts (12 tests) 151ms
+ ✓ lib/__tests__/evidence-panel-provider-lookup.test.ts (9 tests) 204ms
+ ✓ lib/__tests__/timeline-model-layers-route.test.ts (3 tests) 1575ms
+   ✓ /api/timeline/model-layers > blocks unauthenticated requests with 401  1552ms
+stderr | lib/__tests__/metrics.test.ts > sanitizeMetaForStorage > returns null when total JSON size exceeds 8 KB even after field truncation
+[metrics] meta dropped — 8641 bytes exceeds 8192 byte cap
+
+stderr | lib/__tests__/metrics.test.ts > logMetricEvent — valid input > drops meta entirely when JSON size exceeds 8 KB
+[metrics] meta dropped — 8641 bytes exceeds 8192 byte cap
+
+stdout | lib/__tests__/metrics.test.ts > logMetricEventSafe > swallows db errors without throwing
+[METRICS_LOG_ERROR] Error: DB connection lost
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/metrics.test.ts:214:46
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+
+ ✓ lib/__tests__/metrics.test.ts (20 tests) 296ms
+ ✓ lib/__tests__/model-update-internal-candidate-publish-route.test.ts (9 tests) 1587ms
+   ✓ internal ModelUpdate candidate publish route > returns 401 when unauthenticated  1327ms
+ ✓ lib/__tests__/decisions-hybrid-fetch.test.ts (9 tests) 147ms
+ ✓ lib/__tests__/today-evidence-pointer-parity.test.ts (6 tests) 139ms
+ ✓ lib/__tests__/validate-model-update-candidate-publish-flow.test.ts (6 tests) 121ms
+ ✓ lib/__tests__/contradiction-surface.test.ts (2 tests) 55ms
+ ✓ lib/__tests__/weekly-audit-diff.test.ts (16 tests) 16ms
+ ✓ lib/__tests__/public-continuity-registry.test.ts (9 tests) 16ms
+ ✓ lib/__tests__/today-object-graph-parity.test.ts (7 tests) 199ms
+ ✓ lib/__tests__/understanding-evidence-link-writer.test.ts (8 tests) 177ms
+ ✓ lib/__tests__/today-intelligence-updates-route.test.ts (3 tests) 1041ms
+   ✓ /api/today/intelligence-updates > blocks unauthenticated requests with 401  812ms
+ ✓ lib/__tests__/contradiction-backfill.test.ts (1 test) 30ms
+ ✓ lib/__tests__/map-presentation-readiness.test.ts (12 tests) 438ms
+   ✓ map presentation readiness gate > passes presentation-ready production Map data  301ms
+ ✓ lib/__tests__/explore-session-model-updates-route.test.ts (6 tests) 1318ms
+   ✓ /api/explore/sessions/[id]/model-updates > blocks unauthenticated requests with 401  1035ms
+ ✓ lib/__tests__/mind-context-surface.test.ts (7 tests) 90ms
+ ✓ lib/__tests__/contradiction-materialization.test.ts (3 tests) 141ms
+ ✓ lib/__tests__/free-explore-post-send-side-effect-audit.test.ts (9 tests) 184ms
+ ✓ lib/__tests__/desktop-inspector-assault.test.ts (4 tests) 17ms
+ ✓ lib/__tests__/investigation-internal-candidate-lifecycle-route.test.ts (7 tests) 1667ms
+   ✓ internal Investigation candidate lifecycle route > returns 401 when unauthenticated  1515ms
+ ✓ lib/__tests__/fieldwork-internal-candidate-lifecycle-route.test.ts (7 tests) 1188ms
+   ✓ internal Fieldwork candidate lifecycle route > returns 401 when unauthenticated  1097ms
+ ✓ lib/__tests__/investigation-candidate-lifecycle-persistence.test.ts (7 tests) 89ms
+ ✓ lib/__tests__/public-evidence-continuity.test.ts (4 tests) 480ms
+   ✓ public evidence continuity helper > returns empty when target is missing, unowned, or not user_visible  458ms
+ ✓ lib/__tests__/investigation-internal-candidate-publish-route.test.ts (8 tests) 1239ms
+   ✓ internal Investigation candidate publish route > returns 401 when unauthenticated  1172ms
+ ✓ lib/__tests__/orvek-structural-fidelity.test.ts (8 tests) 20ms
+ ✓ lib/__tests__/contradiction-dual-source-presentation-ui.test.ts (8 tests) 23ms
+ ✓ lib/__tests__/internal-model-update-review-candidates.test.ts (5 tests) 199ms
+ ✓ lib/__tests__/weekly-audit-detail.test.ts (24 tests) 140ms
+ ✓ lib/__tests__/nodes-api.test.ts (15 tests) 216ms
+ ✓ lib/__tests__/fieldwork-internal-candidate-publish-route.test.ts (8 tests) 1380ms
+   ✓ internal Fieldwork candidate publish route > returns 401 when unauthenticated  1351ms
+ ✓ lib/__tests__/fieldwork-candidate-lifecycle-persistence.test.ts (7 tests) 218ms
+stderr | lib/__tests__/understanding-dark-engine-no-write-trigger-runtime-state.test.ts > no-write trigger runtime state helper > fails open when runtime state loading throws
+[TEST] Failed to load no-write trigger runtime state; proceeding without cooldown/inFlight gates. { userId: 'user-1', error: 'db unavailable' }
+
+ ✓ lib/__tests__/understanding-dark-engine-no-write-trigger-runtime-state.test.ts (7 tests) 134ms
+ ✓ lib/__tests__/internal-user-map-review-operator-client.test.ts (8 tests) 519ms
+   ✓ internal user-map review operator client > posts lifecycle transitions to the internal route  348ms
+stderr | lib/__tests__/import-upload-processor.test.ts > processChatImportSession — onImportComplete hook > import resolves even if onImportComplete throws
+[IMPORT_COMPLETE_HOOK_ERROR] session-1 Error: Pattern detection failed
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/import-upload-processor.test.ts:101:56
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runSuite (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1729:8)
+    at runFiles (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/runner/dist/chunk-hooks.js:1787:3)
+
+ ✓ lib/__tests__/import-upload-processor.test.ts (7 tests) 54ms
+ ✓ lib/__tests__/understanding-dark-engine-no-write-trigger-eligibility.test.ts (20 tests) 303ms
+ ✓ lib/__tests__/timeline-hybrid-fetch.test.ts (8 tests) 150ms
+ ✓ lib/__tests__/legacy-surface-registry.test.ts (23 tests) 97ms
+ ✓ lib/__tests__/quick-check-ins.test.ts (7 tests) 793ms
+   ✓ /api/check-ins > returns unauthorized when no user is signed in  627ms
+ ❯ lib/__tests__/today-production-movement-depth.test.ts (4 tests | 1 failed) 331ms
+   ✓ Today production movement depth composition > preserves depth-enriched ModelUpdate through attention registration and honesty 245ms
+   ✓ Today production movement depth composition > withholds See Why, movements and full report when after snapshot is missing 4ms
+   ✓ Today production movement depth composition > resolves the same ModelUpdate id across Today, Timeline and report overlay object 53ms
+   × Today adapter after-state honesty > uses explicit unavailable copy instead of movement summary when after is missing 26ms
+     → expected 'Headline movement summary' to be 'Updated read is not available yet — o…' // Object.is equality
+ ✓ lib/__tests__/today-movement-depth-route.test.ts (6 tests) 2086ms
+   ✓ /api/today/movement-depth > requires auth  1863ms
+ ✓ lib/__tests__/validate-user-map-candidate-review-publish-flow.test.ts (4 tests) 163ms
+ ❯ lib/__tests__/surfaced-evidence-pointer-schema.test.ts (11 tests | 2 failed) 369ms
+   ✓ SurfacedEvidencePointer enum contracts > locks SurfacedEvidencePointerKind 2ms
+   ✓ SurfacedEvidencePointer enum contracts > locks SurfacedEvidencePointerSurface 0ms
+   ✓ SurfacedEvidencePointer enum contracts > locks SurfacedEvidencePointerStatus 0ms
+   ✓ SurfacedEvidencePointer schema model contracts > adds SurfacedEvidencePointer with user ownership and first-class whyItMatters 3ms
+   ✓ SurfacedEvidencePointer schema model contracts > uses stable caller-supplied id without cuid default 1ms
+   × SurfacedEvidencePointer schema model contracts > pins required indexes and one-pointer-per-source uniqueness 212ms
+     → expected 'model SurfacedEvidencePointer {\n  id…' to contain '@@unique([userId, sourceObjectType, s…'
+   ✓ SurfacedEvidencePointer schema model contracts > reuses UnderstandingLinkSourceType for durable source identity 1ms
+   ✓ SurfacedEvidencePointer schema model contracts > keeps durable graph edges on UnderstandingEvidenceLink, not on pointer rows 1ms
+   ✓ SurfacedEvidencePointer migration SQL contracts > creates additive table with required columns and no destructive statements 1ms
+   × SurfacedEvidencePointer migration SQL contracts > pins Today read and source lookup indexes in migration SQL 24ms
+     → expected '-- CreateEnum\nCREATE TYPE "SurfacedE…' to contain 'SurfacedEvidencePointer_userId_status…'
+   ✓ SurfacedEvidencePointer create-input coverage > supports required create payload shape without generic defaults 114ms
+ ✓ lib/__tests__/what-changed-detail-route.test.ts (4 tests) 615ms
+   ✓ /api/what-changed/[id] > blocks unauthenticated requests with 401  598ms
+ ✓ lib/__tests__/import-diagnostics.test.ts (4 tests) 268ms
+ ✓ lib/__tests__/canonical-reference-map-header.test.ts (5 tests) 125ms
+ ✓ lib/__tests__/contradiction-drift-adapter.test.ts (8 tests) 30ms
+ ✓ lib/__tests__/canonical-hard-swap-path-equivalence.test.ts (7 tests) 27ms
+ ✓ lib/__tests__/user-map-conclusion-evidence-route.test.ts (3 tests) 863ms
+   ✓ /api/user-map/conclusions/[id]/evidence > requires auth  797ms
+ ✓ lib/__tests__/internal-fieldwork-review-candidates.test.ts (4 tests) 75ms
+ ✓ lib/__tests__/today-hydration.test.ts (4 tests) 105ms
+ ✓ lib/__tests__/chat-session-bootstrap.test.ts (8 tests) 108ms
+ ✓ lib/__tests__/inspector-selection.test.ts (9 tests) 13ms
+ ✓ lib/__tests__/what-changed-surface.test.ts (5 tests) 14ms
+ ✓ lib/__tests__/pattern-contradiction-title.test.ts (11 tests) 92ms
+ ✓ lib/__tests__/internal-investigation-review-candidates.test.ts (4 tests) 40ms
+ ✓ lib/__tests__/orvek-v0-inversion.test.ts (7 tests) 27ms
+ ✓ lib/__tests__/free-explore-chat-handler-provider-mount.test.ts (7 tests) 109ms
+ ✓ lib/__tests__/promote-review-resolutions-script.test.ts (1 test) 67ms
+ ✓ lib/__tests__/orvek-display-contract.test.ts (4 tests) 28ms
+ ✓ lib/__tests__/orvek-ux-integration.test.ts (9 tests) 22ms
+ ✓ lib/__tests__/phase3-internal-investigation-review-api.test.ts (6 tests) 930ms
+   ✓ Phase 3 internal investigation review candidates API > blocks unauthenticated requests with 401  813ms
+ ✓ lib/__tests__/contradiction-invariants.test.ts (27 tests) 101ms
+ ✓ lib/__tests__/inspector-investigation-route.test.ts (3 tests) 646ms
+   ✓ /api/inspector/investigations/[id] > requires auth  623ms
+ ✓ lib/__tests__/contradiction-patch.test.ts (10 tests) 9ms
+ ✓ lib/__tests__/phase3-your-map-page.test.ts (4 tests) 320ms
+ ✓ lib/__tests__/model-movement-report-contract.test.ts (7 tests) 10ms
+ ✓ lib/__tests__/semantic-twin-runtime-fixture.test.ts (5 tests) 49ms
+ ✓ lib/__tests__/map-contradiction-read-api-security.test.ts (3 tests) 1200ms
+   ✓ GET /api/contradiction Map open read security > scopes open list to authenticated user and status=open only  1160ms
+ ✓ lib/__tests__/phase3-internal-model-update-review-api.test.ts (5 tests) 796ms
+   ✓ Phase 3 internal model update review candidates API > blocks unauthenticated requests with 401  773ms
+ ✓ lib/__tests__/canonical-reference-model-status-card.test.ts (5 tests) 139ms
+ ✓ lib/__tests__/replay-persisted-pattern-claims-script.test.ts (2 tests) 122ms
+ ✓ lib/__tests__/inspector-tab-navigation-behavior.test.ts (6 tests) 13ms
+ ✓ lib/__tests__/explore-action-handoff.test.ts (10 tests) 14ms
+ ✓ lib/__tests__/timeline-semantic-layers.test.ts (5 tests) 15ms
+ ✓ lib/__tests__/explore-surface.test.ts (4 tests) 12ms
+ ✓ lib/__tests__/nav-structure.test.ts (14 tests) 200ms
+ ✓ lib/__tests__/contradiction-escalation.test.ts (9 tests) 8ms
+ ✓ lib/__tests__/canonical-live-candidate-gate.test.ts (5 tests) 40ms
+ ✓ lib/__tests__/phase3-internal-fieldwork-review-api.test.ts (5 tests) 1531ms
+   ✓ Phase 3 internal fieldwork review candidates API > blocks unauthenticated requests with 401  1378ms
+ ✓ lib/__tests__/durable-user-actions-contract.test.ts (4 tests) 363ms
+ ✓ lib/__tests__/movement-report-completion-identity.test.ts (3 tests) 153ms
+ ✓ lib/__tests__/contradiction-top.test.ts (1 test) 11ms
+ ❯ lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts (7 tests | 2 failed) 230ms
+   ✓ EvidencePointerSurfacingRationale schema model contracts > adds upstream rationale storage keyed by user + source identity 4ms
+   × EvidencePointerSurfacingRationale schema model contracts > pins one rationale row per source object per user 89ms
+     → expected 'model EvidencePointerSurfacingRationa…' to contain '@@unique([userId, sourceObjectType, s…'
+   ✓ EvidencePointerSurfacingRationale schema model contracts > reuses UnderstandingLinkSourceType for durable source identity 1ms
+   ✓ EvidencePointerSurfacingRationale schema model contracts > keeps graph edges on UnderstandingEvidenceLink, not on rationale rows 2ms
+   ✓ EvidencePointerSurfacingRationale migration SQL contracts > creates additive table with required columns and no destructive statements 1ms
+   × EvidencePointerSurfacingRationale migration SQL contracts > pins source lookup uniqueness in migration SQL 129ms
+     → expected '-- CreateTable\nCREATE TABLE "Evidenc…' to contain 'EvidencePointerSurfacingRationale_use…'
+   ✓ EvidencePointerSurfacingRationale create-input coverage > supports required create payload shape without generic defaults 1ms
+ ✓ lib/__tests__/your-map-preview-surface.test.ts (7 tests) 11ms
+ ✓ lib/__tests__/shell-legacy-route-cleanup.test.ts (8 tests) 16ms
+ ✓ lib/__tests__/chat-surface-routing.test.ts (14 tests) 133ms
+ ✓ lib/__tests__/today-evidence-pointer-ui-depth-gate.test.ts (4 tests) 150ms
+stderr | lib/__tests__/pattern-claim-hooks.test.ts > patternClaimHooks > listener error does not prevent other listeners from receiving event
+[PatternClaimHooks] listener error: Error: boom
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/pattern-claim-hooks.test.ts:83:13
+    at PatternClaimEventBus.emit (/Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/pattern-claim-hooks.ts:57:30)
+    at /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/lib/__tests__/pattern-claim-hooks.test.ts:89:25
+    at Proxy.assertThrows (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/chai/index.js:2767:5)
+    at Proxy.methodWrapper (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/chai/index.js:1686:25)
+    at Proxy.<anonymous> (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/expect/dist/index.js:1088:12)
+    at Proxy.overwritingMethodWrapper (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/chai/index.js:1735:33)
+    at Proxy.<anonymous> (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/expect/dist/index.js:1420:16)
+    at Proxy.<anonymous> (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/@vitest/expect/dist/index.js:1029:14)
+    at Proxy.methodWrapper (file:///Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/node_modules/chai/index.js:1686:25)
+
+ ✓ lib/__tests__/pattern-claim-hooks.test.ts (6 tests) 266ms
+ ✓ lib/__tests__/decisions-surface.test.ts (5 tests) 112ms
+ ✓ lib/__tests__/canonical-today-composition.test.ts (1 test) 266ms
+ ✓ lib/__tests__/live-evidence-depth-write-contract.test.ts (7 tests) 97ms
+ ✓ lib/__tests__/root-cutover-canonical-runtime.test.ts (6 tests) 10ms
+ ✓ lib/__tests__/fieldwork-candidate-lifecycle-publish-public-safety.test.ts (5 tests) 19ms
+ ✓ lib/__tests__/memory-governance.test.ts (10 tests) 63ms
+ ✓ lib/__tests__/explore-grounding-retrieval.test.ts (3 tests) 11ms
+ ✓ lib/__tests__/shell-quarantine.test.ts (3 tests) 15ms
+ ✓ lib/__tests__/model-movement-rationale-encoding.test.ts (5 tests) 10ms
+ ✓ lib/__tests__/investigation-public-visibility.test.ts (6 tests) 11ms
+ ✓ lib/__tests__/durable-actions-runtime-fixture.test.ts (1 test) 671ms
+ ✓ lib/__tests__/middleware-authenticated-legacy-surface-access.test.ts (4 tests) 810ms
+   ✓ middleware authenticated legacy surface access > allows authenticated active-questions routes through the quarantine  762ms
+ ✓ lib/__tests__/build-loop-harness.test.ts (6 tests) 12ms
+ ✓ lib/__tests__/fieldwork-watch-for-public-guard.test.ts (4 tests) 774ms
+   ✓ Watch For public FieldworkAssignment leak guard > queries only user_visible fieldworkAssignments with null or promoted candidate lifecycle  706ms
+ ✓ lib/__tests__/your-map-surface.test.ts (5 tests) 22ms
+ ✓ lib/__tests__/inspector-source-object-resolution.test.ts (3 tests) 19ms
+ ✓ lib/__tests__/investigation-active-questions-public-guard.test.ts (4 tests) 566ms
+ ✓ lib/__tests__/weekly-audit-trend.test.ts (1 test) 10ms
+ ✓ lib/__tests__/investigation-candidate-lifecycle-publish-safety.test.ts (5 tests) 9ms
+ ✓ lib/__tests__/timeline-surface-copy.test.ts (5 tests) 12ms
+ ✓ lib/__tests__/weekly-audit-backfill.test.ts (5 tests) 46ms
+ ✓ lib/__tests__/watch-for-surface.test.ts (5 tests) 12ms
+ ✓ lib/__tests__/session-list-route.test.ts (4 tests) 655ms
+   ✓ /api/session/list GET > filters APP sessions by surfaceType  644ms
+ ✓ lib/__tests__/map-open-contradictions.test.ts (3 tests) 336ms
+   ✓ map open contradictions read contract > fetches authenticated open list only and performs no mutation  324ms
+ ✓ lib/__tests__/import-candidate-review-wiring.test.ts (6 tests) 75ms
+ ✓ lib/__tests__/weekly-audit.test.ts (3 tests) 12ms
+ ✓ lib/__tests__/actions-api.test.ts (3 tests) 434ms
+   ✓ actions-api createFieldworkFromAction > posts only allowlisted fieldwork draft fields from action context  371ms
+ ✓ lib/__tests__/desktop-frozen-reference-authority.test.ts (5 tests) 9ms
+ ✓ lib/__tests__/contradiction-snooze-expiry.test.ts (7 tests) 106ms
+ ✓ lib/__tests__/action-fieldwork-bridge.test.ts (5 tests) 12ms
+ ✓ lib/__tests__/workbench-route-isolation.test.ts (3 tests) 8ms
+ ✓ lib/__tests__/weekly-audit-ensure.test.ts (4 tests) 189ms
+ ✓ lib/__tests__/exact-fixture-round-trip-compare.test.ts (3 tests) 12ms
+ ✓ lib/__tests__/fieldwork-public-visibility.test.ts (5 tests) 9ms
+ ✓ lib/__tests__/contradiction-transitions.test.ts (4 tests) 7ms
+ ✓ lib/__tests__/session-route.test.ts (3 tests) 770ms
+   ✓ /api/session POST > creates an APP session with default journal_chat surfaceType when body is omitted  532ms
+ ✓ lib/__tests__/explore-tab-visual-regression.test.ts (4 tests) 8ms
+ ✓ lib/__tests__/model-movement-report-provenance.test.ts (3 tests) 5ms
+ ✓ lib/__tests__/orvek-workbench-selection.test.ts (5 tests) 6ms
+ ✓ lib/__tests__/canonical-fixture-route-boundary.test.ts (3 tests) 6ms
+ ✓ lib/__tests__/public-receipt-continuity-guards.test.ts (1 test) 11ms
+ ✓ lib/__tests__/contradiction-snooze-label.test.ts (9 tests) 9ms
+ ✓ lib/__tests__/public-continuity-display.test.tsx (4 tests) 61ms
+ ✓ lib/__tests__/exact-fixture-round-trip-manifest.test.ts (5 tests) 152ms
+ ✓ lib/__tests__/contradiction-salience.test.ts (3 tests) 7ms
+ ✓ lib/__tests__/chat-surface-presets.test.ts (6 tests) 13ms
+ ✓ lib/__tests__/contradiction-duplicate-prevention-schema.test.ts (3 tests) 6ms
+ ✓ lib/__tests__/contradiction-schema.test.ts (4 tests) 22ms
+ ✓ lib/__tests__/explore-composer-wireup.test.ts (1 test) 10ms
+ ✓ lib/__tests__/reference-source.test.ts (2 tests) 12ms
+ ✓ lib/__tests__/investigation-detail-enrichment.test.ts (1 test) 7ms
+ ✓ lib/__tests__/model-movement-fixture-cleanup.test.ts (1 test) 403ms
+   ✓ movement assault fixture cleanup > seeds then cleans to zero remaining fixture records  398ms
+ ✓ lib/__tests__/canonical-today-empty-action-guard.test.ts (2 tests) 8ms
+ ✓ lib/__tests__/command-palette-ia.test.ts (2 tests) 13ms
+ ✓ lib/__tests__/journal-ui.test.ts (4 tests) 179ms
+ ✓ lib/__tests__/contradiction-enums.test.ts (1 test) 4ms
+ ✓ lib/__tests__/stripe-event-idempotency.test.ts (2 tests) 7ms
+ ✓ lib/__tests__/reference-enums.test.ts (1 test) 8ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/__tests__/canonical-fixture-composition-gate.test.ts [ lib/__tests__/canonical-fixture-composition-gate.test.ts ]
+Error: Cannot find package '@/lib/canonical-reference-model-status-card' imported from '/Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/components/orvek-v0-canonical/fixture-provider.ts'
+ ❯ components/orvek-v0-canonical/fixture-provider.ts:31:1
+     29|   getObjects,
+     30| } from "../orvek-v0-reference-frozen/reference-data"
+     31| import { CANONICAL_REFERENCE_MODEL_STATUS_CARD } from "@/lib/canonical…
+       | ^
+     32| import type { OrvekDataApi } from "@/lib/orvek-v0/data-provider"
+     33|
+
+Caused by: Error: Failed to load url @/lib/canonical-reference-model-status-card (resolved id: @/lib/canonical-reference-model-status-card) in /Users/user/ai-companion-worktrees/desktop-contradiction-dual-source-presentation-001/components/orvek-v0-canonical/fixture-provider.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:35729:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts > EvidencePointerSurfacingRationale schema model contracts > pins one rationale row per source object per user
+AssertionError: expected 'model EvidencePointerSurfacingRationa…' to contain '@@unique([userId, sourceObjectType, s…'
+
+- Expected
++ Received
+
+- @@unique([userId, sourceObjectType, sourceObjectId])
++ model EvidencePointerSurfacingRationale {
++   id               String                      @id @default(cuid())
++   userId           String
++   sourceObjectType UnderstandingLinkSourceType
++   sourceObjectId   String
++   rationale        String
++   whyResurfaced    String?
++   sourceEvidenceId String?
++   authoredFrom     String?
++   meta             Json?
++   createdAt        DateTime                    @default(now())
++   updatedAt        DateTime                    @updatedAt
++
++   @@unique([userId, sourceObjectType, sourceObjectId], map: "epsr_user_src_uniq")
++   @@index([userId, sourceObjectType, sourceObjectId], map: "epsr_user_src_idx")
++ }
+
+ ❯ lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts:41:23
+     39|     const rationale = modelBlock("EvidencePointerSurfacingRationale");
+     40|
+     41|     expect(rationale).toContain("@@unique([userId, sourceObjectType, s…
+       |                       ^
+     42|     expect(rationale).toContain("@@index([userId, sourceObjectType, so…
+     43|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts > EvidencePointerSurfacingRationale migration SQL contracts > pins source lookup uniqueness in migration SQL
+AssertionError: expected '-- CreateTable\nCREATE TABLE "Evidenc…' to contain 'EvidencePointerSurfacingRationale_use…'
+
+- Expected
++ Received
+
+- EvidencePointerSurfacingRationale_userId_sourceObjectType_sourceObjectId_key
++ -- CreateTable
++ CREATE TABLE "EvidencePointerSurfacingRationale" (
++     "id" TEXT NOT NULL,
++     "userId" TEXT NOT NULL,
++     "sourceObjectType" "UnderstandingLinkSourceType" NOT NULL,
++     "sourceObjectId" TEXT NOT NULL,
++     "rationale" TEXT NOT NULL,
++     "whyResurfaced" TEXT,
++     "sourceEvidenceId" TEXT,
++     "authoredFrom" TEXT,
++     "meta" JSONB,
++     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++     "updatedAt" TIMESTAMP(3) NOT NULL,
++
++     CONSTRAINT "EvidencePointerSurfacingRationale_pkey" PRIMARY KEY ("id")
++ );
++
++ -- CreateIndex
++ CREATE UNIQUE INDEX "epsr_user_src_uniq" ON "EvidencePointerSurfacingRationale"("userId", "sourceObjectType", "sourceObjectId");
++
++ -- CreateIndex
++ CREATE INDEX "epsr_user_src_idx" ON "EvidencePointerSurfacingRationale"("userId", "sourceObjectType", "sourceObjectId");
++
+
+ ❯ lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts:74:26
+     72|
+     73|   it("pins source lookup uniqueness in migration SQL", () => {
+     74|     expect(migrationSql).toContain(
+       |                          ^
+     75|       "EvidencePointerSurfacingRationale_userId_sourceObjectType_sourc…
+     76|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  lib/__tests__/orvek-adapters.test.ts > orvek adapters > does not use movement summary as after state when depth after is missing
+AssertionError: expected 'Headline only' not to be 'Headline only' // Object.is equality
+ ❯ lib/__tests__/orvek-adapters.test.ts:122:45
+    120|     });
+    121|
+    122|     expect(props.movements[0]?.updated).not.toBe("Headline only");
+       |                                             ^
+    123|     expect(props.report?.reportId).toBeNull();
+    124|     expect(props.report?.fullReportAvailable).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  lib/__tests__/orvek-adapters.test.ts > orvek adapters > mapTodayDataToV0Props maps movement without fabricating previous read or after state
+AssertionError: expected 'Updated summary' to be 'Updated read is not available yet — o…' // Object.is equality
+
+Expected: "Updated read is not available yet — open movement in the inspector."
+Received: "Updated summary"
+
+ ❯ lib/__tests__/orvek-adapters.test.ts:150:41
+    148|     expect(props.movements).toHaveLength(1);
+    149|     expect(props.movements[0]?.previous).toBeNull();
+    150|     expect(props.movements[0]?.updated).toBe(TODAY_RESULT_STATE_UNAVAI…
+       |                                         ^
+    151|     expect(props.movements[0]?.updated).not.toBe("Updated summary");
+    152|     expect(props.report?.href).toBe("/what-changed");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  lib/__tests__/surfaced-evidence-pointer-schema.test.ts > SurfacedEvidencePointer schema model contracts > pins required indexes and one-pointer-per-source uniqueness
+AssertionError: expected 'model SurfacedEvidencePointer {\n  id…' to contain '@@unique([userId, sourceObjectType, s…'
+
+- Expected
++ Received
+
+- @@unique([userId, sourceObjectType, sourceObjectId])
++ model SurfacedEvidencePointer {
++   id               String                         @id
++   userId           String
++   pointerKind      SurfacedEvidencePointerKind
++   surface          SurfacedEvidencePointerSurface @default(today_evidence_pointer)
++   sourceObjectType UnderstandingLinkSourceType
++   sourceObjectId   String
++   sourceEvidenceId String?
++   sourceText       String
++   sourceOrigin     String
++   whyItMatters     String
++   whyResurfaced    String?
++   libraryReceiptId String?
++   detailHref       String?
++   publicEligible   Boolean                        @default(false)
++   status           SurfacedEvidencePointerStatus  @default(active)
++   materializedFrom String?
++   meta             Json?
++   surfacedAt       DateTime                       @default(now())
++   createdAt        DateTime                       @default(now())
++   updatedAt        DateTime                       @updatedAt
++
++   @@unique([userId, sourceObjectType, sourceObjectId], map: "sep_user_src_uniq")
++   @@index([userId, status, surfacedAt], map: "sep_user_status_surfaced_idx")
++   @@index([userId, publicEligible, status], map: "sep_user_pub_elig_status_idx")
++   @@index([userId, sourceObjectType, sourceObjectId], map: "sep_user_src_idx")
++ }
+
+ ❯ lib/__tests__/surfaced-evidence-pointer-schema.test.ts:76:21
+     74|     const pointer = modelBlock("SurfacedEvidencePointer");
+     75|
+     76|     expect(pointer).toContain("@@unique([userId, sourceObjectType, sou…
+       |                     ^
+     77|     expect(pointer).toContain("@@index([userId, status, surfacedAt])");
+     78|     expect(pointer).toContain("@@index([userId, publicEligible, status…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  lib/__tests__/surfaced-evidence-pointer-schema.test.ts > SurfacedEvidencePointer migration SQL contracts > pins Today read and source lookup indexes in migration SQL
+AssertionError: expected '-- CreateEnum\nCREATE TYPE "SurfacedE…' to contain 'SurfacedEvidencePointer_userId_status…'
+
+- Expected
++ Received
+
+- SurfacedEvidencePointer_userId_status_surfacedAt_idx
++ -- CreateEnum
++ CREATE TYPE "SurfacedEvidencePointerKind" AS ENUM ('pattern', 'tension', 'journal');
++
++ -- CreateEnum
++ CREATE TYPE "SurfacedEvidencePointerSurface" AS ENUM ('today_evidence_pointer');
++
++ -- CreateEnum
++ CREATE TYPE "SurfacedEvidencePointerStatus" AS ENUM ('active', 'expired', 'dismissed', 'hidden');
++
++ -- CreateTable
++ CREATE TABLE "SurfacedEvidencePointer" (
++     "id" TEXT NOT NULL,
++     "userId" TEXT NOT NULL,
++     "pointerKind" "SurfacedEvidencePointerKind" NOT NULL,
++     "surface" "SurfacedEvidencePointerSurface" NOT NULL DEFAULT 'today_evidence_pointer',
++     "sourceObjectType" "UnderstandingLinkSourceType" NOT NULL,
++     "sourceObjectId" TEXT NOT NULL,
++     "sourceEvidenceId" TEXT,
++     "sourceText" TEXT NOT NULL,
++     "sourceOrigin" TEXT NOT NULL,
++     "whyItMatters" TEXT NOT NULL,
++     "whyResurfaced" TEXT,
++     "libraryReceiptId" TEXT,
++     "detailHref" TEXT,
++     "publicEligible" BOOLEAN NOT NULL DEFAULT false,
++     "status" "SurfacedEvidencePointerStatus" NOT NULL DEFAULT 'active',
++     "materializedFrom" TEXT,
++     "meta" JSONB,
++     "surfacedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++     "updatedAt" TIMESTAMP(3) NOT NULL,
++
++     CONSTRAINT "SurfacedEvidencePointer_pkey" PRIMARY KEY ("id")
++ );
++
++ -- CreateIndex
++ CREATE UNIQUE INDEX "sep_user_src_uniq" ON "SurfacedEvidencePointer"("userId", "sourceObjectType", "sourceObjectId");
++
++ -- CreateIndex
++ CREATE INDEX "sep_user_status_surfaced_idx" ON "SurfacedEvidencePointer"("userId", "status", "surfacedAt");
++
++ -- CreateIndex
++ CREATE INDEX "sep_user_pub_elig_status_idx" ON "SurfacedEvidencePointer"("userId", "publicEligible", "status");
++
++ -- CreateIndex
++ CREATE INDEX "sep_user_src_idx" ON "SurfacedEvidencePointer"("userId", "sourceObjectType", "sourceObjectId");
++
+
+ ❯ lib/__tests__/surfaced-evidence-pointer-schema.test.ts:112:26
+    110|
+    111|   it("pins Today read and source lookup indexes in migration SQL", () …
+    112|     expect(migrationSql).toContain(
+       |                          ^
+    113|       "SurfacedEvidencePointer_userId_status_surfacedAt_idx",
+    114|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  lib/__tests__/today-production-movement-depth.test.ts > Today adapter after-state honesty > uses explicit unavailable copy instead of movement summary when after is missing
+AssertionError: expected 'Headline movement summary' to be 'Updated read is not available yet — o…' // Object.is equality
+
+Expected: "Updated read is not available yet — open movement in the inspector."
+Received: "Headline movement summary"
+
+ ❯ lib/__tests__/today-production-movement-depth.test.ts:162:41
+    160|     });
+    161|
+    162|     expect(props.movements[0]?.updated).toBe(TODAY_RESULT_STATE_UNAVAI…
+       |                                         ^
+    163|     expect(props.movements[0]?.updated).not.toBe("Headline movement su…
+    164|     expect(props.report?.fullReportAvailable).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  5 failed | 313 passed (318)
+      Tests  7 failed | 4205 passed (4212)
+   Start at  16:04:09
+   Duration  117.15s (transform 20.78s, setup 0ms, collect 187.74s, tests 104.43s, environment 556ms, prepare 170.18s)

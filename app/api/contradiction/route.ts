@@ -11,6 +11,11 @@ import {
   ContradictionSourceError,
   resolveContradictionSource,
 } from "@/lib/contradiction-source";
+import {
+  createPrismaDualSourcePresentationReader,
+  isIncludeDualSourceEnabled,
+  resolveContradictionDualSourcePresentations,
+} from "@/lib/contradiction-dual-source-presentation";
 import prismadb from "@/lib/prismadb";
 import {
   buildRelatedUnderstandingBySourceId,
@@ -190,6 +195,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const includeUnderstandingLinks =
       isIncludeUnderstandingLinksEnabled(searchParams);
+    const includeDualSource = isIncludeDualSourceEnabled(searchParams);
     const topParam = searchParams.get("top");
     const statusParam = searchParams.get("status");
     const modeParam = searchParams.get("mode");
@@ -285,10 +291,36 @@ export async function GET(req: Request) {
           }))
         : itemsWithOrigin;
 
+      const dualSourceByNodeId = includeDualSource
+        ? (
+            await resolveContradictionDualSourcePresentations({
+              userId,
+              nodes: itemsWithOptionalLinks.map((item) => ({
+                id: item.id,
+                sideASourceSpanId: item.sideASourceSpanId,
+                sideBSourceSpanId: item.sideBSourceSpanId,
+              })),
+              reader: createPrismaDualSourcePresentationReader(prismadb),
+            })
+          ).byNodeId
+        : null;
+
+      const itemsWithOptionalDualSource = dualSourceByNodeId
+        ? itemsWithOptionalLinks.map((item) => ({
+            ...item,
+            dualSource: dualSourceByNodeId.get(item.id)!,
+          }))
+        : itemsWithOptionalLinks;
+
       // Paginated envelope — consumed exclusively via fetchContradictions() in lib/nodes-api.ts.
       // Do NOT call this path directly; unwrap payload.items on the client side.
       return NextResponse.json(
-        { items: itemsWithOptionalLinks, page, limit, hasMore: nodes.length === limit },
+        {
+          items: itemsWithOptionalDualSource,
+          page,
+          limit,
+          hasMore: nodes.length === limit,
+        },
         {
           headers: {
             "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",

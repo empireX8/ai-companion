@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
+import { ContradictionDualSourceView } from "@/components/contradiction/ContradictionDualSourceView";
+import type { ContradictionDualSourcePresentation } from "@/lib/contradiction-dual-source-presentation-contract";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ContradictionSummary = {
@@ -26,6 +29,7 @@ type ContradictionDetailLite = {
   snoozedUntil: string | null;
   sideA: string;
   sideB: string;
+  dualSource?: ContradictionDualSourcePresentation;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -34,8 +38,6 @@ const fmtDate = (iso: string | null | undefined) => {
   if (!iso) return "n/a";
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
 };
-
-const trunc = (s: string, n: number) => (s.length > n ? s.slice(0, n) + "…" : s);
 
 const STATUS_STYLES: Record<string, string> = {
   open: "bg-amber-500/10 text-amber-600",
@@ -180,16 +182,26 @@ export function ContradictionsInspectorPanel() {
               <DetailRow label="Snoozed" value={fmtDate(detail.snoozedUntil)} />
             )}
           </dl>
-          <div className="space-y-1 pt-1">
-            <p className="text-[10px] text-muted-foreground">
-              <span className="font-medium text-foreground/70">A</span>{" "}
-              {trunc(detail.sideA, 55)}
-            </p>
-            <p className="text-[10px] text-muted-foreground">
-              <span className="font-medium text-foreground/70">B</span>{" "}
-              {trunc(detail.sideB, 55)}
-            </p>
-          </div>
+          {detail.dualSource ? (
+            <ContradictionDualSourceView
+              interpretationA={detail.sideA}
+              interpretationB={detail.sideB}
+              dualSource={detail.dualSource}
+              compact
+              showLegacyAsSingleNotice
+            />
+          ) : (
+            <div className="space-y-1 pt-1">
+              <p className="text-[10px] text-muted-foreground">
+                <span className="font-medium text-foreground/70">Side A interpretation</span>{" "}
+                {detail.sideA}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                <span className="font-medium text-foreground/70">Side B interpretation</span>{" "}
+                {detail.sideB}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,0 +1,62 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-DUAL-SOURCE-PRESENTATION-001",
+  "campaignSlice": "CEQR-008/CEQR-009",
+  "phase": "independent_review_correction",
+  "classification": "PASS_WITH_KNOWN_BASELINE_FAILURES",
+  "baselineCommit": "5c9d657ef1c607e9a7b9ce56574befa735e8d0ef",
+  "correction": {
+    "userScopedLookups": true,
+    "sessionOwnershipNoLeak": true,
+    "zeroLengthSpanRejected": true,
+    "clientSafeContractSplit": true,
+    "copyAndTimestampTruthfulness": true
+  },
+  "focusedTests": {
+    "filesPassed": 3,
+    "testsPassed": 39
+  },
+  "relatedTests": {
+    "filesPassed": 7,
+    "testsPassed": 114
+  },
+  "fullSuite": {
+    "filesFailed": 5,
+    "filesPassed": 313,
+    "filesTotal": 318,
+    "testsFailed": 7,
+    "testsPassed": 4211,
+    "testsTotal": 4218,
+    "knownBaseline": {
+      "filesFailed": 5,
+      "filesPassed": 310,
+      "testsFailed": 7,
+      "testsPassed": 4172
+    },
+    "failingSetUnchanged": true
+  },
+  "typescript": "pass",
+  "eslintChangedFiles": "pass_with_preexisting_warning",
+  "build": "pass",
+  "gitDiffCheck": "pass",
+  "accountGate": {
+    "beforeLabel": "dual-source-presentation-before",
+    "afterLabel": "dual-source-presentation-after-patch",
+    "beforeMatchesExpected": true,
+    "afterMatchesExpected": true,
+    "idsAndSpanFksUnchanged": true,
+    "contradictionNodeTotal": 25,
+    "candidateTotal": 25,
+    "evidenceSpans": 5941,
+    "completeExactDualSide": 0,
+    "invalidPartial": 0,
+    "legacyBothNull": 25,
+    "completePairDuplicateGroups": 0
+  },
+  "schemaChanged": false,
+  "migrationAdded": false,
+  "accountMutated": false,
+  "liveWriterWired": false,
+  "ceqr010NaturalEntry": false,
+  "productionReady": false
+}

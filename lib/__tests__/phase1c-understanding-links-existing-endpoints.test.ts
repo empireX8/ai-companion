@@ -89,6 +89,11 @@ vi.mock("@/lib/understanding-links", async () => {
   return actual;
 });
 
+vi.mock("@/lib/contradiction-dual-source-presentation", async () => {
+  const actual = await import("../contradiction-dual-source-presentation");
+  return actual;
+});
+
 vi.mock("@/lib/contradiction-escalation", async () => {
   const actual = await import("../contradiction-escalation");
   return actual;

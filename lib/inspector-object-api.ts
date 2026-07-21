@@ -38,6 +38,8 @@ export type InspectorEvidenceLinkItem = {
   linkRole?: string | null;
 };
 
+import type { ContradictionDualSourcePresentation } from "./contradiction-dual-source-presentation-contract";
+
 export type InspectorContradictionProjection = {
   id: string;
   title: string;
@@ -47,6 +49,8 @@ export type InspectorContradictionProjection = {
   evidenceCount: number;
   lastEvidenceAt: string | null;
   lastTouchedAt: string;
+  /** Exact ordered Side A / Side B source projection (CEQR-009). */
+  dualSource: ContradictionDualSourcePresentation;
 };
 
 export type InspectorModelUpdateDetail = {
