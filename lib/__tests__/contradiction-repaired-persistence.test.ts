@@ -4,7 +4,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
@@ -731,9 +731,6 @@ describe("CONTRADICTION-PERSISTENCE-WIRING-001 repaired persistence writer", () 
 
   describe("non-live wiring", () => {
     it("is not imported by routes or production lib surfaces", () => {
-      const { readdirSync, readFileSync: readFs, statSync } =
-        require("node:fs") as typeof import("node:fs");
-      const { join: pathJoin } = require("node:path") as typeof import("node:path");
       const roots = ["app", "lib/orvek-v0", "lib/understanding-dark-engine"];
       const needle =
         /contradiction-persistence-plan|contradiction-repaired-persistence|persistRepairedContradictionCandidate|buildContradictionPersistencePlan/;
@@ -747,7 +744,7 @@ describe("CONTRADICTION-PERSISTENCE-WIRING-001 repaired persistence writer", () 
           return;
         }
         for (const entry of entries) {
-          const full = pathJoin(dir, entry);
+          const full = join(dir, entry);
           let st;
           try {
             st = statSync(full);
@@ -758,13 +755,13 @@ describe("CONTRADICTION-PERSISTENCE-WIRING-001 repaired persistence writer", () 
             if (entry === "node_modules" || entry === ".next") continue;
             walk(full);
           } else if (/\.(ts|tsx|js|jsx|mjs)$/.test(entry)) {
-            const text = readFs(full, "utf8");
+            const text = readFileSync(full, "utf8");
             if (needle.test(text)) hits.push(full);
           }
         }
       }
 
-      for (const root of roots) walk(pathJoin(process.cwd(), root));
+      for (const root of roots) walk(join(process.cwd(), root));
       expect(hits).toEqual([]);
     });
   });
