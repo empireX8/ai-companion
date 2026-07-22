@@ -24,6 +24,10 @@ import {
   classificationAllowsContradictionNodeSemantics,
   type ContradictionAdjudicationResult,
 } from "./contradiction-adjudicator";
+import {
+  buildSanitizedAdjudicationDiagnostics,
+  type SanitizedAdjudicationDiagnostics,
+} from "./contradiction-live-sanitized-diagnostics";
 import type { StructuredModelRunner } from "./orvek-intelligence-kernel/model-runner";
 import type { ObjectivityReferee } from "./orvek-intelligence-kernel/objectivity-referee";
 import { defaultRefereeStatus } from "./orvek-intelligence-kernel/objectivity-referee";
@@ -98,6 +102,11 @@ export type SelectionRejectionSummary = {
   reason: string;
   classification?: string | null;
   adjudicationOutcome?: ContradictionAdjudicationResult["outcome"];
+  /**
+   * CEQR-012 — sanitized validation diagnostics for live-proof observability.
+   * Never includes raw provider output, quotes, or proposition text.
+   */
+  sanitizedDiagnostics?: SanitizedAdjudicationDiagnostics | null;
 };
 
 export type ContradictionSameSessionSelectionResult = {
@@ -400,6 +409,11 @@ export async function selectSameSessionContradictionPair(input: {
         adjudication.outcome,
       classification: adjudication.semantic?.classification ?? null,
       adjudicationOutcome: adjudication.outcome,
+      sanitizedDiagnostics: buildSanitizedAdjudicationDiagnostics({
+        adjudication,
+        sideA: candidate.sideA,
+        sideB,
+      }),
     });
   }
 

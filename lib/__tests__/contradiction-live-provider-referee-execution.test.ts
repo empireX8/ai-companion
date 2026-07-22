@@ -1053,6 +1053,10 @@ describe("CEQR-011 live provider adapters (deterministic)", () => {
 
   it("live evidence wrapper appends addendum but does not mutate provider object", async () => {
     const object = { classification: "clear_contradiction", marker: "untouched" };
+    const userPrompt = [
+      'Side A sourceText: "Alpha beta."',
+      'Side B sourceText: "Gamma."',
+    ].join("\n");
     const inner = createRecordingRunner({
       handler: async () => ({
         ok: true as const,
@@ -1065,7 +1069,7 @@ describe("CEQR-011 live provider adapters (deterministic)", () => {
     const result = await wrapped.runStructured({
       schema: objectivityRefereeModelResultSchema,
       system: "base-system",
-      prompt: "prompt",
+      prompt: userPrompt,
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -1077,6 +1081,13 @@ describe("CEQR-011 live provider adapters (deterministic)", () => {
     }
     expect(inner.calls[0]?.system).toContain("LIVE PROVIDER EVIDENCE HARD RULES");
     expect(inner.calls[0]?.system).toContain("base-system");
+    expect(inner.calls[0]?.system).not.toContain(
+      "contradiction-live-adjudicator-prompt-addendum",
+    );
+    expect(inner.calls[0]?.system).not.toContain("UTF-16");
+    expect(inner.calls[0]?.system).not.toContain("NEUTRAL FORMATTING EXAMPLE");
+    expect(inner.calls[0]?.prompt).toBe(userPrompt);
+    expect(inner.calls[0]?.prompt).not.toContain("sourceTextLengthChars");
   });
 
   it("adapter source does not contain evidence repair helpers", () => {
@@ -1524,6 +1535,8 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         maxRetries: 0,
         timeoutMs: 45000,
         providerAttemptCountExact: true,
+        adjudicatorPromptAddendumVersion:
+          "contradiction-live-adjudicator-prompt-addendum-v1",
         adjudicatorCallCount: 2,
         refereeCallCount: 1,
         totalCallCount: 3,
@@ -1582,6 +1595,8 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         maxRetries: 0,
         timeoutMs: 45000,
         providerAttemptCountExact: true,
+        adjudicatorPromptAddendumVersion:
+          "contradiction-live-adjudicator-prompt-addendum-v1",
         adjudicatorCallCount: 3,
         refereeCallCount: 0,
         totalCallCount: 3,
@@ -1613,6 +1628,8 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         maxRetries: 0,
         timeoutMs: 45000,
         providerAttemptCountExact: true,
+        adjudicatorPromptAddendumVersion:
+          "contradiction-live-adjudicator-prompt-addendum-v1",
         adjudicatorCallCount: 2,
         refereeCallCount: 2,
         totalCallCount: 4,

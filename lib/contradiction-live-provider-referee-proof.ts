@@ -23,6 +23,7 @@ import type {
   SameSessionReferenceRow,
 } from "./contradiction-same-session-selection";
 import {
+  CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
   CONTRADICTION_LIVE_PROVIDER_PROOF_OPT_IN_ENV,
   createOpenAiContradictionLiveAdapters,
   isLiveContradictionProviderProofOptedIn,
@@ -31,6 +32,10 @@ import {
   type ContradictionLiveIndependenceLevel,
   type ContradictionLiveAdapterBundle,
 } from "./contradiction-live-provider-adapters";
+import {
+  pickSanitizedDiagnosticsFromRejectionSummaries,
+  type SanitizedAdjudicationDiagnostics,
+} from "./contradiction-live-sanitized-diagnostics";
 import type { ObjectivityReferee } from "./orvek-intelligence-kernel/objectivity-referee";
 import type { StructuredModelRunner } from "./orvek-intelligence-kernel/model-runner";
 
@@ -98,6 +103,18 @@ export type LiveCaseReceipt = {
   latencyMs: number | null;
   harnessNodeCountAfter: number;
   harnessSpanCountAfter: number;
+  /**
+   * Controlled natural-entry gate at which the case stopped.
+   * Null on successful created/reused outcomes, and also null when no
+   * controlled-entry result was obtained (budget skip / pre-result exception).
+   */
+  gateStoppedAt: ControlledNaturalEntryProofResult["gateStoppedAt"];
+  /**
+   * CEQR-012 sanitized adjudication diagnostics.
+   * Present when selection rejected a pair after model structured output.
+   * Does not claim live-wrapper provenance.
+   */
+  sanitizedAdjudicationDiagnostics: SanitizedAdjudicationDiagnostics | null;
 };
 
 export type LiveProofSkipped = {
@@ -123,6 +140,11 @@ export type LiveProofExecuted = {
   timeoutMs: number;
   /** True because maxRetries is 0. */
   providerAttemptCountExact: true;
+  /**
+   * Landed CEQR-011 adjudicator system-addendum identity from the live bundle.
+   * Not injected into the provider prompt.
+   */
+  adjudicatorPromptAddendumVersion: typeof CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION;
   /** Exact provider-attempt counts (retries disabled). */
   adjudicatorCallCount: number;
   refereeCallCount: number;
@@ -725,6 +747,8 @@ export async function runContradictionLiveProviderRefereeProof(
         latencyMs: null,
         harnessNodeCountAfter: harness.snapshot().nodes,
         harnessSpanCountAfter: harness.snapshot().spans,
+        gateStoppedAt: null,
+        sanitizedAdjudicationDiagnostics: null,
       });
       continue;
     }
@@ -785,6 +809,8 @@ export async function runContradictionLiveProviderRefereeProof(
         latencyMs: Date.now() - started,
         harnessNodeCountAfter: afterNodes,
         harnessSpanCountAfter: afterSpans,
+        gateStoppedAt: null,
+        sanitizedAdjudicationDiagnostics: null,
       });
       if (mutated) {
         break;
@@ -818,6 +844,11 @@ export async function runContradictionLiveProviderRefereeProof(
       latencyMs: Date.now() - started,
       harnessNodeCountAfter: harness.snapshot().nodes,
       harnessSpanCountAfter: harness.snapshot().spans,
+      gateStoppedAt: result.gateStoppedAt,
+      sanitizedAdjudicationDiagnostics:
+        pickSanitizedDiagnosticsFromRejectionSummaries(
+          result.selection.rejectionSummaries,
+        ),
     });
   }
 
@@ -882,6 +913,7 @@ export async function runContradictionLiveProviderRefereeProof(
     maxRetries: 0,
     timeoutMs: adapters.timeoutMs,
     providerAttemptCountExact: true,
+    adjudicatorPromptAddendumVersion: adapters.adjudicatorPromptAddendumVersion,
     adjudicatorCallCount: adapters.callBudget.adjudicatorCalls(),
     refereeCallCount: adapters.callBudget.refereeCalls(),
     totalCallCount: adapters.callBudget.totalCalls(),

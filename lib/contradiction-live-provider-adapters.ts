@@ -47,6 +47,13 @@ export const CONTRADICTION_LIVE_MAX_RETRIES = 0 as const;
 export const OBJECTIVITY_REFEREE_LIVE_PROMPT_VERSION =
   "objectivity-referee-live-prompt-v1" as const;
 
+/**
+ * Landed CEQR-011 live adjudicator system-addendum identity.
+ * Describes the unchanged addendum; must not be injected into the provider prompt.
+ */
+export const CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION =
+  "contradiction-live-adjudicator-prompt-addendum-v1" as const;
+
 export type ContradictionLiveIndependenceLevel =
   | "separate_call_same_provider_same_model"
   | "separate_call_same_provider_different_model";
@@ -95,6 +102,11 @@ export type ContradictionLiveAdapterBundle = {
    * counts (not merely runner invocations that could hide SDK retries).
    */
   providerAttemptCountExact: true;
+  /**
+   * Identity of the landed CEQR-011 system addendum applied by the live
+   * adjudicator wrapper. Not injected into the provider prompt text.
+   */
+  adjudicatorPromptAddendumVersion: typeof CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION;
   /** Shared call counter across both roles. */
   callBudget: LiveCallBudget;
 };
@@ -728,6 +740,8 @@ export async function createOpenAiContradictionLiveAdapters(
     timeoutMs: args.timeoutMs,
     maxRetries: CONTRADICTION_LIVE_MAX_RETRIES,
     providerAttemptCountExact: true,
+    adjudicatorPromptAddendumVersion:
+      CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
     callBudget,
   };
 }

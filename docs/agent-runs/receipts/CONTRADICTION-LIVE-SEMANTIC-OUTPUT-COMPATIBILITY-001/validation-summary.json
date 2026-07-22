@@ -1,0 +1,71 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-LIVE-SEMANTIC-OUTPUT-COMPATIBILITY-001",
+  "campaignSlice": "CEQR-012",
+  "exactBase": "57f702c7a0c8e4aa6ff568611bf4603b24243a2c",
+  "classification": "HOLD_FAILURE_EVIDENCE_INSUFFICIENT",
+  "independentReviewCorrection": true,
+  "exactLiveFailureCauseKnown": false,
+  "provenCodeDefect": "sanitized_failure_observability_gap",
+  "runtimePromptChanged": false,
+  "sourceLengthMetadataAdded": false,
+  "providerOutputMutation": false,
+  "newLiveProviderRun": false,
+  "liveProviderAttemptCountThisSlice": 0,
+  "futureDiagnosticRerunUsesCeqr011Prompt": true,
+  "promptChangesRequireLaterEvidenceSupportedSlice": true,
+  "genericDiagnosticsClaimLiveWrapperProvenance": false,
+  "sideSpecificEvidenceWhenUnlabelled": "unknown_or_null",
+  "semanticLiveProof": false,
+  "refereeLiveExecution": "NOT_PROVEN",
+  "productionIngestionWired": false,
+  "existing25Rows": "UNTOUCHED",
+  "isolatedDatabasePersistence": "UNPROVEN",
+  "productionReady": false,
+  "messageImportPaths": "UNWIRED",
+  "runtimeChangesClassifiedAs": "observability_only",
+  "adjudicatorPromptAddendumVersionOnLiveBundle": "contradiction-live-adjudicator-prompt-addendum-v1",
+  "adjudicatorPromptAddendumInjectedIntoProviderPrompt": false,
+  "validation": {
+    "focusedCeqr012": {
+      "files": 1,
+      "passed": 28,
+      "failed": 0
+    },
+    "focusedCeqr011AndRunnerOptions": {
+      "files": 2,
+      "passed": 52,
+      "failed": 0
+    },
+    "focusedCombined": {
+      "files": 3,
+      "passed": 80,
+      "failed": 0
+    },
+    "relatedSuites": {
+      "files": 8,
+      "passed": 292,
+      "failed": 0
+    },
+    "fullVitest": {
+      "testFilesFailed": 5,
+      "testFilesPassed": 317,
+      "testsFailed": 7,
+      "testsPassed": 4326,
+      "knownBaseline": {
+        "testFilesFailed": 5,
+        "testFilesPassed": 316,
+        "testsFailed": 7,
+        "testsPassed": 4298
+      },
+      "knownFailureSetExpanded": false,
+      "passingDeltaExplainedByNewCeqr012Tests": 28
+    },
+    "tscNoEmit": "pass",
+    "eslintChangedFiles": "pass",
+    "productionBuild": "pass_with_env_loaded",
+    "gitDiffCheck": "pass",
+    "secretPatternScan": "pass",
+    "personalIdentifierScan": "pass"
+  }
+}
