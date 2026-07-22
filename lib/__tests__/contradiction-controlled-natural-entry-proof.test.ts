@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { ContradictionModelResult } from "../contradiction-adjudicator";
+import type { ContradictionModelTransportResult } from "../contradiction-adjudicator";
 import { KERNEL_FIRST_PROOF_OBJECT } from "../contradiction-adjudicator";
 import {
   runControlledContradictionNaturalEntryProof,
@@ -57,8 +57,8 @@ function sha(text: string): string {
 function classAResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-  overrides: Partial<ContradictionModelResult> = {},
-): ContradictionModelResult {
+  overrides: Partial<ContradictionModelTransportResult> = {},
+): ContradictionModelTransportResult {
   const claimA =
     overrides.evidenceClaimA ??
     claimForSubstring(sideA, QUOTE_A) ??
@@ -109,7 +109,7 @@ function classAResult(
 function compatibleResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-): ContradictionModelResult {
+): ContradictionModelTransportResult {
   return classAResult(sideA, sideB, {
     classification: "compatible_states",
     bothCanSimultaneouslyBeTrue: true,
@@ -121,7 +121,7 @@ function compatibleResult(
 function contextShiftResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-): ContradictionModelResult {
+): ContradictionModelTransportResult {
   return classAResult(sideA, sideB, {
     classification: "compatible_states",
     bothCanSimultaneouslyBeTrue: true,
@@ -134,7 +134,7 @@ function contextShiftResult(
 function temporalChangeResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-): ContradictionModelResult {
+): ContradictionModelTransportResult {
   return classAResult(sideA, sideB, {
     classification: "compatible_states",
     changedBeliefOverTime: true,
@@ -147,7 +147,7 @@ function temporalChangeResult(
 function aspirationResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-): ContradictionModelResult {
+): ContradictionModelTransportResult {
   return classAResult(sideA, sideB, {
     classification: "plausible_unresolved_tension",
     intentionVersusOutcome: true,
@@ -161,7 +161,7 @@ function aspirationResult(
 type ModelFactory = (
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-) => ContradictionModelResult;
+) => ContradictionModelTransportResult;
 
 /**
  * Runner that rebuilds claims from the actual KernelSourceUnit fields embedded
@@ -1129,7 +1129,7 @@ describe("CEQR-010 controlled natural-entry proof (corrected)", () => {
     expect(result.writerInvoked).toBe(false);
   });
 
-  it("15. invalid exact quote fails closed", async () => {
+  it("15. invalid evidence offsets fail closed (CEQR-016)", async () => {
     const harness = freshHarness();
     const seeded = harness.seedDefaultPersistedPair();
     const result = await runProof(harness, {
@@ -1138,10 +1138,8 @@ describe("CEQR-010 controlled natural-entry proof (corrected)", () => {
         (a, b) =>
           classAResult(a, b, {
             evidenceClaimA: {
-              sourceId: a.sourceId,
-              exactQuote: "fabricated quote not in source",
               startOffset: 0,
-              endOffset: "fabricated quote not in source".length,
+              endOffset: a.sourceText.length + 40,
             },
           }),
       ]),

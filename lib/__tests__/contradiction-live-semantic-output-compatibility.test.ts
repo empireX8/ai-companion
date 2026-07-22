@@ -31,6 +31,7 @@ import {
 import {
   adjudicateContradiction,
   type ContradictionModelResult,
+  type ContradictionModelTransportResult,
 } from "../contradiction-adjudicator";
 import { notRunObjectivityRefereeResult } from "../orvek-intelligence-kernel/objectivity-referee";
 import {
@@ -42,29 +43,24 @@ import {
   type StructuredModelRunnerResult,
 } from "../orvek-intelligence-kernel";
 
-const LANDED_CEQR014_ADDENDUM = [
+const LANDED_CEQR016_ADDENDUM = [
   "",
-  "LIVE PROVIDER EVIDENCE HARD RULES:",
-  "SOURCE ID AUTHORITY:",
-  "- evidenceClaimA.sourceId MUST be copied character-for-character from the exact value shown after \"Side A sourceId:\".",
-  "- evidenceClaimB.sourceId MUST be copied character-for-character from the exact value shown after \"Side B sourceId:\".",
-  "- sourceId is not messageId.",
-  "- sourceId is not sessionId.",
-  "- sourceId is not a ReferenceItem ID or reference-row ID.",
-  "- Never construct or infer a sourceId.",
-  "- Never swap the Side A and Side B source IDs; keep Side A and Side B source IDs ordered as shown.",
-  "",
-  "EXACT QUOTE AUTHORITY:",
-  "- exactQuote MUST be copied character-for-character from the corresponding side's decoded sourceText.",
-  "- Never paraphrase, normalize, summarize, correct grammar, or reconstruct text.",
-  "- Preserve punctuation, capitalization, spacing, and contractions exactly.",
-  "- exactQuote MUST be a contiguous substring of the decoded sourceText.",
-  "- Side A / Side B sourceText appears as JSON in the user prompt; copy the decoded string content only — do not copy the JSON quotation marks that merely delimit sourceText.",
-  "- Do not invent wording that appears only in normalizedProposition or rationale.",
-  "- When the entire source unit supports the proposition, the safest valid quote is the entire sourceText copied exactly.",
+  "LIVE PROVIDER EVIDENCE HARD RULES (CEQR-016 / addendum-v3):",
+  "EVIDENCE TRANSPORT AUTHORITY:",
+  "- evidenceClaimA and evidenceClaimB MUST contain ONLY startOffset and endOffset.",
+  "- Do NOT author sourceId.",
+  "- Do NOT author exactQuote.",
+  "- Deterministic code copies sourceId from the authoritative Side A / Side B units.",
+  "- Deterministic code derives exactQuote as sourceText.slice(startOffset, endOffset).",
+  "- Side A offsets apply only to Side A sourceText; Side B offsets apply only to Side B sourceText.",
+  "- Never swap Side A and Side B ordering.",
   "",
   "OFFSETS:",
-  "- startOffset/endOffset are zero-based, start inclusive, end exclusive, and MUST satisfy sourceText.slice(startOffset, endOffset) === exactQuote.",
+  "- startOffset/endOffset are zero-based, start inclusive, end exclusive.",
+  "- endOffset MUST be greater than startOffset.",
+  "- endOffset MUST NOT exceed the corresponding decoded sourceText length.",
+  "- Invalid, reversed, negative, non-integer, or out-of-range offsets fail closed.",
+  "- Do not rely on clamping, fuzzy matching, substring search, or full-source fallback.",
   "",
   "- qualifications must be a non-empty string; use the literal \"none\" when there are no material qualifiers.",
   "- Never invent wording that does not appear in the sourceText.",
@@ -79,7 +75,7 @@ const LANDED_CEQR014_ADDENDUM = [
 function classAResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-): ContradictionModelResult {
+): ContradictionModelTransportResult {
   const quoteA = sideA.sourceText;
   const quoteB = sideB.sourceText;
   return {
@@ -134,7 +130,7 @@ function classAResult(
 function compatibleResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-): ContradictionModelResult {
+): ContradictionModelTransportResult {
   return {
     ...classAResult(sideA, sideB),
     classification: "compatible_states",
@@ -342,7 +338,7 @@ describe("CEQR-012 prompt provenance (live addendum identity)", () => {
     );
   });
 
-  it("live adapter bundle reports current v2 addendum version", async () => {
+  it("live adapter bundle reports current v3 addendum version", async () => {
     const { bundle } = await buildInjectedAdapters({
       adjudicatorHandler: async () => ({
         ok: true,
@@ -358,14 +354,14 @@ describe("CEQR-012 prompt provenance (live addendum identity)", () => {
       }),
     });
     expect(bundle.adjudicatorPromptAddendumVersion).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v2",
+      "contradiction-live-adjudicator-prompt-addendum-v3",
     );
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v2",
+      "contradiction-live-adjudicator-prompt-addendum-v3",
     );
   });
 
-  it("provider system prompt is the CEQR-014 v2 addendum; user prompt and object unchanged", async () => {
+  it("provider system prompt is the CEQR-016 v3 addendum; user prompt and object unchanged", async () => {
     const object = { keep: "me" };
     const userPrompt = 'Side A sourceText: "x"\nSide B sourceText: "y"';
     let capturedSystem: string | undefined;
@@ -393,10 +389,12 @@ describe("CEQR-012 prompt provenance (live addendum identity)", () => {
       expect(result.object).toBe(object);
     }
     expect(capturedPrompt).toBe(userPrompt);
-    expect(capturedSystem).toBe(["base", LANDED_CEQR014_ADDENDUM].join("\n"));
+    expect(capturedSystem).toBe(["base", LANDED_CEQR016_ADDENDUM].join("\n"));
     expect(capturedSystem).not.toContain("UTF-16");
     expect(capturedSystem).not.toContain("sourceTextLengthChars");
     expect(capturedSystem).not.toContain("NEUTRAL FORMATTING EXAMPLE");
+    expect(capturedSystem).not.toContain("SOURCE ID AUTHORITY:");
+    expect(capturedSystem).toContain("EVIDENCE TRANSPORT AUTHORITY:");
     expect(capturedSystem).not.toContain(
       "contradiction-live-adjudicator-prompt-addendum",
     );
@@ -410,10 +408,8 @@ describe("CEQR-012 side attribution honesty", () => {
     expect(resolveEvidenceFailureSide(error)).toBe("unknown");
   });
 
-  it("unlabelled Side B fabricated quote → no false Side A attribution", async () => {
+  it("provider-authored fabricated exactQuote with valid offsets is ignored", async () => {
     const { sideA, sideB } = sideUnits();
-    // Dual-side validator fails on first side only; simulate unlabelled span error
-    // as retained on adjudication.validation.errors (no Side A/B wording).
     const adjudication = await adjudicateContradiction({
       sideA,
       sideB,
@@ -428,7 +424,7 @@ describe("CEQR-012 side attribution honesty", () => {
                 sourceId: sideB.sourceId,
                 exactQuote: "not in source at all",
                 startOffset: 0,
-                endOffset: 10,
+                endOffset: sideB.sourceText.length,
               },
             },
             providerId: "openai",
@@ -437,22 +433,13 @@ describe("CEQR-012 side attribution honesty", () => {
         },
       },
     });
-    // When Side A is valid, the first failure is Side B — but the validator
-    // message does not name Side B. Diagnostics must not invent Side A.
-    const diag = buildSanitizedAdjudicationDiagnostics({
-      adjudication,
-      sideA,
-      sideB,
-    });
-    expect(diag.validationErrorCodes).toContain("fabricated_quote");
-    expect(diag.exactQuoteMatched.sideA).toBeNull();
-    expect(diag.exactQuoteMatched.sideB).toBeNull();
-    expect(diag.offsetsMatched.sideA).toBeNull();
-    expect(diag.offsetsMatched.sideB).toBeNull();
-    expect(diag.evidenceFailureSide).toBe("unknown");
-    expect(diag.failingFieldPaths).toContain("evidenceClaim");
-    expect(diag.failingFieldPaths).not.toContain("evidenceClaimA");
-    expect(diag.failingFieldPaths).not.toContain("evidenceClaimB");
+    expect(adjudication.outcome).toBe("semantic_accepted");
+    expect(adjudication.semantic?.evidenceClaimB.exactQuote).toBe(
+      sideB.sourceText,
+    );
+    expect(adjudication.semantic?.evidenceClaimB.exactQuote).not.toBe(
+      "not in source at all",
+    );
   });
 
   it("unlabelled Side B invalid offset → no false Side A attribution", async () => {
@@ -468,8 +455,6 @@ describe("CEQR-012 side attribution honesty", () => {
             object: {
               ...base,
               evidenceClaimB: {
-                sourceId: sideB.sourceId,
-                exactQuote: sideB.sourceText,
                 startOffset: 1,
                 endOffset: sideB.sourceText.length + 5,
               },
@@ -485,11 +470,7 @@ describe("CEQR-012 side attribution honesty", () => {
       sideA,
       sideB,
     });
-    expect(
-      diag.validationErrorCodes.some(
-        (c) => c === "invalid_offsets" || c === "fabricated_quote",
-      ),
-    ).toBe(true);
+    expect(diag.validationErrorCodes).toContain("invalid_offsets");
     expect(diag.exactQuoteMatched.sideA).toBeNull();
     expect(diag.offsetsMatched.sideA).toBeNull();
     expect(diag.evidenceFailureSide).toBe("unknown");
@@ -676,10 +657,10 @@ describe("CEQR-012 gateStoppedAt honesty", () => {
 describe("CEQR-012 fail-closed shapes still fail", () => {
   async function runMutated(
     mutate: (
-      base: ContradictionModelResult,
+      base: ContradictionModelTransportResult,
       sideA: KernelSourceUnit,
       sideB: KernelSourceUnit,
-    ) => ContradictionModelResult,
+    ) => ContradictionModelTransportResult | ContradictionModelResult,
   ) {
     let refereeCalls = 0;
     const { bundle } = await buildInjectedAdapters({
@@ -732,38 +713,53 @@ describe("CEQR-012 fail-closed shapes still fail", () => {
     }
   }
 
-  it("wrong sourceId still fails", async () => {
+  function expectSuccess(args: {
+    result: Awaited<
+      ReturnType<typeof runContradictionLiveProviderRefereeProofForTests>
+    >;
+    refereeCalls: number;
+  }) {
+    expect(args.result.ran).toBe(true);
+    if (!args.result.ran) return;
+    const c = args.result.cases[0]!;
+    expect(c.status).toBe("created");
+    expect(c.writeExecuted).toBe(true);
+    expect(c.writerInvoked).toBe(true);
+    expect(c.refereeCallCount).toBe(1);
+    expect(args.refereeCalls).toBe(1);
+    expect(c.sanitizedAdjudicationDiagnostics).toBeNull();
+  }
+
+  it("wrong sourceId is ignored; bound authoritative identity succeeds", async () => {
     const { result, refereeCalls } = await runMutated((base) => ({
       ...base,
       evidenceClaimA: { ...base.evidenceClaimA, sourceId: "wrong" },
     }));
-    expectInvalid({ result, refereeCalls, code: "source_id_mismatch" });
+    expectSuccess({ result, refereeCalls });
   });
 
-  it("invented quote still fails", async () => {
-    const { result, refereeCalls } = await runMutated((base) => ({
+  it("invented quote with valid offsets is ignored; derived quote succeeds", async () => {
+    const { result, refereeCalls } = await runMutated((base, sideA) => ({
       ...base,
       evidenceClaimA: {
         ...base.evidenceClaimA,
         exactQuote: "not in source",
         startOffset: 0,
-        endOffset: 12,
-      },
-    }));
-    expectInvalid({ result, refereeCalls, code: "fabricated_quote" });
-  });
-
-  it("wrong offset still fails", async () => {
-    const { result, refereeCalls } = await runMutated((base, sideA) => ({
-      ...base,
-      evidenceClaimA: {
-        sourceId: sideA.sourceId,
-        exactQuote: sideA.sourceText,
-        startOffset: 1,
         endOffset: sideA.sourceText.length,
       },
     }));
-    expectInvalid({ result, refereeCalls, code: "fabricated_quote" });
+    expectSuccess({ result, refereeCalls });
+  });
+
+  it("out-of-range offset still fails closed", async () => {
+    const { result, refereeCalls } = await runMutated((base, sideA) => ({
+      ...base,
+      evidenceClaimA: {
+        startOffset: 0,
+        endOffset: sideA.sourceText.length + 5,
+      },
+    }));
+    expectInvalid({ result, refereeCalls, code: "invalid_offsets" });
   });
 
   it("blank required proposition field still fails", async () => {

@@ -50,14 +50,17 @@ import {
   type StructuredModelRunnerRequest,
   type StructuredModelRunnerResult,
 } from "../orvek-intelligence-kernel";
-import type { ContradictionModelResult } from "../contradiction-adjudicator";
+import type {
+  ContradictionModelResult,
+  ContradictionModelTransportResult,
+} from "../contradiction-adjudicator";
 
 const FIXED_NOW = () => new Date("2026-07-21T20:00:00.000Z");
 
 function classAResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-): ContradictionModelResult {
+): ContradictionModelTransportResult {
   const quoteA = sideA.sourceText;
   const quoteB = sideB.sourceText;
   return {
@@ -112,7 +115,7 @@ function classAResult(
 function compatibleResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-): ContradictionModelResult {
+): ContradictionModelTransportResult {
   return {
     ...classAResult(sideA, sideB),
     classification: "compatible_states",
@@ -1104,10 +1107,10 @@ describe("CEQR-011 live provider adapters (deterministic)", () => {
 describe("CEQR-011 evidence fail-closed before referee/writer", () => {
   async function runClearCaseWithMutatedModel(
     mutate: (
-      base: ContradictionModelResult,
+      base: ContradictionModelTransportResult,
       sideA: KernelSourceUnit,
       sideB: KernelSourceUnit,
-    ) => ContradictionModelResult,
+    ) => ContradictionModelTransportResult | ContradictionModelResult,
   ) {
     let refereeCalls = 0;
     const { bundle } = await buildInjectedAdapters({
@@ -1160,50 +1163,65 @@ describe("CEQR-011 evidence fail-closed before referee/writer", () => {
     ).toBe(true);
   }
 
-  it("wrong Side A sourceId fails closed", async () => {
+  function expectSemanticSuccess(args: {
+    result: Awaited<
+      ReturnType<typeof runContradictionLiveProviderRefereeProofForTests>
+    >;
+    refereeCalls: number;
+  }) {
+    expect(args.result.ran).toBe(true);
+    if (!args.result.ran) return;
+    const c = args.result.cases[0]!;
+    expect(c.status).toBe("created");
+    expect(c.writeExecuted).toBe(true);
+    expect(c.writerInvoked).toBe(true);
+    expect(c.refereeCallCount).toBe(1);
+    expect(args.refereeCalls).toBe(1);
+    expect(c.sanitizedAdjudicationDiagnostics).toBeNull();
+  }
+
+  it("wrong Side A sourceId is ignored; bound authoritative identity succeeds", async () => {
     const { result, refereeCalls } = await runClearCaseWithMutatedModel(
       (base) => ({
         ...base,
         evidenceClaimA: { ...base.evidenceClaimA, sourceId: "wrong-side-a" },
       }),
     );
-    expectFailClosed({ result, refereeCalls });
+    expectSemanticSuccess({ result, refereeCalls });
   });
 
-  it("wrong Side B sourceId fails closed", async () => {
+  it("wrong Side B sourceId is ignored; bound authoritative identity succeeds", async () => {
     const { result, refereeCalls } = await runClearCaseWithMutatedModel(
       (base) => ({
         ...base,
         evidenceClaimB: { ...base.evidenceClaimB, sourceId: "wrong-side-b" },
       }),
     );
-    expectFailClosed({ result, refereeCalls });
+    expectSemanticSuccess({ result, refereeCalls });
   });
 
-  it("exactQuote not present in sourceText fails closed", async () => {
+  it("provider-authored exactQuote is ignored when offsets are valid", async () => {
     const { result, refereeCalls } = await runClearCaseWithMutatedModel(
-      (base) => ({
+      (base, sideA) => ({
         ...base,
         evidenceClaimA: {
           ...base.evidenceClaimA,
           exactQuote: "this quote is not in the source text at all",
           startOffset: 0,
-          endOffset: 10,
+          endOffset: sideA.sourceText.length,
         },
       }),
     );
-    expectFailClosed({ result, refereeCalls });
+    expectSemanticSuccess({ result, refereeCalls });
   });
 
-  it("valid quote with invalid offsets fails closed", async () => {
+  it("out-of-range offsets fail closed", async () => {
     const { result, refereeCalls } = await runClearCaseWithMutatedModel(
       (base, sideA) => ({
         ...base,
         evidenceClaimA: {
-          sourceId: sideA.sourceId,
-          exactQuote: sideA.sourceText,
-          startOffset: 1,
-          endOffset: sideA.sourceText.length,
+          startOffset: 0,
+          endOffset: sideA.sourceText.length + 5,
         },
       }),
     );
@@ -1536,7 +1554,7 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         timeoutMs: 45000,
         providerAttemptCountExact: true,
         adjudicatorPromptAddendumVersion:
-          "contradiction-live-adjudicator-prompt-addendum-v2",
+          "contradiction-live-adjudicator-prompt-addendum-v3",
         adjudicatorCallCount: 2,
         refereeCallCount: 1,
         totalCallCount: 3,
@@ -1596,7 +1614,7 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         timeoutMs: 45000,
         providerAttemptCountExact: true,
         adjudicatorPromptAddendumVersion:
-          "contradiction-live-adjudicator-prompt-addendum-v2",
+          "contradiction-live-adjudicator-prompt-addendum-v3",
         adjudicatorCallCount: 3,
         refereeCallCount: 0,
         totalCallCount: 3,
@@ -1629,7 +1647,7 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         timeoutMs: 45000,
         providerAttemptCountExact: true,
         adjudicatorPromptAddendumVersion:
-          "contradiction-live-adjudicator-prompt-addendum-v2",
+          "contradiction-live-adjudicator-prompt-addendum-v3",
         adjudicatorCallCount: 2,
         refereeCallCount: 2,
         totalCallCount: 4,

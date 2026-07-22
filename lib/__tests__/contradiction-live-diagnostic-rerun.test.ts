@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
+  CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V2,
   CONTRADICTION_LIVE_MAX_RETRIES,
   CONTRADICTION_LIVE_MAX_TOTAL_CALLS,
   CONTRADICTION_LIVE_DEFAULT_TIMEOUT_MS,
@@ -113,12 +114,19 @@ describe("CEQR-013 live diagnostic rerun receipts", () => {
     expect(receipt.adjudicatorPromptAddendumVersion).toBe(
       "contradiction-live-adjudicator-prompt-addendum-v1",
     );
-    // Historical CEQR-013 receipt must retain v1; current code is CEQR-014 v2.
-    expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
+    // Historical CEQR-013 receipt retains v1; historical v2 identity retained;
+    // current code is CEQR-016 v3.
+    expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V2).toBe(
       "contradiction-live-adjudicator-prompt-addendum-v2",
+    );
+    expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
+      "contradiction-live-adjudicator-prompt-addendum-v3",
     );
     expect(receipt.adjudicatorPromptAddendumVersion).not.toBe(
       CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
+    );
+    expect(receipt.adjudicatorPromptAddendumVersion).not.toBe(
+      CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V2,
     );
     expect(receipt.totalCallCount).toBe(
       receipt.adjudicatorCallCount + receipt.refereeCallCount,

@@ -1,0 +1,167 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-EVIDENCE-AUTHORITY-REPAIR-AUDIT-001",
+  "campaignSlice": "CEQR-016",
+  "exactBase": "b6c10a8334d2c57033272eb97a845a91269327fa",
+  "classification": "PASS_WITH_DETERMINISTIC_EVIDENCE_AUTHORITY_REPAIR",
+  "path": "A",
+  "rawProviderOutputMutated": false,
+  "providerAuthoredSourceIdAuthoritative": false,
+  "providerAuthoredExactQuoteAuthoritative": false,
+  "codeOwnedSourceId": true,
+  "codeDerivedExactQuote": true,
+  "offsetsModelAuthored": true,
+  "invalidOffsetsFailClosed": true,
+  "fuzzyMatchingIntroduced": false,
+  "quoteSearchRepairIntroduced": false,
+  "validationWeakened": false,
+  "promptChanged": true,
+  "transportSchemaChanged": true,
+  "genericKernelContractChanged": false,
+  "contradictionProviderTransportContractChanged": true,
+  "domainExactEvidenceClaimShapeChanged": false,
+  "kernelAdjudicationEnvelopeChanged": false,
+  "KERNEL_CONTRACT_VERSION": "orvek-intelligence-kernel-v1",
+  "schemaVersion": "contradiction-adjudication-schema-v2",
+  "promptVersion": "contradiction-adjudication-prompt-v3",
+  "liveAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v3",
+  "historicalIdentitiesRetained": {
+    "schemaV1": "contradiction-adjudication-schema-v1",
+    "promptV2": "contradiction-adjudication-prompt-v2",
+    "liveAddendumV1": "contradiction-live-adjudicator-prompt-addendum-v1",
+    "liveAddendumV2": "contradiction-live-adjudicator-prompt-addendum-v2"
+  },
+  "liveProviderAttempts": 0,
+  "runLiveOptInSet": false,
+  "realDatabaseMutation": false,
+  "existing25RowsUntouched": true,
+  "ordinaryIngestionWired": false,
+  "productionReady": false,
+  "validation": {
+    "focusedCeqr016": {
+      "file": "lib/__tests__/contradiction-evidence-authority-repair.test.ts",
+      "files": 1,
+      "passed": 27,
+      "failed": 0
+    },
+    "relatedSuites": {
+      "files": 18,
+      "passed": 442,
+      "failed": 0,
+      "note": "Honesty/core (12/261) + broader related (6/181); includes structured-output coverage via contract + CEQR-016; no *evidence-validation* dedicated test file"
+    },
+    "fullVitest": {
+      "testFilesFailed": 5,
+      "testFilesPassed": 321,
+      "testsFailed": 7,
+      "testsPassed": 4380,
+      "knownBaselineAfterCeqr015": {
+        "testFilesFailed": 5,
+        "testFilesPassed": 320,
+        "testsFailed": 7,
+        "testsPassed": 4352
+      },
+      "knownFailureSetExpanded": false,
+      "passingDeltaExplainedByNewCeqr016AndHonestTestUpdates": 28,
+      "failingFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ],
+      "failingTests": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts [file-level]",
+        "EvidencePointerSurfacingRationale schema model contracts > pins one rationale row per source object per user",
+        "EvidencePointerSurfacingRationale migration SQL contracts > pins source lookup uniqueness in migration SQL",
+        "orvek adapters > does not use movement summary as after state when depth after is missing",
+        "orvek adapters > mapTodayDataToV0Props maps movement without fabricating previous read or after state",
+        "SurfacedEvidencePointer schema model contracts > pins required indexes and one-pointer-per-source uniqueness",
+        "SurfacedEvidencePointer migration SQL contracts > pins Today read and source lookup indexes in migration SQL",
+        "Today adapter after-state honesty > uses explicit unavailable copy instead of movement summary when after is missing"
+      ]
+    },
+    "tscNoEmit": "pass",
+    "eslintChangedFiles": "pass_with_unused_var_warnings_only",
+    "productionBuild": "pass_with_env_sourced_from_ai_companion_dotenv",
+    "gitDiffCheck": "pass",
+    "trustLanguage": "pass",
+    "legacySurfaces": "pass",
+    "secretPatternScan": "pass",
+    "realAccountIdScan": "pass",
+    "providerOutputMutationPatternScan": "pass",
+    "quoteSourceIdRepairPatternScan": "pass",
+    "sourceLengthMetadataScan": "pass",
+    "routeImportLiveWiringScan": "pass",
+    "relatedHonestyCore": {
+      "files": 12,
+      "passed": 261,
+      "failed": 0,
+      "note": "adjudication, evidence, controlled entry, objectivity, persistence, duplicate schema, live adapters without live opt-in, ai-sdk structured runner options"
+    },
+    "relatedBroader": {
+      "files": 6,
+      "passed": 181,
+      "failed": 0,
+      "note": "source, dual-side lineage, persistence plan, confidence, dual-source presentation/routes"
+    },
+    "liveOptInScan": "pass_no_RUN_LIVE_equals_1"
+  },
+  "independentReviewCorrection": {
+    "propositionFieldsSchemaRestored": true,
+    "transportVsDomainNamingRestored": true,
+    "selectionForSubstringRemovedFromProduction": true,
+    "realInjectedWriterProofAdded": true,
+    "KERNEL_CONTRACT_VERSION_unchanged": "orvek-intelligence-kernel-v1",
+    "note": "Independent review correction honesty: provider-transport contract changed; shared kernel envelope/domain ExactEvidenceClaim shape did not."
+  },
+  "mandatoryAuditAnswers": {
+    "1_providerStructuredObject": "ContradictionModelTransportResult \u2014 semantic fields + evidenceClaimA/B as {startOffset,endOffset} only (schema-v2)",
+    "2_transportVsTrusted": "Transport: offsets + semantics. Trusted domain evidence: ExactEvidenceClaim after binding (sourceId+exactQuote+offsets)",
+    "3_fieldsFirstIntroduced": "Historically in contradictionModelResultSchema / ExactEvidenceClaim; post-CEQR-016 offsets remain transport; sourceId/exactQuote introduced in bindExactEvidenceClaimFromOffsets",
+    "4_providerSchemaRequires": "Transport requires startOffset/endOffset only; OpenAI strict schema mirrors transport",
+    "5_genericParseEnds": "parseContradictionModelTransportResult in structured-output.ts",
+    "6_deterministicValidationBegins": "bindDualSideEvidenceClaims then validateDualSideEvidenceClaims inside adjudicateContradiction",
+    "7_sourceIdMismatchOrigin": "validateExactEvidenceClaim when claim.sourceId !== source.sourceId (defensive domain check; structurally unreachable for bound claims)",
+    "8_fabricatedQuoteOrigin": "validateExactEvidenceClaim when slice !== claim.exactQuote (defensive; unreachable for bound claims)",
+    "9_authoritativeSourcesPresent": "YES \u2014 input.sideA / input.sideB KernelSourceUnit at adjudication time",
+    "10_sourceIdFromAuthoritativeInput": "YES \u2014 copied from KernelSourceUnit.sourceId",
+    "11_exactQuoteFromOffsets": "YES \u2014 sourceText.slice(startOffset, endOffset)",
+    "12_rawImmutableSeparateDomain": "YES \u2014 raw runnerResult.object unmodified; new domain model constructed",
+    "13_invalidOffsetsFailClosed": "YES \u2014 no clamp/fuzzy/search/full-source fallback/rewrite",
+    "14_compatibleAmbiguousWithoutEvidence": "Transport still requires evidence selections for all classifications (unchanged contract); valid bound evidence still required when present",
+    "15_clearRequiresDualEvidence": "YES",
+    "16_refereeDependsOnProviderIdsQuotes": "NO \u2014 receives bound validatedSemanticResult only",
+    "17_persistenceDependsOnProviderIdentity": "NO \u2014 consumes deterministically bound claims",
+    "18_isolatedToAdjudicationBoundary": "YES \u2014 Path A; persistence/lineage modules unchanged",
+    "19_liveOnlySchemaSufficient": "NO \u2014 a live-only schema was insufficient; the generic contradiction adjudicator provider-transport contract changed; the shared kernel envelope/domain output contract did not change.",
+    "20_narrowestRepair": "Remove sourceId/exactQuote from provider transport; bind in code from authoritative Side A/B + model offsets"
+  },
+  "closeout": {
+    "classification": "PASS_WITH_DETERMINISTIC_EVIDENCE_AUTHORITY_REPAIR",
+    "injectedWriterProof": "PASS_created_writerInvoked_true_authoritative_spans",
+    "invalidOffsetWriterBlock": "PASS_writerInvoked_false_no_spans_no_nodes",
+    "propositionFieldsSchemaRestored": true,
+    "ExactEvidenceClaimCommentCorrected": true,
+    "selectionForSubstringRemovedFromProduction": true,
+    "genericKernelContractChanged": false,
+    "contradictionProviderTransportChanged": true,
+    "rawOutputMutation": false,
+    "liveProviderAttempts": 0,
+    "realDatabaseMutation": false,
+    "transportNames": [
+      "contradictionModelTransportResultSchema",
+      "ContradictionModelTransportResult",
+      "evidenceSpanSelectionSchema",
+      "EvidenceSpanSelection",
+      "parseContradictionModelTransportResult"
+    ],
+    "domainNames": [
+      "contradictionModelResultSchema",
+      "ContradictionModelResult",
+      "exactEvidenceClaimSchema",
+      "ExactEvidenceClaim",
+      "parseContradictionModelResult"
+    ]
+  }
+}

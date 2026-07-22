@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
+  CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V2,
   CONTRADICTION_LIVE_MAX_RETRIES,
   CONTRADICTION_LIVE_MAX_TOTAL_CALLS,
   CONTRADICTION_LIVE_DEFAULT_TIMEOUT_MS,
@@ -110,11 +111,18 @@ describe("CEQR-015 live evidence prompt rerun receipts", () => {
     expect(receipt.timeoutMs).toBe(45_000);
     expect(receipt.maxTotalCalls).toBe(CONTRADICTION_LIVE_MAX_TOTAL_CALLS);
     expect(receipt.maxTotalCalls).toBe(8);
+    // Historical CEQR-015 receipt retains v2; current code is CEQR-016 v3.
     expect(receipt.adjudicatorPromptAddendumVersion).toBe(
-      CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
+      CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V2,
     );
     expect(receipt.adjudicatorPromptAddendumVersion).toBe(
       "contradiction-live-adjudicator-prompt-addendum-v2",
+    );
+    expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
+      "contradiction-live-adjudicator-prompt-addendum-v3",
+    );
+    expect(receipt.adjudicatorPromptAddendumVersion).not.toBe(
+      CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
     );
     expect(receipt.totalCallCount).toBe(
       receipt.adjudicatorCallCount + receipt.refereeCallCount,

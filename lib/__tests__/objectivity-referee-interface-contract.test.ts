@@ -13,6 +13,7 @@ import {
   KERNEL_CONTRACT_VERSION,
   KERNEL_FIRST_PROOF_OBJECT,
   type ContradictionModelResult,
+  type ContradictionModelTransportResult,
 } from "../contradiction-adjudicator";
 import {
   selectSameSessionContradictionPair,
@@ -51,8 +52,8 @@ function source(
 function baseModelResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-  overrides: Partial<ContradictionModelResult> = {},
-): ContradictionModelResult {
+  overrides: Partial<ContradictionModelTransportResult> = {},
+): ContradictionModelTransportResult {
   const quoteA = sideA.sourceText;
   const quoteB = sideB.sourceText;
   return {
@@ -105,7 +106,7 @@ function baseModelResult(
   };
 }
 
-function fakeRunner(result: ContradictionModelResult): StructuredModelRunner {
+function fakeRunner(result: ContradictionModelTransportResult | ContradictionModelResult): StructuredModelRunner {
   return {
     async runStructured() {
       return {
@@ -502,7 +503,7 @@ describe("Objectivity Referee interface — dependency gate", () => {
     expect(result.referee.executionState).toBe("not_run");
   });
 
-  it("20. invalid evidence span — referee call count zero", async () => {
+  it("20. invalid evidence offsets — referee call count zero (CEQR-016)", async () => {
     const { referee, callCount } = countingReferee({
       outcome: "PASS",
       rationale: "should not run",
@@ -513,10 +514,8 @@ describe("Objectivity Referee interface — dependency gate", () => {
       modelRunner: fakeRunner(
         baseModelResult(sideA, sideB, {
           evidenceClaimA: {
-            sourceId: sideA.sourceId,
-            exactQuote: "fabricated quote missing from source",
             startOffset: 0,
-            endOffset: 34,
+            endOffset: sideA.sourceText.length + 50,
           },
         }),
       ),

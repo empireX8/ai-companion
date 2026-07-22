@@ -4,15 +4,27 @@
 
 export const KERNEL_CONTRACT_VERSION = "orvek-intelligence-kernel-v1" as const;
 
-export const CONTRADICTION_ADJUDICATION_SCHEMA_VERSION =
+/** Historical CEQR-001…015 transport: model-authored sourceId + exactQuote. */
+export const CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V1 =
   "contradiction-adjudication-schema-v1" as const;
 
 /**
- * CEQR-003: prompt wording materially strengthened for context/qualifier
- * preservation. Schema shape unchanged (v1); kernel I/O unchanged (v1).
+ * CEQR-016: provider transport carries offset selections only;
+ * sourceId / exactQuote are code-owned after deterministic binding.
+ */
+export const CONTRADICTION_ADJUDICATION_SCHEMA_VERSION =
+  "contradiction-adjudication-schema-v2" as const;
+
+/** Historical CEQR-003…015 prompt identity (qualifier preservation). */
+export const CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V2 =
+  "contradiction-adjudication-prompt-v2" as const;
+
+/**
+ * CEQR-016: prompt instructs model to author offsets only;
+ * code owns sourceId and derives exactQuote.
  */
 export const CONTRADICTION_ADJUDICATION_PROMPT_VERSION =
-  "contradiction-adjudication-prompt-v2" as const;
+  "contradiction-adjudication-prompt-v3" as const;
 
 /** First proof object through the shared kernel. */
 export const KERNEL_FIRST_PROOF_OBJECT = "ContradictionNode" as const;

@@ -1,15 +1,16 @@
 /**
- * CEQR-014 — live evidence prompt repair (addendum v2).
+ * CEQR-014 / CEQR-016 — live evidence prompt repair (addendum v3 current).
  * Deterministic injected runners only. No live provider. No DB mutation.
  */
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
   CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1,
+  CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V2,
   contradictionModelResultOpenAiStrictSchema,
   createOpenAiContradictionLiveAdapters,
   wrapAdjudicatorRunnerForLiveEvidence,
@@ -34,29 +35,27 @@ import {
   type StructuredModelRunnerResult,
 } from "../orvek-intelligence-kernel";
 
-const EXPECTED_V2_ADDENDUM = [
+/** Frozen historical v2 addendum marker retained for identity documentation only. */
+const HISTORICAL_V2_ADDENDUM_SNIPPET = "SOURCE ID AUTHORITY:";
+
+const EXPECTED_V3_ADDENDUM = [
   "",
-  "LIVE PROVIDER EVIDENCE HARD RULES:",
-  "SOURCE ID AUTHORITY:",
-  "- evidenceClaimA.sourceId MUST be copied character-for-character from the exact value shown after \"Side A sourceId:\".",
-  "- evidenceClaimB.sourceId MUST be copied character-for-character from the exact value shown after \"Side B sourceId:\".",
-  "- sourceId is not messageId.",
-  "- sourceId is not sessionId.",
-  "- sourceId is not a ReferenceItem ID or reference-row ID.",
-  "- Never construct or infer a sourceId.",
-  "- Never swap the Side A and Side B source IDs; keep Side A and Side B source IDs ordered as shown.",
-  "",
-  "EXACT QUOTE AUTHORITY:",
-  "- exactQuote MUST be copied character-for-character from the corresponding side's decoded sourceText.",
-  "- Never paraphrase, normalize, summarize, correct grammar, or reconstruct text.",
-  "- Preserve punctuation, capitalization, spacing, and contractions exactly.",
-  "- exactQuote MUST be a contiguous substring of the decoded sourceText.",
-  "- Side A / Side B sourceText appears as JSON in the user prompt; copy the decoded string content only — do not copy the JSON quotation marks that merely delimit sourceText.",
-  "- Do not invent wording that appears only in normalizedProposition or rationale.",
-  "- When the entire source unit supports the proposition, the safest valid quote is the entire sourceText copied exactly.",
+  "LIVE PROVIDER EVIDENCE HARD RULES (CEQR-016 / addendum-v3):",
+  "EVIDENCE TRANSPORT AUTHORITY:",
+  "- evidenceClaimA and evidenceClaimB MUST contain ONLY startOffset and endOffset.",
+  "- Do NOT author sourceId.",
+  "- Do NOT author exactQuote.",
+  "- Deterministic code copies sourceId from the authoritative Side A / Side B units.",
+  "- Deterministic code derives exactQuote as sourceText.slice(startOffset, endOffset).",
+  "- Side A offsets apply only to Side A sourceText; Side B offsets apply only to Side B sourceText.",
+  "- Never swap Side A and Side B ordering.",
   "",
   "OFFSETS:",
-  "- startOffset/endOffset are zero-based, start inclusive, end exclusive, and MUST satisfy sourceText.slice(startOffset, endOffset) === exactQuote.",
+  "- startOffset/endOffset are zero-based, start inclusive, end exclusive.",
+  "- endOffset MUST be greater than startOffset.",
+  "- endOffset MUST NOT exceed the corresponding decoded sourceText length.",
+  "- Invalid, reversed, negative, non-integer, or out-of-range offsets fail closed.",
+  "- Do not rely on clamping, fuzzy matching, substring search, or full-source fallback.",
   "",
   "- qualifications must be a non-empty string; use the literal \"none\" when there are no material qualifiers.",
   "- Never invent wording that does not appear in the sourceText.",
@@ -218,17 +217,24 @@ function sideUnits(): { sideA: KernelSourceUnit; sideB: KernelSourceUnit } {
   };
 }
 
-describe("CEQR-014 live evidence addendum version identity", () => {
-  it("reports honest new v2 identity and no longer reports v1 from the live adapter", async () => {
+describe("CEQR-014 / CEQR-016 live evidence addendum version identity", () => {
+  it("reports honest new v3 identity and retains historical v1/v2 identities", async () => {
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v2",
+      "contradiction-live-adjudicator-prompt-addendum-v3",
     );
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1).toBe(
       "contradiction-live-adjudicator-prompt-addendum-v1",
     );
+    expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V2).toBe(
+      "contradiction-live-adjudicator-prompt-addendum-v2",
+    );
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).not.toBe(
       CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1,
     );
+    expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).not.toBe(
+      CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V2,
+    );
+    expect(HISTORICAL_V2_ADDENDUM_SNIPPET).toBe("SOURCE ID AUTHORITY:");
 
     const { bundle } = await buildInjectedAdapters({
       adjudicatorHandler: async () => ({
@@ -245,16 +251,19 @@ describe("CEQR-014 live evidence addendum version identity", () => {
       }),
     });
     expect(bundle.adjudicatorPromptAddendumVersion).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v2",
+      "contradiction-live-adjudicator-prompt-addendum-v3",
     );
     expect(bundle.adjudicatorPromptAddendumVersion).not.toBe(
       "contradiction-live-adjudicator-prompt-addendum-v1",
     );
+    expect(bundle.adjudicatorPromptAddendumVersion).not.toBe(
+      "contradiction-live-adjudicator-prompt-addendum-v2",
+    );
   });
 });
 
-describe("CEQR-014 captured StructuredModelRunner prompt contract", () => {
-  it("appends v2 evidence rules to system; leaves request.prompt byte-for-byte unchanged; returns same object by reference", async () => {
+describe("CEQR-014 / CEQR-016 captured StructuredModelRunner prompt contract", () => {
+  it("appends v3 evidence rules to system; leaves request.prompt byte-for-byte unchanged; returns same object by reference", async () => {
     const object = { marker: "provider-object", classification: "clear_contradiction" };
     const userPrompt = [
       "Side A sourceId: message:a",
@@ -294,34 +303,24 @@ describe("CEQR-014 captured StructuredModelRunner prompt contract", () => {
     expect(captured).toBeDefined();
     expect(captured!.prompt).toBe(userPrompt);
     expect(captured!.system).toBe(
-      ["generic-kernel-system", EXPECTED_V2_ADDENDUM].join("\n"),
+      ["generic-kernel-system", EXPECTED_V3_ADDENDUM].join("\n"),
     );
 
     const system = captured!.system!;
-    expect(system).toContain("sourceId is not messageId.");
-    expect(system).toContain("sourceId is not sessionId.");
+    expect(system).toContain("EVIDENCE TRANSPORT AUTHORITY:");
+    expect(system).toContain("Do NOT author sourceId.");
+    expect(system).toContain("Do NOT author exactQuote.");
     expect(system).toContain(
-      "sourceId is not a ReferenceItem ID or reference-row ID.",
-    );
-    expect(system).toContain("Never construct or infer a sourceId.");
-    expect(system).toContain(
-      "Never swap the Side A and Side B source IDs; keep Side A and Side B source IDs ordered as shown.",
+      "evidenceClaimA and evidenceClaimB MUST contain ONLY startOffset and endOffset.",
     );
     expect(system).toContain(
-      "exactQuote MUST be copied character-for-character from the corresponding side's decoded sourceText.",
-    );
-    expect(system).toContain(
-      "Never paraphrase, normalize, summarize, correct grammar, or reconstruct text.",
-    );
-    expect(system).toContain(
-      "do not copy the JSON quotation marks that merely delimit sourceText",
-    );
-    expect(system).toContain(
-      "When the entire source unit supports the proposition, the safest valid quote is the entire sourceText copied exactly.",
+      "Deterministic code derives exactQuote as sourceText.slice(startOffset, endOffset).",
     );
     expect(system).toContain(
       "startOffset/endOffset are zero-based, start inclusive, end exclusive",
     );
+    expect(system).not.toContain(HISTORICAL_V2_ADDENDUM_SNIPPET);
+    expect(system).not.toContain("EXACT QUOTE AUTHORITY:");
     expect(system).not.toContain("sourceTextLengthChars");
     expect(system).not.toContain("appendLiveSourceLengthMetadata");
     expect(system).not.toContain(
@@ -330,7 +329,7 @@ describe("CEQR-014 captured StructuredModelRunner prompt contract", () => {
     expect(captured!.prompt).not.toContain("sourceTextLengthChars");
   });
 
-  it("live adapter path captures the same v2 system addendum without mutating prompt or object", async () => {
+  it("live adapter path captures the same v3 system addendum without mutating prompt or object", async () => {
     const object = classAResult(sideUnits().sideA, sideUnits().sideB);
     let capturedPrompt: string | undefined;
     let capturedSystem: string | undefined;
@@ -360,9 +359,9 @@ describe("CEQR-014 captured StructuredModelRunner prompt contract", () => {
     expect(result.ran).toBe(true);
     expect(capturedPrompt).toBeDefined();
     const promptBefore = capturedPrompt!;
-    expect(capturedSystem).toContain(EXPECTED_V2_ADDENDUM);
-    expect(capturedSystem).toContain("SOURCE ID AUTHORITY:");
-    expect(capturedSystem).toContain("EXACT QUOTE AUTHORITY:");
+    expect(capturedSystem).toContain(EXPECTED_V3_ADDENDUM);
+    expect(capturedSystem).toContain("EVIDENCE TRANSPORT AUTHORITY:");
+    expect(capturedSystem).not.toContain(HISTORICAL_V2_ADDENDUM_SNIPPET);
     expect(capturedPrompt).toBe(promptBefore);
     expect(capturedPrompt).toMatch(/Side A sourceId:/);
     expect(capturedPrompt).toMatch(/Side A sourceText: "/);
@@ -416,7 +415,7 @@ describe("CEQR-014 fail-closed evidence validation unchanged", () => {
     expect(dual).toEqual({ ok: true });
   });
 
-  it("Class A with invalid spans cannot reach referee", async () => {
+  it("Class A with invalid offsets cannot reach referee", async () => {
     let refereeCalls = 0;
     const { bundle } = await buildInjectedAdapters({
       adjudicatorHandler: async (request) => {
@@ -427,10 +426,10 @@ describe("CEQR-014 fail-closed evidence validation unchanged", () => {
           object: {
             ...base,
             evidenceClaimA: {
-              ...base.evidenceClaimA,
-              exactQuote: "fabricated quote not in source",
               startOffset: 0,
-              endOffset: 10,
+              endOffset: sideA.sourceText.length + 5,
+              // Provider-authored exactQuote is ignored; invalid offsets fail closed.
+              exactQuote: "fabricated quote not in source",
             },
           },
           providerId: "openai",
@@ -460,7 +459,7 @@ describe("CEQR-014 fail-closed evidence validation unchanged", () => {
     expect(result.cases[0]!.writeExecuted).toBe(false);
     expect(
       result.cases[0]!.sanitizedAdjudicationDiagnostics?.validationErrorCodes,
-    ).toEqual(expect.arrayContaining(["fabricated_quote"]));
+    ).toEqual(expect.arrayContaining(["invalid_offsets"]));
   });
 
   it("valid non-Class-A output does not reach referee", async () => {
@@ -498,7 +497,7 @@ describe("CEQR-014 fail-closed evidence validation unchanged", () => {
     expect(result.cases[0]!.writeExecuted).toBe(false);
   });
 
-  it("source_id_mismatch via adjudication path fails closed before referee", async () => {
+  it("provider-authored wrong sourceId via adjudication path is ignored; bound authoritative sourceId succeeds", async () => {
     let refereeCalls = 0;
     const { bundle } = await buildInjectedAdapters({
       adjudicatorHandler: async (request) => {
@@ -521,7 +520,7 @@ describe("CEQR-014 fail-closed evidence validation unchanged", () => {
         refereeCalls += 1;
         return {
           ok: true,
-          object: { outcome: "PASS", rationale: "must not run" },
+          object: { outcome: "PASS", rationale: "must run" },
           providerId: "openai",
           modelId: "ref",
         };
@@ -534,14 +533,15 @@ describe("CEQR-014 fail-closed evidence validation unchanged", () => {
     });
     expect(result.ran).toBe(true);
     if (!result.ran) return;
-    expect(refereeCalls).toBe(0);
-    expect(
-      result.cases[0]!.sanitizedAdjudicationDiagnostics?.validationErrorCodes,
-    ).toEqual(expect.arrayContaining(["source_id_mismatch"]));
+    expect(refereeCalls).toBe(1);
+    expect(result.cases[0]!.status).toBe("created");
+    expect(result.cases[0]!.writeExecuted).toBe(true);
+    expect(result.cases[0]!.sanitizedAdjudicationDiagnostics).toBeNull();
+    expect(result.cases[0]!.sideAQuote).toBeTruthy();
   });
 });
 
-describe("CEQR-014 non-repair / non-live invariants", () => {
+describe("CEQR-014 / CEQR-016 non-repair / non-live invariants", () => {
   it("introduces no output-repair function and no source-length metadata", () => {
     const src = readFileSync(
       join(process.cwd(), "lib/contradiction-live-provider-adapters.ts"),
@@ -552,40 +552,20 @@ describe("CEQR-014 non-repair / non-live invariants", () => {
     expect(src).not.toMatch(/appendLiveSourceLengthMetadata|sourceTextLengthChars/);
     expect(src).not.toMatch(/evidenceClaimA\s*=/);
     expect(src).toContain(
+      "contradiction-live-adjudicator-prompt-addendum-v1",
+    );
+    expect(src).toContain(
       "contradiction-live-adjudicator-prompt-addendum-v2",
     );
     expect(src).toContain(
-      "contradiction-live-adjudicator-prompt-addendum-v1",
+      "contradiction-live-adjudicator-prompt-addendum-v3",
     );
     expect(src).toContain(
       "CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1",
     );
-  });
-
-  it("does not invoke a live provider", async () => {
-    const openaiCreate = vi.fn();
-    const { bundle } = await buildInjectedAdapters({
-      adjudicatorHandler: async (request) => {
-        const { sideA, sideB } = parseSidesFromPrompt(request.prompt);
-        return {
-          ok: true,
-          object: classAResult(sideA, sideB),
-          providerId: "openai",
-          modelId: "adj",
-        };
-      },
-      refereeHandler: async () => ({
-        ok: true,
-        object: { outcome: "PASS", rationale: "ok" },
-        providerId: "openai",
-        modelId: "ref",
-      }),
-    });
-    await runContradictionLiveProviderRefereeProofForTests({
-      adapters: bundle,
-      cases: [LIVE_SYNTHETIC_CASES[0]!],
-    });
-    expect(openaiCreate).not.toHaveBeenCalled();
+    expect(src).toContain(
+      "CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V2",
+    );
   });
 
   it("generic kernel adjudicator path still builds JSON sourceText without live addendum", async () => {
@@ -612,6 +592,7 @@ describe("CEQR-014 non-repair / non-live invariants", () => {
       `Side A sourceText: ${JSON.stringify(sideA.sourceText)}`,
     );
     expect(capturedSystem).not.toContain("SOURCE ID AUTHORITY:");
+    expect(capturedSystem).not.toContain("EVIDENCE TRANSPORT AUTHORITY:");
     expect(capturedSystem).not.toContain("LIVE PROVIDER EVIDENCE HARD RULES:");
   });
 });
