@@ -9,7 +9,11 @@
 
 import { z } from "zod";
 
-import { contradictionModelTransportResultSchema } from "./orvek-intelligence-kernel/structured-output";
+import {
+  abstentionTransportSchema,
+  classifiedNonClearTransportSchema,
+  clearContradictionTransportSchema,
+} from "./orvek-intelligence-kernel/structured-output";
 import {
   createAiSdkStructuredModelRunner,
   type StructuredModelRunner,
@@ -138,17 +142,47 @@ export const objectivityRefereeModelResultSchema = z.object({
 });
 
 /**
- * OpenAI structured-output transport schemas (CEQR-016 offsets-only evidence).
- * OpenAI requires every property key to appear in `required`. Optional Zod
- * fields are therefore expressed as required-nullable at the provider boundary
- * only. Domain evidence claims are assembled after deterministic binding.
+ * OpenAI structured-output envelope key (CEQR-018).
+ *
+ * OpenAI strict JSON Schema forbids root-level `anyOf`/`oneOf`. The
+ * classification-discriminated transport union is nested under this single
+ * required property so the provider-facing schema remains a root object with
+ * nested `anyOf` (and `const: false` on clear_contradiction flags).
  */
-export const contradictionModelResultOpenAiStrictSchema =
-  contradictionModelTransportResultSchema
-    .omit({ proposedObjectType: true })
-    .extend({
-      proposedObjectType: z.string().nullable(),
-    });
+export const CONTRADICTION_OPENAI_STRICT_ENVELOPE_KEY = "adjudication" as const;
+
+function withOpenAiRequiredNullableProposedObjectType<
+  T extends z.ZodObject<z.ZodRawShape>,
+>(schema: T) {
+  return schema.omit({ proposedObjectType: true }).extend({
+    proposedObjectType: z.string().nullable(),
+  });
+}
+
+/**
+ * Flat OpenAI-strict transport union (CEQR-018).
+ * Emits JSON Schema `anyOf` with clear_contradiction flags as `const: false`.
+ * Not used as the root schema — see contradictionModelResultOpenAiStrictSchema.
+ */
+export const contradictionModelTransportOpenAiStrictUnionSchema = z.union([
+  withOpenAiRequiredNullableProposedObjectType(clearContradictionTransportSchema),
+  withOpenAiRequiredNullableProposedObjectType(classifiedNonClearTransportSchema),
+  withOpenAiRequiredNullableProposedObjectType(abstentionTransportSchema),
+]);
+
+/**
+ * OpenAI structured-output transport schema (CEQR-018).
+ *
+ * Root object + nested `adjudication` anyOf — OpenAI-compatible expression of
+ * the classification-discriminated transport contract. Domain evidence claims
+ * remain assembled after deterministic binding. The live OpenAI runner wrapper
+ * unwraps `adjudication` before returning to the adjudicator so transport/domain
+ * parsers continue to see the flat transport object.
+ */
+export const contradictionModelResultOpenAiStrictSchema = z.object({
+  [CONTRADICTION_OPENAI_STRICT_ENVELOPE_KEY]:
+    contradictionModelTransportOpenAiStrictUnionSchema,
+});
 
 export const objectivityRefereeModelResultOpenAiStrictSchema = z.object({
   outcome: z.enum(OBJECTIVITY_REFEREE_OUTCOMES),
@@ -160,6 +194,31 @@ export const objectivityRefereeModelResultOpenAiStrictSchema = z.object({
 export type ObjectivityRefereeModelResult = z.infer<
   typeof objectivityRefereeModelResultSchema
 >;
+
+export type ContradictionOpenAiStrictEnvelope = z.infer<
+  typeof contradictionModelResultOpenAiStrictSchema
+>;
+
+/**
+ * Unwrap the OpenAI-strict envelope to the flat transport object.
+ *
+ * - If the OpenAI envelope key is present, return its payload (null if missing).
+ * - Otherwise return the value unchanged so injected/test runners and
+ *   fail-closed malformed objects still reach adjudicator parse.
+ */
+export function unwrapContradictionOpenAiStrictEnvelope(
+  value: unknown,
+): unknown | null {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+  const record = value as Record<string, unknown>;
+  if (CONTRADICTION_OPENAI_STRICT_ENVELOPE_KEY in record) {
+    const nested = record[CONTRADICTION_OPENAI_STRICT_ENVELOPE_KEY];
+    return nested === undefined ? null : nested;
+  }
+  return value;
+}
 
 /**
  * Map OpenAI strict nullable fields back to the landed optional evaluation shape.
@@ -192,6 +251,8 @@ export function normalizeObjectivityRefereeProviderObject(
 
 /**
  * Substitute OpenAI-strict transport schemas without changing domain contracts.
+ * For the adjudicator, unwraps the OpenAI envelope so callers continue to
+ * receive the flat transport object (the nested wire object is not mutated).
  */
 export function wrapRunnerWithOpenAiStrictSchemas(
   runner: StructuredModelRunner,
@@ -203,10 +264,28 @@ export function wrapRunnerWithOpenAiStrictSchemas(
         role === "adjudicator"
           ? contradictionModelResultOpenAiStrictSchema
           : objectivityRefereeModelResultOpenAiStrictSchema;
-      return runner.runStructured({
+      const result = await runner.runStructured({
         ...request,
         schema,
       });
+      if (!result.ok || role !== "adjudicator") {
+        return result;
+      }
+      const unwrapped = unwrapContradictionOpenAiStrictEnvelope(result.object);
+      if (unwrapped == null) {
+        return {
+          ok: false,
+          errorCode: "model_execution_failed",
+          message:
+            "OpenAI-strict adjudicator envelope missing adjudication payload.",
+          providerId: result.providerId,
+          modelId: result.modelId,
+        };
+      }
+      return {
+        ...result,
+        object: unwrapped,
+      };
     },
   };
 }

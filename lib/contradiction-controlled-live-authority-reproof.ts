@@ -11,7 +11,6 @@ import { join } from "path";
 
 import {
   CONTRADICTION_ADJUDICATION_PROMPT_VERSION,
-  CONTRADICTION_ADJUDICATION_SCHEMA_VERSION,
   type ContradictionAdjudicationResult,
 } from "./contradiction-adjudicator";
 import {
@@ -37,7 +36,7 @@ import {
   type LiveSyntheticCaseId,
 } from "./contradiction-live-provider-referee-proof";
 import type { ControlledNaturalEntryProofResult } from "./contradiction-controlled-natural-entry-proof";
-import { KERNEL_CONTRACT_VERSION } from "./orvek-intelligence-kernel/contracts";
+import { KERNEL_CONTRACT_VERSION, CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V2 } from "./orvek-intelligence-kernel/contracts";
 import type { StructuredModelRunner } from "./orvek-intelligence-kernel/model-runner";
 
 export const CEQR_017_SLICE_ID =
@@ -266,9 +265,12 @@ export function assertLandedConstantsMatchExpected(): {
   ) {
     mismatches.push("maxTotalCalls");
   }
+  // CEQR-017 froze schema-v2. Current active schema may be newer (CEQR-018+).
+  // Landed-constant integrity for CEQR-017 requires the historical v2 identity
+  // to remain intact — not that the active schema stay forever at v2.
   if (
-    CONTRADICTION_ADJUDICATION_SCHEMA_VERSION !==
-    CEQR_017_EXPECTED_SCHEMA_VERSION
+    (CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V2 as string) !==
+    (CEQR_017_EXPECTED_SCHEMA_VERSION as string)
   ) {
     mismatches.push("schemaVersion");
   }

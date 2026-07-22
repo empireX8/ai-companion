@@ -95,15 +95,21 @@ function classAResult(
     emotionalOrPhysiologicalVersusReasoningStandard: false,
     classification: "clear_contradiction",
     confidence: 0.86,
-    evidenceClaimA: claimA,
-    evidenceClaimB: claimB,
+    evidenceClaimA: {
+      startOffset: claimA.startOffset,
+      endOffset: claimA.endOffset,
+    },
+    evidenceClaimB: {
+      startOffset: claimB.startOffset,
+      endOffset: claimB.endOffset,
+    },
     rationale: "Incompatible under matching scope.",
     alternativeInterpretation: "Temporal change.",
     whatWouldChangeClassification: "Explicit time-scoped belief change.",
     abstentionReason: null,
     proposedObjectType: KERNEL_FIRST_PROOF_OBJECT,
     ...overrides,
-  };
+  } as ContradictionModelTransportResult;
 }
 
 function compatibleResult(

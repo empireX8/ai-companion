@@ -1,0 +1,90 @@
+{
+  "task": "CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001",
+  "campaignSlice": "CEQR-018",
+  "exactBase": "113e90e88107abb3234d96640b77644eabf5bc8e",
+  "classification": "PASS_OFFLINE_SEMANTIC_CONSISTENCY_REPAIR_READY_FOR_NEW_LIVE_PROOF",
+  "finalProofCompletenessCorrection": true,
+  "unicodeLexicalBoundaryCorrection": true,
+  "priorIncompleteHoldReason": "Proof gaps: writer blocking inferred from adjudicateContradiction only; hash-length-only assertions; abstention min(1)+regex redundancy; incomplete full-suite/build receipt wording",
+  "phase1Authorised": true,
+  "phase2Authorised": false,
+  "liveProviderInvoked": false,
+  "accountGateInvoked": false,
+  "databaseQueried": false,
+  "databaseMutated": false,
+  "writerAgainstRealAccount": false,
+  "stagedCommittedPushedOrPr": false,
+  "schemaVersion": {
+    "active": "contradiction-adjudication-schema-v3",
+    "historicalV2Retained": "contradiction-adjudication-schema-v2",
+    "ceqr017PinRemainsV2": true,
+    "redesignedInThisCorrection": false
+  },
+  "promptVersionChanged": false,
+  "liveAddendumVersionChanged": false,
+  "providerFacingSchemaEnforcesContract": true,
+  "abstentionReasonProviderPattern": "\\S",
+  "deterministicDefenceInDepthPreserved": true,
+  "writerBlockProof": {
+    "path": "runControlledContradictionNaturalEntryProof",
+    "case": "CEQR-017 truncated Side-B offsets 0-27 on compatible morning text",
+    "gateStoppedAt": "selection",
+    "writerInvoked": false,
+    "writeExecuted": false,
+    "persistenceResult": null,
+    "refereeCallCount": 0,
+    "persistenceMutationCountersAllZero": true
+  },
+  "lexicalBoundaryIntegrity": {
+    "codePointAware": true,
+    "offsetsRemainUtf16CodeUnits": true,
+    "surrogatePairInsideOffsetFailsClosed": true,
+    "astralPlaneLettersAndNumbersRecognised": true,
+    "combiningMarkPolicy": "marks remain attached to adjacent base token; base–mark, mark–mark, and mark–following-token boundaries fail",
+    "preciseClaim": "Mid-word truncation, surrogate-pair splitting, and the documented combining-mark boundary cases are blocked. This is not full UAX #29 grapheme segmentation or complete semantic adequacy.",
+    "completeSemanticAdequacyClaimed": false
+  },
+  "productionReadyClaimed": false,
+  "validation": {
+    "focusedCeqr018Tests": { "passed": 21, "failed": 0 },
+    "contradictionKernelSweep": { "filesPassed": 36, "testsPassed": 629, "failed": 0 },
+    "typescript": { "ok": true },
+    "eslintChangedFiles": { "ok": true, "errors": 0, "warnings": 9 },
+    "gitDiffCheck": { "ok": true },
+    "jsonReceiptsParsed": true,
+    "secretScan": {
+      "ok": true,
+      "note": "No real credentials or account identifiers in slice changes. Pre-existing synthetic redaction fixture 'Bearer sk-secret-value-abcdef' remains in contradiction-live-provider-referee-execution.test.ts on HEAD."
+    },
+    "build": {
+      "rerunInFinalProofCorrection": false,
+      "earlierKnownStripePageDataFailure": {
+        "observedBeforeUnicodeCorrection": true,
+        "unrelatedToThisSlice": true,
+        "note": "Pre-existing Stripe page-data failure without apiKey/authenticator; build was not rerun in the final proof correction"
+      }
+    },
+    "fullSuite": {
+      "testFilesFailed": 5,
+      "testsFailed": 7,
+      "testsPassed": 4427,
+      "testFilesTotal": 328,
+      "expandedFailureSetVsBase": false,
+      "expandedFailureSetVsPriorKnownBaseline": false,
+      "baselineUnrelatedFailures": [
+        "canonical-fixture-composition-gate.test.ts",
+        "evidence-pointer-surfacing-rationale-schema.test.ts (2)",
+        "orvek-adapters.test.ts (2)",
+        "surfaced-evidence-pointer-schema.test.ts (2)",
+        "today-production-movement-depth.test.ts (1)"
+      ]
+    }
+  },
+  "historicalReceipts": {
+    "ceqr011Through017Mutated": false,
+    "ceqr017LiveExecutionReceiptSha256": "b620aa7f718d4ace768a9a518a4d8cb32ca1b54662291280b3f6545fb5514fdd",
+    "ceqr017Phase2ClaimSha256": "f313cbafb264f84d158a8aee20ca2276520fbf85940be7f910b87bead2c5cef0",
+    "ceqr017ExpectedSchemaInLiveReceipt": "contradiction-adjudication-schema-v2",
+    "exactHashEqualityAssertedInTests": true
+  }
+}

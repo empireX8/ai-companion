@@ -109,7 +109,7 @@ function classAResult(
     whatWouldChangeClassification: "Explicit timeframe separation.",
     abstentionReason: null,
     proposedObjectType: KERNEL_FIRST_PROOF_OBJECT,
-  };
+  } as ContradictionModelTransportResult;
 }
 
 function compatibleResult(
@@ -140,7 +140,8 @@ function compatibleResult(
       modality: "assertive",
       qualifications: "morning only",
     },
-  };
+    abstentionReason: null,
+  } as ContradictionModelTransportResult;
 }
 
 function parseSidesFromPrompt(prompt: string): {
@@ -961,49 +962,47 @@ describe("CEQR-011 live provider adapters (deterministic)", () => {
 
   it("OpenAI-strict transport schemas keep optional fields required-nullable", () => {
     const cn = contradictionModelResultOpenAiStrictSchema.safeParse({
-      propositionA: {
-        normalizedProposition: "a",
-        actor: "s",
-        subject: "x",
-        timeframe: "t",
-        negation: false,
-        modality: "assertive",
-        qualifications: "none",
+      adjudication: {
+        propositionA: {
+          normalizedProposition: "a",
+          actor: "s",
+          subject: "x",
+          timeframe: "t",
+          negation: false,
+          modality: "assertive",
+          qualifications: "none",
+        },
+        propositionB: {
+          normalizedProposition: "b",
+          actor: "s",
+          subject: "x",
+          timeframe: "t",
+          negation: false,
+          modality: "assertive",
+          qualifications: "none",
+        },
+        contextAndScope: "c",
+        bothCanSimultaneouslyBeTrue: false,
+        changedBeliefOverTime: false,
+        intentionVersusOutcome: false,
+        goalVersusObstacle: false,
+        emotionalOrPhysiologicalVersusReasoningStandard: false,
+        classification: "clear_contradiction",
+        confidence: 0.9,
+        evidenceClaimA: {
+          startOffset: 0,
+          endOffset: 1,
+        },
+        evidenceClaimB: {
+          startOffset: 0,
+          endOffset: 1,
+        },
+        rationale: "r",
+        alternativeInterpretation: "alt",
+        whatWouldChangeClassification: "w",
+        abstentionReason: null,
+        proposedObjectType: null,
       },
-      propositionB: {
-        normalizedProposition: "b",
-        actor: "s",
-        subject: "x",
-        timeframe: "t",
-        negation: false,
-        modality: "assertive",
-        qualifications: "none",
-      },
-      contextAndScope: "c",
-      bothCanSimultaneouslyBeTrue: false,
-      changedBeliefOverTime: false,
-      intentionVersusOutcome: false,
-      goalVersusObstacle: false,
-      emotionalOrPhysiologicalVersusReasoningStandard: false,
-      classification: "clear_contradiction",
-      confidence: 0.9,
-      evidenceClaimA: {
-        sourceId: "a",
-        exactQuote: "q",
-        startOffset: 0,
-        endOffset: 1,
-      },
-      evidenceClaimB: {
-        sourceId: "b",
-        exactQuote: "q",
-        startOffset: 0,
-        endOffset: 1,
-      },
-      rationale: "r",
-      alternativeInterpretation: "alt",
-      whatWouldChangeClassification: "w",
-      abstentionReason: null,
-      proposedObjectType: null,
     });
     expect(cn.success).toBe(true);
     expect(

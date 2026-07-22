@@ -9,11 +9,19 @@ export const CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V1 =
   "contradiction-adjudication-schema-v1" as const;
 
 /**
- * CEQR-016: provider transport carries offset selections only;
- * sourceId / exactQuote are code-owned after deterministic binding.
+ * Historical CEQR-016 / CEQR-017 transport: offsets-only evidence with a flat
+ * (non-discriminated) semantic object. Retained for receipt identity.
+ */
+export const CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V2 =
+  "contradiction-adjudication-schema-v2" as const;
+
+/**
+ * CEQR-018: classification-discriminated provider transport variants.
+ * clear_contradiction structurally requires all compatibility flags false
+ * and abstentionReason null. Evidence remains offsets-only (CEQR-016).
  */
 export const CONTRADICTION_ADJUDICATION_SCHEMA_VERSION =
-  "contradiction-adjudication-schema-v2" as const;
+  "contradiction-adjudication-schema-v3" as const;
 
 /** Historical CEQR-003…015 prompt identity (qualifier preservation). */
 export const CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V2 =
