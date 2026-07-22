@@ -141,7 +141,7 @@ export type LiveProofExecuted = {
   /** True because maxRetries is 0. */
   providerAttemptCountExact: true;
   /**
-   * Landed CEQR-011 adjudicator system-addendum identity from the live bundle.
+   * Live adjudicator system-addendum identity from the live bundle.
    * Not injected into the provider prompt.
    */
   adjudicatorPromptAddendumVersion: typeof CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION;

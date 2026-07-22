@@ -1,0 +1,78 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-LIVE-EVIDENCE-PROMPT-REPAIR-001",
+  "campaignSlice": "CEQR-014",
+  "exactBase": "0b8d3dbd42b11877211220ceada81840567eebd3",
+  "classification": "PASS_WITH_NARROW_EVIDENCE_PROMPT_PATCH",
+  "ceqr013EvidenceCodesAddressed": [
+    "fabricated_quote",
+    "source_id_mismatch"
+  ],
+  "liveProviderRunOccurred": false,
+  "liveProviderAttemptsThisSlice": 0,
+  "runtimePromptChanged": true,
+  "runtimePromptChangeScope": "live_adjudicator_system_addendum_only",
+  "adjudicatorPromptAddendumVersionBefore": "contradiction-live-adjudicator-prompt-addendum-v1",
+  "adjudicatorPromptAddendumVersionAfter": "contradiction-live-adjudicator-prompt-addendum-v2",
+  "requestPromptChanged": false,
+  "providerOutputMutation": false,
+  "validationWeakened": false,
+  "sourceLengthMetadataAdded": false,
+  "databaseMutation": false,
+  "existing25RowsUntouched": true,
+  "refereeLiveExecutionProven": false,
+  "productionIngestionWired": false,
+  "productionReady": false,
+  "genericKernelPromptVersionChanged": false,
+  "historicalCeqr011_012_013ReceiptsRewritten": false,
+  "validation": {
+    "focusedCeqr014": {
+      "files": 1,
+      "passed": 12,
+      "failed": 0
+    },
+    "focusedCeqr014_013_012_011": {
+      "files": 4,
+      "passed": 96,
+      "failed": 0
+    },
+    "relatedSuites": {
+      "files": 12,
+      "passed": 322,
+      "failed": 0
+    },
+    "fullVitest": {
+      "testFilesFailed": 5,
+      "testFilesPassed": 319,
+      "testsFailed": 7,
+      "testsPassed": 4345,
+      "knownBaselineAfterCeqr013": {
+        "testFilesFailed": 5,
+        "testFilesPassed": 318,
+        "testsFailed": 7,
+        "testsPassed": 4333
+      },
+      "knownFailureSetExpanded": false,
+      "passingDeltaExplainedByNewCeqr014Tests": 12,
+      "failingFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ]
+    },
+    "tscNoEmit": "pass",
+    "eslintChangedFiles": "pass",
+    "productionBuild": "pass_with_env_loaded",
+    "gitDiffCheck": "pass",
+    "secretPatternScan": "pass",
+    "personalIdentifierScan": "pass",
+    "sourceLengthMetadataScan": "pass",
+    "outputRepairPatternScan": "pass",
+    "prohibitedRouteImportWiringScan": "pass",
+    "trustLanguageCheck": "pass",
+    "legacySurfacesCheck": "pass",
+    "liveProviderInvokedDuringValidation": false
+  }
+}

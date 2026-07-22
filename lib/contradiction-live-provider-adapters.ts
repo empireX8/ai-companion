@@ -48,10 +48,15 @@ export const OBJECTIVITY_REFEREE_LIVE_PROMPT_VERSION =
   "objectivity-referee-live-prompt-v1" as const;
 
 /**
- * Landed CEQR-011 live adjudicator system-addendum identity.
- * Describes the unchanged addendum; must not be injected into the provider prompt.
+ * Live adjudicator system-addendum identity (CEQR-014 evidence-authority repair).
+ * Describes the addendum; must not be injected into the provider prompt.
+ * Historical CEQR-011/012/013 receipts retain v1 and must not be rewritten.
  */
 export const CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION =
+  "contradiction-live-adjudicator-prompt-addendum-v2" as const;
+
+/** Historical identity used by CEQR-011 through CEQR-013 live runs. */
+export const CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1 =
   "contradiction-live-adjudicator-prompt-addendum-v1" as const;
 
 export type ContradictionLiveIndependenceLevel =
@@ -103,8 +108,8 @@ export type ContradictionLiveAdapterBundle = {
    */
   providerAttemptCountExact: true;
   /**
-   * Identity of the landed CEQR-011 system addendum applied by the live
-   * adjudicator wrapper. Not injected into the provider prompt text.
+   * Identity of the live system addendum applied by the adjudicator wrapper.
+   * Not injected into the provider prompt text.
    */
   adjudicatorPromptAddendumVersion: typeof CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION;
   /** Shared call counter across both roles. */
@@ -200,14 +205,35 @@ export function wrapRunnerWithOpenAiStrictSchemas(
   };
 }
 
+/**
+ * CEQR-014 live evidence addendum v2.
+ * Strengthens sourceId and exactQuote authority before generation.
+ * Does not alter provider output after generation.
+ */
 const LIVE_ADJUDICATOR_EVIDENCE_ADDENDUM = [
   "",
   "LIVE PROVIDER EVIDENCE HARD RULES:",
-  "- evidenceClaimA.sourceId MUST equal Side A sourceId exactly.",
-  "- evidenceClaimB.sourceId MUST equal Side B sourceId exactly.",
-  "- exactQuote MUST be an exact contiguous substring of that side's sourceText.",
+  "SOURCE ID AUTHORITY:",
+  "- evidenceClaimA.sourceId MUST be copied character-for-character from the exact value shown after \"Side A sourceId:\".",
+  "- evidenceClaimB.sourceId MUST be copied character-for-character from the exact value shown after \"Side B sourceId:\".",
+  "- sourceId is not messageId.",
+  "- sourceId is not sessionId.",
+  "- sourceId is not a ReferenceItem ID or reference-row ID.",
+  "- Never construct or infer a sourceId.",
+  "- Never swap the Side A and Side B source IDs; keep Side A and Side B source IDs ordered as shown.",
+  "",
+  "EXACT QUOTE AUTHORITY:",
+  "- exactQuote MUST be copied character-for-character from the corresponding side's decoded sourceText.",
+  "- Never paraphrase, normalize, summarize, correct grammar, or reconstruct text.",
+  "- Preserve punctuation, capitalization, spacing, and contractions exactly.",
+  "- exactQuote MUST be a contiguous substring of the decoded sourceText.",
+  "- Side A / Side B sourceText appears as JSON in the user prompt; copy the decoded string content only — do not copy the JSON quotation marks that merely delimit sourceText.",
+  "- Do not invent wording that appears only in normalizedProposition or rationale.",
+  "- When the entire source unit supports the proposition, the safest valid quote is the entire sourceText copied exactly.",
+  "",
+  "OFFSETS:",
   "- startOffset/endOffset are zero-based, start inclusive, end exclusive, and MUST satisfy sourceText.slice(startOffset, endOffset) === exactQuote.",
-  "- Prefer quoting the full sourceText when the whole unit is the evidence.",
+  "",
   "- qualifications must be a non-empty string; use the literal \"none\" when there are no material qualifiers.",
   "- Never invent wording that does not appear in the sourceText.",
   "",

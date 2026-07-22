@@ -42,14 +42,30 @@ import {
   type StructuredModelRunnerResult,
 } from "../orvek-intelligence-kernel";
 
-const LANDED_CEQR011_ADDENDUM = [
+const LANDED_CEQR014_ADDENDUM = [
   "",
   "LIVE PROVIDER EVIDENCE HARD RULES:",
-  "- evidenceClaimA.sourceId MUST equal Side A sourceId exactly.",
-  "- evidenceClaimB.sourceId MUST equal Side B sourceId exactly.",
-  "- exactQuote MUST be an exact contiguous substring of that side's sourceText.",
+  "SOURCE ID AUTHORITY:",
+  "- evidenceClaimA.sourceId MUST be copied character-for-character from the exact value shown after \"Side A sourceId:\".",
+  "- evidenceClaimB.sourceId MUST be copied character-for-character from the exact value shown after \"Side B sourceId:\".",
+  "- sourceId is not messageId.",
+  "- sourceId is not sessionId.",
+  "- sourceId is not a ReferenceItem ID or reference-row ID.",
+  "- Never construct or infer a sourceId.",
+  "- Never swap the Side A and Side B source IDs; keep Side A and Side B source IDs ordered as shown.",
+  "",
+  "EXACT QUOTE AUTHORITY:",
+  "- exactQuote MUST be copied character-for-character from the corresponding side's decoded sourceText.",
+  "- Never paraphrase, normalize, summarize, correct grammar, or reconstruct text.",
+  "- Preserve punctuation, capitalization, spacing, and contractions exactly.",
+  "- exactQuote MUST be a contiguous substring of the decoded sourceText.",
+  "- Side A / Side B sourceText appears as JSON in the user prompt; copy the decoded string content only — do not copy the JSON quotation marks that merely delimit sourceText.",
+  "- Do not invent wording that appears only in normalizedProposition or rationale.",
+  "- When the entire source unit supports the proposition, the safest valid quote is the entire sourceText copied exactly.",
+  "",
+  "OFFSETS:",
   "- startOffset/endOffset are zero-based, start inclusive, end exclusive, and MUST satisfy sourceText.slice(startOffset, endOffset) === exactQuote.",
-  "- Prefer quoting the full sourceText when the whole unit is the evidence.",
+  "",
   "- qualifications must be a non-empty string; use the literal \"none\" when there are no material qualifiers.",
   "- Never invent wording that does not appear in the sourceText.",
   "",
@@ -292,7 +308,7 @@ describe("CEQR-012 corrected live failure shape (coarse, receipt-faithful)", () 
   });
 });
 
-describe("CEQR-012 prompt provenance (CEQR-011 addendum unchanged)", () => {
+describe("CEQR-012 prompt provenance (live addendum identity)", () => {
   it("generic diagnostics contain no live-addendum provenance claim", async () => {
     const { sideA, sideB } = sideUnits();
     const adjudication = await adjudicateContradiction({
@@ -326,7 +342,7 @@ describe("CEQR-012 prompt provenance (CEQR-011 addendum unchanged)", () => {
     );
   });
 
-  it("live adapter bundle reports landed v1 addendum version", async () => {
+  it("live adapter bundle reports current v2 addendum version", async () => {
     const { bundle } = await buildInjectedAdapters({
       adjudicatorHandler: async () => ({
         ok: true,
@@ -342,14 +358,14 @@ describe("CEQR-012 prompt provenance (CEQR-011 addendum unchanged)", () => {
       }),
     });
     expect(bundle.adjudicatorPromptAddendumVersion).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v1",
+      "contradiction-live-adjudicator-prompt-addendum-v2",
     );
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v1",
+      "contradiction-live-adjudicator-prompt-addendum-v2",
     );
   });
 
-  it("provider system prompt remains the exact CEQR-011 addendum; user prompt and object unchanged", async () => {
+  it("provider system prompt is the CEQR-014 v2 addendum; user prompt and object unchanged", async () => {
     const object = { keep: "me" };
     const userPrompt = 'Side A sourceText: "x"\nSide B sourceText: "y"';
     let capturedSystem: string | undefined;
@@ -377,7 +393,7 @@ describe("CEQR-012 prompt provenance (CEQR-011 addendum unchanged)", () => {
       expect(result.object).toBe(object);
     }
     expect(capturedPrompt).toBe(userPrompt);
-    expect(capturedSystem).toBe(["base", LANDED_CEQR011_ADDENDUM].join("\n"));
+    expect(capturedSystem).toBe(["base", LANDED_CEQR014_ADDENDUM].join("\n"));
     expect(capturedSystem).not.toContain("UTF-16");
     expect(capturedSystem).not.toContain("sourceTextLengthChars");
     expect(capturedSystem).not.toContain("NEUTRAL FORMATTING EXAMPLE");
