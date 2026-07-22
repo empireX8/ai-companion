@@ -1,0 +1,102 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-LIVE-EVIDENCE-PROMPT-RERUN-001",
+  "campaignSlice": "CEQR-015",
+  "exactBase": "989886124fb6885d433acdf567c4d50c298f588e",
+  "classification": "HOLD_LIVE_EVIDENCE_FAILURE_PERSISTS",
+  "optInEnv": "RUN_LIVE_CONTRADICTION_PROVIDER_PROOF",
+  "liveCommandCountThisSlice": 1,
+  "liveProviderAttemptsThisSlice": 3,
+  "executionTimestampStartUtc": "2026-07-22T11:17:41Z",
+  "executionTimestampEndUtc": "2026-07-22T11:17:58Z",
+  "processExitCode": 4,
+  "providerId": "openai",
+  "adjudicatorModelId": "gpt-4o-mini",
+  "refereeModelId": "gpt-4o-mini",
+  "adjudicatorPromptAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v2",
+  "providerAttempts": {
+    "adjudicator": 3,
+    "referee": 0,
+    "total": 3,
+    "maxTotalCalls": 8,
+    "budgetRemaining": 5
+  },
+  "maxRetries": 0,
+  "timeoutMs": 45000,
+  "runtimePromptChangedDuringSlice": false,
+  "requestPromptChanged": false,
+  "providerOutputMutation": false,
+  "validationWeakened": false,
+  "sourceLengthMetadataAdded": false,
+  "fabricatedQuoteRecurrence": true,
+  "sourceIdMismatchRecurrence": true,
+  "realDatabaseMutation": false,
+  "existing25RowsUntouched": true,
+  "refereeLiveExecutionObtained": false,
+  "injectedWriterInvoked": false,
+  "injectedWriteExecuted": false,
+  "productionIngestionWired": false,
+  "productionReady": false,
+  "accountGate": {
+    "beforeMatchesExpected": true,
+    "afterMatchesExpected": true,
+    "beforeAfterEqual": true,
+    "before": {
+      "contradictionNodeTotal": 25,
+      "candidateTotal": 25,
+      "evidenceSpans": 5941,
+      "completeExactDualSideRows": 0,
+      "invalidPartialRows": 0,
+      "legacyIncompleteRows": 25,
+      "completePairDuplicateGroups": 0
+    },
+    "after": {
+      "contradictionNodeTotal": 25,
+      "candidateTotal": 25,
+      "evidenceSpans": 5941,
+      "completeExactDualSideRows": 0,
+      "invalidPartialRows": 0,
+      "legacyIncompleteRows": 25,
+      "completePairDuplicateGroups": 0
+    }
+  },
+  "perCase": {
+    "clear_contradiction_candidate": {
+      "earliestGate": "deterministic_validation",
+      "gateStoppedAt": "selection",
+      "validationErrorCodes": [
+        "fabricated_quote",
+        "clear_contradiction_requires_valid_spans",
+        "validation_failed"
+      ],
+      "exactEvidenceClaimsValid": false,
+      "deterministicEvidenceValidationPassed": false,
+      "classA": false,
+      "refereeReached": false
+    },
+    "compatible_contextual": {
+      "earliestGate": "deterministic_validation",
+      "gateStoppedAt": "selection",
+      "validationErrorCodes": [
+        "fabricated_quote",
+        "validation_failed"
+      ],
+      "exactEvidenceClaimsValid": false,
+      "deterministicEvidenceValidationPassed": false,
+      "classA": false,
+      "refereeReached": false
+    },
+    "ambiguous_insufficient": {
+      "earliestGate": "deterministic_validation",
+      "gateStoppedAt": "selection",
+      "validationErrorCodes": [
+        "source_id_mismatch",
+        "validation_failed"
+      ],
+      "exactEvidenceClaimsValid": false,
+      "deterministicEvidenceValidationPassed": false,
+      "classA": false,
+      "refereeReached": false
+    }
+  }
+}
