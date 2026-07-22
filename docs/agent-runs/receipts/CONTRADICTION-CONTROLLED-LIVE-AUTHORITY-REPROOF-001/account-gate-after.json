@@ -1,0 +1,38 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-CONTROLLED-LIVE-AUTHORITY-REPROOF-001",
+  "campaignSlice": "CEQR-017",
+  "label": "after",
+  "userId": "[REDACTED_ACCOUNT_ID]",
+  "queriedAt": "2026-07-22T19:01:37.640Z",
+  "mode": "read_only",
+  "mutationsPerformed": false,
+  "decisionPostCalled": false,
+  "writerInvokedAgainstAccount": false,
+  "confirmDismissCalled": false,
+  "liveProofWroteToAccount": false,
+  "expected": {
+    "contradictionNodeTotal": 25,
+    "candidateTotal": 25,
+    "evidenceSpans": 5941,
+    "completeExactDualSideRows": 0,
+    "invalidPartialRows": 0,
+    "legacyIncompleteRows": 25,
+    "completePairDuplicateGroups": 0
+  },
+  "observed": {
+    "contradictionNodeTotal": 25,
+    "candidateTotal": 25,
+    "evidenceSpans": 5941,
+    "contradictionNodesByStatus": {
+      "candidate": 25
+    },
+    "lineageCounts": {
+      "complete_exact_dual_side": 0,
+      "legacy_incomplete": 25,
+      "invalid_partial": 0
+    },
+    "completePairDuplicateGroups": 0
+  },
+  "matchesExpected": true
+}

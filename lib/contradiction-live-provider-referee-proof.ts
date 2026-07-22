@@ -662,6 +662,26 @@ export function evaluateLiveProofClassification(args: {
   return "HOLD_LIVE_SEMANTIC_PROOF_NOT_OBTAINED";
 }
 
+/**
+ * Optional backward-compatible case observer (CEQR-017 diagnostics).
+ * Must not mutate provider output or harness rows.
+ */
+export type LiveProofCaseObserverEvent = {
+  synthetic: LiveSyntheticCase;
+  currentMessage: CurrentMessageSource | null;
+  references: SameSessionReferenceRow[] | null;
+  result: ControlledNaturalEntryProofResult | null;
+  errorMessage: string | null;
+  status: LiveCaseExecutionStatus;
+  caseReceipt: LiveCaseReceipt;
+  harnessNodes: LiveInMemoryHarness["nodes"];
+  harnessSpans: ContradictionRepairedSpanRow[];
+};
+
+export type LiveProofCaseObserver = {
+  afterCase?: (event: LiveProofCaseObserverEvent) => void;
+};
+
 export type RunLiveProofArgs = {
   env?: Record<string, string | undefined>;
   cases?: readonly LiveSyntheticCase[];
@@ -670,7 +690,29 @@ export type RunLiveProofArgs = {
    * Live script omits this and constructs real OpenAI adapters.
    */
   adapters?: ContradictionLiveAdapterBundle;
+  /**
+   * Optional factory used when `adapters` is omitted (production path).
+   * Tests may inject this to exercise the real construction path without
+   * pre-supplying adapters.
+   */
+  createAdapters?: (config: {
+    adjudicatorModelId: string;
+    refereeModelId: string;
+    timeoutMs: number;
+    maxTotalCalls: number;
+  }) => Promise<ContradictionLiveAdapterBundle>;
+  /**
+   * Called after adapters are created (injected or constructed).
+   * May wrap runners for diagnostics; must not mutate provider output.
+   */
+  instrumentAdapters?: (
+    adapters: ContradictionLiveAdapterBundle,
+  ) => ContradictionLiveAdapterBundle;
+  /** Called immediately before each case natural-entry invocation. */
+  beforeCase?: (synthetic: LiveSyntheticCase) => void;
   abortSignal?: AbortSignal;
+  /** Optional non-mutating diagnostics observer (CEQR-017). */
+  caseObserver?: LiveProofCaseObserver;
 };
 
 /**
@@ -709,14 +751,23 @@ export async function runContradictionLiveProviderRefereeProof(
   }
 
   const config = configResult.config;
-  const adapters =
+  const createdAdapters =
     args.adapters ??
-    (await createOpenAiContradictionLiveAdapters({
-      adjudicatorModelId: config.adjudicatorModelId,
-      refereeModelId: config.refereeModelId,
-      timeoutMs: config.timeoutMs,
-      maxTotalCalls: config.maxTotalCalls,
-    }));
+    (await (args.createAdapters
+      ? args.createAdapters({
+          adjudicatorModelId: config.adjudicatorModelId,
+          refereeModelId: config.refereeModelId,
+          timeoutMs: config.timeoutMs,
+          maxTotalCalls: config.maxTotalCalls,
+        })
+      : createOpenAiContradictionLiveAdapters({
+          adjudicatorModelId: config.adjudicatorModelId,
+          refereeModelId: config.refereeModelId,
+          timeoutMs: config.timeoutMs,
+          maxTotalCalls: config.maxTotalCalls,
+        })));
+  const adapters =
+    args.instrumentAdapters?.(createdAdapters) ?? createdAdapters;
 
   const harness = createLiveProofInMemoryHarness();
   const cases = args.cases ?? LIVE_SYNTHETIC_CASES;
@@ -730,7 +781,7 @@ export async function runContradictionLiveProviderRefereeProof(
     }
 
     if (adapters.callBudget.remaining() <= 0) {
-      caseReceipts.push({
+      const skippedReceipt: LiveCaseReceipt = {
         caseId: synthetic.id,
         status: "skipped_budget",
         proofOutcome: null,
@@ -749,6 +800,18 @@ export async function runContradictionLiveProviderRefereeProof(
         harnessSpanCountAfter: harness.snapshot().spans,
         gateStoppedAt: null,
         sanitizedAdjudicationDiagnostics: null,
+      };
+      caseReceipts.push(skippedReceipt);
+      args.caseObserver?.afterCase?.({
+        synthetic,
+        currentMessage: null,
+        references: null,
+        result: null,
+        errorMessage: skippedReceipt.failureMessage,
+        status: "skipped_budget",
+        caseReceipt: skippedReceipt,
+        harnessNodes: [...harness.nodes],
+        harnessSpans: [...harness.spans],
       });
       continue;
     }
@@ -758,6 +821,7 @@ export async function runContradictionLiveProviderRefereeProof(
     }
 
     const seeded = harness.seedCase(synthetic);
+    args.beforeCase?.(synthetic);
     const started = Date.now();
     const beforeAdj = adapters.callBudget.adjudicatorCalls();
     const beforeRef = adapters.callBudget.refereeCalls();
@@ -812,6 +876,18 @@ export async function runContradictionLiveProviderRefereeProof(
         gateStoppedAt: null,
         sanitizedAdjudicationDiagnostics: null,
       });
+      const failedReceipt = caseReceipts[caseReceipts.length - 1]!;
+      args.caseObserver?.afterCase?.({
+        synthetic,
+        currentMessage: seeded.currentMessage,
+        references: seeded.references,
+        result: null,
+        errorMessage: message,
+        status: "provider_failed",
+        caseReceipt: failedReceipt,
+        harnessNodes: [...harness.nodes],
+        harnessSpans: [...harness.spans],
+      });
       if (mutated) {
         break;
       }
@@ -827,7 +903,7 @@ export async function runContradictionLiveProviderRefereeProof(
       presentation?.sideB.availability === "available"
         ? presentation.sideB.exactQuote
         : null;
-    caseReceipts.push({
+    const successReceipt: LiveCaseReceipt = {
       caseId: synthetic.id,
       status: mapCaseStatus(result),
       proofOutcome: result.outcome,
@@ -849,6 +925,18 @@ export async function runContradictionLiveProviderRefereeProof(
         pickSanitizedDiagnosticsFromRejectionSummaries(
           result.selection.rejectionSummaries,
         ),
+    };
+    caseReceipts.push(successReceipt);
+    args.caseObserver?.afterCase?.({
+      synthetic,
+      currentMessage: seeded.currentMessage,
+      references: seeded.references,
+      result,
+      errorMessage: null,
+      status: successReceipt.status,
+      caseReceipt: successReceipt,
+      harnessNodes: [...harness.nodes],
+      harnessSpans: [...harness.spans],
     });
   }
 
@@ -940,6 +1028,7 @@ export async function runContradictionLiveProviderRefereeProofForTests(args: {
   cases?: readonly LiveSyntheticCase[];
   env?: Record<string, string | undefined>;
   abortSignal?: AbortSignal;
+  caseObserver?: LiveProofCaseObserver;
 }): Promise<LiveProofResult> {
   return runContradictionLiveProviderRefereeProof({
     env: {
@@ -952,6 +1041,7 @@ export async function runContradictionLiveProviderRefereeProofForTests(args: {
     adapters: args.adapters,
     cases: args.cases,
     abortSignal: args.abortSignal,
+    caseObserver: args.caseObserver,
   });
 }
 

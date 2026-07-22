@@ -1,0 +1,81 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-CONTROLLED-LIVE-AUTHORITY-REPROOF-001",
+  "campaignSlice": "CEQR-017",
+  "phase": "phase1_pre_live_third_independent_review_correction",
+  "classification": "PHASE1_PRE_LIVE_READY",
+  "priorIndependentReviewHold": "HOLD_PHASE2_PRELIVE_CONTRACT_INCOMPLETE",
+  "exactBase": "f2fbab22a5935962d2b1456874a24ddba4b9f098",
+  "exactHead": "f2fbab22a5935962d2b1456874a24ddba4b9f098",
+  "branch": "desktop-contradiction-controlled-live-authority-reproof-001",
+  "liveExecuted": false,
+  "liveProviderAttempts": 0,
+  "runLiveOptInSet": false,
+  "realDatabaseQueries": 0,
+  "realDatabaseMutation": false,
+  "accountGateBeforeExecuted": false,
+  "accountGateAfterExecuted": false,
+  "accountGates": "NOT_RUN",
+  "existing25RowsUntouched": true,
+  "phase2Authorised": false,
+  "productionReady": false,
+  "fixturesByteIdenticalToCeqr015": true,
+  "capabilityBoundaryPrivate": true,
+  "exportedLiveTestBypassRemoved": true,
+  "onlyProductionPhase2Export": "runCeqr017Phase2Orchestration",
+  "onlyLiveExecutable": "scripts/run-ceqr017-phase2-orchestrator.ts",
+  "finalReceiptWrittenOnceAfterFinally": true,
+  "claimWinnerOwnsPermanentWrites": true,
+  "proposedCommandIncludesReadonlyAccountMapping": true,
+  "whitespaceScan": {
+    "ok": true,
+    "method": "scanCeqr017NewFiles over untracked/new files + JSON parse"
+  },
+  "expectedRuntimeIdentities": {
+    "providerId": "openai",
+    "adjudicatorModelId": "gpt-4o-mini",
+    "refereeModelId": "gpt-4o-mini",
+    "maxRetries": 0,
+    "timeoutMs": 45000,
+    "maxTotalCalls": 8,
+    "schemaVersion": "contradiction-adjudication-schema-v2",
+    "promptVersion": "contradiction-adjudication-prompt-v3",
+    "liveAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v3"
+  },
+  "actualRuntimeIdentitiesObserved": false,
+  "runtimeIdentitiesMatched": null,
+  "honestNonClaims": [
+    "Phase 2 not authorised",
+    "no live provider run",
+    "no real account gate execution",
+    "actual runtime identities not observed from live"
+  ],
+  "validation": {
+    "focusedCeqr017": {
+      "passed": 27,
+      "failed": 0
+    },
+    "contradictionSweep": {
+      "files": 34,
+      "passed": 580,
+      "failed": 0
+    },
+    "fullVitest": {
+      "testFilesFailed": 5,
+      "testFilesPassed": 322,
+      "testsFailed": 7,
+      "testsPassed": 4406,
+      "knownBaselineAtCeqr016": {
+        "testFilesFailed": 5,
+        "testFilesPassed": 321,
+        "testsFailed": 7,
+        "testsPassed": 4380
+      },
+      "knownFailureSetExpanded": false,
+      "honestClassification": "BASELINE_AWARE_KNOWN_FAILURES_REMAIN_NO_REGRESSION"
+    },
+    "tscNoEmit": "pass",
+    "changedFileEslint": "pass",
+    "productionBuild": "pass"
+  }
+}
