@@ -7,7 +7,10 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
 
-import type { ContradictionModelResult } from "../contradiction-adjudicator";
+import type {
+  ContradictionModelResult,
+  ContradictionModelTransportResult,
+} from "../contradiction-adjudicator";
 import {
   KERNEL_FIRST_PROOF_OBJECT,
 } from "../contradiction-adjudicator";
@@ -50,11 +53,11 @@ function source(
 function baseModelResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-  overrides: Partial<ContradictionModelResult> & {
+  overrides: Partial<ContradictionModelTransportResult> & {
     quoteA?: string;
     quoteB?: string;
   } = {},
-): ContradictionModelResult {
+): ContradictionModelTransportResult {
   const quoteA = overrides.quoteA ?? sideA.sourceText;
   const quoteB = overrides.quoteB ?? sideB.sourceText;
   const claimA =
@@ -123,7 +126,7 @@ function baseModelResult(
 }
 
 function countingRunner(
-  bySourceId: Record<string, ContradictionModelResult | "fail" | (() => ContradictionModelResult)>,
+  bySourceId: Record<string, ContradictionModelTransportResult | ContradictionModelResult | "fail" | (() => ContradictionModelTransportResult | ContradictionModelResult)>,
 ): { runner: StructuredModelRunner; callCount: () => number; calledSourceIds: () => string[] } {
   let calls = 0;
   const called: string[] = [];
@@ -161,7 +164,7 @@ function countingRunner(
 }
 
 function fixedRunner(
-  result: ContradictionModelResult | "fail",
+  result: ContradictionModelTransportResult | ContradictionModelResult | "fail",
 ): { runner: StructuredModelRunner; callCount: () => number } {
   let calls = 0;
   return {
@@ -728,7 +731,7 @@ describe("CEQR-004 zero-or-one selection", () => {
     expect(result.selectedPair?.persistable).toBe(false);
   });
 
-  it("15. VALIDATION FAILURE — fabricated quote → zero selected", async () => {
+  it("15. VALIDATION FAILURE — invalid offsets → zero selected (CEQR-016)", async () => {
     const a1 = source({
       sourceId: "val-a",
       sessionId: SESSION_B,
@@ -739,10 +742,8 @@ describe("CEQR-004 zero-or-one selection", () => {
     const { runner } = fixedRunner(
       baseModelResult(a1, sideB, {
         evidenceClaimA: {
-          sourceId: a1.sourceId,
-          exactQuote: "fabricated quote that is not in source",
           startOffset: 0,
-          endOffset: 38,
+          endOffset: a1.sourceText.length + 2,
         },
       }),
     );

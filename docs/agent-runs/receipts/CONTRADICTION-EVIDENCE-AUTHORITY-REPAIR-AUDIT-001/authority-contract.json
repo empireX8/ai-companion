@@ -1,0 +1,63 @@
+{
+  "modelOwned": [
+    "semanticClassification",
+    "contradictionReasoning",
+    "propositionNormalization",
+    "evidenceSideSelection",
+    "startOffset",
+    "endOffset",
+    "rationale",
+    "confidence"
+  ],
+  "codeOwned": [
+    "sourceId",
+    "authoritativeSourceText",
+    "exactQuoteDerivedFromSlice",
+    "sideASideBOrdering",
+    "exactClaimConstruction",
+    "deterministicEvidenceValidation",
+    "persistenceLineageConsumption"
+  ],
+  "transportEvidenceShape": {
+    "evidenceClaimA": [
+      "startOffset",
+      "endOffset"
+    ],
+    "evidenceClaimB": [
+      "startOffset",
+      "endOffset"
+    ]
+  },
+  "domainEvidenceShape": {
+    "ExactEvidenceClaim": [
+      "sourceId",
+      "exactQuote",
+      "startOffset",
+      "endOffset"
+    ]
+  },
+  "binding": {
+    "sourceId": "KernelSourceUnit.sourceId",
+    "exactQuote": "sourceText.slice(startOffset, endOffset)",
+    "failClosed": true,
+    "noClamp": true,
+    "noFuzzy": true,
+    "noQuoteSearch": true,
+    "noFullSourceFallback": true,
+    "rawProviderObjectImmutable": true
+  },
+  "contractHonesty": {
+    "genericKernelContractChanged": false,
+    "contradictionProviderTransportContractChanged": true,
+    "transportSchemaChanged": true,
+    "domainExactEvidenceClaimShapeChanged": false,
+    "kernelAdjudicationEnvelopeChanged": false,
+    "KERNEL_CONTRACT_VERSION": "orvek-intelligence-kernel-v1"
+  },
+  "independentReviewCorrection": {
+    "propositionFieldsSchemaRestored": true,
+    "transportVsDomainNamingRestored": true,
+    "selectionForSubstringRemovedFromProduction": true,
+    "realInjectedWriterProofAdded": true
+  }
+}

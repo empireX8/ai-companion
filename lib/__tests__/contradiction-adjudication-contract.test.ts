@@ -597,7 +597,7 @@ describe("CEQR-001 contradiction adjudication contract", () => {
     assertNoPersistenceDecision(result);
   });
 
-  it("K. FABRICATED QUOTE — deterministic span validation failure", async () => {
+  it("K. PROVIDER-AUTHORED exactQuote is ignored — code derives quote from offsets (CEQR-016)", async () => {
     const sideA = source({
       sourceId: "src-fab-a",
       label: "A",
@@ -617,19 +617,51 @@ describe("CEQR-001 contradiction adjudication contract", () => {
         ...good,
         evidenceClaimA: {
           sourceId: sideA.sourceId,
-          // In-bounds offsets into Side A, but fabricated quote text.
+          // Fabricated quote text is ignored; offsets select the authoritative slice.
           exactQuote: "I always drink alcohol",
           startOffset: 0,
-          endOffset: sideA.sourceText.length - 1,
+          endOffset: sideA.sourceText.length,
+        },
+      }),
+      now: FIXED_NOW,
+    });
+
+    expect(result.outcome).toBe("semantic_accepted");
+    expect(result.semantic?.evidenceClaimA.exactQuote).toBe(sideA.sourceText);
+    expect(result.semantic?.evidenceClaimA.exactQuote).not.toBe(
+      "I always drink alcohol",
+    );
+  });
+
+  it("K2. INVALID OFFSETS still fail closed (CEQR-016)", async () => {
+    const sideA = source({
+      sourceId: "src-fab-a2",
+      label: "A",
+      sourceText: "I never drink alcohol.",
+    });
+    const sideB = source({
+      sourceId: "src-fab-b2",
+      label: "B",
+      sourceText: "I drank alcohol last night.",
+    });
+
+    const good = baseModelResult(sideA, sideB);
+    const result = await adjudicateContradiction({
+      sideA,
+      sideB,
+      modelRunner: fakeRunner({
+        ...good,
+        evidenceClaimA: {
+          startOffset: 0,
+          endOffset: sideA.sourceText.length + 5,
         },
       }),
       now: FIXED_NOW,
     });
 
     expect(result.outcome).toBe("validation_failed");
-    expect(result.errorCode).toBe("validation_failed");
     expect(
-      result.validation.errors.some((e) => /quote_mismatch|fabricated_quote/i.test(e)),
+      result.validation.errors.some((e) => /invalid_offsets/i.test(e)),
     ).toBe(true);
     expect(result.semantic).toBeNull();
   });
@@ -668,7 +700,7 @@ describe("CEQR-001 contradiction adjudication contract", () => {
     );
   });
 
-  it("M. WRONG SOURCE ID — deterministic validation failure", async () => {
+  it("M. PROVIDER-AUTHORED sourceId is ignored — code owns Side A/B identity (CEQR-016)", async () => {
     const sideA = source({
       sourceId: "src-id-a",
       label: "A",
@@ -694,10 +726,11 @@ describe("CEQR-001 contradiction adjudication contract", () => {
       now: FIXED_NOW,
     });
 
-    expect(result.outcome).toBe("validation_failed");
-    expect(
-      result.validation.errors.some((e) => /source_id_mismatch|cross_side/i.test(e)),
-    ).toBe(true);
+    expect(result.outcome).toBe("semantic_accepted");
+    expect(result.semantic?.evidenceClaimA.sourceId).toBe("src-id-a");
+    expect(result.semantic?.evidenceClaimA.sourceId).not.toBe(
+      "totally-wrong-source",
+    );
   });
 
   it("N. CLASS A WITHOUT BOTH VALID SPANS — rejected/abstained", async () => {
@@ -876,10 +909,10 @@ describe("CEQR-001 contradiction adjudication contract", () => {
 
     expect(KERNEL_CONTRACT_VERSION).toBe("orvek-intelligence-kernel-v1");
     expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION).toBe(
-      "contradiction-adjudication-schema-v1",
+      "contradiction-adjudication-schema-v2",
     );
     expect(CONTRADICTION_ADJUDICATION_PROMPT_VERSION).toBe(
-      "contradiction-adjudication-prompt-v2",
+      "contradiction-adjudication-prompt-v3",
     );
     expect(result.audit.kernelContractVersion).toBe(KERNEL_CONTRACT_VERSION);
     expect(result.audit.schemaVersion).toBe(
@@ -924,7 +957,7 @@ describe("CEQR-001 contradiction adjudication contract", () => {
     );
   });
 
-  it("rejects Side A evidence pointing at Side B source", async () => {
+  it("provider-authored Side A claim pointing at Side B is ignored; Side A identity is bound", async () => {
     const sideA = source({
       sourceId: "src-cross-a",
       label: "A",
@@ -946,16 +979,16 @@ describe("CEQR-001 contradiction adjudication contract", () => {
           sourceId: sideB.sourceId,
           exactQuote: sideB.sourceText,
           startOffset: 0,
-          endOffset: sideB.sourceText.length,
+          endOffset: sideA.sourceText.length,
         },
       }),
       now: FIXED_NOW,
     });
 
-    expect(result.outcome).toBe("validation_failed");
-    expect(result.validation.errors.some((e) => /cross_side_source/i.test(e))).toBe(
-      true,
-    );
+    expect(result.outcome).toBe("semantic_accepted");
+    expect(result.semantic?.evidenceClaimA.sourceId).toBe(sideA.sourceId);
+    expect(result.semantic?.evidenceClaimA.sourceId).not.toBe(sideB.sourceId);
+    expect(result.semantic?.evidenceClaimA.exactQuote).toBe(sideA.sourceText);
   });
 });
 
@@ -2009,7 +2042,7 @@ describe("CEQR-003 context and qualifier preservation", () => {
     assertNoPersistenceDecision(result);
   });
 
-  it("21. EXACT EVIDENCE PROVENANCE — quote/offset/side still fail closed", async () => {
+  it("21. EXACT EVIDENCE PROVENANCE — invalid offsets fail closed; provider quote/sourceId ignored", async () => {
     const sideA = source({
       sourceId: "ceqr3-prov-a",
       label: "A",
@@ -2039,7 +2072,7 @@ describe("CEQR-003 context and qualifier preservation", () => {
     expect(pass.semantic?.evidenceClaimA.exactQuote).toBe("usually");
     expect(pass.semantic?.evidenceClaimB.exactQuote).toBe("once at a birthday");
 
-    const fabricated = await adjudicateContradiction({
+    const providerFabricatedQuoteIgnored = await adjudicateContradiction({
       sideA,
       sideB,
       modelRunner: fakeRunner({
@@ -2053,7 +2086,13 @@ describe("CEQR-003 context and qualifier preservation", () => {
       }),
       now: FIXED_NOW,
     });
-    expect(fabricated.outcome).toBe("validation_failed");
+    expect(providerFabricatedQuoteIgnored.outcome).toBe("semantic_accepted");
+    expect(providerFabricatedQuoteIgnored.semantic?.evidenceClaimA.exactQuote).toBe(
+      sideA.sourceText.slice(0, 7),
+    );
+    expect(
+      providerFabricatedQuoteIgnored.semantic?.evidenceClaimA.exactQuote,
+    ).not.toBe("always avoid sugar");
 
     const badOffsets = await adjudicateContradiction({
       sideA,
@@ -2061,8 +2100,6 @@ describe("CEQR-003 context and qualifier preservation", () => {
       modelRunner: fakeRunner({
         ...good,
         evidenceClaimB: {
-          sourceId: sideB.sourceId,
-          exactQuote: "once at a birthday",
           startOffset: 20,
           endOffset: 5,
         },
@@ -2070,8 +2107,11 @@ describe("CEQR-003 context and qualifier preservation", () => {
       now: FIXED_NOW,
     });
     expect(badOffsets.outcome).toBe("validation_failed");
+    expect(
+      badOffsets.validation.errors.some((e) => /invalid_offsets/i.test(e)),
+    ).toBe(true);
 
-    const wrongSide = await adjudicateContradiction({
+    const wrongSideIgnored = await adjudicateContradiction({
       sideA,
       sideB,
       modelRunner: fakeRunner({
@@ -2080,12 +2120,15 @@ describe("CEQR-003 context and qualifier preservation", () => {
           sourceId: sideB.sourceId,
           exactQuote: sideB.sourceText,
           startOffset: 0,
-          endOffset: sideB.sourceText.length,
+          endOffset: "usually".length,
         },
       }),
       now: FIXED_NOW,
     });
-    expect(wrongSide.outcome).toBe("validation_failed");
+    expect(wrongSideIgnored.outcome).toBe("semantic_accepted");
+    expect(wrongSideIgnored.semantic?.evidenceClaimA.sourceId).toBe(
+      sideA.sourceId,
+    );
   });
 
   it("22. STRUCTURAL BOUNDARY — no new adjudicator/kernel imports on runtime paths", () => {

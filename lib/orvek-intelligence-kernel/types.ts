@@ -13,7 +13,12 @@ export type SourceTextOffsets = {
   endOffset: number;
 };
 
-/** Exact evidence span claim proposed by a model and validated deterministically. */
+/**
+ * Deterministically bound and validated domain exact-evidence claim.
+ * Constructed from authoritative KernelSourceUnit.sourceId, authoritative
+ * sourceText, and model-selected validated offsets — not proposed as a whole
+ * by the model.
+ */
 export type ExactEvidenceClaim = SourceTextOffsets & {
   sourceId: string;
   exactQuote: string;

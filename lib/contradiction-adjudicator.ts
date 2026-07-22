@@ -1,25 +1,32 @@
 /**
- * ContradictionNode semantic adjudicator (CEQR-001 + CEQR-003).
+ * ContradictionNode semantic adjudicator (CEQR-001 + CEQR-003 + CEQR-016).
  *
- * Model-assisted structured adjudication + deterministic post-validation.
- * CEQR-003 strengthens context/qualifier preservation in the prompt contract
- * and fail-closed internal consistency gates. Returns an inspectable
- * adjudication result only — no persistence, no candidate eligibility
- * decision, no createCandidate field.
+ * Model-assisted structured adjudication + deterministic evidence binding +
+ * deterministic post-validation. CEQR-016 makes sourceId and exactQuote
+ * code-owned: the provider transport selects offsets only; code binds
+ * authoritative source identity and derives exactQuote from sourceText.
+ *
+ * Returns an inspectable adjudication result only — no persistence, no
+ * candidate eligibility decision, no createCandidate field.
  *
  * Depends on an injectable StructuredModelRunner (provider-agnostic).
  */
 
 import {
   CONTRADICTION_ADJUDICATION_PROMPT_VERSION,
+  CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V2,
   CONTRADICTION_ADJUDICATION_SCHEMA_VERSION,
+  CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V1,
   CONTRADICTION_CLASSIFICATIONS,
   KERNEL_CONTRACT_VERSION,
   KERNEL_FIRST_PROOF_OBJECT,
   NON_CONTRADICTION_NODE_CLASSIFICATIONS,
   type ContradictionClassification,
 } from "./orvek-intelligence-kernel/contracts";
-import { validateDualSideEvidenceClaims } from "./orvek-intelligence-kernel/evidence-validation";
+import {
+  bindDualSideEvidenceClaims,
+  validateDualSideEvidenceClaims,
+} from "./orvek-intelligence-kernel/evidence-validation";
 import type { StructuredModelRunner } from "./orvek-intelligence-kernel/model-runner";
 import {
   defaultRefereeStatus,
@@ -30,9 +37,10 @@ import {
   type ObjectivityRefereeResult,
 } from "./orvek-intelligence-kernel/objectivity-referee";
 import {
-  contradictionModelResultSchema,
-  parseContradictionModelResult,
+  contradictionModelTransportResultSchema,
+  parseContradictionModelTransportResult,
   type ContradictionModelResult,
+  type ContradictionModelTransportResult,
 } from "./orvek-intelligence-kernel/structured-output";
 import type {
   DeterministicValidationResult,
@@ -44,13 +52,19 @@ import type {
 
 export {
   CONTRADICTION_ADJUDICATION_PROMPT_VERSION,
+  CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V2,
   CONTRADICTION_ADJUDICATION_SCHEMA_VERSION,
+  CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V1,
   CONTRADICTION_CLASSIFICATIONS,
   KERNEL_CONTRACT_VERSION,
   KERNEL_FIRST_PROOF_OBJECT,
   NON_CONTRADICTION_NODE_CLASSIFICATIONS,
 };
-export type { ContradictionClassification, ContradictionModelResult };
+export type {
+  ContradictionClassification,
+  ContradictionModelResult,
+  ContradictionModelTransportResult,
+};
 
 export type ContradictionAdjudicationInput = {
   sideA: KernelSourceUnit;
@@ -149,10 +163,12 @@ export function buildContradictionAdjudicationPrompt(
     "- Candidate volume must never be preserved by lowering the meaning standard.",
     "- Fill actor, subject, timeframe, modality, qualifications, and contextAndScope with non-blank truthful values for each classified or abstaining structured result.",
     "",
-    "Evidence claims:",
-    "- For each proposition provide sourceId, exactQuote, startOffset, endOffset.",
-    "- Offsets are zero-based, start inclusive, end exclusive, measured against the exact supplied source text.",
-    "- Quotes must be exact substrings of the supplied source text at those offsets.",
+    "Evidence span selections (provider transport):",
+    "- For each side provide ONLY startOffset and endOffset.",
+    "- Do NOT author sourceId or exactQuote; deterministic code owns source identity and derives exactQuote from the authoritative Side A / Side B sourceText.",
+    "- Offsets are zero-based, start inclusive, end exclusive, measured against the exact supplied source text for that ordered side.",
+    "- endOffset must be greater than startOffset and must not exceed the corresponding sourceText length.",
+    "- Invalid offsets fail closed; do not invent wording outside the selected span.",
     "",
     `Prompt version: ${CONTRADICTION_ADJUDICATION_PROMPT_VERSION}`,
     `Schema version: ${CONTRADICTION_ADJUDICATION_SCHEMA_VERSION}`,
@@ -181,11 +197,11 @@ export function buildContradictionAdjudicationPrompt(
 }
 
 function requiredPropositionPresent(
-  model: ContradictionModelResult,
+  model: ContradictionModelTransportResult | ContradictionModelResult,
 ): string | null {
   const check = (
     side: "A" | "B",
-    fields: ContradictionModelResult["propositionA"],
+    fields: ContradictionModelTransportResult["propositionA"],
   ): string | null => {
     if (!fields.normalizedProposition.trim()) {
       return `Proposition ${side} normalizedProposition is empty.`;
@@ -217,7 +233,7 @@ function requiredPropositionPresent(
  * Does not decide semantic contradiction from keywords.
  */
 export function collectSemanticConsistencyErrors(
-  model: ContradictionModelResult,
+  model: ContradictionModelTransportResult | ContradictionModelResult,
 ): string[] {
   const errors: string[] = [];
   const abstentionText =
@@ -327,12 +343,12 @@ export async function adjudicateContradiction(
   );
 
   const runnerResult = await input.modelRunner.runStructured({
-    schema: contradictionModelResultSchema,
+    schema: contradictionModelTransportResultSchema,
     system,
     prompt,
     schemaName: "ContradictionAdjudication",
     schemaDescription:
-      "Structured semantic adjudication for ContradictionNode (first Orvek kernel proof object).",
+      "Structured semantic adjudication for ContradictionNode (first Orvek kernel proof object). Evidence transport is offsets-only; sourceId and exactQuote are code-owned.",
     abortSignal: input.abortSignal,
   });
 
@@ -362,7 +378,9 @@ export async function adjudicateContradiction(
     });
   }
 
-  const parsed = parseContradictionModelResult(runnerResult.object);
+  // Raw provider object remains inspectable and unmodified (CEQR-016).
+  const rawProviderObject = runnerResult.object;
+  const parsed = parseContradictionModelTransportResult(rawProviderObject);
   if (!parsed.success) {
     return envelope({
       outcome: "validation_failed",
@@ -389,60 +407,91 @@ export async function adjudicateContradiction(
     });
   }
 
-  const model = parsed.data;
+  const transport = parsed.data;
   const errors: string[] = [];
   const warnings: string[] = [];
 
   if (
-    model.proposedObjectType != null &&
-    model.proposedObjectType.trim() !== "" &&
-    !SUPPORTED_PROPOSED_OBJECT_TYPES.has(model.proposedObjectType)
+    transport.proposedObjectType != null &&
+    transport.proposedObjectType.trim() !== "" &&
+    !SUPPORTED_PROPOSED_OBJECT_TYPES.has(transport.proposedObjectType)
   ) {
     errors.push(
-      `Unsupported proposed object type: ${model.proposedObjectType}`,
+      `Unsupported proposed object type: ${transport.proposedObjectType}`,
     );
   }
 
   if (
-    model.classification !== null &&
+    transport.classification !== null &&
     !(CONTRADICTION_CLASSIFICATIONS as readonly string[]).includes(
-      model.classification,
+      transport.classification,
     )
   ) {
-    errors.push(`Invalid classification: ${String(model.classification)}`);
+    errors.push(`Invalid classification: ${String(transport.classification)}`);
   }
 
   if (
-    typeof model.confidence !== "number" ||
-    model.confidence < 0 ||
-    model.confidence > 1 ||
-    Number.isNaN(model.confidence)
+    typeof transport.confidence !== "number" ||
+    transport.confidence < 0 ||
+    transport.confidence > 1 ||
+    Number.isNaN(transport.confidence)
   ) {
-    errors.push(`Confidence out of range: ${String(model.confidence)}`);
+    errors.push(`Confidence out of range: ${String(transport.confidence)}`);
   }
 
-  const propErr = requiredPropositionPresent(model);
+  const propErr = requiredPropositionPresent(transport);
   if (propErr) errors.push(propErr);
 
-  errors.push(...collectSemanticConsistencyErrors(model));
+  errors.push(...collectSemanticConsistencyErrors(transport));
 
-  const spanResult = validateDualSideEvidenceClaims({
-    claimA: model.evidenceClaimA,
-    claimB: model.evidenceClaimB,
+  // Deterministic evidence authority: code owns sourceId; code derives exactQuote.
+  // Provider-authored sourceId/exactQuote (if present on raw object) are not consulted.
+  const bound = bindDualSideEvidenceClaims({
+    selectionA: transport.evidenceClaimA,
+    selectionB: transport.evidenceClaimB,
     sourceA: input.sideA,
     sourceB: input.sideB,
   });
-  if (!spanResult.ok) {
-    errors.push(`${spanResult.code}: ${spanResult.message}`);
+
+  let model: ContradictionModelResult | null = null;
+  if (!bound.ok) {
+    errors.push(`${bound.code}: ${bound.message}`);
+  } else {
+    model = {
+      ...transport,
+      evidenceClaimA: bound.claimA,
+      evidenceClaimB: bound.claimB,
+    };
+    const spanResult = validateDualSideEvidenceClaims({
+      claimA: model.evidenceClaimA,
+      claimB: model.evidenceClaimB,
+      sourceA: input.sideA,
+      sourceB: input.sideB,
+    });
+    if (!spanResult.ok) {
+      errors.push(`${spanResult.code}: ${spanResult.message}`);
+    }
   }
 
-  const isAbstaining = model.classification === null;
+  const isAbstaining = transport.classification === null;
 
-  if (model.classification === "clear_contradiction") {
-    if (!spanResult.ok) {
+  if (transport.classification === "clear_contradiction") {
+    if (!bound.ok || model == null) {
       errors.push(
         "clear_contradiction requires two valid exact evidence spans.",
       );
+    } else {
+      const spanResult = validateDualSideEvidenceClaims({
+        claimA: model.evidenceClaimA,
+        claimB: model.evidenceClaimB,
+        sourceA: input.sideA,
+        sourceB: input.sideB,
+      });
+      if (!spanResult.ok) {
+        errors.push(
+          "clear_contradiction requires two valid exact evidence spans.",
+        );
+      }
     }
   }
 
@@ -463,7 +512,7 @@ export async function adjudicateContradiction(
         providerId: runnerResult.providerId,
         modelId: runnerResult.modelId,
         parseValidationOutcome: "invalid",
-        semanticClassification: model.classification,
+        semanticClassification: transport.classification,
         abstentionOrErrorCode: "validation_failed",
         refereeStatus: defaultRefereeStatus(),
       }),
@@ -473,7 +522,7 @@ export async function adjudicateContradiction(
     });
   }
 
-  if (isAbstaining || model.classification === null) {
+  if (isAbstaining || transport.classification === null) {
     const validation: DeterministicValidationResult = {
       status: "valid",
       errors: [],
@@ -495,16 +544,43 @@ export async function adjudicateContradiction(
         refereeStatus: defaultRefereeStatus(),
       }),
       abstentionReason:
-        model.abstentionReason?.trim() ||
+        transport.abstentionReason?.trim() ||
         "Model abstained from classification.",
       errorCode: "model_abstained",
       errorMessage: null,
     });
   }
 
+  if (model == null) {
+    return envelope({
+      outcome: "validation_failed",
+      semantic: null,
+      validation: {
+        status: "invalid",
+        errors: ["evidence_binding_failed: domain evidence claims were not constructed."],
+        warnings,
+      },
+      refereeStatus: defaultRefereeStatus(),
+      audit: buildAudit({
+        now,
+        sourceIds,
+        providerId: runnerResult.providerId,
+        modelId: runnerResult.modelId,
+        parseValidationOutcome: "invalid",
+        semanticClassification: transport.classification,
+        abstentionOrErrorCode: "validation_failed",
+        refereeStatus: defaultRefereeStatus(),
+      }),
+      abstentionReason: null,
+      errorCode: "validation_failed",
+      errorMessage:
+        "evidence_binding_failed: domain evidence claims were not constructed.",
+    });
+  }
+
   const semantic: ValidatedContradictionSemantic = {
     ...model,
-    classification: model.classification,
+    classification: transport.classification,
   };
 
   // Objectivity Referee runs only after deterministic validation succeeds.

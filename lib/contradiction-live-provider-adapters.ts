@@ -9,7 +9,7 @@
 
 import { z } from "zod";
 
-import { contradictionModelResultSchema } from "./orvek-intelligence-kernel/structured-output";
+import { contradictionModelTransportResultSchema } from "./orvek-intelligence-kernel/structured-output";
 import {
   createAiSdkStructuredModelRunner,
   type StructuredModelRunner,
@@ -48,16 +48,20 @@ export const OBJECTIVITY_REFEREE_LIVE_PROMPT_VERSION =
   "objectivity-referee-live-prompt-v1" as const;
 
 /**
- * Live adjudicator system-addendum identity (CEQR-014 evidence-authority repair).
- * Describes the addendum; must not be injected into the provider prompt.
- * Historical CEQR-011/012/013 receipts retain v1 and must not be rewritten.
+ * Live adjudicator system-addendum identity (CEQR-016 deterministic evidence
+ * authority). Describes the addendum; must not be injected into the provider
+ * prompt. Historical CEQR-011…015 receipts retain v1/v2 and must not be rewritten.
  */
 export const CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION =
-  "contradiction-live-adjudicator-prompt-addendum-v2" as const;
+  "contradiction-live-adjudicator-prompt-addendum-v3" as const;
 
 /** Historical identity used by CEQR-011 through CEQR-013 live runs. */
 export const CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1 =
   "contradiction-live-adjudicator-prompt-addendum-v1" as const;
+
+/** Historical identity used by CEQR-014 / CEQR-015 live evidence prompt repair. */
+export const CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V2 =
+  "contradiction-live-adjudicator-prompt-addendum-v2" as const;
 
 export type ContradictionLiveIndependenceLevel =
   | "separate_call_same_provider_same_model"
@@ -134,15 +138,17 @@ export const objectivityRefereeModelResultSchema = z.object({
 });
 
 /**
- * OpenAI structured-output transport schemas.
+ * OpenAI structured-output transport schemas (CEQR-016 offsets-only evidence).
  * OpenAI requires every property key to appear in `required`. Optional Zod
  * fields are therefore expressed as required-nullable at the provider boundary
- * only. Domain code continues to validate with the landed schemas.
+ * only. Domain evidence claims are assembled after deterministic binding.
  */
 export const contradictionModelResultOpenAiStrictSchema =
-  contradictionModelResultSchema.omit({ proposedObjectType: true }).extend({
-    proposedObjectType: z.string().nullable(),
-  });
+  contradictionModelTransportResultSchema
+    .omit({ proposedObjectType: true })
+    .extend({
+      proposedObjectType: z.string().nullable(),
+    });
 
 export const objectivityRefereeModelResultOpenAiStrictSchema = z.object({
   outcome: z.enum(OBJECTIVITY_REFEREE_OUTCOMES),
@@ -206,33 +212,28 @@ export function wrapRunnerWithOpenAiStrictSchemas(
 }
 
 /**
- * CEQR-014 live evidence addendum v2.
- * Strengthens sourceId and exactQuote authority before generation.
- * Does not alter provider output after generation.
+ * CEQR-016 live evidence addendum v3 (structural companion to deterministic binding).
+ * Instructs the model to author offsets only. Does not alter provider output
+ * after generation. sourceId / exactQuote are code-owned in the adjudicator.
  */
 const LIVE_ADJUDICATOR_EVIDENCE_ADDENDUM = [
   "",
-  "LIVE PROVIDER EVIDENCE HARD RULES:",
-  "SOURCE ID AUTHORITY:",
-  "- evidenceClaimA.sourceId MUST be copied character-for-character from the exact value shown after \"Side A sourceId:\".",
-  "- evidenceClaimB.sourceId MUST be copied character-for-character from the exact value shown after \"Side B sourceId:\".",
-  "- sourceId is not messageId.",
-  "- sourceId is not sessionId.",
-  "- sourceId is not a ReferenceItem ID or reference-row ID.",
-  "- Never construct or infer a sourceId.",
-  "- Never swap the Side A and Side B source IDs; keep Side A and Side B source IDs ordered as shown.",
-  "",
-  "EXACT QUOTE AUTHORITY:",
-  "- exactQuote MUST be copied character-for-character from the corresponding side's decoded sourceText.",
-  "- Never paraphrase, normalize, summarize, correct grammar, or reconstruct text.",
-  "- Preserve punctuation, capitalization, spacing, and contractions exactly.",
-  "- exactQuote MUST be a contiguous substring of the decoded sourceText.",
-  "- Side A / Side B sourceText appears as JSON in the user prompt; copy the decoded string content only — do not copy the JSON quotation marks that merely delimit sourceText.",
-  "- Do not invent wording that appears only in normalizedProposition or rationale.",
-  "- When the entire source unit supports the proposition, the safest valid quote is the entire sourceText copied exactly.",
+  "LIVE PROVIDER EVIDENCE HARD RULES (CEQR-016 / addendum-v3):",
+  "EVIDENCE TRANSPORT AUTHORITY:",
+  "- evidenceClaimA and evidenceClaimB MUST contain ONLY startOffset and endOffset.",
+  "- Do NOT author sourceId.",
+  "- Do NOT author exactQuote.",
+  "- Deterministic code copies sourceId from the authoritative Side A / Side B units.",
+  "- Deterministic code derives exactQuote as sourceText.slice(startOffset, endOffset).",
+  "- Side A offsets apply only to Side A sourceText; Side B offsets apply only to Side B sourceText.",
+  "- Never swap Side A and Side B ordering.",
   "",
   "OFFSETS:",
-  "- startOffset/endOffset are zero-based, start inclusive, end exclusive, and MUST satisfy sourceText.slice(startOffset, endOffset) === exactQuote.",
+  "- startOffset/endOffset are zero-based, start inclusive, end exclusive.",
+  "- endOffset MUST be greater than startOffset.",
+  "- endOffset MUST NOT exceed the corresponding decoded sourceText length.",
+  "- Invalid, reversed, negative, non-integer, or out-of-range offsets fail closed.",
+  "- Do not rely on clamping, fuzzy matching, substring search, or full-source fallback.",
   "",
   "- qualifications must be a non-empty string; use the literal \"none\" when there are no material qualifiers.",
   "- Never invent wording that does not appear in the sourceText.",
@@ -247,8 +248,7 @@ const LIVE_ADJUDICATOR_EVIDENCE_ADDENDUM = [
 /**
  * Live-adjudicator prompt wrapper only.
  * Appends evidence/consistency instructions; returns the provider result object
- * unchanged. The landed adjudicator remains the sole authority for source IDs,
- * exact quotes, offsets, and non-blank proposition fields.
+ * unchanged. Deterministic binding in the adjudicator owns sourceId/exactQuote.
  */
 export function wrapAdjudicatorRunnerForLiveEvidence(
   runner: StructuredModelRunner,

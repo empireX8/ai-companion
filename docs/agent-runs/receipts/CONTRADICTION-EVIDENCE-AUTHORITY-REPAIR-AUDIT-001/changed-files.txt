@@ -1,0 +1,17 @@
+lib/__tests__/contradiction-adjudication-contract.test.ts
+lib/__tests__/contradiction-controlled-natural-entry-proof.test.ts
+lib/__tests__/contradiction-live-diagnostic-rerun.test.ts
+lib/__tests__/contradiction-live-evidence-prompt-repair.test.ts
+lib/__tests__/contradiction-live-evidence-prompt-rerun.test.ts
+lib/__tests__/contradiction-live-provider-referee-execution.test.ts
+lib/__tests__/contradiction-live-semantic-output-compatibility.test.ts
+lib/__tests__/contradiction-source.test.ts
+lib/__tests__/objectivity-referee-interface-contract.test.ts
+lib/contradiction-adjudicator.ts
+lib/contradiction-live-provider-adapters.ts
+lib/orvek-intelligence-kernel/contracts.ts
+lib/orvek-intelligence-kernel/evidence-validation.ts
+lib/orvek-intelligence-kernel/structured-output.ts
+lib/orvek-intelligence-kernel/types.ts
+docs/agent-runs/receipts/CONTRADICTION-EVIDENCE-AUTHORITY-REPAIR-AUDIT-001/
+lib/__tests__/contradiction-evidence-authority-repair.test.ts
