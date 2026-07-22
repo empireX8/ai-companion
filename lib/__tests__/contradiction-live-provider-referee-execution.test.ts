@@ -1536,7 +1536,7 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         timeoutMs: 45000,
         providerAttemptCountExact: true,
         adjudicatorPromptAddendumVersion:
-          "contradiction-live-adjudicator-prompt-addendum-v1",
+          "contradiction-live-adjudicator-prompt-addendum-v2",
         adjudicatorCallCount: 2,
         refereeCallCount: 1,
         totalCallCount: 3,
@@ -1596,7 +1596,7 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         timeoutMs: 45000,
         providerAttemptCountExact: true,
         adjudicatorPromptAddendumVersion:
-          "contradiction-live-adjudicator-prompt-addendum-v1",
+          "contradiction-live-adjudicator-prompt-addendum-v2",
         adjudicatorCallCount: 3,
         refereeCallCount: 0,
         totalCallCount: 3,
@@ -1629,7 +1629,7 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         timeoutMs: 45000,
         providerAttemptCountExact: true,
         adjudicatorPromptAddendumVersion:
-          "contradiction-live-adjudicator-prompt-addendum-v1",
+          "contradiction-live-adjudicator-prompt-addendum-v2",
         adjudicatorCallCount: 2,
         refereeCallCount: 2,
         totalCallCount: 4,

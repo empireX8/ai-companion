@@ -111,6 +111,13 @@ describe("CEQR-013 live diagnostic rerun receipts", () => {
     expect(receipt.maxTotalCalls).toBe(CONTRADICTION_LIVE_MAX_TOTAL_CALLS);
     expect(receipt.maxTotalCalls).toBe(8);
     expect(receipt.adjudicatorPromptAddendumVersion).toBe(
+      "contradiction-live-adjudicator-prompt-addendum-v1",
+    );
+    // Historical CEQR-013 receipt must retain v1; current code is CEQR-014 v2.
+    expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
+      "contradiction-live-adjudicator-prompt-addendum-v2",
+    );
+    expect(receipt.adjudicatorPromptAddendumVersion).not.toBe(
       CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
     );
     expect(receipt.totalCallCount).toBe(
