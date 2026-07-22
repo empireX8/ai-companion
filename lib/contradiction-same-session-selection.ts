@@ -109,6 +109,17 @@ export type SelectionRejectionSummary = {
   sanitizedDiagnostics?: SanitizedAdjudicationDiagnostics | null;
 };
 
+/**
+ * CEQR-017 — full adjudication retained for every model attempt, including
+ * non-selected / rejected candidates (before summary reduction).
+ */
+export type AttemptedAdjudicationRecord = {
+  referenceId: string | null;
+  sideASourceId: string;
+  sideBSourceId: string;
+  adjudication: ContradictionAdjudicationResult;
+};
+
 export type ContradictionSameSessionSelectionResult = {
   outcome: ContradictionSelectionOutcome;
   selectedPair: SemanticallySelectedContradictionPair | null;
@@ -118,6 +129,11 @@ export type ContradictionSameSessionSelectionResult = {
   /** Count of validated clear_contradiction (Class A) passes. */
   eligibleCount: number;
   rejectionSummaries: SelectionRejectionSummary[];
+  /**
+   * Full adjudications for every same-session model attempt (CEQR-017).
+   * Empty when no adjudicator calls were made.
+   */
+  attemptedAdjudications: AttemptedAdjudicationRecord[];
   /** Aggregate referee status for the selected pair, else not_run. */
   refereeStatus: RefereeStatus;
   /**
@@ -299,6 +315,7 @@ function emptyResult(
     sourceCompleteCount: 0,
     eligibleCount: 0,
     rejectionSummaries: [],
+    attemptedAdjudications: [],
     refereeStatus: defaultRefereeStatus(),
     refereeContinuationAllowed: false,
     persistenceDecision: null,
@@ -375,6 +392,8 @@ export async function selectSameSessionContradictionPair(input: {
     adjudication: ContradictionAdjudicationResult;
   }> = [];
 
+  const attemptedAdjudications: AttemptedAdjudicationRecord[] = [];
+
   let modelCallCount = 0;
   let modelFailureCount = 0;
   let validationFailureCount = 0;
@@ -388,6 +407,13 @@ export async function selectSameSessionContradictionPair(input: {
       objectivityReferee: input.objectivityReferee,
       now: input.now,
       abortSignal: input.abortSignal,
+    });
+
+    attemptedAdjudications.push({
+      referenceId: candidate.referenceId ?? null,
+      sideASourceId: candidate.sideA.sourceId,
+      sideBSourceId: sideB.sourceId,
+      adjudication,
     });
 
     if (isSemanticClassA(adjudication)) {
@@ -433,6 +459,7 @@ export async function selectSameSessionContradictionPair(input: {
       sourceCompleteCount: sameSessionCount,
       eligibleCount: 0,
       rejectionSummaries,
+      attemptedAdjudications,
       modelCallCount,
     });
   }
@@ -453,6 +480,7 @@ export async function selectSameSessionContradictionPair(input: {
       sourceCompleteCount: sameSessionCount,
       eligibleCount,
       rejectionSummaries,
+      attemptedAdjudications,
       modelCallCount,
       // Ambiguity abstention: never pick first / highest confidence.
       refereeStatus: defaultRefereeStatus(),
@@ -478,6 +506,7 @@ export async function selectSameSessionContradictionPair(input: {
     sourceCompleteCount: sameSessionCount,
     eligibleCount: 1,
     rejectionSummaries,
+    attemptedAdjudications,
     refereeStatus: only.adjudication.refereeStatus,
     refereeContinuationAllowed:
       only.adjudication.referee.continuationAllowed === true,

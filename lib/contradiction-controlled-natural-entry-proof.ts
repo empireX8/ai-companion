@@ -165,6 +165,7 @@ function emptySelectionStub(): ContradictionSameSessionSelectionResult {
     sourceCompleteCount: 0,
     eligibleCount: 0,
     rejectionSummaries: [],
+    attemptedAdjudications: [],
     refereeStatus: "not_run",
     refereeContinuationAllowed: false,
     persistenceDecision: null,

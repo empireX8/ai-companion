@@ -1,0 +1,420 @@
+{
+  "slice": "CONTRADICTION-CONTROLLED-LIVE-AUTHORITY-REPROOF-001",
+  "campaignSlice": "CEQR-017",
+  "proofVersion": "contradiction-controlled-live-authority-reproof-v1",
+  "phase": "phase2_live",
+  "liveAuthorised": true,
+  "liveExecuted": true,
+  "liveProviderAttempts": 3,
+  "classification": "HOLD_LIVE_SEMANTIC_PROOF_NOT_OBTAINED",
+  "expectedRuntimeIdentities": {
+    "providerId": "openai",
+    "adjudicatorModelId": "gpt-4o-mini",
+    "refereeModelId": "gpt-4o-mini",
+    "maxRetries": 0,
+    "timeoutMs": 45000,
+    "maxTotalCalls": 8,
+    "schemaVersion": "contradiction-adjudication-schema-v2",
+    "promptVersion": "contradiction-adjudication-prompt-v3",
+    "liveAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v3",
+    "kernelContract": "orvek-intelligence-kernel-v1"
+  },
+  "actualRuntimeIdentities": {
+    "providerId": "openai",
+    "adjudicatorModelId": "gpt-4o-mini",
+    "refereeModelId": "gpt-4o-mini",
+    "maxRetries": 0,
+    "timeoutMs": 45000,
+    "maxTotalCalls": 8,
+    "schemaVersion": "contradiction-adjudication-schema-v2",
+    "promptVersion": "contradiction-adjudication-prompt-v3",
+    "liveAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v3",
+    "kernelContract": "orvek-intelligence-kernel-v1",
+    "observedFromLiveResult": true
+  },
+  "runtimeIdentitiesMatched": true,
+  "ceqr015FailureCodeDelta": {
+    "fabricated_quote": {
+      "clear_contradiction_candidate": "INCONCLUSIVE",
+      "compatible_contextual": "RESOLVED"
+    },
+    "source_id_mismatch": {
+      "ambiguous_insufficient": "INCONCLUSIVE"
+    }
+  },
+  "caseDiagnostics": [
+    {
+      "caseId": "clear_contradiction_candidate",
+      "expectedSemanticCategory": "clear_contradiction",
+      "providerId": "openai",
+      "adjudicatorModelId": "gpt-4o-mini",
+      "refereeModelId": "gpt-4o-mini",
+      "schemaVersion": "contradiction-adjudication-schema-v2",
+      "promptVersion": "contradiction-adjudication-prompt-v3",
+      "liveAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v3",
+      "authoritativeSideASourceId": "reference:live-ref-clear_contradiction_candidate:message:live-msg-a-clear_contradiction_candidate",
+      "authoritativeSideBSourceId": "message:live-msg-b-clear_contradiction_candidate",
+      "sideASourceTextLength": 30,
+      "sideBSourceTextLength": 33,
+      "sanitizedProviderTransportObject": {
+        "evidenceClaimA": {
+          "startOffset": 0,
+          "endOffset": 30
+        },
+        "evidenceClaimB": {
+          "startOffset": 0,
+          "endOffset": 30
+        },
+        "classification": "clear_contradiction",
+        "confidence": 0.95
+      },
+      "selectedSideAOffsets": {
+        "startOffset": 0,
+        "endOffset": 30
+      },
+      "selectedSideBOffsets": {
+        "startOffset": 0,
+        "endOffset": 30
+      },
+      "transportParseResult": "parsed",
+      "deterministicBindingResult": "unknown",
+      "boundSideASourceId": null,
+      "boundSideBSourceId": null,
+      "derivedSideAExactQuote": null,
+      "derivedSideBExactQuote": null,
+      "rawProviderObjectUnchangedByReferenceAndValue": true,
+      "deterministicValidationStatus": "failed",
+      "validationErrors": [
+        "internal_inconsistency: clear_contradiction cannot coexist with changedBeliefOverTime: true.",
+        "internal_inconsistency",
+        "validation_failed"
+      ],
+      "validationWarnings": [],
+      "earliestFailedGate": "deterministic_validation",
+      "gateStoppedAt": "selection",
+      "semanticClassification": null,
+      "modelConfidence": null,
+      "refereeInvoked": false,
+      "refereeExecutionState": "not_run",
+      "refereeOutcome": null,
+      "refereeAdjustedConfidence": null,
+      "refereeError": null,
+      "candidateAuthorisationResult": "failed_safely",
+      "writerInvoked": false,
+      "writeExecuted": false,
+      "injectedSideASpanResult": null,
+      "injectedSideBSpanResult": null,
+      "injectedNodeResult": null,
+      "caseAdjudicatorAttempts": 1,
+      "caseRefereeAttempts": 0
+    },
+    {
+      "caseId": "compatible_contextual",
+      "expectedSemanticCategory": "compatible_non_contradiction",
+      "providerId": "openai",
+      "adjudicatorModelId": "gpt-4o-mini",
+      "refereeModelId": "gpt-4o-mini",
+      "schemaVersion": "contradiction-adjudication-schema-v2",
+      "promptVersion": "contradiction-adjudication-prompt-v3",
+      "liveAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v3",
+      "authoritativeSideASourceId": "reference:live-ref-compatible_contextual:message:live-msg-a-compatible_contextual",
+      "authoritativeSideBSourceId": "message:live-msg-b-compatible_contextual",
+      "sideASourceTextLength": 30,
+      "sideBSourceTextLength": 30,
+      "sanitizedProviderTransportObject": {
+        "evidenceClaimA": {
+          "startOffset": 0,
+          "endOffset": 30
+        },
+        "evidenceClaimB": {
+          "startOffset": 0,
+          "endOffset": 27
+        },
+        "classification": "compatible_states",
+        "confidence": 0.9
+      },
+      "selectedSideAOffsets": {
+        "startOffset": 0,
+        "endOffset": 30
+      },
+      "selectedSideBOffsets": {
+        "startOffset": 0,
+        "endOffset": 27
+      },
+      "transportParseResult": "parsed",
+      "deterministicBindingResult": "bound",
+      "boundSideASourceId": "reference:live-ref-compatible_contextual:message:live-msg-a-compatible_contextual",
+      "boundSideBSourceId": "message:live-msg-b-compatible_contextual",
+      "derivedSideAExactQuote": "I avoid coffee in the evening.",
+      "derivedSideBExactQuote": "I drink coffee in the morni",
+      "rawProviderObjectUnchangedByReferenceAndValue": true,
+      "deterministicValidationStatus": "passed",
+      "validationErrors": [],
+      "validationWarnings": [],
+      "earliestFailedGate": "semantic_accepted_non_class_a",
+      "gateStoppedAt": "selection",
+      "semanticClassification": "compatible_states",
+      "modelConfidence": 0.9,
+      "refereeInvoked": false,
+      "refereeExecutionState": "not_run",
+      "refereeOutcome": null,
+      "refereeAdjustedConfidence": null,
+      "refereeError": null,
+      "candidateAuthorisationResult": "no_candidate",
+      "writerInvoked": false,
+      "writeExecuted": false,
+      "injectedSideASpanResult": null,
+      "injectedSideBSpanResult": null,
+      "injectedNodeResult": null,
+      "caseAdjudicatorAttempts": 1,
+      "caseRefereeAttempts": 0
+    },
+    {
+      "caseId": "ambiguous_insufficient",
+      "expectedSemanticCategory": "ambiguous_insufficient",
+      "providerId": "openai",
+      "adjudicatorModelId": "gpt-4o-mini",
+      "refereeModelId": "gpt-4o-mini",
+      "schemaVersion": "contradiction-adjudication-schema-v2",
+      "promptVersion": "contradiction-adjudication-prompt-v3",
+      "liveAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v3",
+      "authoritativeSideASourceId": "reference:live-ref-ambiguous_insufficient:message:live-msg-a-ambiguous_insufficient",
+      "authoritativeSideBSourceId": "message:live-msg-b-ambiguous_insufficient",
+      "sideASourceTextLength": 44,
+      "sideBSourceTextLength": 33,
+      "sanitizedProviderTransportObject": {
+        "evidenceClaimA": {
+          "startOffset": 0,
+          "endOffset": 41
+        },
+        "evidenceClaimB": {
+          "startOffset": 0,
+          "endOffset": 30
+        },
+        "classification": null,
+        "confidence": 0.8
+      },
+      "selectedSideAOffsets": {
+        "startOffset": 0,
+        "endOffset": 41
+      },
+      "selectedSideBOffsets": {
+        "startOffset": 0,
+        "endOffset": 30
+      },
+      "transportParseResult": "parsed",
+      "deterministicBindingResult": "not_reached",
+      "boundSideASourceId": null,
+      "boundSideBSourceId": null,
+      "derivedSideAExactQuote": null,
+      "derivedSideBExactQuote": null,
+      "rawProviderObjectUnchangedByReferenceAndValue": true,
+      "deterministicValidationStatus": "passed",
+      "validationErrors": [
+        "model_abstained"
+      ],
+      "validationWarnings": [],
+      "earliestFailedGate": "abstention",
+      "gateStoppedAt": "selection",
+      "semanticClassification": null,
+      "modelConfidence": null,
+      "refereeInvoked": false,
+      "refereeExecutionState": "not_run",
+      "refereeOutcome": null,
+      "refereeAdjustedConfidence": null,
+      "refereeError": null,
+      "candidateAuthorisationResult": "no_candidate",
+      "writerInvoked": false,
+      "writeExecuted": false,
+      "injectedSideASpanResult": null,
+      "injectedSideBSpanResult": null,
+      "injectedNodeResult": null,
+      "caseAdjudicatorAttempts": 1,
+      "caseRefereeAttempts": 0
+    }
+  ],
+  "underlyingLiveProof": {
+    "ran": true,
+    "proofVersion": "contradiction-live-provider-referee-proof-v1",
+    "providerId": "openai",
+    "adjudicatorModelId": "gpt-4o-mini",
+    "refereeModelId": "gpt-4o-mini",
+    "independenceLevel": "separate_call_same_provider_same_model",
+    "maxRetries": 0,
+    "timeoutMs": 45000,
+    "providerAttemptCountExact": true,
+    "adjudicatorPromptAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v3",
+    "adjudicatorCallCount": 3,
+    "refereeCallCount": 0,
+    "totalCallCount": 3,
+    "maxTotalCalls": 8,
+    "cases": [
+      {
+        "caseId": "clear_contradiction_candidate",
+        "status": "failed_safely",
+        "proofOutcome": "failed_safely",
+        "writeExecuted": false,
+        "writerInvoked": false,
+        "adjudicatorCallCount": 1,
+        "refereeCallCount": 0,
+        "contradictionNodeId": null,
+        "sideAQuote": null,
+        "sideBQuote": null,
+        "presentationStatus": "not_requested",
+        "failureCode": "adjudication_failed",
+        "failureMessage": "Selection failed closed (adjudication_failed).",
+        "latencyMs": 7515,
+        "harnessNodeCountAfter": 0,
+        "harnessSpanCountAfter": 0,
+        "gateStoppedAt": "selection",
+        "sanitizedAdjudicationDiagnostics": {
+          "providerId": "openai",
+          "modelId": "gpt-4o-mini",
+          "schemaVersion": "contradiction-adjudication-schema-v2",
+          "promptVersion": "contradiction-adjudication-prompt-v3",
+          "parseValidationOutcome": "invalid",
+          "adjudicationOutcome": "validation_failed",
+          "adjudicationErrorCode": "validation_failed",
+          "validationErrorCodes": [
+            "internal_inconsistency",
+            "validation_failed"
+          ],
+          "failingFieldPaths": [
+            "changedBeliefOverTime"
+          ],
+          "evidenceFailureSide": null,
+          "sourceTextLengths": {
+            "sideA": 30,
+            "sideB": 33
+          },
+          "exactQuoteMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "offsetsMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "earliestGate": "deterministic_validation"
+        }
+      },
+      {
+        "caseId": "compatible_contextual",
+        "status": "no_write",
+        "proofOutcome": "no_candidate",
+        "writeExecuted": false,
+        "writerInvoked": false,
+        "adjudicatorCallCount": 1,
+        "refereeCallCount": 0,
+        "contradictionNodeId": null,
+        "sideAQuote": null,
+        "sideBQuote": null,
+        "presentationStatus": "not_requested",
+        "failureCode": "no_semantic_match",
+        "failureMessage": "Selection produced no persistable candidate (no_semantic_match).",
+        "latencyMs": 4044,
+        "harnessNodeCountAfter": 0,
+        "harnessSpanCountAfter": 0,
+        "gateStoppedAt": "selection",
+        "sanitizedAdjudicationDiagnostics": {
+          "providerId": "openai",
+          "modelId": "gpt-4o-mini",
+          "schemaVersion": "contradiction-adjudication-schema-v2",
+          "promptVersion": "contradiction-adjudication-prompt-v3",
+          "parseValidationOutcome": "valid",
+          "adjudicationOutcome": "semantic_accepted",
+          "adjudicationErrorCode": null,
+          "validationErrorCodes": [],
+          "failingFieldPaths": [],
+          "evidenceFailureSide": null,
+          "sourceTextLengths": {
+            "sideA": 30,
+            "sideB": 30
+          },
+          "exactQuoteMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "offsetsMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "earliestGate": "semantic_accepted_non_class_a"
+        }
+      },
+      {
+        "caseId": "ambiguous_insufficient",
+        "status": "no_write",
+        "proofOutcome": "no_candidate",
+        "writeExecuted": false,
+        "writerInvoked": false,
+        "adjudicatorCallCount": 1,
+        "refereeCallCount": 0,
+        "contradictionNodeId": null,
+        "sideAQuote": null,
+        "sideBQuote": null,
+        "presentationStatus": "not_requested",
+        "failureCode": "no_semantic_match",
+        "failureMessage": "Selection produced no persistable candidate (no_semantic_match).",
+        "latencyMs": 5081,
+        "harnessNodeCountAfter": 0,
+        "harnessSpanCountAfter": 0,
+        "gateStoppedAt": "selection",
+        "sanitizedAdjudicationDiagnostics": {
+          "providerId": "openai",
+          "modelId": "gpt-4o-mini",
+          "schemaVersion": "contradiction-adjudication-schema-v2",
+          "promptVersion": "contradiction-adjudication-prompt-v3",
+          "parseValidationOutcome": "valid",
+          "adjudicationOutcome": "abstained",
+          "adjudicationErrorCode": "model_abstained",
+          "validationErrorCodes": [
+            "model_abstained"
+          ],
+          "failingFieldPaths": [],
+          "evidenceFailureSide": null,
+          "sourceTextLengths": {
+            "sideA": 44,
+            "sideB": 33
+          },
+          "exactQuoteMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "offsetsMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "earliestGate": "abstention"
+        }
+      }
+    ],
+    "clearContradictionWriteProven": false,
+    "compatibleCaseNoWrite": true,
+    "ambiguousCaseNoWrite": true,
+    "unsafeMutationDetected": false,
+    "evidenceOutputMutated": false,
+    "realAccountMutated": false,
+    "productionIngestionWired": false,
+    "isolatedDatabasePersistenceProven": false,
+    "productionReady": false,
+    "classificationHint": "HOLD_LIVE_SEMANTIC_PROOF_NOT_OBTAINED"
+  },
+  "proposedLiveCommand": "cd /Users/user/ai-companion-worktrees/desktop-contradiction-controlled-live-authority-reproof-001\nset -a && source /Users/user/ai-companion/.env && set +a\nCEQR_READONLY_ACCOUNT_USER_ID=\"$ACCOUNT_ID\" \\\nCONTRADICTION_LIVE_ADJUDICATOR_MODEL=gpt-4o-mini \\\nCONTRADICTION_LIVE_REFEREE_MODEL=gpt-4o-mini \\\nCONTRADICTION_LIVE_PROVIDER_TIMEOUT_MS=45000 \\\nCONTRADICTION_LIVE_MAX_TOTAL_CALLS=8 \\\nRUN_LIVE_CONTRADICTION_PROVIDER_PROOF=1 \\\n  npx ts-node --transpile-only \\\n  --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' \\\n  scripts/run-ceqr017-phase2-orchestrator.ts",
+  "phase2Authorised": true,
+  "productionReady": false,
+  "notes": [
+    "Injected nonmutation harness only — real account must remain unchanged.",
+    "Runtime identities matched expected pins."
+  ],
+  "beforeAccountGateExecuted": true,
+  "beforeAccountGateMatched": true,
+  "afterAccountGateExecuted": true,
+  "afterAccountGateMatched": true,
+  "accountAggregatesUnchanged": true,
+  "accountGateError": null,
+  "claimCreated": true,
+  "claimPath": "/Users/user/ai-companion-worktrees/desktop-contradiction-controlled-live-authority-reproof-001/docs/agent-runs/receipts/CONTRADICTION-CONTROLLED-LIVE-AUTHORITY-REPROOF-001/phase2-live-run-claim.json",
+  "liveRunnerInvoked": true,
+  "liveRunnerInvocationCount": 1
+}
