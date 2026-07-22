@@ -1,0 +1,41 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-LIVE-DIAGNOSTIC-RERUN-001",
+  "campaignSlice": "CEQR-013",
+  "phase": "live_diagnostic_rerun_001",
+  "label": "before",
+  "userId": "[REDACTED_ACCOUNT_ID]",
+  "queriedAt": "2026-07-22T09:17:57.024Z",
+  "mode": "read_only",
+  "mutationsPerformed": false,
+  "decisionPostCalled": false,
+  "writerInvokedAgainstAccount": false,
+  "confirmDismissCalled": false,
+  "liveProofWroteToAccount": false,
+  "expected": {
+    "contradictionNodeTotal": 25,
+    "candidateTotal": 25,
+    "evidenceSpans": 5941,
+    "completeExactDualSideRows": 0,
+    "invalidPartialRows": 0,
+    "legacyIncompleteRows": 25,
+    "completePairDuplicateGroups": 0
+  },
+  "observed": {
+    "contradictionNodeTotal": 25,
+    "candidateTotal": 25,
+    "evidenceSpans": 5941,
+    "contradictionNodesByStatus": {
+      "candidate": 25
+    },
+    "lineageCounts": {
+      "complete_exact_dual_side": 0,
+      "legacy_incomplete": 25,
+      "invalid_partial": 0
+    },
+    "completePairDuplicateGroups": 0
+  },
+  "matchesExpected": true,
+  "gateScript": "docs/agent-runs/receipts/CONTRADICTION-LIVE-PROVIDER-REFEREE-EXECUTION-001/readonly-account-gate.mjs",
+  "gateScriptCampaignOrigin": "CEQR-011"
+}
