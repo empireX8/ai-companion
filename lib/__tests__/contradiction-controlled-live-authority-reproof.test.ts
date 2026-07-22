@@ -413,9 +413,15 @@ function makeAdapters(args?: {
 }
 
 describe("CEQR-017 identities and pins", () => {
-  it("uses schema-v2, prompt-v3, addendum-v3 and exact runtime pins", () => {
+  it("uses historical schema-v2 pin, prompt-v3, addendum-v3 and exact runtime pins", () => {
     expect(CEQR_017_EXPECTED_SCHEMA_VERSION).toBe(
+      "contradiction-adjudication-schema-v2",
+    );
+    expect(CEQR_017_EXPECTED_SCHEMA_VERSION).not.toBe(
       CONTRADICTION_ADJUDICATION_SCHEMA_VERSION,
+    );
+    expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION).toBe(
+      "contradiction-adjudication-schema-v3",
     );
     expect(CEQR_017_EXPECTED_PROMPT_VERSION).toBe(
       CONTRADICTION_ADJUDICATION_PROMPT_VERSION,
@@ -509,32 +515,42 @@ describe("CEQR-017 transport and binding", () => {
       "endOffset",
       "startOffset",
     ]);
-    expect(
-      Object.keys(
-        contradictionModelResultOpenAiStrictSchema.shape.evidenceClaimA.shape,
-      ).sort(),
-    ).toEqual(["endOffset", "startOffset"]);
+    const openAiUnion =
+      contradictionModelResultOpenAiStrictSchema.shape.adjudication;
+    const options =
+      "options" in openAiUnion && Array.isArray(openAiUnion.options)
+        ? openAiUnion.options
+        : [];
+    expect(options.length).toBe(3);
+    for (const option of options) {
+      expect(Object.keys(option.shape.evidenceClaimA.shape).sort()).toEqual([
+        "endOffset",
+        "startOffset",
+      ]);
+      expect(option.shape.evidenceClaimA.shape).not.toHaveProperty("sourceId");
+      expect(option.shape.evidenceClaimA.shape).not.toHaveProperty("exactQuote");
+    }
 
     const sideA = source({
       sourceId: "auth-a",
-      sourceText: "ABCDEF",
+      sourceText: "AA BCD EE",
       label: "A",
     });
     const sideB = source({
       sourceId: "auth-b",
-      sourceText: "123456",
+      sourceText: "11 234 56",
       label: "B",
     });
     const providerObject = transportResult(sideA, sideB, {
       evidenceClaimA: {
-        startOffset: 1,
-        endOffset: 4,
+        startOffset: 3,
+        endOffset: 6,
         sourceId: "forged",
         exactQuote: "NOPE",
       },
       evidenceClaimB: {
-        startOffset: 0,
-        endOffset: 3,
+        startOffset: 3,
+        endOffset: 6,
         sourceId: "forged-b",
         exactQuote: "ZZZ",
       },
@@ -563,7 +579,7 @@ describe("CEQR-017 transport and binding", () => {
   });
 
   it("fail-closed offsets and no repair helpers", () => {
-    const side = source({ sourceId: "s", sourceText: "0123456789", label: "S" });
+    const side = source({ sourceId: "s", sourceText: "01 234 56789", label: "S" });
     expect(
       bindExactEvidenceClaimFromOffsets(side, {
         startOffset: -1,
@@ -595,8 +611,8 @@ describe("CEQR-017 transport and binding", () => {
       }).ok,
     ).toBe(false);
     const ok = bindExactEvidenceClaimFromOffsets(side, {
-      startOffset: 2,
-      endOffset: 5,
+      startOffset: 3,
+      endOffset: 6,
     });
     expect(ok.ok).toBe(true);
     if (ok.ok) expect(ok.claim.exactQuote).toBe("234");
@@ -1308,12 +1324,13 @@ describe("CEQR-017 diagnostics / whitespace / phase1 safety", () => {
     }
   });
 
-  it("receipt directory has required pre-live artifacts", () => {
+  it("receipt directory has required live artifacts and permanent claim", () => {
     for (const name of [
       "00-intake-and-boundaries.md",
       "08-live-execution-command.md",
       "live-execution-receipt.json",
       "pre-live-validation-summary.json",
+      "phase2-live-run-claim.json",
       "readonly-account-gate.mjs",
       "changed-files.txt",
     ]) {
@@ -1321,9 +1338,17 @@ describe("CEQR-017 diagnostics / whitespace / phase1 safety", () => {
     }
     const receipt = JSON.parse(
       readFileSync(join(RECEIPT_DIR, "live-execution-receipt.json"), "utf8"),
-    ) as { liveExecuted: boolean; liveProviderAttempts: number };
-    expect(receipt.liveExecuted).toBe(false);
-    expect(receipt.liveProviderAttempts).toBe(0);
+    ) as {
+      liveExecuted: boolean;
+      liveProviderAttempts: number;
+      expectedRuntimeIdentities?: { schemaVersion?: string };
+    };
+    // CEQR-017 Phase 2 permanently recorded one live run under schema-v2.
+    expect(receipt.liveExecuted).toBe(true);
+    expect(receipt.liveProviderAttempts).toBeGreaterThan(0);
+    expect(receipt.expectedRuntimeIdentities?.schemaVersion).toBe(
+      "contradiction-adjudication-schema-v2",
+    );
   });
 
   it("capability mint and live runner are not exported from production libraries", () => {

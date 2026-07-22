@@ -18,6 +18,7 @@ import {
   CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V2,
   CONTRADICTION_ADJUDICATION_SCHEMA_VERSION,
   CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V1,
+  CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V2,
   type ContradictionModelResult,
 } from "../contradiction-adjudicator";
 import { runControlledContradictionNaturalEntryProof } from "../contradiction-controlled-natural-entry-proof";
@@ -194,8 +195,11 @@ describe("CEQR-016 version identities", () => {
     expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V1).toBe(
       "contradiction-adjudication-schema-v1",
     );
-    expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION).toBe(
+    expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V2).toBe(
       "contradiction-adjudication-schema-v2",
+    );
+    expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION).toBe(
+      "contradiction-adjudication-schema-v3",
     );
     expect(CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V2).toBe(
       "contradiction-adjudication-prompt-v2",
@@ -355,12 +359,12 @@ describe("CEQR-016 exactQuote authority", () => {
   it("always derives exactQuote as sourceText.slice(startOffset, endOffset)", async () => {
     const sideA = source({
       sourceId: "a",
-      sourceText: "ABCDEFGHIJ",
+      sourceText: "AB CDEF GH",
       label: "A",
     });
     const sideB = source({
       sourceId: "b",
-      sourceText: "1234567890",
+      sourceText: "12 345 67890",
       label: "B",
     });
     const result = await adjudicateContradiction({
@@ -369,13 +373,13 @@ describe("CEQR-016 exactQuote authority", () => {
       modelRunner: fakeRunner(
         transportResult(sideA, sideB, {
           evidenceClaimA: {
-            startOffset: 2,
-            endOffset: 6,
+            startOffset: 3,
+            endOffset: 7,
             exactQuote: "PROVIDER_LIE",
           },
           evidenceClaimB: {
-            startOffset: 1,
-            endOffset: 4,
+            startOffset: 3,
+            endOffset: 6,
             exactQuote: "NOPE",
           },
         }),
@@ -384,12 +388,12 @@ describe("CEQR-016 exactQuote authority", () => {
     });
     expect(result.outcome).toBe("semantic_accepted");
     expect(result.semantic?.evidenceClaimA.exactQuote).toBe("CDEF");
-    expect(result.semantic?.evidenceClaimB.exactQuote).toBe("234");
+    expect(result.semantic?.evidenceClaimB.exactQuote).toBe("345");
     expect(result.semantic?.evidenceClaimA.exactQuote).toBe(
-      sideA.sourceText.slice(2, 6),
+      sideA.sourceText.slice(3, 7),
     );
     expect(result.semantic?.evidenceClaimB.exactQuote).toBe(
-      sideB.sourceText.slice(1, 4),
+      sideB.sourceText.slice(3, 6),
     );
   });
 

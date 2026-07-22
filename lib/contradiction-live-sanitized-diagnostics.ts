@@ -59,6 +59,7 @@ const KNOWN_SPAN_CODES = [
   "invalid_offsets",
   "empty_quote",
   "fabricated_quote",
+  "lexical_boundary_integrity",
 ] as const;
 
 function extractCodeFromError(error: string): string | null {

@@ -909,7 +909,7 @@ describe("CEQR-001 contradiction adjudication contract", () => {
 
     expect(KERNEL_CONTRACT_VERSION).toBe("orvek-intelligence-kernel-v1");
     expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION).toBe(
-      "contradiction-adjudication-schema-v2",
+      "contradiction-adjudication-schema-v3",
     );
     expect(CONTRADICTION_ADJUDICATION_PROMPT_VERSION).toBe(
       "contradiction-adjudication-prompt-v3",
@@ -1917,7 +1917,12 @@ describe("CEQR-003 context and qualifier preservation", () => {
       classification: "clear_contradiction",
       bothCanSimultaneouslyBeTrue: true,
     });
-    expect(collectSemanticConsistencyErrors(fake).length).toBeGreaterThan(0);
+    // Defence in depth: domain validator still rejects independently of transport.
+    expect(
+      collectSemanticConsistencyErrors(fake).some((e) =>
+        /bothCanSimultaneouslyBeTrue/i.test(e),
+      ),
+    ).toBe(true);
 
     const result = await adjudicateContradiction({
       sideA,
@@ -1926,15 +1931,15 @@ describe("CEQR-003 context and qualifier preservation", () => {
       now: FIXED_NOW,
     });
 
+    // CEQR-018: transport schema rejects before deterministic validation.
     expect(result.outcome).toBe("validation_failed");
     expect(result.semantic).toBeNull();
+    expect(result.errorCode).toBe("schema_parse_failed");
     expect(
-      result.validation.errors.some((e) =>
-        /bothCanSimultaneouslyBeTrue/i.test(e),
-      ),
+      result.validation.errors.some((e) => /schema_parse_failed/i.test(e)),
     ).toBe(true);
-    // No silent reclassification
-    expect(result.audit.semanticClassification).toBe("clear_contradiction");
+    // No silent reclassification of the rejected payload.
+    expect(result.audit.semanticClassification).toBeNull();
     assertNoPersistenceDecision(result);
   });
 
@@ -1952,24 +1957,27 @@ describe("CEQR-003 context and qualifier preservation", () => {
       sessionId: sideA.sessionId,
     });
 
+    const fake = baseModelResult(sideA, sideB, {
+      classification: "clear_contradiction",
+      goalVersusObstacle: true,
+      bothCanSimultaneouslyBeTrue: false,
+    });
+    expect(
+      collectSemanticConsistencyErrors(fake).some((e) =>
+        /goalVersusObstacle/i.test(e),
+      ),
+    ).toBe(true);
+
     const result = await adjudicateContradiction({
       sideA,
       sideB,
-      modelRunner: fakeRunner(
-        baseModelResult(sideA, sideB, {
-          classification: "clear_contradiction",
-          goalVersusObstacle: true,
-          bothCanSimultaneouslyBeTrue: false,
-        }),
-      ),
+      modelRunner: fakeRunner(fake),
       now: FIXED_NOW,
     });
 
     expect(result.outcome).toBe("validation_failed");
     expect(result.semantic).toBeNull();
-    expect(
-      result.validation.errors.some((e) => /goalVersusObstacle/i.test(e)),
-    ).toBe(true);
+    expect(result.errorCode).toBe("schema_parse_failed");
     assertNoPersistenceDecision(result);
   });
 
@@ -1986,25 +1994,27 @@ describe("CEQR-003 context and qualifier preservation", () => {
       sessionId: sideA.sessionId,
     });
 
+    const fake = baseModelResult(sideA, sideB, {
+      classification: "clear_contradiction",
+      abstentionReason: "Also unsure about actor scope.",
+    });
+    expect(
+      collectSemanticConsistencyErrors(fake).some((e) =>
+        /abstentionReason|classification cannot coexist/i.test(e),
+      ),
+    ).toBe(true);
+
     const result = await adjudicateContradiction({
       sideA,
       sideB,
-      modelRunner: fakeRunner(
-        baseModelResult(sideA, sideB, {
-          classification: "clear_contradiction",
-          abstentionReason: "Also unsure about actor scope.",
-        }),
-      ),
+      modelRunner: fakeRunner(fake),
       now: FIXED_NOW,
     });
 
     expect(result.outcome).toBe("validation_failed");
     expect(result.semantic).toBeNull();
-    expect(
-      result.validation.errors.some((e) =>
-        /abstentionReason|classification cannot coexist/i.test(e),
-      ),
-    ).toBe(true);
+    expect(result.errorCode).toBe("schema_parse_failed");
+    assertNoPersistenceDecision(result);
   });
 
   it("20. VALID ABSTENTION — cannot safely preserve actor/scope/attribution", async () => {
@@ -2081,14 +2091,14 @@ describe("CEQR-003 context and qualifier preservation", () => {
           sourceId: sideA.sourceId,
           exactQuote: "always avoid sugar",
           startOffset: 0,
-          endOffset: 7,
+          endOffset: sideA.sourceText.length,
         },
       }),
       now: FIXED_NOW,
     });
     expect(providerFabricatedQuoteIgnored.outcome).toBe("semantic_accepted");
     expect(providerFabricatedQuoteIgnored.semantic?.evidenceClaimA.exactQuote).toBe(
-      sideA.sourceText.slice(0, 7),
+      sideA.sourceText,
     );
     expect(
       providerFabricatedQuoteIgnored.semantic?.evidenceClaimA.exactQuote,
@@ -2119,8 +2129,8 @@ describe("CEQR-003 context and qualifier preservation", () => {
         evidenceClaimA: {
           sourceId: sideB.sourceId,
           exactQuote: sideB.sourceText,
-          startOffset: 0,
-          endOffset: "usually".length,
+          startOffset: 2,
+          endOffset: 9, // "usually" — lexically valid whole-word span
         },
       }),
       now: FIXED_NOW,
@@ -2129,6 +2139,7 @@ describe("CEQR-003 context and qualifier preservation", () => {
     expect(wrongSideIgnored.semantic?.evidenceClaimA.sourceId).toBe(
       sideA.sourceId,
     );
+    expect(wrongSideIgnored.semantic?.evidenceClaimA.exactQuote).toBe("usually");
   });
 
   it("22. STRUCTURAL BOUNDARY — no new adjudicator/kernel imports on runtime paths", () => {
@@ -2222,27 +2233,28 @@ describe("CEQR-003 context and qualifier preservation", () => {
     ] as const;
 
     for (const flag of flags) {
+      const fake = baseModelResult(sideA, sideB, {
+        classification: "clear_contradiction",
+        bothCanSimultaneouslyBeTrue: false,
+        changedBeliefOverTime: false,
+        intentionVersusOutcome: false,
+        goalVersusObstacle: false,
+        emotionalOrPhysiologicalVersusReasoningStandard: false,
+        [flag]: true,
+      });
+      expect(
+        collectSemanticConsistencyErrors(fake).some((e) => e.includes(flag)),
+        `deterministic:${flag}`,
+      ).toBe(true);
+
       const result = await adjudicateContradiction({
         sideA,
         sideB,
-        modelRunner: fakeRunner(
-          baseModelResult(sideA, sideB, {
-            classification: "clear_contradiction",
-            bothCanSimultaneouslyBeTrue: false,
-            changedBeliefOverTime: false,
-            intentionVersusOutcome: false,
-            goalVersusObstacle: false,
-            emotionalOrPhysiologicalVersusReasoningStandard: false,
-            [flag]: true,
-          }),
-        ),
+        modelRunner: fakeRunner(fake),
         now: FIXED_NOW,
       });
       expect(result.outcome, flag).toBe("validation_failed");
-      expect(
-        result.validation.errors.some((e) => e.includes(flag)),
-        flag,
-      ).toBe(true);
+      expect(result.errorCode, flag).toBe("schema_parse_failed");
       expect(result.semantic, flag).toBeNull();
     }
   });

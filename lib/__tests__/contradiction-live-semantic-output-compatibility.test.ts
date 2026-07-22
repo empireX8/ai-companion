@@ -124,7 +124,7 @@ function classAResult(
     whatWouldChangeClassification: "Explicit timeframe separation.",
     abstentionReason: null,
     proposedObjectType: KERNEL_FIRST_PROOF_OBJECT,
-  };
+  } as ContradictionModelTransportResult;
 }
 
 function compatibleResult(
@@ -155,7 +155,8 @@ function compatibleResult(
       modality: "assertive",
       qualifications: "morning only",
     },
-  };
+    abstentionReason: null,
+  } as ContradictionModelTransportResult;
 }
 
 function parseSidesFromPrompt(prompt: string): {
@@ -775,7 +776,7 @@ describe("CEQR-012 fail-closed shapes still fail", () => {
       ...base,
       bothCanSimultaneouslyBeTrue: true,
     }));
-    expectInvalid({ result, refereeCalls, code: "internal_inconsistency" });
+    expectInvalid({ result, refereeCalls, code: "schema_parse_failed" });
   });
 
   it("malformed transport output still fails", async () => {

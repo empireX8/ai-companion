@@ -1,9 +1,15 @@
 /**
- * Shared structured-output helpers for kernel adjudicators (CEQR-001 + CEQR-016).
+ * Shared structured-output helpers for kernel adjudicators
+ * (CEQR-001 + CEQR-016 + CEQR-018).
  *
  * CEQR-016 splits provider transport from domain evidence authority:
  * - transport evidence selections carry only startOffset/endOffset;
  * - sourceId and exactQuote are code-owned after deterministic binding.
+ *
+ * CEQR-018 makes forbidden clear_contradiction + compatibility-flag
+ * combinations structurally unrepresentable in the provider transport
+ * contract via classification-discriminated variants (Zod union → JSON
+ * Schema anyOf). Deterministic validation remains defence in depth.
  *
  * TRANSPORT and DOMAIN schemas/types/parsers remain distinct:
  * - provider I/O uses contradictionModelTransportResultSchema;
@@ -16,6 +22,7 @@ import {
   CONFIDENCE_MAX,
   CONFIDENCE_MIN,
   CONTRADICTION_CLASSIFICATIONS,
+  NON_CONTRADICTION_NODE_CLASSIFICATIONS,
 } from "./contracts";
 
 /** Domain exact-evidence claim (post-binding). Not the provider transport shape. */
@@ -49,7 +56,82 @@ export const propositionFieldsSchema = z.object({
 
 export type PropositionFields = z.infer<typeof propositionFieldsSchema>;
 
-const contradictionSemanticFieldsSchema = {
+const transportSharedFields = {
+  propositionA: propositionFieldsSchema,
+  propositionB: propositionFieldsSchema,
+  contextAndScope: z.string(),
+  confidence: z.number().min(CONFIDENCE_MIN).max(CONFIDENCE_MAX),
+  rationale: z.string(),
+  alternativeInterpretation: z.string(),
+  whatWouldChangeClassification: z.string(),
+  /** Optional; if present must be ContradictionNode or omitted. Unsupported types fail closed. */
+  proposedObjectType: z.string().nullable().optional(),
+  evidenceClaimA: evidenceSpanSelectionSchema,
+  evidenceClaimB: evidenceSpanSelectionSchema,
+} as const;
+
+const compatibilityFlagBooleans = {
+  bothCanSimultaneouslyBeTrue: z.boolean(),
+  changedBeliefOverTime: z.boolean(),
+  intentionVersusOutcome: z.boolean(),
+  goalVersusObstacle: z.boolean(),
+  emotionalOrPhysiologicalVersusReasoningStandard: z.boolean(),
+} as const;
+
+/** clear_contradiction structurally requires every compatibility flag false. */
+export const clearContradictionTransportSchema = z.object({
+  ...transportSharedFields,
+  classification: z.literal("clear_contradiction"),
+  bothCanSimultaneouslyBeTrue: z.literal(false),
+  changedBeliefOverTime: z.literal(false),
+  intentionVersusOutcome: z.literal(false),
+  goalVersusObstacle: z.literal(false),
+  emotionalOrPhysiologicalVersusReasoningStandard: z.literal(false),
+  abstentionReason: z.null(),
+});
+
+/** Classified non-clear variants: supported classification + abstentionReason null. */
+export const classifiedNonClearTransportSchema = z.object({
+  ...transportSharedFields,
+  classification: z.enum(NON_CONTRADICTION_NODE_CLASSIFICATIONS),
+  ...compatibilityFlagBooleans,
+  abstentionReason: z.null(),
+});
+
+/**
+ * Abstention variant: classification null + truthful nonblank abstentionReason.
+ * `z.string().regex(/\S/)` alone rejects empty and whitespace-only strings and
+ * emits JSON Schema `pattern` on the provider-facing contract.
+ */
+export const abstentionTransportSchema = z.object({
+  ...transportSharedFields,
+  classification: z.null(),
+  ...compatibilityFlagBooleans,
+  abstentionReason: z.string().regex(/\S/),
+});
+
+/**
+ * Provider transport schema (CEQR-018 / contradiction-adjudication-schema-v3).
+ *
+ * Classification-discriminated union (emits JSON Schema `anyOf`, not `oneOf`).
+ * Evidence slots remain offset selections only — no authoritative sourceId/exactQuote.
+ *
+ * Forbidden: clear_contradiction with any compatibility flag true.
+ * Forbidden: classified result with affirmative abstentionReason.
+ * Forbidden: classification null with blank/null abstentionReason.
+ */
+export const contradictionModelTransportResultSchema = z.union([
+  clearContradictionTransportSchema,
+  classifiedNonClearTransportSchema,
+  abstentionTransportSchema,
+]);
+
+/**
+ * Domain semantic fields remain a flat object after binding.
+ * Semantic consistency is still enforced by collectSemanticConsistencyErrors
+ * (defence in depth); the domain schema does not silently reclassify.
+ */
+const contradictionDomainSemanticFieldsSchema = {
   propositionA: propositionFieldsSchema,
   propositionB: propositionFieldsSchema,
   contextAndScope: z.string(),
@@ -64,26 +146,15 @@ const contradictionSemanticFieldsSchema = {
   alternativeInterpretation: z.string(),
   whatWouldChangeClassification: z.string(),
   abstentionReason: z.string().nullable(),
-  /** Optional; if present must be ContradictionNode or omitted. Unsupported types fail closed. */
   proposedObjectType: z.string().nullable().optional(),
 } as const;
-
-/**
- * Provider transport schema (CEQR-016 / contradiction-adjudication-schema-v2).
- * Evidence slots are offset selections only — no authoritative sourceId/exactQuote.
- */
-export const contradictionModelTransportResultSchema = z.object({
-  ...contradictionSemanticFieldsSchema,
-  evidenceClaimA: evidenceSpanSelectionSchema,
-  evidenceClaimB: evidenceSpanSelectionSchema,
-});
 
 /**
  * Domain structured result after deterministic evidence binding.
  * Evidence slots are ExactEvidenceClaim (sourceId + exactQuote + offsets).
  */
 export const contradictionModelResultSchema = z.object({
-  ...contradictionSemanticFieldsSchema,
+  ...contradictionDomainSemanticFieldsSchema,
   evidenceClaimA: exactEvidenceClaimSchema,
   evidenceClaimB: exactEvidenceClaimSchema,
 });
@@ -94,6 +165,16 @@ export type ContradictionModelTransportResult = z.infer<
 
 export type ContradictionModelResult = z.infer<
   typeof contradictionModelResultSchema
+>;
+
+export type ClearContradictionTransportResult = z.infer<
+  typeof clearContradictionTransportSchema
+>;
+export type ClassifiedNonClearTransportResult = z.infer<
+  typeof classifiedNonClearTransportSchema
+>;
+export type AbstentionTransportResult = z.infer<
+  typeof abstentionTransportSchema
 >;
 
 export function parseContradictionModelTransportResult(

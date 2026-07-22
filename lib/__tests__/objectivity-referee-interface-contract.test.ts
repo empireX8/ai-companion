@@ -103,7 +103,7 @@ function baseModelResult(
     abstentionReason: null,
     proposedObjectType: KERNEL_FIRST_PROOF_OBJECT,
     ...overrides,
-  };
+  } as ContradictionModelTransportResult;
 }
 
 function fakeRunner(result: ContradictionModelTransportResult | ContradictionModelResult): StructuredModelRunner {
