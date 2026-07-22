@@ -1,0 +1,176 @@
+{
+  "ran": true,
+  "proofVersion": "contradiction-live-provider-referee-proof-v1",
+  "providerId": "openai",
+  "adjudicatorModelId": "gpt-4o-mini",
+  "refereeModelId": "gpt-4o-mini",
+  "independenceLevel": "separate_call_same_provider_same_model",
+  "maxRetries": 0,
+  "timeoutMs": 45000,
+  "providerAttemptCountExact": true,
+  "adjudicatorPromptAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v1",
+  "adjudicatorCallCount": 3,
+  "refereeCallCount": 0,
+  "totalCallCount": 3,
+  "maxTotalCalls": 8,
+  "cases": [
+    {
+      "caseId": "clear_contradiction_candidate",
+      "status": "failed_safely",
+      "proofOutcome": "failed_safely",
+      "writeExecuted": false,
+      "writerInvoked": false,
+      "adjudicatorCallCount": 1,
+      "refereeCallCount": 0,
+      "contradictionNodeId": null,
+      "sideAQuote": null,
+      "sideBQuote": null,
+      "presentationStatus": "not_requested",
+      "failureCode": "adjudication_failed",
+      "failureMessage": "Selection failed closed (adjudication_failed).",
+      "latencyMs": 5562,
+      "harnessNodeCountAfter": 0,
+      "harnessSpanCountAfter": 0,
+      "gateStoppedAt": "selection",
+      "sanitizedAdjudicationDiagnostics": {
+        "providerId": "openai",
+        "modelId": "gpt-4o-mini",
+        "schemaVersion": "contradiction-adjudication-schema-v1",
+        "promptVersion": "contradiction-adjudication-prompt-v2",
+        "parseValidationOutcome": "invalid",
+        "adjudicationOutcome": "validation_failed",
+        "adjudicationErrorCode": "validation_failed",
+        "validationErrorCodes": [
+          "fabricated_quote",
+          "clear_contradiction_requires_valid_spans",
+          "validation_failed"
+        ],
+        "failingFieldPaths": [
+          "evidenceClaim"
+        ],
+        "evidenceFailureSide": "unknown",
+        "sourceTextLengths": {
+          "sideA": 30,
+          "sideB": 33
+        },
+        "exactQuoteMatched": {
+          "sideA": null,
+          "sideB": null
+        },
+        "offsetsMatched": {
+          "sideA": null,
+          "sideB": null
+        },
+        "earliestGate": "deterministic_validation"
+      }
+    },
+    {
+      "caseId": "compatible_contextual",
+      "status": "failed_safely",
+      "proofOutcome": "failed_safely",
+      "writeExecuted": false,
+      "writerInvoked": false,
+      "adjudicatorCallCount": 1,
+      "refereeCallCount": 0,
+      "contradictionNodeId": null,
+      "sideAQuote": null,
+      "sideBQuote": null,
+      "presentationStatus": "not_requested",
+      "failureCode": "adjudication_failed",
+      "failureMessage": "Selection failed closed (adjudication_failed).",
+      "latencyMs": 3453,
+      "harnessNodeCountAfter": 0,
+      "harnessSpanCountAfter": 0,
+      "gateStoppedAt": "selection",
+      "sanitizedAdjudicationDiagnostics": {
+        "providerId": "openai",
+        "modelId": "gpt-4o-mini",
+        "schemaVersion": "contradiction-adjudication-schema-v1",
+        "promptVersion": "contradiction-adjudication-prompt-v2",
+        "parseValidationOutcome": "invalid",
+        "adjudicationOutcome": "validation_failed",
+        "adjudicationErrorCode": "validation_failed",
+        "validationErrorCodes": [
+          "fabricated_quote",
+          "validation_failed"
+        ],
+        "failingFieldPaths": [
+          "evidenceClaim"
+        ],
+        "evidenceFailureSide": "unknown",
+        "sourceTextLengths": {
+          "sideA": 30,
+          "sideB": 30
+        },
+        "exactQuoteMatched": {
+          "sideA": null,
+          "sideB": null
+        },
+        "offsetsMatched": {
+          "sideA": null,
+          "sideB": null
+        },
+        "earliestGate": "deterministic_validation"
+      }
+    },
+    {
+      "caseId": "ambiguous_insufficient",
+      "status": "failed_safely",
+      "proofOutcome": "failed_safely",
+      "writeExecuted": false,
+      "writerInvoked": false,
+      "adjudicatorCallCount": 1,
+      "refereeCallCount": 0,
+      "contradictionNodeId": null,
+      "sideAQuote": null,
+      "sideBQuote": null,
+      "presentationStatus": "not_requested",
+      "failureCode": "adjudication_failed",
+      "failureMessage": "Selection failed closed (adjudication_failed).",
+      "latencyMs": 5397,
+      "harnessNodeCountAfter": 0,
+      "harnessSpanCountAfter": 0,
+      "gateStoppedAt": "selection",
+      "sanitizedAdjudicationDiagnostics": {
+        "providerId": "openai",
+        "modelId": "gpt-4o-mini",
+        "schemaVersion": "contradiction-adjudication-schema-v1",
+        "promptVersion": "contradiction-adjudication-prompt-v2",
+        "parseValidationOutcome": "invalid",
+        "adjudicationOutcome": "validation_failed",
+        "adjudicationErrorCode": "validation_failed",
+        "validationErrorCodes": [
+          "source_id_mismatch",
+          "validation_failed"
+        ],
+        "failingFieldPaths": [
+          "evidenceClaim"
+        ],
+        "evidenceFailureSide": "unknown",
+        "sourceTextLengths": {
+          "sideA": 44,
+          "sideB": 33
+        },
+        "exactQuoteMatched": {
+          "sideA": null,
+          "sideB": null
+        },
+        "offsetsMatched": {
+          "sideA": null,
+          "sideB": null
+        },
+        "earliestGate": "deterministic_validation"
+      }
+    }
+  ],
+  "clearContradictionWriteProven": false,
+  "compatibleCaseNoWrite": false,
+  "ambiguousCaseNoWrite": true,
+  "unsafeMutationDetected": false,
+  "evidenceOutputMutated": false,
+  "realAccountMutated": false,
+  "productionIngestionWired": false,
+  "isolatedDatabasePersistenceProven": false,
+  "productionReady": false,
+  "classificationHint": "HOLD_LIVE_SEMANTIC_PROOF_NOT_OBTAINED"
+}

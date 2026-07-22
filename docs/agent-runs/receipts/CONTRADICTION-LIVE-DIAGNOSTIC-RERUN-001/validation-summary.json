@@ -1,0 +1,104 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-LIVE-DIAGNOSTIC-RERUN-001",
+  "campaignSlice": "CEQR-013",
+  "exactBase": "64c79a7d424aefb9d7e499c07c0d240233211284",
+  "classification": "PASS_LIVE_DIAGNOSTIC_ROOT_CAUSE_OBTAINED",
+  "optInEnv": "RUN_LIVE_CONTRADICTION_PROVIDER_PROOF",
+  "liveRunCountThisSlice": 1,
+  "executionTimestampStartUtc": "2026-07-22T09:18:16Z",
+  "executionTimestampEndUtc": "2026-07-22T09:18:33Z",
+  "processExitCode": 4,
+  "providerAttempts": {
+    "adjudicator": 3,
+    "referee": 0,
+    "total": 3,
+    "maxTotalCalls": 8
+  },
+  "maxRetries": 0,
+  "timeoutMs": 45000,
+  "adjudicatorPromptAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v1",
+  "runtimePromptChanged": false,
+  "providerOutputMutation": false,
+  "databaseMutation": false,
+  "sanitizedDiagnosticsSufficient": true,
+  "refereeLiveExecutionOccurred": false,
+  "productionIngestionWired": false,
+  "productionReady": false,
+  "perCaseExactDiagnostics": {
+    "clear_contradiction_candidate": {
+      "earliestGate": "deterministic_validation",
+      "gateStoppedAt": "selection",
+      "validationErrorCodes": [
+        "fabricated_quote",
+        "clear_contradiction_requires_valid_spans",
+        "validation_failed"
+      ],
+      "resultClass": "A_exact_evidence_failure"
+    },
+    "compatible_contextual": {
+      "earliestGate": "deterministic_validation",
+      "gateStoppedAt": "selection",
+      "validationErrorCodes": [
+        "fabricated_quote",
+        "validation_failed"
+      ],
+      "resultClass": "A_exact_evidence_failure"
+    },
+    "ambiguous_insufficient": {
+      "earliestGate": "deterministic_validation",
+      "gateStoppedAt": "selection",
+      "validationErrorCodes": [
+        "source_id_mismatch",
+        "validation_failed"
+      ],
+      "resultClass": "A_exact_evidence_failure"
+    }
+  },
+  "accountGate": {
+    "beforeMatchesExpected": true,
+    "afterMatchesExpected": true,
+    "beforeAfterEqual": true
+  },
+  "validation": {
+    "focusedCeqr013_012_011_runnerOptions": {
+      "files": 4,
+      "passed": 87,
+      "failed": 0
+    },
+    "relatedSuites": {
+      "files": 10,
+      "passed": 324,
+      "failed": 0
+    },
+    "fullVitest": {
+      "testFilesFailed": 5,
+      "testFilesPassed": 318,
+      "testsFailed": 7,
+      "testsPassed": 4333,
+      "knownBaseline": {
+        "testFilesFailed": 5,
+        "testFilesPassed": 317,
+        "testsFailed": 7,
+        "testsPassed": 4326
+      },
+      "knownFailureSetExpanded": false,
+      "passingDeltaExplainedByNewCeqr013Tests": 7,
+      "failingFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ]
+    },
+    "tscNoEmit": "pass",
+    "eslintChangedFiles": "pass",
+    "productionBuild": "pass_with_env_loaded",
+    "gitDiffCheck": "pass",
+    "secretPatternScan": "pass",
+    "personalIdentifierScan": "pass",
+    "prohibitedRouteImportWiringScan": "pass",
+    "secondLiveProviderRunDuringValidation": false
+  }
+}
