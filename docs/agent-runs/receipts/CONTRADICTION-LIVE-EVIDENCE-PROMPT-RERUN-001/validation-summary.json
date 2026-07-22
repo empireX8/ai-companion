@@ -1,0 +1,90 @@
+{
+  "campaign": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "slice": "CONTRADICTION-LIVE-EVIDENCE-PROMPT-RERUN-001",
+  "campaignSlice": "CEQR-015",
+  "exactBase": "989886124fb6885d433acdf567c4d50c298f588e",
+  "classification": "HOLD_LIVE_EVIDENCE_FAILURE_PERSISTS",
+  "optInEnv": "RUN_LIVE_CONTRADICTION_PROVIDER_PROOF",
+  "liveCommandCountThisSlice": 1,
+  "liveProviderAttemptsThisSlice": 3,
+  "executionTimestampStartUtc": "2026-07-22T11:17:41Z",
+  "executionTimestampEndUtc": "2026-07-22T11:17:58Z",
+  "processExitCode": 4,
+  "providerAttempts": {
+    "adjudicator": 3,
+    "referee": 0,
+    "total": 3,
+    "maxTotalCalls": 8
+  },
+  "maxRetries": 0,
+  "timeoutMs": 45000,
+  "adjudicatorPromptAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v2",
+  "runtimePromptChanged": false,
+  "requestPromptChanged": false,
+  "providerOutputMutation": false,
+  "validationWeakened": false,
+  "sourceLengthMetadataAdded": false,
+  "fabricatedQuoteRecurrence": true,
+  "sourceIdMismatchRecurrence": true,
+  "databaseMutation": false,
+  "existing25RowsUntouched": true,
+  "refereeLiveExecutionOccurred": false,
+  "productionIngestionWired": false,
+  "productionReady": false,
+  "accountGate": {
+    "beforeMatchesExpected": true,
+    "afterMatchesExpected": true,
+    "beforeAfterEqual": true
+  },
+  "validation": {
+    "preLiveFocused": {
+      "files": 5,
+      "passed": 99,
+      "failed": 0
+    },
+    "postLiveFocusedCeqr015_014_013_012_011_runnerOptions": {
+      "files": 6,
+      "passed": 106,
+      "failed": 0
+    },
+    "relatedSuites": {
+      "files": 12,
+      "passed": 335,
+      "failed": 0
+    },
+    "fullVitest": {
+      "testFilesFailed": 5,
+      "testFilesPassed": 320,
+      "testsFailed": 7,
+      "testsPassed": 4352,
+      "knownBaselineAfterCeqr014": {
+        "testFilesFailed": 5,
+        "testFilesPassed": 319,
+        "testsFailed": 7,
+        "testsPassed": 4345
+      },
+      "knownFailureSetExpanded": false,
+      "passingDeltaExplainedByNewCeqr015Tests": 7,
+      "failingFiles": [
+        "lib/__tests__/canonical-fixture-composition-gate.test.ts",
+        "lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts",
+        "lib/__tests__/orvek-adapters.test.ts",
+        "lib/__tests__/surfaced-evidence-pointer-schema.test.ts",
+        "lib/__tests__/today-production-movement-depth.test.ts"
+      ]
+    },
+    "tscNoEmit": "pass",
+    "eslintChangedFiles": "pass",
+    "productionBuild": "pass_with_env_loaded",
+    "gitDiffCheck": "pass",
+    "secretPatternScan": "pass",
+    "personalIdentifierScan": "pass",
+    "sourceLengthMetadataScan": "pass",
+    "outputRepairPatternScan": "pass",
+    "prohibitedRouteImportWiringScan": "pass",
+    "trustLanguageCheck": "pass",
+    "legacySurfacesCheck": "pass",
+    "liveProviderInvokedDuringValidation": false
+  },
+  "secondLiveProviderRunDuringValidation": false
+}
