@@ -21,6 +21,7 @@ import {
   CEQR_021_UNARMED_CLAIM_TEMPLATE_FILENAME,
   CEQR_021_WORKTREE_PATH,
   assertCeqr021ExecutionTree,
+  buildCeqr021FinalFrozenLivePlan,
   buildCeqr021PreLivePlanTemplate,
   ceqr021ReceiptDir,
   isGitWorkingTreeClean,
@@ -70,17 +71,10 @@ function main(): void {
   if (!existsSync(receiptDir)) mkdirSync(receiptDir, { recursive: true });
 
   const template = buildCeqr021PreLivePlanTemplate(cwd);
-  const frozenPlan = {
-    ...template,
+  const { plan: frozenPlan, serialized } = buildCeqr021FinalFrozenLivePlan({
+    cwd,
     committedExecutionHead: head,
-    frozenAt: new Date().toISOString(),
-    freezeKind: "final_immutable_frozen_live_plan",
-    armed: false,
-    liveAuthorisedByThisFreeze: false,
-    productionReady: false as const,
-    liveProviderAttempts: 0 as const,
-  };
-  const serialized = `${JSON.stringify(frozenPlan, null, 2)}\n`;
+  });
   const planSha256 = sha256Text(serialized);
   const planPath = join(receiptDir, CEQR_021_FINAL_FROZEN_LIVE_PLAN_FILENAME);
   if (existsSync(planPath)) {
@@ -104,7 +98,7 @@ function main(): void {
 
   console.log("--- CEQR-021 POST-COMMIT FREEZE ---");
   console.log(JSON.stringify({
-    committedExecutionHead: head,
+    committedExecutionHead: frozenPlan.committedExecutionHead,
     finalFrozenPlanPath: planPath,
     finalFrozenPlanSha256: planSha256,
     unarmedClaimTemplatePath: unarmedPath,
