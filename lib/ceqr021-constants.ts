@@ -153,6 +153,19 @@ export const CEQR_021_HISTORICAL = {
     "806c16038d84bbbd9d718fecab9b5da6f65bc69b6fe1ce74077d316ee2bd7b41",
   ceqr020HashVerificationSha256:
     "e3607dc47780c9135492560b204e935f7e23e090f9f9fe8d5030b6bc46197aec",
+  /** Immutable CEQR-021 archived live-execution artifacts (byte pins). */
+  ceqr021LiveExecutionReceiptSha256:
+    "000b98231443fe7d1dcf4b434d3305e2fe9e665986de72bf5fd067f558789014",
+  ceqr021OneshotClaimSha256:
+    "9527cca6f9da51c10c7ad7f14f37ea0934e3bf2995f60a62c9a6a8c86547a020",
+  ceqr021FinalFrozenLivePlanSha256:
+    "ec411a3c3bc8c2b99514ca2bc312604dfab1a64e766370f95322dad50e6072c1",
+  ceqr021InvalidCredentialResultMdSha256:
+    "1528ed4e75765071747b2306c1fc4246c12f67e0a2db563128d52ad6282bbe5f",
+  ceqr021ExecutionLockSha256:
+    "6c91915601bec2dec2618e8870d52ac67d06f2055230291cd694119d06156fa8",
+  ceqr021ExecutionLockProgressSha256:
+    "802791495a14fb4e4f2f65361c2bc56c187a120f690b956bf68ec2e6e85f8a00",
 } as const;
 
 export type Ceqr021OfflineClassification =

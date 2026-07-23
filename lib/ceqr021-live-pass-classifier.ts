@@ -375,20 +375,85 @@ function mutationFlagsClear(obs: Ceqr021CaseObservation): boolean {
   return !obs.writerInvoked && !obs.persistenceInvoked && !obs.nodeCreated;
 }
 
-function classifyClearCase(
+/**
+ * Shared earliest-gate ordering for all three case classifiers.
+ *
+ * A landed provider failure must classify before schema-v4 parse / transport
+ * parse flags. Otherwise credential/transport failures are misreported as
+ * FAIL_SCHEMA_V4_PARSE when transportParsedAsSchemaV4 is false.
+ */
+export function classifyLandedProviderOrSchemaGate(
   obs: Ceqr021CaseObservation,
-  catalogs: Ceqr021FrozenCaseCatalogs,
 ): Ceqr021LiveClassification | null {
+  if (
+    obs.adjudicationOutcome === "provider_failed" ||
+    obs.adjudicatorErrorCode === "model_execution_failed" ||
+    obs.adjudicatorErrorCode === "model_timeout"
+  ) {
+    return "FAIL_PROVIDER_OR_TRANSPORT";
+  }
   if (
     obs.validationCode === "schema_parse_failed" ||
     obs.adjudicatorErrorCode === "schema_parse_failed"
   ) {
     return "FAIL_SCHEMA_V4_PARSE";
   }
-  if (!obs.transportParsedAsSchemaV4) return "FAIL_SCHEMA_V4_PARSE";
-  if (obs.adjudicationOutcome === "provider_failed") {
-    return "FAIL_PROVIDER_OR_TRANSPORT";
+  if (!obs.transportParsedAsSchemaV4) {
+    return "FAIL_SCHEMA_V4_PARSE";
   }
+  return null;
+}
+
+/** Stable sanitized provider-failure message for canonical receipts. */
+export function sanitizeCeqrProviderFailureMessage(args: {
+  errorCode?: string | null;
+  rawMessage?: string | null;
+}): string {
+  const haystack = `${args.errorCode ?? ""} ${args.rawMessage ?? ""}`;
+  if (
+    /auth|credential|api[\s_-]?key|unauthorized|401|forbidden|403|invalid.?key|incorrect.?api/i.test(
+      haystack,
+    )
+  ) {
+    return "Provider authentication failed; credential details redacted.";
+  }
+  return "Provider model execution failed; provider details redacted.";
+}
+
+export function observationRequiresProviderFailureSanitization(
+  obs: Pick<
+    Ceqr021CaseObservation,
+    "adjudicationOutcome" | "adjudicatorErrorCode"
+  >,
+): boolean {
+  return (
+    obs.adjudicationOutcome === "provider_failed" ||
+    obs.adjudicatorErrorCode === "model_execution_failed" ||
+    obs.adjudicatorErrorCode === "model_timeout"
+  );
+}
+
+export function sanitizeCeqr021CaseObservationForReceipt(
+  obs: Ceqr021CaseObservation,
+): Ceqr021CaseObservation {
+  if (!observationRequiresProviderFailureSanitization(obs)) {
+    return obs;
+  }
+  return {
+    ...obs,
+    adjudicatorErrorMessage: sanitizeCeqrProviderFailureMessage({
+      errorCode: obs.adjudicatorErrorCode,
+      rawMessage: obs.adjudicatorErrorMessage,
+    }),
+  };
+}
+
+function classifyClearCase(
+  obs: Ceqr021CaseObservation,
+  catalogs: Ceqr021FrozenCaseCatalogs,
+): Ceqr021LiveClassification | null {
+  const earliest = classifyLandedProviderOrSchemaGate(obs);
+  if (earliest) return earliest;
   const fpFail = providerFingerprintOk(obs);
   if (fpFail) return fpFail;
   if (obs.validationCode === "invalid_boundary_index") {
@@ -449,16 +514,8 @@ function classifyCompatibleCase(
   obs: Ceqr021CaseObservation,
   catalogs: Ceqr021FrozenCaseCatalogs,
 ): Ceqr021LiveClassification | null {
-  if (
-    obs.validationCode === "schema_parse_failed" ||
-    obs.adjudicatorErrorCode === "schema_parse_failed"
-  ) {
-    return "FAIL_SCHEMA_V4_PARSE";
-  }
-  if (!obs.transportParsedAsSchemaV4) return "FAIL_SCHEMA_V4_PARSE";
-  if (obs.adjudicationOutcome === "provider_failed") {
-    return "FAIL_PROVIDER_OR_TRANSPORT";
-  }
+  const earliest = classifyLandedProviderOrSchemaGate(obs);
+  if (earliest) return earliest;
   const fpFail = providerFingerprintOk(obs);
   if (fpFail) return fpFail;
   if (obs.validationCode === "invalid_boundary_index") {
@@ -525,16 +582,8 @@ function classifyAmbiguousCase(
   obs: Ceqr021CaseObservation,
   catalogs: Ceqr021FrozenCaseCatalogs,
 ): Ceqr021LiveClassification | null {
-  if (
-    obs.validationCode === "schema_parse_failed" ||
-    obs.adjudicatorErrorCode === "schema_parse_failed"
-  ) {
-    return "FAIL_SCHEMA_V4_PARSE";
-  }
-  if (!obs.transportParsedAsSchemaV4) return "FAIL_SCHEMA_V4_PARSE";
-  if (obs.adjudicationOutcome === "provider_failed") {
-    return "FAIL_PROVIDER_OR_TRANSPORT";
-  }
+  const earliest = classifyLandedProviderOrSchemaGate(obs);
+  if (earliest) return earliest;
   const fpFail = providerFingerprintOk(obs);
   if (fpFail) return fpFail;
   if (obs.adjudicationOutcome === "validation_failed") {
@@ -573,6 +622,87 @@ function classifyAmbiguousCase(
     selection: obs.transportSelectionB,
     evidence: obs.evidenceB,
     requirePresent: false,
+  });
+  if (sideBFail) return sideBFail;
+  return null;
+}
+
+/**
+ * CEQR-022 provider-failure reproof only.
+ *
+ * Historical CEQR-021 required null-classification abstention for
+ * ambiguous_insufficient. Schema-v4 permits Class D
+ * (insufficient_or_misaligned_context) as a classified non-clear result;
+ * the frozen pair is correctly Class D and must PASS under CEQR-022 when
+ * schema/evidence/mutation gates succeed and the referee does not run.
+ *
+ * Does not alter classifyAmbiguousCase / classifyCeqr021LiveResult.
+ */
+export const CEQR_022_EXPECTED_AMBIGUOUS_CLASSIFICATION =
+  "insufficient_or_misaligned_context" as const;
+
+function classifyCeqr022AmbiguousCase(
+  obs: Ceqr021CaseObservation,
+  catalogs: Ceqr021FrozenCaseCatalogs,
+): Ceqr021LiveClassification | null {
+  const earliest = classifyLandedProviderOrSchemaGate(obs);
+  if (earliest) return earliest;
+  const fpFail = providerFingerprintOk(obs);
+  if (fpFail) return fpFail;
+  if (obs.validationCode === "invalid_boundary_index") {
+    return "FAIL_INVALID_BOUNDARY_INDEX";
+  }
+  if (obs.adjudicationOutcome === "validation_failed") {
+    return "FAIL_INVALID_OR_UNAPPROVED_EVIDENCE_SPAN";
+  }
+  if (obs.adjudicationOutcome === "abstained" || obs.observedClassification == null) {
+    return "FAIL_SEMANTIC_CLASSIFICATION_MISMATCH";
+  }
+  if (obs.observedClassification !== CEQR_022_EXPECTED_AMBIGUOUS_CLASSIFICATION) {
+    return "FAIL_SEMANTIC_CLASSIFICATION_MISMATCH";
+  }
+  if (obs.adjudicationOutcome !== "semantic_accepted") {
+    return "FAIL_SEMANTIC_CLASSIFICATION_MISMATCH";
+  }
+  if (obs.semanticConsistencyOk !== true) {
+    return "FAIL_SEMANTIC_CLASSIFICATION_MISMATCH";
+  }
+  if (obs.abstentionReason != null) {
+    return "FAIL_ABSTENTION_CONTRACT";
+  }
+  if (!obs.transportParsedAsSchemaV4) {
+    return "FAIL_SCHEMA_V4_PARSE";
+  }
+  if (obs.refereeReached || obs.refereeCallCount !== 0) {
+    return "FAIL_CALL_BUDGET";
+  }
+  if (!mutationFlagsClear(obs)) return "FAIL_WRITER_OR_PERSISTENCE_BOUNDARY";
+
+  if (
+    obs.transportSelectionA == null ||
+    obs.transportSelectionB == null ||
+    obs.evidenceA == null ||
+    obs.evidenceB == null
+  ) {
+    return "FAIL_SOURCE_AUTHORITY";
+  }
+
+  const sideAFail = boundEvidenceAuthoritativeOk({
+    caseId: obs.caseId,
+    sideKey: "A",
+    side: catalogs.sideA,
+    selection: obs.transportSelectionA,
+    evidence: obs.evidenceA,
+    requirePresent: true,
+  });
+  if (sideAFail) return sideAFail;
+  const sideBFail = boundEvidenceAuthoritativeOk({
+    caseId: obs.caseId,
+    sideKey: "B",
+    side: catalogs.sideB,
+    selection: obs.transportSelectionB,
+    evidence: obs.evidenceB,
+    requirePresent: true,
   });
   if (sideBFail) return sideBFail;
   return null;
@@ -738,6 +868,66 @@ export function classifyCeqr021LiveResult(
   return "PASS_LIVE_SCHEMA_V4_SEMANTIC_PROOF_OBTAINED";
 }
 
+/**
+ * CEQR-022 provider-failure reproof classifier.
+ * Reuses CEQR-021 clear/compatible/global/pass gates; only the ambiguous case
+ * contract differs (Class D insufficient_or_misaligned_context PASS).
+ * Historical classifyCeqr021LiveResult remains unchanged.
+ */
+export function classifyCeqr022LiveResult(
+  input: Ceqr021ClassifierInput,
+): Ceqr021LiveClassification {
+  if (input.offlineDryRun) {
+    const liveClass = classifyCeqr022LiveResult({
+      ...input,
+      offlineDryRun: false,
+    });
+    if (liveClass === "PASS_LIVE_SCHEMA_V4_SEMANTIC_PROOF_OBTAINED") {
+      return "PASS_OFFLINE_HARNESS_DRY_RUN_SCHEMA_V4_CONTROL_FLOW";
+    }
+    return liveClass;
+  }
+
+  const globalFail = classifyGlobalGates(input);
+  if (globalFail) return globalFail;
+
+  const byId = new Map(input.caseObservations.map((o) => [o.caseId, o]));
+  const clear = byId.get("clear_contradiction_candidate")!;
+  const compatible = byId.get("compatible_contextual")!;
+  const ambiguous = byId.get("ambiguous_insufficient")!;
+
+  const clearCatalogs = getCatalogForCase(
+    input.catalogsByCaseId,
+    "clear_contradiction_candidate",
+  );
+  const compatibleCatalogs = getCatalogForCase(
+    input.catalogsByCaseId,
+    "compatible_contextual",
+  );
+  const ambiguousCatalogs = getCatalogForCase(
+    input.catalogsByCaseId,
+    "ambiguous_insufficient",
+  );
+  if (!clearCatalogs || !compatibleCatalogs || !ambiguousCatalogs) {
+    return "FAIL_PROVIDER_OR_TRANSPORT";
+  }
+
+  const clearFail = classifyClearCase(clear, clearCatalogs);
+  if (clearFail) return clearFail;
+  const compatibleFail = classifyCompatibleCase(compatible, compatibleCatalogs);
+  if (compatibleFail) return compatibleFail;
+  const ambiguousFail = classifyCeqr022AmbiguousCase(
+    ambiguous,
+    ambiguousCatalogs,
+  );
+  if (ambiguousFail) return ambiguousFail;
+
+  const passBudgetFail = classifyPassAccountingGates(input);
+  if (passBudgetFail) return passBudgetFail;
+
+  return "PASS_LIVE_SCHEMA_V4_SEMANTIC_PROOF_OBTAINED";
+}
+
 function sideDiagnosticsFrom(
   caseId: LiveSyntheticCaseId,
   sideKey: "A" | "B",
@@ -881,20 +1071,38 @@ export function fingerprintProviderObject(value: unknown): string | null {
 /**
  * Fail closed when a serialized receipt/diagnostics blob appears to embed
  * secrets or a full raw provider adjudication object dump.
+ *
+ * Detects ordinary OpenAI keys, project-prefixed keys, masked project-key
+ * fingerprints (e.g. sk-proj-*****...AB12), Bearer tokens, and env assignments.
  */
 export function assertSanitizedReceiptHasNoLeaks(
   serializedReceipt: string,
 ): { ok: true } | { ok: false; leaks: string[] } {
   const leaks: string[] = [];
 
-  if (/sk-[A-Za-z0-9]{10,}/.test(serializedReceipt)) {
-    leaks.push("api_key_pattern");
+  // Contiguous keys (ordinary + project-prefixed) and masked fingerprints.
+  const keyMatches =
+    serializedReceipt.match(/\bsk-(?:proj-)?[A-Za-z0-9*_.\-]{6,}/g) ?? [];
+  for (const match of keyMatches) {
+    if (/[*]|\.\.\./.test(match)) {
+      if (!leaks.includes("masked_api_key_fingerprint")) {
+        leaks.push("masked_api_key_fingerprint");
+      }
+    } else if (!leaks.includes("api_key_pattern")) {
+      leaks.push("api_key_pattern");
+    }
   }
   if (/\bBearer\s+[A-Za-z0-9._\-+=/]+/.test(serializedReceipt)) {
     leaks.push("bearer_token");
   }
+  if (/Authorization\s*[:=]\s*Bearer\b/i.test(serializedReceipt)) {
+    leaks.push("authorization_bearer");
+  }
   if (/OPENAI_API_KEY\s*=/.test(serializedReceipt)) {
     leaks.push("env_assignment");
+  }
+  if (/https?:\/\/(?:[a-z0-9-]+\.)*openai\.com\b/i.test(serializedReceipt)) {
+    leaks.push("provider_account_url");
   }
   if (
     /normalizedProposition/.test(serializedReceipt) &&

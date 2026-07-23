@@ -42,6 +42,7 @@ import {
   assertSanitizedCanonicalReceiptJson,
   buildCeqr021CaseDiagnostics,
   classifyCeqr021LiveResult,
+  sanitizeCeqr021CaseObservationForReceipt,
   type Ceqr021BoundEvidence,
   type Ceqr021CaseObservation,
 } from "./ceqr021-live-pass-classifier";
@@ -293,7 +294,7 @@ function mapLandedAdjudicationToObservation(args: {
               ? "provider_failed"
               : "not_run";
 
-  return {
+  return sanitizeCeqr021CaseObservationForReceipt({
     caseId: args.caseId,
     expectedOutcome: args.expectedOutcome,
     transportParsedAsSchemaV4,
@@ -343,7 +344,7 @@ function mapLandedAdjudicationToObservation(args: {
     adjudicatorErrorMessage: adjudication.errorMessage,
     validationErrors: adjudication.validation?.errors?.map(String) ?? null,
     evidenceBindDiagnostics: bindDiags,
-  };
+  });
 }
 
 export type Ceqr021LiveMatrixResult = {
@@ -407,44 +408,46 @@ export async function executeCeqr021LiveThreeCaseMatrix(args: {
       });
     } catch {
       const latencyMs = Math.max(0, performance.now() - started);
-      observations.push({
-        caseId: synthetic.id,
-        expectedOutcome,
-        transportParsedAsSchemaV4: false,
-        observedClassification: null,
-        adjudicationOutcome: "provider_failed",
-        compatibilityFlags: {
-          bothCanSimultaneouslyBeTrue: null,
-          changedBeliefOverTime: null,
-          intentionVersusOutcome: null,
-          goalVersusObstacle: null,
-          emotionalOrPhysiologicalVersusReasoningStandard: null,
-        },
-        abstentionReason: null,
-        evidenceA: null,
-        evidenceB: null,
-        transportSelectionA: null,
-        transportSelectionB: null,
-        rawProviderObjectSha256: null,
-        immutableRawTransportFingerprint: null,
-        refereeReached: false,
-        refereeCompleted: false,
-        refereeFailed: false,
-        adjudicatorCallCount: 1,
-        refereeCallCount: 0,
-        writerInvoked: false,
-        persistenceInvoked: false,
-        nodeCreated: false,
-        semanticConsistencyOk: null,
-        validationCode: "provider_thrown",
-        failingSide: null,
-        earliestFailedGate: "provider_or_transport",
-        latencyMs,
-        adjudicatorErrorCode: "model_execution_failed",
-        adjudicatorErrorMessage: "provider_thrown",
-        validationErrors: null,
-        evidenceBindDiagnostics: null,
-      });
+      observations.push(
+        sanitizeCeqr021CaseObservationForReceipt({
+          caseId: synthetic.id,
+          expectedOutcome,
+          transportParsedAsSchemaV4: false,
+          observedClassification: null,
+          adjudicationOutcome: "provider_failed",
+          compatibilityFlags: {
+            bothCanSimultaneouslyBeTrue: null,
+            changedBeliefOverTime: null,
+            intentionVersusOutcome: null,
+            goalVersusObstacle: null,
+            emotionalOrPhysiologicalVersusReasoningStandard: null,
+          },
+          abstentionReason: null,
+          evidenceA: null,
+          evidenceB: null,
+          transportSelectionA: null,
+          transportSelectionB: null,
+          rawProviderObjectSha256: null,
+          immutableRawTransportFingerprint: null,
+          refereeReached: false,
+          refereeCompleted: false,
+          refereeFailed: false,
+          adjudicatorCallCount: 1,
+          refereeCallCount: 0,
+          writerInvoked: false,
+          persistenceInvoked: false,
+          nodeCreated: false,
+          semanticConsistencyOk: null,
+          validationCode: "provider_thrown",
+          failingSide: null,
+          earliestFailedGate: "provider_or_transport",
+          latencyMs,
+          adjudicatorErrorCode: "model_execution_failed",
+          adjudicatorErrorMessage: "provider_thrown",
+          validationErrors: null,
+          evidenceBindDiagnostics: null,
+        }),
+      );
       continue;
     }
 
@@ -556,6 +559,22 @@ export type Ceqr021LiveExecutionReceipt = {
   notes: string[];
 };
 
+/**
+ * Sanitize provider-failure messages before canonical JSON serialization.
+ * Never persist raw provider/credential-derived error text in observations.
+ * Other fields (e.g. notes) are not silently scrubbed — leak detection fails closed.
+ */
+export function sanitizeCeqr021LiveReceiptForCanonicalSerialization(
+  receipt: Ceqr021LiveExecutionReceipt,
+): Ceqr021LiveExecutionReceipt {
+  return {
+    ...receipt,
+    caseObservations: receipt.caseObservations.map(
+      sanitizeCeqr021CaseObservationForReceipt,
+    ),
+  };
+}
+
 export function finalizeCeqr021LiveReceiptAtomic(args: {
   receiptDir: string;
   receipt: Ceqr021LiveExecutionReceipt;
@@ -574,7 +593,10 @@ export function finalizeCeqr021LiveReceiptAtomic(args: {
       message: `Canonical live receipt already exists at ${receiptPath}`,
     };
   }
-  const serialized = `${JSON.stringify(args.receipt, null, 2)}\n`;
+  const sanitized = sanitizeCeqr021LiveReceiptForCanonicalSerialization(
+    args.receipt,
+  );
+  const serialized = `${JSON.stringify(sanitized, null, 2)}\n`;
   const leak = assertSanitizedCanonicalReceiptJson(serialized);
   if (!leak.ok) {
     return {

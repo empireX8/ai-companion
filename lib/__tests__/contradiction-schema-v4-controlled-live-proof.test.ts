@@ -75,8 +75,6 @@ import {
   buildCeqr021CaseDiagnostics,
   finalizeCeqr021LiveReceiptAtomic,
   acquireCeqr021ExecutionLockAndConsumeClaim,
-  writeCeqr021ChangedFilesManifest,
-  assertCeqr021ChangedFilesManifestExact,
   type Ceqr021CatalogsByCaseId,
   CEQR_021_EXECUTION_LOCK_FILENAME,
   CEQR_021_EXPECTED_COMPATIBLE_CLASSIFICATION,
@@ -731,9 +729,11 @@ describe("CEQR-021 one-shot and canonical path safety", () => {
   });
 
   it("does not create final canonical claim during tests; existing receipt blocks", async () => {
-    expect(existsSync(ceqr021CanonicalOneshotClaimPath(REPO_ROOT))).toBe(false);
-    expect(existsSync(ceqr021CanonicalLiveReceiptPath(REPO_ROOT))).toBe(false);
-    expect(existsSync(ceqr021ExecutionLockPath(REPO_ROOT))).toBe(false);
+    // Post CEQR-021 live archive: canonical claim/receipt/lock are immutable
+    // historical artifacts under the slice receipt dir (byte-pinned elsewhere).
+    expect(existsSync(ceqr021CanonicalOneshotClaimPath(REPO_ROOT))).toBe(true);
+    expect(existsSync(ceqr021CanonicalLiveReceiptPath(REPO_ROOT))).toBe(true);
+    expect(existsSync(ceqr021ExecutionLockPath(REPO_ROOT))).toBe(true);
 
     const dir = tempDir("ceqr021-receipt-");
     const receiptDir = join(dir, CEQR_021_SLICE_ID);
@@ -852,9 +852,11 @@ describe("CEQR-021 historical immutability and production isolation", () => {
     expect(plan.liveAuthorisedByThisFreeze).toBe(false);
     expect(plan.productionReady).toBe(false);
     expect(plan.liveProviderAttempts).toBe(0);
-    expect(existsSync(ceqr021CanonicalOneshotClaimPath(REPO_ROOT))).toBe(false);
-    expect(existsSync(ceqr021ExecutionLockPath(REPO_ROOT))).toBe(false);
-    expect(existsSync(ceqr021CanonicalLiveReceiptPath(REPO_ROOT))).toBe(false);
+    // Post-archive: canonical claim/lock/receipt/final plan are immutable
+    // historical artifacts (byte-pinned). Builder itself does not rewrite them.
+    expect(existsSync(ceqr021CanonicalOneshotClaimPath(REPO_ROOT))).toBe(true);
+    expect(existsSync(ceqr021ExecutionLockPath(REPO_ROOT))).toBe(true);
+    expect(existsSync(ceqr021CanonicalLiveReceiptPath(REPO_ROOT))).toBe(true);
     expect(
       existsSync(
         join(
@@ -864,7 +866,7 @@ describe("CEQR-021 historical immutability and production isolation", () => {
           "final-frozen-live-plan.json",
         ),
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 });
 
@@ -1743,16 +1745,21 @@ describe("CEQR-021 crash-durable consume (third-review Blocker 6)", () => {
 });
 
 describe("CEQR-021 changed-files manifest (third-review Blocker 5)", () => {
-  it("manifest matches mechanical exact-base listing byte-for-byte", () => {
-    const written = writeCeqr021ChangedFilesManifest(REPO_ROOT);
-    expect(written.some((f) => f.endsWith("00-intake-and-boundaries.md"))).toBe(
-      true,
+  it("archived changed-files.txt remains immutable and lists intake docs", () => {
+    // Post live-archive: do not rewrite CEQR-021 receipt artifacts.
+    const path = join(
+      REPO_ROOT,
+      "docs/agent-runs/receipts",
+      CEQR_021_SLICE_ID,
+      "changed-files.txt",
     );
-    expect(
-      written.some((f) => f.endsWith("00-opportunity-and-boundaries.md")),
-    ).toBe(false);
-    const check = assertCeqr021ChangedFilesManifestExact(REPO_ROOT);
-    expect(check.ok).toBe(true);
+    expect(existsSync(path)).toBe(true);
+    const text = readFileSync(path, "utf8");
+    expect(text).toContain("00-intake-and-boundaries.md");
+    expect(text).not.toContain("00-opportunity-and-boundaries.md");
+    expect(text).toContain(
+      "docs/agent-runs/receipts/CONTRADICTION-SCHEMA-V4-CONTROLLED-LIVE-PROOF-001/",
+    );
   });
 });
 
