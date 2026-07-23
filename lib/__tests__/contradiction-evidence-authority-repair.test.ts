@@ -11,7 +11,6 @@ import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { join } from "path";
 import { createHash } from "crypto";
 import { describe, expect, it } from "vitest";
-
 import {
   adjudicateContradiction,
   CONTRADICTION_ADJUDICATION_PROMPT_VERSION,
@@ -44,6 +43,11 @@ import {
   type StructuredModelRunner,
 } from "../orvek-intelligence-kernel";
 
+import {
+  transportSelectionForFullSource,
+  transportSelectionForOffsets,
+} from "./helpers/ceqr020-transport-selection";
+
 const FIXED_NOW = () => new Date("2026-07-22T12:00:00.000Z");
 
 /** Test-local TRANSPORT helper only — not a production binding API. */
@@ -53,10 +57,11 @@ function selectionForSubstring(
 ): EvidenceSpanSelection | null {
   const startOffset = source.sourceText.indexOf(exactQuote);
   if (startOffset < 0) return null;
-  return {
+  return transportSelectionForOffsets(
+    source.sourceText,
     startOffset,
-    endOffset: startOffset + exactQuote.length,
-  };
+    startOffset + exactQuote.length,
+  );
 }
 
 function source(
@@ -79,15 +84,11 @@ function transportResult(
   overrides: Record<string, unknown> = {},
 ): Record<string, unknown> {
   const selA =
-    selectionForSubstring(sideA, sideA.sourceText) ?? {
-      startOffset: 0,
-      endOffset: sideA.sourceText.length,
-    };
+    selectionForSubstring(sideA, sideA.sourceText) ??
+    transportSelectionForFullSource(sideA.sourceText);
   const selB =
-    selectionForSubstring(sideB, sideB.sourceText) ?? {
-      startOffset: 0,
-      endOffset: sideB.sourceText.length,
-    };
+    selectionForSubstring(sideB, sideB.sourceText) ??
+    transportSelectionForFullSource(sideB.sourceText);
   return {
     propositionA: {
       normalizedProposition: "Speaker does not drink alcohol",
@@ -199,13 +200,13 @@ describe("CEQR-016 version identities", () => {
       "contradiction-adjudication-schema-v2",
     );
     expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION).toBe(
-      "contradiction-adjudication-schema-v3",
+      "contradiction-adjudication-schema-v4",
     );
     expect(CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V2).toBe(
       "contradiction-adjudication-prompt-v2",
     );
     expect(CONTRADICTION_ADJUDICATION_PROMPT_VERSION).toBe(
-      "contradiction-adjudication-prompt-v3",
+      "contradiction-adjudication-prompt-v4",
     );
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1).toBe(
       "contradiction-live-adjudicator-prompt-addendum-v1",
@@ -214,7 +215,7 @@ describe("CEQR-016 version identities", () => {
       "contradiction-live-adjudicator-prompt-addendum-v2",
     );
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v3",
+      "contradiction-live-adjudicator-prompt-addendum-v4",
     );
   });
 });
@@ -232,15 +233,11 @@ describe("CEQR-016 raw provider output immutability", () => {
       label: "B",
     });
     const providerObject = transportResult(sideA, sideB, {
-      evidenceClaimA: {
-        startOffset: 0,
-        endOffset: sideA.sourceText.length,
+      evidenceClaimA: { ...transportSelectionForFullSource(sideA.sourceText),
         sourceId: "provider-forged-id",
         exactQuote: "FORGED QUOTE TEXT",
       },
-      evidenceClaimB: {
-        startOffset: 0,
-        endOffset: sideB.sourceText.length,
+      evidenceClaimB: { ...transportSelectionForFullSource(sideB.sourceText),
         sourceId: "other-forged",
         exactQuote: "also forged",
       },
@@ -296,14 +293,10 @@ describe("CEQR-016 sourceId authority", () => {
         sideB,
         modelRunner: fakeRunner(
           transportResult(sideA, sideB, {
-            evidenceClaimA: {
-              startOffset: 0,
-              endOffset: sideA.sourceText.length,
+            evidenceClaimA: { ...transportSelectionForFullSource(sideA.sourceText),
               sourceId: forged,
             },
-            evidenceClaimB: {
-              startOffset: 0,
-              endOffset: sideB.sourceText.length,
+            evidenceClaimB: { ...transportSelectionForFullSource(sideB.sourceText),
               sourceId: "message-b",
             },
           }),
@@ -333,14 +326,10 @@ describe("CEQR-016 sourceId authority", () => {
       sideB,
       modelRunner: fakeRunner(
         transportResult(sideA, sideB, {
-          evidenceClaimA: {
-            startOffset: 0,
-            endOffset: sideA.sourceText.length,
+          evidenceClaimA: { ...transportSelectionForFullSource(sideA.sourceText),
             sourceId: "side-b",
           },
-          evidenceClaimB: {
-            startOffset: 0,
-            endOffset: sideB.sourceText.length,
+          evidenceClaimB: { ...transportSelectionForFullSource(sideB.sourceText),
             sourceId: "side-a",
           },
         }),
@@ -373,13 +362,11 @@ describe("CEQR-016 exactQuote authority", () => {
       modelRunner: fakeRunner(
         transportResult(sideA, sideB, {
           evidenceClaimA: {
-            startOffset: 3,
-            endOffset: 7,
+            ...transportSelectionForOffsets(sideA.sourceText, 3, 7),
             exactQuote: "PROVIDER_LIE",
           },
           evidenceClaimB: {
-            startOffset: 3,
-            endOffset: 6,
+            ...transportSelectionForOffsets(sideB.sourceText, 3, 6),
             exactQuote: "NOPE",
           },
         }),
@@ -500,8 +487,9 @@ describe("CEQR-016 offset fail-closed boundary", () => {
     expect(bindSrc).not.toContain("export function selectionForSubstring");
     const bindFn = bindSrc.slice(
       bindSrc.indexOf("export function bindExactEvidenceClaimFromOffsets"),
-      bindSrc.indexOf("export function bindDualSideEvidenceClaims"),
+      bindSrc.indexOf("export function claimForSubstring"),
     );
+    expect(bindFn).toContain("export function bindExactEvidenceClaimFromOffsets");
     expect(bindFn).not.toMatch(/indexOf/);
     expect(bindFn).not.toMatch(/includes\(/);
   });
@@ -524,14 +512,14 @@ describe("CEQR-016 semantic + referee + writer gates", () => {
       sideB,
       modelRunner: fakeRunner(
         transportResult(sideA, sideB, {
-          evidenceClaimA: { startOffset: 0, endOffset: 99 },
-          evidenceClaimB: { startOffset: 0, endOffset: sideB.sourceText.length },
+          evidenceClaimA: { startBoundaryIndex: 0, endBoundaryIndex: 999 },
+          evidenceClaimB: transportSelectionForFullSource(sideB.sourceText),
         }),
       ),
       now: FIXED_NOW,
     });
     expect(result.outcome).toBe("validation_failed");
-    expect(result.errorMessage).toMatch(/invalid_offsets|clear_contradiction requires/i);
+    expect(result.errorMessage).toMatch(/invalid_boundary_index|invalid_offsets|clear_contradiction requires/i);
   });
 
   it("compatible contextual remains non-Class-A and no-write", async () => {
@@ -615,15 +603,11 @@ describe("CEQR-016 semantic + referee + writer gates", () => {
       sideB,
       modelRunner: fakeRunner(
         transportResult(sideA, sideB, {
-          evidenceClaimA: {
-            startOffset: 0,
-            endOffset: sideA.sourceText.length,
+          evidenceClaimA: { ...transportSelectionForFullSource(sideA.sourceText),
             sourceId: "forged",
             exactQuote: "forged quote",
           },
-          evidenceClaimB: {
-            startOffset: 0,
-            endOffset: sideB.sourceText.length,
+          evidenceClaimB: { ...transportSelectionForFullSource(sideB.sourceText),
             sourceId: "forged-b",
             exactQuote: "also forged",
           },
@@ -663,11 +647,8 @@ describe("CEQR-016 semantic + referee + writer gates", () => {
       sideB,
       modelRunner: fakeRunner(
         transportResult(sideA, sideB, {
-          evidenceClaimA: { startOffset: -3, endOffset: 2 },
-          evidenceClaimB: {
-            startOffset: 0,
-            endOffset: sideB.sourceText.length,
-          },
+          evidenceClaimA: { startBoundaryIndex: -3, endBoundaryIndex: 2 },
+          evidenceClaimB: transportSelectionForFullSource(sideB.sourceText),
         }),
       ),
       objectivityReferee: {
@@ -700,8 +681,8 @@ describe("CEQR-016 dual bind ordering", () => {
       label: "B",
     });
     const bound = bindDualSideEvidenceClaims({
-      selectionA: { startOffset: 0, endOffset: 3 },
-      selectionB: { startOffset: 0, endOffset: 3 },
+      selectionA: transportSelectionForFullSource(sideA.sourceText),
+      selectionB: transportSelectionForFullSource(sideB.sourceText),
       sourceA: sideA,
       sourceB: sideB,
     });
@@ -725,15 +706,11 @@ describe("CEQR-016 injected writer / lineage proof", () => {
       async runStructured(request) {
         const { sideA, sideB } = parseSidesFromPrompt(request.prompt);
         const object = transportResult(sideA, sideB, {
-          evidenceClaimA: {
-            startOffset: 0,
-            endOffset: sideA.sourceText.length,
+          evidenceClaimA: { ...transportSelectionForFullSource(sideA.sourceText),
             sourceId: "forged-provider-source-a",
             exactQuote: "FORGED_PROVIDER_QUOTE_A",
           },
-          evidenceClaimB: {
-            startOffset: 0,
-            endOffset: sideB.sourceText.length,
+          evidenceClaimB: { ...transportSelectionForFullSource(sideB.sourceText),
             sourceId: "forged-provider-source-b",
             exactQuote: "FORGED_PROVIDER_QUOTE_B",
           },
@@ -836,10 +813,8 @@ describe("CEQR-016 injected writer / lineage proof", () => {
         return {
           ok: true as const,
           object: transportResult(sideA, sideB, {
-            evidenceClaimA: { startOffset: -1, endOffset: 4 },
-            evidenceClaimB: {
-              startOffset: 0,
-              endOffset: sideB.sourceText.length,
+            evidenceClaimA: { startBoundaryIndex: -1, endBoundaryIndex: 4 },
+            evidenceClaimB: { ...transportSelectionForFullSource(sideB.sourceText),
             },
           }),
           providerId: "test-fake",
@@ -969,7 +944,7 @@ describe("CEQR-016 live wrapper immutability", () => {
   it("wrapAdjudicatorRunnerForLiveEvidence returns the same object by reference", async () => {
     const object = {
       marker: "raw",
-      evidenceClaimA: { startOffset: 0, endOffset: 1 },
+      evidenceClaimA: { startBoundaryIndex: 0, endBoundaryIndex: 1 },
     };
     const inner: StructuredModelRunner = {
       async runStructured() {

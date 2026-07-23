@@ -10,11 +10,11 @@ import { createHash } from "crypto";
 import { join } from "path";
 
 import {
-  CONTRADICTION_ADJUDICATION_PROMPT_VERSION,
+  CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V3,
   type ContradictionAdjudicationResult,
 } from "./contradiction-adjudicator";
 import {
-  CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
+  CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V3,
   CONTRADICTION_LIVE_DEFAULT_ADJUDICATOR_MODEL,
   CONTRADICTION_LIVE_DEFAULT_REFEREE_MODEL,
   CONTRADICTION_LIVE_DEFAULT_TIMEOUT_MS,
@@ -274,15 +274,17 @@ export function assertLandedConstantsMatchExpected(): {
   ) {
     mismatches.push("schemaVersion");
   }
+  // Prompt/addendum similarly: CEQR-017 froze prompt-v3 / addendum-v3.
+  // CEQR-020+ may advance active identities; historical constants must remain.
   if (
-    CONTRADICTION_ADJUDICATION_PROMPT_VERSION !==
-    CEQR_017_EXPECTED_PROMPT_VERSION
+    (CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V3 as string) !==
+    (CEQR_017_EXPECTED_PROMPT_VERSION as string)
   ) {
     mismatches.push("promptVersion");
   }
   if (
-    CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION !==
-    CEQR_017_EXPECTED_LIVE_ADDENDUM_VERSION
+    (CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V3 as string) !==
+    (CEQR_017_EXPECTED_LIVE_ADDENDUM_VERSION as string)
   ) {
     mismatches.push("liveAddendumVersion");
   }

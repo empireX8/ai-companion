@@ -16,23 +16,39 @@ export const CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V2 =
   "contradiction-adjudication-schema-v2" as const;
 
 /**
- * CEQR-018: classification-discriminated provider transport variants.
- * clear_contradiction structurally requires all compatibility flags false
- * and abstentionReason null. Evidence remains offsets-only (CEQR-016).
+ * Historical CEQR-018 / CEQR-019 transport: classification-discriminated
+ * variants with raw UTF-16 offset evidence selections.
+ */
+export const CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V3 =
+  "contradiction-adjudication-schema-v3" as const;
+
+/**
+ * CEQR-020: classification-discriminated provider transport variants
+ * (same semantic anyOf contract as v3) with code-owned lexical boundary
+ * index evidence selections. clear_contradiction still requires all
+ * compatibility flags false and abstentionReason null.
  */
 export const CONTRADICTION_ADJUDICATION_SCHEMA_VERSION =
-  "contradiction-adjudication-schema-v3" as const;
+  "contradiction-adjudication-schema-v4" as const;
 
 /** Historical CEQR-003…015 prompt identity (qualifier preservation). */
 export const CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V2 =
   "contradiction-adjudication-prompt-v2" as const;
 
 /**
- * CEQR-016: prompt instructs model to author offsets only;
+ * Historical CEQR-016…019: prompt instructs model to author offsets only;
  * code owns sourceId and derives exactQuote.
  */
-export const CONTRADICTION_ADJUDICATION_PROMPT_VERSION =
+export const CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V3 =
   "contradiction-adjudication-prompt-v3" as const;
+
+/**
+ * CEQR-020: prompt exposes code-owned lexical boundary catalogs; provider
+ * selects boundary indices only. Code maps indices → offsets and derives
+ * exactQuote. sourceId remains code-owned.
+ */
+export const CONTRADICTION_ADJUDICATION_PROMPT_VERSION =
+  "contradiction-adjudication-prompt-v4" as const;
 
 /** First proof object through the shared kernel. */
 export const KERNEL_FIRST_PROOF_OBJECT = "ContradictionNode" as const;

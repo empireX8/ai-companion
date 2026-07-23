@@ -399,15 +399,30 @@ export async function selectSameSessionContradictionPair(input: {
   let validationFailureCount = 0;
 
   for (const candidate of sameSessionCandidates) {
-    modelCallCount += 1;
-    const adjudication = await adjudicateContradiction({
-      sideA: candidate.sideA,
-      sideB,
-      modelRunner: input.modelRunner,
-      objectivityReferee: input.objectivityReferee,
-      now: input.now,
-      abortSignal: input.abortSignal,
-    });
+    // Count actual StructuredModelRunner.runStructured invocations only —
+    // deterministic pre-provider rejection (catalog limits) must not inflate
+    // modelCallCount.
+    let candidateModelCalls = 0;
+    const countingRunner: StructuredModelRunner = {
+      async runStructured(request) {
+        candidateModelCalls += 1;
+        return input.modelRunner.runStructured(request);
+      },
+    };
+
+    let adjudication: ContradictionAdjudicationResult;
+    try {
+      adjudication = await adjudicateContradiction({
+        sideA: candidate.sideA,
+        sideB,
+        modelRunner: countingRunner,
+        objectivityReferee: input.objectivityReferee,
+        now: input.now,
+        abortSignal: input.abortSignal,
+      });
+    } finally {
+      modelCallCount += candidateModelCalls;
+    }
 
     attemptedAdjudications.push({
       referenceId: candidate.referenceId ?? null,

@@ -31,6 +31,7 @@ import {
   type ObjectivityRefereeResult,
 } from "../orvek-intelligence-kernel";
 import type { ExactEvidenceClaim } from "../orvek-intelligence-kernel/types";
+import { transportSelectionForFullSource } from "./helpers/ceqr020-transport-selection";
 
 const schemaPath = resolve(process.cwd(), "prisma/schema.prisma");
 const schema = readFileSync(schemaPath, "utf8");
@@ -200,6 +201,9 @@ function buildAdjudication(args: {
     errorMessage: null,
     persistenceDecision: null,
     createCandidate: undefined,
+    evidenceBindDiagnostics: null,
+    rawEvidenceTransportSelections: null,
+    rawProviderObjectSha256: null,
   };
 }
 
@@ -1276,12 +1280,8 @@ describe("CEQR-005 non-wiring and regression boundaries", () => {
       messageId: "m-b",
     });
 
-    const claimFor = (s: KernelSourceUnit) => ({
-      sourceId: s.sourceId,
-      exactQuote: s.sourceText,
-      startOffset: 0,
-      endOffset: s.sourceText.length,
-    });
+    const claimFor = (s: KernelSourceUnit) =>
+      transportSelectionForFullSource(s.sourceText);
 
     const modelResult = {
       propositionA: {

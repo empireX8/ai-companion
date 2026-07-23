@@ -17,7 +17,6 @@ import {
 import { tmpdir } from "os";
 import { basename, join } from "path";
 import { describe, expect, it } from "vitest";
-
 import {
   assertCeqr015FixturesExact,
   assertCeqr017PinnedLiveEnv,
@@ -87,6 +86,11 @@ import {
   type StructuredModelRunner,
 } from "../orvek-intelligence-kernel";
 import { evidenceSpanSelectionSchema } from "../orvek-intelligence-kernel/structured-output";
+
+import {
+  transportSelectionForFullSource,
+  transportSelectionForOffsets,
+} from "./helpers/ceqr020-transport-selection";
 
 const RECEIPT_DIR = ceqr017ReceiptDir();
 
@@ -267,8 +271,8 @@ function transportResult(
     emotionalOrPhysiologicalVersusReasoningStandard: false,
     classification: "clear_contradiction",
     confidence: 0.9,
-    evidenceClaimA: { startOffset: 0, endOffset: sideA.sourceText.length },
-    evidenceClaimB: { startOffset: 0, endOffset: sideB.sourceText.length },
+    evidenceClaimA: transportSelectionForFullSource(sideA.sourceText),
+    evidenceClaimB: transportSelectionForFullSource(sideB.sourceText),
     rationale: "r",
     alternativeInterpretation: "alt",
     whatWouldChangeClassification: "w",
@@ -324,8 +328,9 @@ function executedProof(
     maxRetries: 0,
     timeoutMs: 45_000,
     providerAttemptCountExact: true,
+    // CEQR-017 historical pin — not the active CEQR-020+ addendum identity.
     adjudicatorPromptAddendumVersion:
-      "contradiction-live-adjudicator-prompt-addendum-v3",
+      CEQR_017_EXPECTED_LIVE_ADDENDUM_VERSION as typeof CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
     maxTotalCalls: 8,
     clearContradictionWriteProven: false,
     compatibleCaseNoWrite: true,
@@ -421,13 +426,19 @@ describe("CEQR-017 identities and pins", () => {
       CONTRADICTION_ADJUDICATION_SCHEMA_VERSION,
     );
     expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION).toBe(
-      "contradiction-adjudication-schema-v3",
+      "contradiction-adjudication-schema-v4",
     );
     expect(CEQR_017_EXPECTED_PROMPT_VERSION).toBe(
-      CONTRADICTION_ADJUDICATION_PROMPT_VERSION,
+      "contradiction-adjudication-prompt-v3",
     );
     expect(CEQR_017_EXPECTED_LIVE_ADDENDUM_VERSION).toBe(
-      CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
+      "contradiction-live-adjudicator-prompt-addendum-v3",
+    );
+    expect(CONTRADICTION_ADJUDICATION_PROMPT_VERSION).toBe(
+      "contradiction-adjudication-prompt-v4",
+    );
+    expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
+      "contradiction-live-adjudicator-prompt-addendum-v4",
     );
     expect(CEQR_017_EXPECTED_TIMEOUT_MS).toBe(45_000);
     expect(CEQR_017_EXPECTED_MAX_PROVIDER_ATTEMPTS).toBe(8);
@@ -512,8 +523,8 @@ describe("CEQR-017 fixture order/extras", () => {
 describe("CEQR-017 transport and binding", () => {
   it("transport owns only offsets; forged sourceId/exactQuote non-authoritative; raw immutable", async () => {
     expect(Object.keys(evidenceSpanSelectionSchema.shape).sort()).toEqual([
-      "endOffset",
-      "startOffset",
+      "endBoundaryIndex",
+      "startBoundaryIndex",
     ]);
     const openAiUnion =
       contradictionModelResultOpenAiStrictSchema.shape.adjudication;
@@ -524,8 +535,8 @@ describe("CEQR-017 transport and binding", () => {
     expect(options.length).toBe(3);
     for (const option of options) {
       expect(Object.keys(option.shape.evidenceClaimA.shape).sort()).toEqual([
-        "endOffset",
-        "startOffset",
+        "endBoundaryIndex",
+        "startBoundaryIndex",
       ]);
       expect(option.shape.evidenceClaimA.shape).not.toHaveProperty("sourceId");
       expect(option.shape.evidenceClaimA.shape).not.toHaveProperty("exactQuote");
@@ -543,14 +554,12 @@ describe("CEQR-017 transport and binding", () => {
     });
     const providerObject = transportResult(sideA, sideB, {
       evidenceClaimA: {
-        startOffset: 3,
-        endOffset: 6,
+        ...transportSelectionForOffsets(sideA.sourceText, 3, 6),
         sourceId: "forged",
         exactQuote: "NOPE",
       },
       evidenceClaimB: {
-        startOffset: 3,
-        endOffset: 6,
+        ...transportSelectionForOffsets(sideB.sourceText, 3, 6),
         sourceId: "forged-b",
         exactQuote: "ZZZ",
       },
@@ -684,6 +693,9 @@ describe("CEQR-017 authority classification matrix", () => {
             sourceTextLengths: { sideA: 30, sideB: 33 },
             exactQuoteMatched: { sideA: null, sideB: null },
             offsetsMatched: { sideA: null, sideB: null },
+            sideOffsetDiagnostics: { sideA: null, sideB: null },
+            sourceTextHashes: { sideA: null, sideB: null },
+            rawProviderObjectSha256: null,
             earliestGate: "deterministic_validation",
           },
         }),
@@ -737,6 +749,9 @@ describe("CEQR-017 authority classification matrix", () => {
             sourceTextLengths: { sideA: 10, sideB: 10 },
             exactQuoteMatched: { sideA: null, sideB: null },
             offsetsMatched: { sideA: null, sideB: null },
+            sideOffsetDiagnostics: { sideA: null, sideB: null },
+            sourceTextHashes: { sideA: null, sideB: null },
+            rawProviderObjectSha256: null,
             earliestGate: "deterministic_validation",
           },
         }),
@@ -772,6 +787,9 @@ describe("CEQR-017 authority classification matrix", () => {
             sourceTextLengths: { sideA: 1, sideB: 1 },
             exactQuoteMatched: { sideA: null, sideB: null },
             offsetsMatched: { sideA: null, sideB: null },
+            sideOffsetDiagnostics: { sideA: null, sideB: null },
+            sourceTextHashes: { sideA: null, sideB: null },
+            rawProviderObjectSha256: null,
             earliestGate: "schema_parse",
           },
         }),
@@ -903,6 +921,9 @@ describe("CEQR-017 authority classification matrix", () => {
             sourceTextLengths: { sideA: 1, sideB: 1 },
             exactQuoteMatched: { sideA: true, sideB: true },
             offsetsMatched: { sideA: true, sideB: true },
+            sideOffsetDiagnostics: { sideA: null, sideB: null },
+            sourceTextHashes: { sideA: null, sideB: null },
+            rawProviderObjectSha256: null,
             earliestGate: "semantic_accepted_referee_eligible",
           },
         }),
@@ -957,6 +978,9 @@ describe("CEQR-017 authority classification matrix", () => {
             sourceTextLengths: { sideA: 1, sideB: 1 },
             exactQuoteMatched: { sideA: true, sideB: true },
             offsetsMatched: { sideA: true, sideB: true },
+            sideOffsetDiagnostics: { sideA: null, sideB: null },
+            sourceTextHashes: { sideA: null, sideB: null },
+            rawProviderObjectSha256: null,
             earliestGate: "semantic_accepted_referee_eligible",
           },
         }),

@@ -7,7 +7,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it, vi } from "vitest";
-
 import {
   CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
   CONTRADICTION_LIVE_MAX_RETRIES,
@@ -43,24 +42,33 @@ import {
   type StructuredModelRunnerResult,
 } from "../orvek-intelligence-kernel";
 
+import {
+  transportSelectionForFullSource,
+  transportSelectionForSubstring,
+} from "./helpers/ceqr020-transport-selection";
+
 const LANDED_CEQR016_ADDENDUM = [
   "",
-  "LIVE PROVIDER EVIDENCE HARD RULES (CEQR-016 / addendum-v3):",
+  "LIVE PROVIDER EVIDENCE HARD RULES (CEQR-020 / addendum-v4):",
   "EVIDENCE TRANSPORT AUTHORITY:",
-  "- evidenceClaimA and evidenceClaimB MUST contain ONLY startOffset and endOffset.",
+  "- evidenceClaimA and evidenceClaimB MUST contain ONLY startBoundaryIndex and endBoundaryIndex.",
   "- Do NOT author sourceId.",
   "- Do NOT author exactQuote.",
+  "- Do NOT author raw startOffset/endOffset character counts.",
   "- Deterministic code copies sourceId from the authoritative Side A / Side B units.",
+  "- Deterministic code maps boundary indices to UTF-16 offsets via the code-owned catalog.",
   "- Deterministic code derives exactQuote as sourceText.slice(startOffset, endOffset).",
-  "- Side A offsets apply only to Side A sourceText; Side B offsets apply only to Side B sourceText.",
+  "- Side A indices apply only to Side A catalog; Side B indices apply only to Side B catalog.",
   "- Never swap Side A and Side B ordering.",
   "",
-  "OFFSETS:",
-  "- startOffset/endOffset are zero-based, start inclusive, end exclusive.",
-  "- endOffset MUST be greater than startOffset.",
-  "- endOffset MUST NOT exceed the corresponding decoded sourceText length.",
-  "- Invalid, reversed, negative, non-integer, or out-of-range offsets fail closed.",
+  "BOUNDARY INDICES:",
+  "- startBoundaryIndex/endBoundaryIndex are zero-based indices into the printed catalog.",
+  "- Because the catalog is ordered by increasing UTF-16 offset, endBoundaryIndex MUST be greater than startBoundaryIndex.",
+  "- The resolved endOffset MUST be greater than the resolved startOffset.",
+  "- Out-of-range, reversed, negative, or non-integer indices fail closed.",
+  "- Mid-word character cuts are structurally absent from the catalog.",
   "- Do not rely on clamping, fuzzy matching, substring search, or full-source fallback.",
+  "- Sources that exceed the code-owned catalog length/entry bounds fail closed before provider invocation.",
   "",
   "- qualifications must be a non-empty string; use the literal \"none\" when there are no material qualifiers.",
   "- Never invent wording that does not appear in the sourceText.",
@@ -105,20 +113,8 @@ function classAResult(
     emotionalOrPhysiologicalVersusReasoningStandard: false,
     classification: "clear_contradiction",
     confidence: 0.9,
-    evidenceClaimA:
-      claimForSubstring(sideA, quoteA) ?? {
-        sourceId: sideA.sourceId,
-        exactQuote: quoteA,
-        startOffset: 0,
-        endOffset: quoteA.length,
-      },
-    evidenceClaimB:
-      claimForSubstring(sideB, quoteB) ?? {
-        sourceId: sideB.sourceId,
-        exactQuote: quoteB,
-        startOffset: 0,
-        endOffset: quoteB.length,
-      },
+    evidenceClaimA: transportSelectionForSubstring(sideA.sourceText, quoteA),
+    evidenceClaimB: transportSelectionForSubstring(sideB.sourceText, quoteB),
     rationale: "Universal abstinence conflicts with reported drinking.",
     alternativeInterpretation: "Belief change over time.",
     whatWouldChangeClassification: "Explicit timeframe separation.",
@@ -355,14 +351,14 @@ describe("CEQR-012 prompt provenance (live addendum identity)", () => {
       }),
     });
     expect(bundle.adjudicatorPromptAddendumVersion).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v3",
+      "contradiction-live-adjudicator-prompt-addendum-v4",
     );
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v3",
+      "contradiction-live-adjudicator-prompt-addendum-v4",
     );
   });
 
-  it("provider system prompt is the CEQR-016 v3 addendum; user prompt and object unchanged", async () => {
+  it("provider system prompt is the CEQR-020 v4 addendum; user prompt and object unchanged", async () => {
     const object = { keep: "me" };
     const userPrompt = 'Side A sourceText: "x"\nSide B sourceText: "y"';
     let capturedSystem: string | undefined;
@@ -391,7 +387,7 @@ describe("CEQR-012 prompt provenance (live addendum identity)", () => {
     }
     expect(capturedPrompt).toBe(userPrompt);
     expect(capturedSystem).toBe(["base", LANDED_CEQR016_ADDENDUM].join("\n"));
-    expect(capturedSystem).not.toContain("UTF-16");
+    expect(capturedSystem).toContain("UTF-16");
     expect(capturedSystem).not.toContain("sourceTextLengthChars");
     expect(capturedSystem).not.toContain("NEUTRAL FORMATTING EXAMPLE");
     expect(capturedSystem).not.toContain("SOURCE ID AUTHORITY:");
@@ -422,10 +418,9 @@ describe("CEQR-012 side attribution honesty", () => {
             object: {
               ...base,
               evidenceClaimB: {
+                ...transportSelectionForFullSource(sideB.sourceText),
                 sourceId: sideB.sourceId,
                 exactQuote: "not in source at all",
-                startOffset: 0,
-                endOffset: sideB.sourceText.length,
               },
             },
             providerId: "openai",
@@ -456,8 +451,8 @@ describe("CEQR-012 side attribution honesty", () => {
             object: {
               ...base,
               evidenceClaimB: {
-                startOffset: 1,
-                endOffset: sideB.sourceText.length + 5,
+                startBoundaryIndex: 1,
+                endBoundaryIndex: 999,
               },
             },
             providerId: "openai",
@@ -471,10 +466,12 @@ describe("CEQR-012 side attribution honesty", () => {
       sideA,
       sideB,
     });
-    expect(diag.validationErrorCodes).toContain("invalid_offsets");
+    expect(diag.sideOffsetDiagnostics.sideB?.validationCode).toBe(
+      "invalid_boundary_index",
+    );
     expect(diag.exactQuoteMatched.sideA).toBeNull();
     expect(diag.offsetsMatched.sideA).toBeNull();
-    expect(diag.evidenceFailureSide).toBe("unknown");
+    expect(diag.evidenceFailureSide).toBe("sideB");
     expect(diag.failingFieldPaths).not.toContain("evidenceClaimA");
   });
 
@@ -520,6 +517,9 @@ describe("CEQR-012 side attribution honesty", () => {
         errorMessage: "fabricated_quote: …",
         persistenceDecision: null,
         createCandidate: undefined,
+        evidenceBindDiagnostics: null,
+        rawEvidenceTransportSelections: null,
+    rawProviderObjectSha256: null,
       },
     });
     expect(diag.exactQuoteMatched).toEqual({ sideA: null, sideB: null });
@@ -708,9 +708,20 @@ describe("CEQR-012 fail-closed shapes still fail", () => {
     expect(c.contradictionNodeId).toBeNull();
     expect(c.harnessNodeCountAfter).toBe(0);
     if (args.code) {
+      const codes =
+        args.result.cases[0]!.sanitizedAdjudicationDiagnostics
+          ?.validationErrorCodes ?? [];
+      const sideCodeA =
+        args.result.cases[0]!.sanitizedAdjudicationDiagnostics
+          ?.sideOffsetDiagnostics?.sideA?.validationCode;
+      const sideCodeB =
+        args.result.cases[0]!.sanitizedAdjudicationDiagnostics
+          ?.sideOffsetDiagnostics?.sideB?.validationCode;
       expect(
-        c.sanitizedAdjudicationDiagnostics?.validationErrorCodes,
-      ).toContain(args.code);
+        codes.includes(args.code) ||
+          sideCodeA === args.code ||
+          sideCodeB === args.code,
+      ).toBe(true);
     }
   }
 
@@ -743,10 +754,8 @@ describe("CEQR-012 fail-closed shapes still fail", () => {
     const { result, refereeCalls } = await runMutated((base, sideA) => ({
       ...base,
       evidenceClaimA: {
-        ...base.evidenceClaimA,
+        ...transportSelectionForFullSource(sideA.sourceText),
         exactQuote: "not in source",
-        startOffset: 0,
-        endOffset: sideA.sourceText.length,
       },
     }));
     expectSuccess({ result, refereeCalls });
@@ -756,11 +765,11 @@ describe("CEQR-012 fail-closed shapes still fail", () => {
     const { result, refereeCalls } = await runMutated((base, sideA) => ({
       ...base,
       evidenceClaimA: {
-        startOffset: 0,
-        endOffset: sideA.sourceText.length + 5,
+        startBoundaryIndex: 0,
+        endBoundaryIndex: 999,
       },
     }));
-    expectInvalid({ result, refereeCalls, code: "invalid_offsets" });
+    expectInvalid({ result, refereeCalls, code: "invalid_boundary_index" });
   });
 
   it("blank required proposition field still fails", async () => {

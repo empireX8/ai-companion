@@ -1,0 +1,134 @@
+{
+  "campaignSlice": "CEQR-020",
+  "ceqr019LiveResultImmutable": true,
+  "classification": "FAIL_TRUNCATED_OR_INVALID_EVIDENCE_SPAN",
+  "liveProviderAttempts": 3,
+  "hashes": {
+    "liveExecutionReceipt": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/live-execution-receipt.json",
+      "bytes": 10419,
+      "sha256": "74c12305a2dc15d166a37c6a054158996016f0bc66c6236d42a16868d1798e58"
+    },
+    "oneshotClaim": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/live-run-oneshot-claim.json",
+      "bytes": 539,
+      "sha256": "0973a66f6c1b36fbef77625d435b83c14ee14cbf5530cf9c5d324d7b5504a65c"
+    },
+    "permanentClaim": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/ceqr019-permanent-claim.json",
+      "bytes": 1046,
+      "sha256": "13f497f29a31021a023e2f9ce03c7af0f27f005a9025b9792f311d6c25e9c357"
+    },
+    "frozenLiveRunPlan": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/frozen-live-run-plan.json",
+      "bytes": 3831,
+      "sha256": "b3f8986b7bf7004fb6d111689cea90371aa82988a2c8f5a93a5354f7bf4d9129"
+    }
+  },
+  "ceqr017ImmutableHashes": {
+    "liveExecutionReceipt": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-CONTROLLED-LIVE-AUTHORITY-REPROOF-001/live-execution-receipt.json",
+      "bytes": 15832,
+      "sha256": "b620aa7f718d4ace768a9a518a4d8cb32ca1b54662291280b3f6545fb5514fdd"
+    },
+    "phase2LiveRunClaim": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-CONTROLLED-LIVE-AUTHORITY-REPROOF-001/phase2-live-run-claim.json",
+      "bytes": 386,
+      "sha256": "f313cbafb264f84d158a8aee20ca2276520fbf85940be7f910b87bead2c5cef0"
+    }
+  },
+  "ceqr018ReceiptDir": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001",
+  "ceqr018ReceiptFileCount": 14,
+  "ceqr018Unchanged": true,
+  "expectedPinsMatched": {
+    "ceqr019Live": "74c12305a2dc15d166a37c6a054158996016f0bc66c6236d42a16868d1798e58",
+    "ceqr019Oneshot": "0973a66f6c1b36fbef77625d435b83c14ee14cbf5530cf9c5d324d7b5504a65c",
+    "ceqr019Permanent": "13f497f29a31021a023e2f9ce03c7af0f27f005a9025b9792f311d6c25e9c357",
+    "ceqr019FrozenPlan": "b3f8986b7bf7004fb6d111689cea90371aa82988a2c8f5a93a5354f7bf4d9129",
+    "ceqr017Live": "b620aa7f718d4ace768a9a518a4d8cb32ca1b54662291280b3f6545fb5514fdd",
+    "ceqr017Claim": "f313cbafb264f84d158a8aee20ca2276520fbf85940be7f910b87bead2c5cef0"
+  },
+  "reproducingProbeCount": 15,
+  "blockerRepairs": [
+    "runtime_wired_raw_provider_fingerprint",
+    "resolved_offsets_retained_on_invalid_span",
+    "import_isolation_no_false_pass",
+    "bounded_catalog_prompt_architecture_A",
+    "source_length_before_enumeration",
+    "bounded_entry_sentinel_no_truncate_send",
+    "same_session_modelCallCount_is_runStructured",
+    "independent_start_end_boundary_diagnostics"
+  ],
+  "ceqr018Receipts": {
+    "00-intake-and-boundaries.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/00-intake-and-boundaries.md",
+      "bytes": 1047,
+      "sha256": "508d8bb643aef70d39209535aa18c0804ca4c9e1c4ced2d284caf944d1fdb6c5"
+    },
+    "01-ceqr017-failure-baseline.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/01-ceqr017-failure-baseline.md",
+      "bytes": 892,
+      "sha256": "008d3225cf32feacbc92cb86a3930bf0c67b6f6319c2fa742484c2a404f68ac9"
+    },
+    "02-transport-schema-audit.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/02-transport-schema-audit.md",
+      "bytes": 1066,
+      "sha256": "079526e30ac2fdabb8c98505beb55b1526f8df2f87cb7c98c64d2d54d18f86d3"
+    },
+    "03-selected-repair-architecture.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/03-selected-repair-architecture.md",
+      "bytes": 1435,
+      "sha256": "815636f022494b2b394fbff2ec2721e17a8dfaf9b6693c41a8a7bec23d238616"
+    },
+    "04-semantic-consistency-contract.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/04-semantic-consistency-contract.md",
+      "bytes": 966,
+      "sha256": "ae5a0a54b01d0f0f8bcf900fb0c0d227b660bc24f5681df4a388dfce5269dc32"
+    },
+    "05-evidence-span-boundary-contract.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/05-evidence-span-boundary-contract.md",
+      "bytes": 2017,
+      "sha256": "8fa880f59f8b799078a99e148432e1baf8bc84d8629a15598497ad39bdd62225"
+    },
+    "06-source-authority-preservation.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/06-source-authority-preservation.md",
+      "bytes": 693,
+      "sha256": "c35f9948c72349f0f22edfc97f83837051b3979e77abd578cf32bb84b0610755"
+    },
+    "07-adversarial-test-matrix.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/07-adversarial-test-matrix.md",
+      "bytes": 1913,
+      "sha256": "3b97852827ff941c9882dcb24e3cc9bc0a0897f271f8797c65b0ec8ba6ddcaaf"
+    },
+    "08-tests-and-validation.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/08-tests-and-validation.md",
+      "bytes": 1494,
+      "sha256": "b2ceddc5da1f6744434aea217dfe35c1e058475c91710a57a99b790d8d1a391c"
+    },
+    "09-changed-files-list.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/09-changed-files-list.md",
+      "bytes": 2607,
+      "sha256": "97f6cc5e221f1d88dcee8b2e1e1a946efe94ad203480c084d4ad3c248d5c7b13"
+    },
+    "10-result-and-limitations.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/10-result-and-limitations.md",
+      "bytes": 1761,
+      "sha256": "32b7767a015e3a4155912d2489b4c2d486494e11bc78f174d6aa47b6616fa8cc"
+    },
+    "11-next-live-proof-boundary.md": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/11-next-live-proof-boundary.md",
+      "bytes": 626,
+      "sha256": "1c0b78c4ca9a4616d161cfa65a8e6371c16f0f476b434c89de81db448c54e518"
+    },
+    "changed-files.txt": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/changed-files.txt",
+      "bytes": 2377,
+      "sha256": "1e6609be05e2b1a0bfcba0ceff4042bb13a5150f0b86d9cda82b865ad5c7d6b5"
+    },
+    "validation-summary.json": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001/validation-summary.json",
+      "bytes": 4141,
+      "sha256": "3ea81458caf1e35eba6f88168493a6f5850967013882fe2f0ac41c4da4c869e6"
+    }
+  }
+}

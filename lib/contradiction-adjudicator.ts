@@ -15,19 +15,27 @@
 import {
   CONTRADICTION_ADJUDICATION_PROMPT_VERSION,
   CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V2,
+  CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V3,
   CONTRADICTION_ADJUDICATION_SCHEMA_VERSION,
   CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V1,
   CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V2,
+  CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V3,
   CONTRADICTION_CLASSIFICATIONS,
   KERNEL_CONTRACT_VERSION,
   KERNEL_FIRST_PROOF_OBJECT,
   NON_CONTRADICTION_NODE_CLASSIFICATIONS,
   type ContradictionClassification,
 } from "./orvek-intelligence-kernel/contracts";
+import { bindDualSideEvidenceClaims } from "./orvek-intelligence-kernel/evidence-binding";
 import {
-  bindDualSideEvidenceClaims,
   validateDualSideEvidenceClaims,
+  type EvidenceSideBindDiagnostic,
 } from "./orvek-intelligence-kernel/evidence-validation";
+import {
+  checkLexicalBoundaryCatalogLimits,
+  formatLexicalBoundaryCatalogForPrompt,
+  type LexicalBoundaryEntry,
+} from "./orvek-intelligence-kernel/lexical-boundary-catalog";
 import type { StructuredModelRunner } from "./orvek-intelligence-kernel/model-runner";
 import {
   defaultRefereeStatus,
@@ -42,7 +50,9 @@ import {
   parseContradictionModelTransportResult,
   type ContradictionModelResult,
   type ContradictionModelTransportResult,
+  type EvidenceSpanSelection,
 } from "./orvek-intelligence-kernel/structured-output";
+import { fingerprintRawProviderObjectSha256OrNull } from "./contradiction-provider-object-fingerprint";
 import type {
   DeterministicValidationResult,
   KernelAdjudicationResult,
@@ -54,9 +64,11 @@ import type {
 export {
   CONTRADICTION_ADJUDICATION_PROMPT_VERSION,
   CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V2,
+  CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V3,
   CONTRADICTION_ADJUDICATION_SCHEMA_VERSION,
   CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V1,
   CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V2,
+  CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V3,
   CONTRADICTION_CLASSIFICATIONS,
   KERNEL_CONTRACT_VERSION,
   KERNEL_FIRST_PROOF_OBJECT,
@@ -97,6 +109,29 @@ export type ContradictionAdjudicationResult =
      * ContinuationAllowed never authorises persistence.
      */
     referee: ObjectivityRefereeResult;
+    /**
+     * CEQR-020: inspectable failed/successful evidence bind diagnostics.
+     * Not evidence authority. Never includes API keys, credentials, or
+     * provider-authored exactQuote as authority.
+     */
+    evidenceBindDiagnostics: EvidenceSideBindDiagnostic[] | null;
+    /**
+     * Raw provider evidence selections as received (boundary indices).
+     * Unmodified transport fields for sanitized receipt diagnostics.
+     */
+    rawEvidenceTransportSelections: {
+      evidenceClaimA: EvidenceSpanSelection;
+      evidenceClaimB: EvidenceSpanSelection;
+    } | null;
+    /**
+     * CEQR-020: SHA-256 of the adjudicator-facing structured provider object
+     * (`runnerResult.object` after documented OpenAI-strict envelope unwrap,
+     * or the flat injected runner object). Computed at receipt time with
+     * canonical JSON key ordering. Null when no provider object was received
+     * (model failure / pre-provider catalog limit) or fingerprinting failed closed.
+     * Not evidence authority.
+     */
+    rawProviderObjectSha256: string | null;
   };
 
 const SUPPORTED_PROPOSED_OBJECT_TYPES = new Set([
@@ -108,6 +143,10 @@ const SUPPORTED_PROPOSED_OBJECT_TYPES = new Set([
 export function buildContradictionAdjudicationPrompt(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
+  catalogs: {
+    sideACatalog: readonly LexicalBoundaryEntry[];
+    sideBCatalog: readonly LexicalBoundaryEntry[];
+  },
 ): { system: string; prompt: string } {
   const system = [
     "You are the ContradictionNode semantic adjudicator for the Orvek Intelligence Kernel.",
@@ -165,12 +204,15 @@ export function buildContradictionAdjudicationPrompt(
     "- Candidate volume must never be preserved by lowering the meaning standard.",
     "- Fill actor, subject, timeframe, modality, qualifications, and contextAndScope with non-blank truthful values for each classified or abstaining structured result.",
     "",
-    "Evidence span selections (provider transport):",
-    "- For each side provide ONLY startOffset and endOffset.",
+    "Evidence span selections (provider transport — CEQR-020):",
+    "- For each side provide ONLY startBoundaryIndex and endBoundaryIndex.",
+    "- Indices refer to the code-owned lexical boundary catalog printed below for that side.",
     "- Do NOT author sourceId or exactQuote; deterministic code owns source identity and derives exactQuote from the authoritative Side A / Side B sourceText.",
-    "- Offsets are zero-based, start inclusive, end exclusive, measured against the exact supplied source text for that ordered side.",
-    "- endOffset must be greater than startOffset and must not exceed the corresponding sourceText length.",
-    "- Invalid offsets fail closed; do not invent wording outside the selected span.",
+    "- Do NOT author raw character offsets; code maps boundary indices to UTF-16 offsets.",
+    "- Because the catalog is ordered by increasing UTF-16 offset, endBoundaryIndex must be greater than startBoundaryIndex.",
+    "- The resolved end offset must be greater than the resolved start offset.",
+    "- Out-of-range or non-integer indices fail closed; do not invent wording outside the selected span.",
+    "- Mid-word character cuts are structurally absent from the catalog.",
     "",
     `Prompt version: ${CONTRADICTION_ADJUDICATION_PROMPT_VERSION}`,
     `Schema version: ${CONTRADICTION_ADJUDICATION_SCHEMA_VERSION}`,
@@ -186,6 +228,11 @@ export function buildContradictionAdjudicationPrompt(
     `Side A label: ${sideA.label}`,
     `Side A role/type: ${sideA.sourceRole}${sideA.sourceType ? ` / ${sideA.sourceType}` : ""}`,
     `Side A sourceText: ${JSON.stringify(sideA.sourceText)}`,
+    formatLexicalBoundaryCatalogForPrompt(
+      "A",
+      sideA.sourceText,
+      catalogs.sideACatalog,
+    ),
     "",
     `Side B sourceId: ${sideB.sourceId}`,
     `Side B sessionId: ${sideB.sessionId}`,
@@ -193,6 +240,11 @@ export function buildContradictionAdjudicationPrompt(
     `Side B label: ${sideB.label}`,
     `Side B role/type: ${sideB.sourceRole}${sideB.sourceType ? ` / ${sideB.sourceType}` : ""}`,
     `Side B sourceText: ${JSON.stringify(sideB.sourceText)}`,
+    formatLexicalBoundaryCatalogForPrompt(
+      "B",
+      sideB.sourceText,
+      catalogs.sideBCatalog,
+    ),
   ].join("\n");
 
   return { system, prompt };
@@ -321,12 +373,18 @@ function envelope(args: {
   abstentionReason: string | null;
   errorCode: ContradictionAdjudicationResult["errorCode"];
   errorMessage: string | null;
+  evidenceBindDiagnostics?: EvidenceSideBindDiagnostic[] | null;
+  rawEvidenceTransportSelections?: ContradictionAdjudicationResult["rawEvidenceTransportSelections"];
+  rawProviderObjectSha256?: string | null;
 }): ContradictionAdjudicationResult {
   return {
     ...args,
     referee: args.referee ?? notRunObjectivityRefereeResult(),
     persistenceDecision: null,
     createCandidate: undefined,
+    evidenceBindDiagnostics: args.evidenceBindDiagnostics ?? null,
+    rawEvidenceTransportSelections: args.rawEvidenceTransportSelections ?? null,
+    rawProviderObjectSha256: args.rawProviderObjectSha256 ?? null,
   };
 }
 
@@ -339,9 +397,49 @@ export async function adjudicateContradiction(
 ): Promise<ContradictionAdjudicationResult> {
   const now = (input.now ?? (() => new Date()))();
   const sourceIds = [input.sideA.sourceId, input.sideB.sourceId];
+
+  // CEQR-020 Architecture A: fail closed before provider when catalog bounds exceeded.
+  const catalogLimits = checkLexicalBoundaryCatalogLimits({
+    sideAText: input.sideA.sourceText,
+    sideBText: input.sideB.sourceText,
+  });
+  if (!catalogLimits.ok) {
+    return envelope({
+      outcome: "validation_failed",
+      semantic: null,
+      validation: {
+        status: "invalid",
+        errors: [catalogLimits.message],
+        warnings: [],
+      },
+      refereeStatus: defaultRefereeStatus(),
+      audit: buildAudit({
+        now,
+        sourceIds,
+        providerId: null,
+        modelId: null,
+        parseValidationOutcome: "invalid",
+        semanticClassification: null,
+        abstentionOrErrorCode: "validation_failed",
+        refereeStatus: defaultRefereeStatus(),
+      }),
+      abstentionReason: null,
+      errorCode: "validation_failed",
+      errorMessage: catalogLimits.message,
+      rawProviderObjectSha256: null,
+    });
+  }
+
+  const sideACatalog = catalogLimits.sideACatalog;
+  const sideBCatalog = catalogLimits.sideBCatalog;
+
   const { system, prompt } = buildContradictionAdjudicationPrompt(
     input.sideA,
     input.sideB,
+    {
+      sideACatalog,
+      sideBCatalog,
+    },
   );
 
   const runnerResult = await input.modelRunner.runStructured({
@@ -350,7 +448,7 @@ export async function adjudicateContradiction(
     prompt,
     schemaName: "ContradictionAdjudication",
     schemaDescription:
-      "Structured semantic adjudication for ContradictionNode (first Orvek kernel proof object). Evidence transport is offsets-only; sourceId and exactQuote are code-owned.",
+      "Structured semantic adjudication for ContradictionNode (first Orvek kernel proof object). Evidence transport is lexical boundary indices only; sourceId and exactQuote are code-owned.",
     abortSignal: input.abortSignal,
   });
 
@@ -377,11 +475,16 @@ export async function adjudicateContradiction(
       abstentionReason: null,
       errorCode: code,
       errorMessage: runnerResult.message,
+      rawProviderObjectSha256: null,
     });
   }
 
-  // Raw provider object remains inspectable and unmodified (CEQR-016).
+  // Adjudicator-facing structured object after documented envelope unwrap
+  // (or flat injected runner object). Fingerprinted before parse/bind.
   const rawProviderObject = runnerResult.object;
+  const rawProviderObjectSha256 =
+    fingerprintRawProviderObjectSha256OrNull(rawProviderObject);
+
   const parsed = parseContradictionModelTransportResult(rawProviderObject);
   if (!parsed.success) {
     return envelope({
@@ -406,6 +509,7 @@ export async function adjudicateContradiction(
       abstentionReason: null,
       errorCode: "schema_parse_failed",
       errorMessage: parsed.error,
+      rawProviderObjectSha256,
     });
   }
 
@@ -448,16 +552,28 @@ export async function adjudicateContradiction(
 
   // Deterministic evidence authority: code owns sourceId; code derives exactQuote.
   // Provider-authored sourceId/exactQuote (if present on raw object) are not consulted.
+  // CEQR-020: provider selects boundary indices; code maps to UTF-16 offsets.
+  const rawEvidenceTransportSelections = {
+    evidenceClaimA: transport.evidenceClaimA,
+    evidenceClaimB: transport.evidenceClaimB,
+  };
   const bound = bindDualSideEvidenceClaims({
     selectionA: transport.evidenceClaimA,
     selectionB: transport.evidenceClaimB,
     sourceA: input.sideA,
     sourceB: input.sideB,
+    catalogA: sideACatalog,
+    catalogB: sideBCatalog,
   });
 
   let model: ContradictionModelResult | null = null;
+  const evidenceBindDiagnostics: EvidenceSideBindDiagnostic[] = [
+    ...bound.sideDiagnostics,
+  ];
   if (!bound.ok) {
-    errors.push(`${bound.code}: ${bound.message}`);
+    for (const sideError of bound.sideErrors) {
+      errors.push(sideError);
+    }
   } else {
     model = {
       ...transport,
@@ -521,6 +637,9 @@ export async function adjudicateContradiction(
       abstentionReason: null,
       errorCode: "validation_failed",
       errorMessage: errors.join(" | "),
+      evidenceBindDiagnostics,
+      rawEvidenceTransportSelections,
+      rawProviderObjectSha256,
     });
   }
 
@@ -550,6 +669,9 @@ export async function adjudicateContradiction(
         "Model abstained from classification.",
       errorCode: "model_abstained",
       errorMessage: null,
+      evidenceBindDiagnostics,
+      rawEvidenceTransportSelections,
+      rawProviderObjectSha256,
     });
   }
 
@@ -577,6 +699,9 @@ export async function adjudicateContradiction(
       errorCode: "validation_failed",
       errorMessage:
         "evidence_binding_failed: domain evidence claims were not constructed.",
+      evidenceBindDiagnostics,
+      rawEvidenceTransportSelections,
+      rawProviderObjectSha256,
     });
   }
 
@@ -639,6 +764,9 @@ export async function adjudicateContradiction(
     abstentionReason: null,
     errorCode: null,
     errorMessage: null,
+    evidenceBindDiagnostics,
+    rawEvidenceTransportSelections,
+    rawProviderObjectSha256,
   });
 }
 

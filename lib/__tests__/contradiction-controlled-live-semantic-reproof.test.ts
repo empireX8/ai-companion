@@ -16,7 +16,6 @@ import {
 import { tmpdir } from "os";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
-
 import { runControlledContradictionNaturalEntryProof } from "../contradiction-controlled-natural-entry-proof";
 import {
   CEQR019_LIVE_SEMANTIC_REPROOF_AUTHORIZED_ENV,
@@ -73,6 +72,7 @@ import {
   type Ceqr019CaseObservation,
 } from "../contradiction-controlled-live-semantic-reproof";
 import {
+  CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
   CONTRADICTION_LIVE_PROVIDER_PROOF_OPT_IN_ENV,
   createLiveCallBudget,
   type ContradictionLiveAdapterBundle,
@@ -89,6 +89,10 @@ import {
   type StructuredModelRunner,
 } from "../orvek-intelligence-kernel";
 import { CONTRADICTION_ADJUDICATION_SCHEMA_VERSION } from "../orvek-intelligence-kernel/contracts";
+
+import {
+  transportSelectionForFullSource,
+} from "./helpers/ceqr020-transport-selection";
 
 const FIXED_NOW = () => new Date("2026-07-23T10:00:00.000Z");
 
@@ -162,8 +166,8 @@ function fakeClearTransport(sideAText: string, sideBText: string) {
     emotionalOrPhysiologicalVersusReasoningStandard: false,
     classification: "clear_contradiction",
     confidence: 0.92,
-    evidenceClaimA: { startOffset: 0, endOffset: sideAText.length },
-    evidenceClaimB: { startOffset: 0, endOffset: sideBText.length },
+    evidenceClaimA: transportSelectionForFullSource(sideAText),
+    evidenceClaimB: transportSelectionForFullSource(sideBText),
     rationale: "Opposed under matching scope.",
     alternativeInterpretation: "none",
     whatWouldChangeClassification: "qualifier change",
@@ -286,7 +290,7 @@ function executedProof(
     timeoutMs: 45000,
     providerAttemptCountExact: true,
     adjudicatorPromptAddendumVersion:
-      "contradiction-live-adjudicator-prompt-addendum-v3",
+      CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
     adjudicatorCallCount: 3,
     refereeCallCount: 1,
     totalCallCount: 4,
@@ -338,7 +342,10 @@ describe("CEQR-019 identities and frozen cases", () => {
       "contradiction-adjudication-schema-v3",
     );
     expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION).toBe(
-      CEQR_019_EXPECTED_SCHEMA_VERSION,
+      "contradiction-adjudication-schema-v4",
+    );
+    expect(CEQR_019_EXPECTED_SCHEMA_VERSION).not.toBe(
+      CONTRADICTION_ADJUDICATION_SCHEMA_VERSION,
     );
     expect(CEQR_019_EXPECTED_MAX_RETRIES).toBe(0);
     expect(CEQR_019_EXPECTED_MAX_PROVIDER_ATTEMPTS).toBe(6);
@@ -510,7 +517,7 @@ describe("CEQR-019 source authority and write isolation", () => {
       clearCase.sideBText,
     );
     Object.assign(incompatibleClear, {
-      evidenceClaimA: { startOffset: 0, endOffset: 10 },
+      evidenceClaimA: { startBoundaryIndex: 0, endBoundaryIndex: 999 },
     });
     const result = await runControlledContradictionNaturalEntryProof({
       userId: harness.userId,
@@ -928,7 +935,7 @@ describe("CEQR-019 exception call counts (Blocker 3)", () => {
             maxRetries: 0,
             providerAttemptCountExact: true,
             adjudicatorPromptAddendumVersion:
-              "contradiction-live-adjudicator-prompt-addendum-v3",
+      CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
             callBudget: budget,
           } satisfies ContradictionLiveAdapterBundle;
         },
@@ -1021,7 +1028,7 @@ describe("CEQR-019 injectable orchestration with observations", () => {
             maxRetries: 0,
             providerAttemptCountExact: true,
             adjudicatorPromptAddendumVersion:
-              "contradiction-live-adjudicator-prompt-addendum-v3",
+      CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
             callBudget: budget,
           } satisfies ContradictionLiveAdapterBundle;
         },
