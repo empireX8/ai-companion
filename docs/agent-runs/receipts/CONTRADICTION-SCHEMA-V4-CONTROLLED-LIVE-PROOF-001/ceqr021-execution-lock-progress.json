@@ -1,0 +1,9 @@
+{
+  "slice": "CONTRADICTION-SCHEMA-V4-CONTROLLED-LIVE-PROOF-001",
+  "campaignSlice": "CEQR-021",
+  "frozenPlanSha256": "ec411a3c3bc8c2b99514ca2bc312604dfab1a64e766370f95322dad50e6072c1",
+  "committedExecutionHead": "cb4d91698e3f40a439ed46e4d2049a86efb245fb",
+  "claimPathBasename": "ceqr021-oneshot-claim.json",
+  "acquiredAt": "2026-07-23T19:10:48.479Z",
+  "status": "consumed_claim"
+}
