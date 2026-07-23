@@ -1,0 +1,22 @@
+{
+  "slice": "CONTRADICTION-SCHEMA-V4-CONTROLLED-LIVE-PROOF-001",
+  "campaignSlice": "CEQR-021",
+  "proofVersion": "contradiction-schema-v4-controlled-live-proof-v1",
+  "armingState": "unarmed",
+  "purpose": "exactly_one_controlled_schema_v4_live_semantic_proof",
+  "providerId": "openai",
+  "adjudicatorModelId": "gpt-4o-mini",
+  "refereeModelId": "gpt-4o-mini",
+  "timeoutMs": 45000,
+  "maxTotalCalls": 6,
+  "maxRetries": 0,
+  "schemaVersion": "contradiction-adjudication-schema-v4",
+  "promptVersion": "contradiction-adjudication-prompt-v4",
+  "liveAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-ceqr021-schema-v4",
+  "casesAggregateSha256": "0c1b25b93f45013b096948691f24ea93cba4316b4f6d575810bcf35ccf7fa8f0",
+  "frozenPlanSha256": "ec411a3c3bc8c2b99514ca2bc312604dfab1a64e766370f95322dad50e6072c1",
+  "committedExecutionHead": "cb4d91698e3f40a439ed46e4d2049a86efb245fb",
+  "neverAutoDelete": true,
+  "createdAt": "2026-07-23T18:34:38.269Z",
+  "consumedAt": null
+}
