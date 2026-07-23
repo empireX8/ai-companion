@@ -1,0 +1,138 @@
+{
+  "task": "CONTRADICTION-LIVE-SEMANTIC-REPROOF-001",
+  "campaignSlice": "CEQR-019",
+  "postLiveFinalisation": "CONTRADICTION-LIVE-SEMANTIC-REPROOF-POST-LIVE-FINALISATION-001",
+  "exactBase": "f81fe556afd73648f24eacfc5eb5beda83b7ee9d",
+  "offlineHarnessClassification": "PASS_OFFLINE_LIVE_SEMANTIC_REPROOF_HARNESS_READY",
+  "liveClassification": "FAIL_TRUNCATED_OR_INVALID_EVIDENCE_SPAN",
+  "liveCommandExitCode": 5,
+  "liveResultImmutable": true,
+  "oneshotClaimConsumed": true,
+  "ceqr019RerunAuthorised": false,
+  "phase1Authorised": true,
+  "phase2Authorised": true,
+  "phase2Consumed": true,
+  "liveProviderAttempts": 3,
+  "adjudicatorCalls": 3,
+  "refereeCalls": 0,
+  "writerCalls": 0,
+  "persistenceCalls": 0,
+  "accountGateCalls": 0,
+  "realDatabaseCalls": 0,
+  "retries": 0,
+  "unsafeMutation": false,
+  "realAccountMutated": false,
+  "productionIngestionWired": false,
+  "liveProofObtained": false,
+  "endToEndSemanticReproofObtained": false,
+  "productionReady": false,
+  "schemaVersion": "contradiction-adjudication-schema-v3",
+  "providerId": "openai",
+  "adjudicatorModelId": "gpt-4o-mini",
+  "refereeModelId": "gpt-4o-mini",
+  "casesAggregateSha256": "0c1b25b93f45013b096948691f24ea93cba4316b4f6d575810bcf35ccf7fa8f0",
+  "canonicalLiveArtifacts": {
+    "liveRunOneshotClaim": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/live-run-oneshot-claim.json",
+      "bytes": 539,
+      "sha256": "0973a66f6c1b36fbef77625d435b83c14ee14cbf5530cf9c5d324d7b5504a65c"
+    },
+    "frozenLiveRunPlan": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/frozen-live-run-plan.json",
+      "bytes": 3831,
+      "sha256": "b3f8986b7bf7004fb6d111689cea90371aa82988a2c8f5a93a5354f7bf4d9129"
+    },
+    "liveExecutionReceipt": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/live-execution-receipt.json",
+      "bytes": 10419,
+      "sha256": "74c12305a2dc15d166a37c6a054158996016f0bc66c6236d42a16868d1798e58"
+    },
+    "ceqr019PermanentClaim": {
+      "path": "docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/ceqr019-permanent-claim.json",
+      "bytes": 1046,
+      "sha256": "13f497f29a31021a023e2f9ce03c7af0f27f005a9025b9792f311d6c25e9c357",
+      "note": "Pre-live permanent claim document; live authority is live-execution-receipt.json"
+    }
+  },
+  "caseSummary": {
+    "clear_contradiction_candidate": {
+      "attemptedAdjudications": 1,
+      "adjudicationOutcome": "validation_failed",
+      "deterministicValidation": "invalid",
+      "failureFamily": "lexical_boundary_integrity",
+      "refereeCalls": 0,
+      "writerInvoked": false,
+      "writeExecuted": false,
+      "contradictionNodeId": null
+    },
+    "compatible_contextual": {
+      "attemptedAdjudications": 1,
+      "adjudicationOutcome": "validation_failed",
+      "deterministicValidation": "invalid",
+      "failureFamily": "lexical_boundary_integrity",
+      "refereeCalls": 0,
+      "writerInvoked": false,
+      "writeExecuted": false,
+      "contradictionNodeId": null
+    },
+    "ambiguous_insufficient": {
+      "attemptedAdjudications": 1,
+      "adjudicationOutcome": "validation_failed",
+      "deterministicValidation": "invalid",
+      "failureFamily": "lexical_boundary_integrity",
+      "refereeCalls": 0,
+      "writerInvoked": false,
+      "writeExecuted": false,
+      "contradictionNodeId": null
+    }
+  },
+  "proved": [
+    "schema-v3 accepted sufficiently to return structured outputs",
+    "exactly three adjudicator attempts",
+    "no automatic retries",
+    "all cases failed closed at lexical-boundary validation",
+    "no referee/writer/persistence/account/database boundary ran",
+    "safety boundary worked correctly",
+    "end-to-end semantic reproof not obtained",
+    "production readiness remains NO"
+  ],
+  "notProved": [
+    "precise offsets per case",
+    "failing side per case",
+    "raw provider selection objects",
+    "root cause among inclusive-end / one-short / validator / UTF-16 / other"
+  ],
+  "nextSliceSuggested": {
+    "task": "CONTRADICTION-LIVE-EVIDENCE-OFFSET-FORENSIC-REPAIR-001",
+    "campaignSlice": "CEQR-020",
+    "createdInThisTask": false
+  },
+  "historicalReceipts": {
+    "ceqr017LiveExecutionReceiptSha256": "b620aa7f718d4ace768a9a518a4d8cb32ca1b54662291280b3f6545fb5514fdd",
+    "ceqr017Phase2ClaimSha256": "f313cbafb264f84d158a8aee20ca2276520fbf85940be7f910b87bead2c5cef0",
+    "ceqr018ReceiptsMutated": false
+  },
+  "validation": {
+    "focusedCeqr019Tests": { "passed": 38, "failed": 0 },
+    "contradictionAdjudicationContract": { "passed": 48, "failed": 0 },
+    "liveSemanticConsistencyRepair": { "passed": 21, "failed": 0 },
+    "liveSemanticOutputCompatibility": { "passed": 28, "failed": 0 },
+    "evidenceAuthorityRepair": { "passed": 27, "failed": 0 },
+    "controlledNaturalEntryProof": { "passed": 35, "failed": 0 },
+    "liveProviderRefereeExecution": { "passed": 49, "failed": 0 },
+    "controlledLiveAuthorityReproofOffline": { "passed": 27, "failed": 0 },
+    "objectivityRefereeInterface": { "passed": 28, "failed": 0 },
+    "typescript": { "ok": true },
+    "eslintChangedFiles": { "ok": true, "errors": 0, "warnings": 0 },
+    "gitDiffCheck": { "ok": true },
+    "jsonReceiptsParsed": true,
+    "oneshotClaimExists": true,
+    "liveReceiptClassificationExact": "FAIL_TRUNCATED_OR_INVALID_EVIDENCE_SPAN",
+    "liveProviderAttemptsExact": 3,
+    "downstreamCountersAllZero": true,
+    "canonicalLiveArtifactHashesLocked": true,
+    "liveProviderEnvGuardsUnsetDuringOffline": true,
+    "additionalLiveProviderAttemptsDuringFinalisation": 0,
+    "build": { "run": false, "ok": null, "note": "Build not claimed; not required for post-live finalisation when not run" }
+  }
+}

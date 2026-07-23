@@ -1,0 +1,15 @@
+{
+  "slice": "CONTRADICTION-LIVE-SEMANTIC-REPROOF-001",
+  "campaignSlice": "CEQR-019",
+  "claimedAt": "2026-07-23T10:27:42.675Z",
+  "purpose": "exactly_one_controlled_live_semantic_reproof_run",
+  "providerId": "openai",
+  "adjudicatorModelId": "gpt-4o-mini",
+  "refereeModelId": "gpt-4o-mini",
+  "timeoutMs": 45000,
+  "maxTotalCalls": 6,
+  "maxRetries": 0,
+  "schemaVersion": "contradiction-adjudication-schema-v3",
+  "casesAggregateSha256": "0c1b25b93f45013b096948691f24ea93cba4316b4f6d575810bcf35ccf7fa8f0",
+  "neverAutoDelete": true
+}
