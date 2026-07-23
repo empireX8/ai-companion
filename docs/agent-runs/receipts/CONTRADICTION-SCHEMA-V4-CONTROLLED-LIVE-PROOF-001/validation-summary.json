@@ -1,0 +1,25 @@
+{
+  "campaignSlice": "CEQR-021",
+  "classification": "PASS_OFFLINE_SCHEMA_V4_LIVE_PROOF_HARNESS_READY",
+  "liveProviderAttempts": 0,
+  "realAccountQueries": 0,
+  "realDatabaseQueriesMutations": 0,
+  "writerPersistenceCalls": 0,
+  "productionReady": false,
+  "liveAuthorised": false,
+  "casesAggregateSha256": "0c1b25b93f45013b096948691f24ea93cba4316b4f6d575810bcf35ccf7fa8f0",
+  "preLivePlanTemplateHash": "6002194b76001c81031c5734c68d0361c1518e4b9a2ebf96c6a31cf0e3155238",
+  "dryRunClassification": "PASS_OFFLINE_HARNESS_DRY_RUN_SCHEMA_V4_CONTROL_FLOW",
+  "historicalOk": true,
+  "canonicalClaimAbsent": true,
+  "canonicalLiveReceiptAbsent": true,
+  "canonicalLockAbsent": true,
+  "notes": [
+    "CEQR-021 live provider attempts: 0",
+    "CEQR-021 real account queries: 0",
+    "CEQR-021 real database queries/mutations: 0",
+    "CEQR-021 writer/persistence calls: 0",
+    "no live execution is authorised by this patch",
+    "production readiness: NO"
+  ]
+}

@@ -1,0 +1,519 @@
+{
+  "casesAggregateSha256": "0c1b25b93f45013b096948691f24ea93cba4316b4f6d575810bcf35ccf7fa8f0",
+  "catalogs": [
+    {
+      "caseId": "clear_contradiction_candidate",
+      "caseSha256": "6218eceeae317f5c31a5ca70b4d1f8f8c8e1276cb816f5d161aec77911a9cec6",
+      "sideA": {
+        "sourceSha256": "a1b0fdd2dd1e8d54e28b54c6ffb3ddac17d2dde9f080bd65b94a22b758442f8f",
+        "sourceUtf16Length": 30,
+        "sourceCodePointLength": 30,
+        "catalogSha256": "ba6e98ed03090c974c57515236271dda239cbc5cb0bdf94ed164d9acf3c2d811",
+        "catalog": [
+          {
+            "boundaryIndex": 0,
+            "offset": 0,
+            "category": "source_edge"
+          },
+          {
+            "boundaryIndex": 1,
+            "offset": 1,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 2,
+            "offset": 2,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 3,
+            "offset": 4,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 4,
+            "offset": 5,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 5,
+            "offset": 8,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 6,
+            "offset": 9,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 7,
+            "offset": 14,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 8,
+            "offset": 15,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 9,
+            "offset": 22,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 10,
+            "offset": 23,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 11,
+            "offset": 25,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 12,
+            "offset": 26,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 13,
+            "offset": 29,
+            "category": "punctuation"
+          },
+          {
+            "boundaryIndex": 14,
+            "offset": 30,
+            "category": "source_edge"
+          }
+        ],
+        "withinSourceLimit": true,
+        "withinEntryLimit": true
+      },
+      "sideB": {
+        "sourceSha256": "32e9770c30a53399d11118c96d4e4f13b908c1c413041a81a3e68fd2018dfdc2",
+        "sourceUtf16Length": 33,
+        "sourceCodePointLength": 33,
+        "catalogSha256": "a0c2bee2034c18f422dc1127bb899637eb67071ae0ad0f960fc1ec1986495507",
+        "catalog": [
+          {
+            "boundaryIndex": 0,
+            "offset": 0,
+            "category": "source_edge"
+          },
+          {
+            "boundaryIndex": 1,
+            "offset": 1,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 2,
+            "offset": 2,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 3,
+            "offset": 7,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 4,
+            "offset": 8,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 5,
+            "offset": 15,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 6,
+            "offset": 16,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 7,
+            "offset": 21,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 8,
+            "offset": 22,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 9,
+            "offset": 26,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 10,
+            "offset": 27,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 11,
+            "offset": 32,
+            "category": "punctuation"
+          },
+          {
+            "boundaryIndex": 12,
+            "offset": 33,
+            "category": "source_edge"
+          }
+        ],
+        "withinSourceLimit": true,
+        "withinEntryLimit": true
+      }
+    },
+    {
+      "caseId": "compatible_contextual",
+      "caseSha256": "ac9c9dddf6f90528d0d7d28b51833bad8eb593955a541fbfd21a114374113f27",
+      "sideA": {
+        "sourceSha256": "a83319815e32d9389850f0248a530733463ac2da7f38e4981ea7c48aa7359fa8",
+        "sourceUtf16Length": 30,
+        "sourceCodePointLength": 30,
+        "catalogSha256": "6028552ac198da9669280b21aba326d385f972590c48cf4778c58f2747aa4231",
+        "catalog": [
+          {
+            "boundaryIndex": 0,
+            "offset": 0,
+            "category": "source_edge"
+          },
+          {
+            "boundaryIndex": 1,
+            "offset": 1,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 2,
+            "offset": 2,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 3,
+            "offset": 7,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 4,
+            "offset": 8,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 5,
+            "offset": 14,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 6,
+            "offset": 15,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 7,
+            "offset": 17,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 8,
+            "offset": 18,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 9,
+            "offset": 21,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 10,
+            "offset": 22,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 11,
+            "offset": 29,
+            "category": "punctuation"
+          },
+          {
+            "boundaryIndex": 12,
+            "offset": 30,
+            "category": "source_edge"
+          }
+        ],
+        "withinSourceLimit": true,
+        "withinEntryLimit": true
+      },
+      "sideB": {
+        "sourceSha256": "46af6a51e9dff521935f12bf9e9124abccbdbee0971092a3104765ff08cd057f",
+        "sourceUtf16Length": 30,
+        "sourceCodePointLength": 30,
+        "catalogSha256": "6028552ac198da9669280b21aba326d385f972590c48cf4778c58f2747aa4231",
+        "catalog": [
+          {
+            "boundaryIndex": 0,
+            "offset": 0,
+            "category": "source_edge"
+          },
+          {
+            "boundaryIndex": 1,
+            "offset": 1,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 2,
+            "offset": 2,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 3,
+            "offset": 7,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 4,
+            "offset": 8,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 5,
+            "offset": 14,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 6,
+            "offset": 15,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 7,
+            "offset": 17,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 8,
+            "offset": 18,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 9,
+            "offset": 21,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 10,
+            "offset": 22,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 11,
+            "offset": 29,
+            "category": "punctuation"
+          },
+          {
+            "boundaryIndex": 12,
+            "offset": 30,
+            "category": "source_edge"
+          }
+        ],
+        "withinSourceLimit": true,
+        "withinEntryLimit": true
+      }
+    },
+    {
+      "caseId": "ambiguous_insufficient",
+      "caseSha256": "04baa1844a613c85e97c2642a5f5383112141d25da6c1d517e1ccbcd251fb09e",
+      "sideA": {
+        "sourceSha256": "224d6efd6bd4c75015b0fc877f047209e054bbfb1f10fbc82e30ade571f66ed2",
+        "sourceUtf16Length": 44,
+        "sourceCodePointLength": 44,
+        "catalogSha256": "ea6340b18b82020cbca87b93dfa37e923143581c782786458150a5d5aee9fda6",
+        "catalog": [
+          {
+            "boundaryIndex": 0,
+            "offset": 0,
+            "category": "source_edge"
+          },
+          {
+            "boundaryIndex": 1,
+            "offset": 1,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 2,
+            "offset": 2,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 3,
+            "offset": 7,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 4,
+            "offset": 8,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 5,
+            "offset": 10,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 6,
+            "offset": 11,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 7,
+            "offset": 18,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 8,
+            "offset": 19,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 9,
+            "offset": 24,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 10,
+            "offset": 25,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 11,
+            "offset": 27,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 12,
+            "offset": 28,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 13,
+            "offset": 29,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 14,
+            "offset": 30,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 15,
+            "offset": 34,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 16,
+            "offset": 35,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 17,
+            "offset": 37,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 18,
+            "offset": 38,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 19,
+            "offset": 40,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 20,
+            "offset": 41,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 21,
+            "offset": 43,
+            "category": "punctuation"
+          },
+          {
+            "boundaryIndex": 22,
+            "offset": 44,
+            "category": "source_edge"
+          }
+        ],
+        "withinSourceLimit": true,
+        "withinEntryLimit": true
+      },
+      "sideB": {
+        "sourceSha256": "f27a1891919d26080b00a6a8619e67caadd59c500f4af1c859a78a18fe0d237e",
+        "sourceUtf16Length": 33,
+        "sourceCodePointLength": 33,
+        "catalogSha256": "036106a7ae963da73324178f323039b981e830d425c6dda7db8c2b2bb82baa81",
+        "catalog": [
+          {
+            "boundaryIndex": 0,
+            "offset": 0,
+            "category": "source_edge"
+          },
+          {
+            "boundaryIndex": 1,
+            "offset": 9,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 2,
+            "offset": 10,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 3,
+            "offset": 11,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 4,
+            "offset": 12,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 5,
+            "offset": 17,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 6,
+            "offset": 18,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 7,
+            "offset": 23,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 8,
+            "offset": 24,
+            "category": "whitespace"
+          },
+          {
+            "boundaryIndex": 9,
+            "offset": 32,
+            "category": "punctuation"
+          },
+          {
+            "boundaryIndex": 10,
+            "offset": 33,
+            "category": "source_edge"
+          }
+        ],
+        "withinSourceLimit": true,
+        "withinEntryLimit": true
+      }
+    }
+  ],
+  "liveProviderAttempts": 0,
+  "productionReady": false
+}
