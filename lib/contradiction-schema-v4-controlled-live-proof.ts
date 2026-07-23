@@ -166,6 +166,10 @@ export type Ceqr021PreLivePlanTemplate = {
   liveProviderAttempts: 0;
 };
 
+/** Exact pre-freeze hard-safety boundary retained only on the pre-live template. */
+export const CEQR_021_PRE_LIVE_PENDING_HEAD_BOUNDARY =
+  "Committed execution HEAD remains PENDING_POST_REVIEW_COMMIT_FREEZE until freeze script." as const;
+
 export function buildCeqr021PreLivePlanTemplate(
   cwd: string = process.cwd(),
 ): Ceqr021PreLivePlanTemplate {
@@ -220,7 +224,7 @@ export function buildCeqr021PreLivePlanTemplate(
       "No writer/persistence/account/database access.",
       "No CEQR-019 rerun.",
       "No retries; budget 6; synthetic sources only.",
-      "Committed execution HEAD remains PENDING_POST_REVIEW_COMMIT_FREEZE until freeze script.",
+      CEQR_021_PRE_LIVE_PENDING_HEAD_BOUNDARY,
     ],
     productionReady: false,
     liveAuthorisedByThisTemplate: false,
@@ -232,6 +236,91 @@ export function serializeCeqr021PreLivePlanTemplate(
   plan: Ceqr021PreLivePlanTemplate = buildCeqr021PreLivePlanTemplate(),
 ): string {
   return `${JSON.stringify(plan, null, 2)}\n`;
+}
+
+export function buildCeqr021FrozenCommittedHeadSafetyBoundary(
+  committedExecutionHead: string,
+): string {
+  return `Committed execution HEAD is frozen to ${committedExecutionHead}; live execution must match this exact SHA.`;
+}
+
+/**
+ * Replace the pre-freeze pending-HEAD boundary with the post-freeze exact-SHA
+ * boundary. Other template boundaries are preserved unchanged.
+ */
+export function buildCeqr021FinalFrozenLivePlanHardSafetyBoundaries(
+  committedExecutionHead: string,
+  templateBoundaries: readonly string[] = buildCeqr021PreLivePlanTemplate()
+    .hardSafetyBoundaries,
+): string[] {
+  return templateBoundaries.map((entry) =>
+    entry === CEQR_021_PRE_LIVE_PENDING_HEAD_BOUNDARY ||
+    entry.includes(CEQR_021_PENDING_EXECUTION_HEAD)
+      ? buildCeqr021FrozenCommittedHeadSafetyBoundary(committedExecutionHead)
+      : entry,
+  );
+}
+
+export type Ceqr021FinalFrozenLivePlan = Omit<
+  Ceqr021PreLivePlanTemplate,
+  "committedExecutionHead" | "hardSafetyBoundaries" | "liveAuthorisedByThisTemplate"
+> & {
+  committedExecutionHead: string;
+  hardSafetyBoundaries: string[];
+  frozenAt: string;
+  freezeKind: "final_immutable_frozen_live_plan";
+  armed: false;
+  liveAuthorisedByThisFreeze: false;
+  productionReady: false;
+  liveProviderAttempts: 0;
+  liveAuthorisedByThisTemplate?: false;
+};
+
+/**
+ * Deterministic final frozen-plan construction used by the post-commit freeze
+ * script. Does not write files, arm claims, set guards, or call providers.
+ */
+export function buildCeqr021FinalFrozenLivePlan(args: {
+  cwd?: string;
+  committedExecutionHead: string;
+  frozenAt?: string;
+}): { plan: Ceqr021FinalFrozenLivePlan; serialized: string } {
+  const head = args.committedExecutionHead;
+  if (head === CEQR_021_PENDING_EXECUTION_HEAD) {
+    throw new Error(
+      "Final frozen plan cannot use PENDING_POST_REVIEW_COMMIT_FREEZE as committedExecutionHead.",
+    );
+  }
+  if (!/^[0-9a-f]{40}$/.test(head)) {
+    throw new Error(
+      "Final frozen plan committedExecutionHead must be a 40-char lowercase hex git SHA.",
+    );
+  }
+
+  const template = buildCeqr021PreLivePlanTemplate(args.cwd);
+  const hardSafetyBoundaries = buildCeqr021FinalFrozenLivePlanHardSafetyBoundaries(
+    head,
+    template.hardSafetyBoundaries,
+  );
+  const plan: Ceqr021FinalFrozenLivePlan = {
+    ...template,
+    committedExecutionHead: head,
+    hardSafetyBoundaries,
+    frozenAt: args.frozenAt ?? new Date().toISOString(),
+    freezeKind: "final_immutable_frozen_live_plan",
+    armed: false,
+    liveAuthorisedByThisFreeze: false,
+    productionReady: false,
+    liveProviderAttempts: 0,
+  };
+
+  const serialized = `${JSON.stringify(plan, null, 2)}\n`;
+  if (serialized.includes(CEQR_021_PENDING_EXECUTION_HEAD)) {
+    throw new Error(
+      "Final frozen plan serialized bytes must not contain PENDING_POST_REVIEW_COMMIT_FREEZE.",
+    );
+  }
+  return { plan, serialized };
 }
 
 export function hashCeqr021PreLivePlanTemplate(

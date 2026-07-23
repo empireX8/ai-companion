@@ -45,6 +45,10 @@ import {
   buildAllFrozenScenarioCatalogs,
   buildApprovedEvidenceSpansForSource,
   buildCeqr021PreLivePlanTemplate,
+  buildCeqr021FinalFrozenLivePlan,
+  buildCeqr021FrozenCommittedHeadSafetyBoundary,
+  CEQR_021_PRE_LIVE_PENDING_HEAD_BOUNDARY,
+  CEQR_021_PENDING_EXECUTION_HEAD,
   buildDisapprovedLexicalFragments,
   catalogHasNoMidWordEntries,
   catalogHasNoSurrogateSplits,
@@ -818,9 +822,49 @@ describe("CEQR-021 historical immutability and production isolation", () => {
     expect(plan.committedExecutionHead).toBe(
       "PENDING_POST_REVIEW_COMMIT_FREEZE",
     );
+    expect(plan.hardSafetyBoundaries).toContain(
+      CEQR_021_PRE_LIVE_PENDING_HEAD_BOUNDARY,
+    );
     expect(plan.productionReady).toBe(false);
     expect(plan.liveProviderAttempts).toBe(0);
     expect(plan.liveAuthorisedByThisTemplate).toBe(false);
+  });
+
+  it("final frozen plan builder replaces pending HEAD boundary with exact SHA", () => {
+    const head = "750ffeb7db787b8c60d055381d9bfbe5af0d1fcd";
+    const { plan, serialized } = buildCeqr021FinalFrozenLivePlan({
+      cwd: REPO_ROOT,
+      committedExecutionHead: head,
+      frozenAt: "2026-07-23T17:00:00.000Z",
+    });
+    expect(plan.committedExecutionHead).toBe(head);
+    expect(serialized.includes("PENDING_POST_REVIEW_COMMIT_FREEZE")).toBe(
+      false,
+    );
+    expect(serialized.includes(CEQR_021_PENDING_EXECUTION_HEAD)).toBe(false);
+    expect(plan.hardSafetyBoundaries).toContain(
+      buildCeqr021FrozenCommittedHeadSafetyBoundary(head),
+    );
+    expect(plan.hardSafetyBoundaries).not.toContain(
+      CEQR_021_PRE_LIVE_PENDING_HEAD_BOUNDARY,
+    );
+    expect(plan.armed).toBe(false);
+    expect(plan.liveAuthorisedByThisFreeze).toBe(false);
+    expect(plan.productionReady).toBe(false);
+    expect(plan.liveProviderAttempts).toBe(0);
+    expect(existsSync(ceqr021CanonicalOneshotClaimPath(REPO_ROOT))).toBe(false);
+    expect(existsSync(ceqr021ExecutionLockPath(REPO_ROOT))).toBe(false);
+    expect(existsSync(ceqr021CanonicalLiveReceiptPath(REPO_ROOT))).toBe(false);
+    expect(
+      existsSync(
+        join(
+          REPO_ROOT,
+          "docs/agent-runs/receipts",
+          CEQR_021_SLICE_ID,
+          "final-frozen-live-plan.json",
+        ),
+      ),
+    ).toBe(false);
   });
 });
 
