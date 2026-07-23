@@ -1,0 +1,149 @@
+{
+  "approvedSpanSetSha256ByCaseSide": {
+    "clear_contradiction_candidate": {
+      "A": "e5fa8c66a288ccd700179bdfc81766b8964b0e2a1d7f49b729e2973059c002f1",
+      "B": "3910f0bb52fc0a1f907dec863a780763b195c83a234bb328b8f643440740c2a3"
+    },
+    "compatible_contextual": {
+      "A": "03c5914f9ffea73ae20ebc30eb7b47abb336074b0fb982e6b951c7a0f76786f4",
+      "B": "c6a2464a80de3d142d714e8f61754119008011bc965fb1a2a6dfa502d8be13f3"
+    },
+    "ambiguous_insufficient": {
+      "A": "d934bf0e7510568c5a65f8caa40e4a22bc00be12a79bb8f45bf71fe13788466c",
+      "B": "714306db55d492d16230cc3c7557f85b335811172fc06a30b69e8d16073cc735"
+    }
+  },
+  "spans": [
+    {
+      "caseId": "clear_contradiction_candidate",
+      "sideA": [
+        {
+          "kind": "full_with_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 14,
+          "startOffset": 0,
+          "endOffset": 30,
+          "exactQuote": "I do not drink alcohol at all.",
+          "spanHashSha256": "9b5cd91f983f9837a6a529b660895e83e8a62156ffb3ec5f385f37ead157324e"
+        },
+        {
+          "kind": "full_without_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 13,
+          "startOffset": 0,
+          "endOffset": 29,
+          "exactQuote": "I do not drink alcohol at all",
+          "spanHashSha256": "aed8df43bdb290e375a902cc47fa9ec2b7fbe3e97bc0b13b8376837578518763"
+        }
+      ],
+      "sideB": [
+        {
+          "kind": "full_with_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 12,
+          "startOffset": 0,
+          "endOffset": 33,
+          "exactQuote": "I drank several beers last night.",
+          "spanHashSha256": "52ae873fe6db7fd78153de1462aa3205b6b1528bb10d034e2e5dda5016642d1e"
+        },
+        {
+          "kind": "full_without_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 11,
+          "startOffset": 0,
+          "endOffset": 32,
+          "exactQuote": "I drank several beers last night",
+          "spanHashSha256": "935df6a71b8907d60565e2f43cf0c1eb19615c8671b2e661dd115ff5954f600c"
+        }
+      ]
+    },
+    {
+      "caseId": "compatible_contextual",
+      "sideA": [
+        {
+          "kind": "full_with_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 12,
+          "startOffset": 0,
+          "endOffset": 30,
+          "exactQuote": "I avoid coffee in the evening.",
+          "spanHashSha256": "223a485cebc10b4a95bd1bd11b7005656ba0d4890647b63b5bffa491864c7f48"
+        },
+        {
+          "kind": "full_without_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 11,
+          "startOffset": 0,
+          "endOffset": 29,
+          "exactQuote": "I avoid coffee in the evening",
+          "spanHashSha256": "286757df80d0b192a4f86db0926e5338302301c3fc864e2212cce77ed45858b8"
+        }
+      ],
+      "sideB": [
+        {
+          "kind": "full_with_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 12,
+          "startOffset": 0,
+          "endOffset": 30,
+          "exactQuote": "I drink coffee in the morning.",
+          "spanHashSha256": "d114dea66d4d9132103c8c921a7241f42714769734d692695559b8480d0ddb7b"
+        },
+        {
+          "kind": "full_without_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 11,
+          "startOffset": 0,
+          "endOffset": 29,
+          "exactQuote": "I drink coffee in the morning",
+          "spanHashSha256": "eb4dc7685d61b7493528f655f1e8f1d49e328618668e1d29e70db6b69e7b3f60"
+        }
+      ]
+    },
+    {
+      "caseId": "ambiguous_insufficient",
+      "sideA": [
+        {
+          "kind": "full_with_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 22,
+          "startOffset": 0,
+          "endOffset": 44,
+          "exactQuote": "I might go running later if I feel up to it.",
+          "spanHashSha256": "103ac46f4f0f94aa21870533fba568f35e8ad00bc7047c029f1b200309cad83d"
+        },
+        {
+          "kind": "full_without_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 21,
+          "startOffset": 0,
+          "endOffset": 43,
+          "exactQuote": "I might go running later if I feel up to it",
+          "spanHashSha256": "fab512a1525c0aa7404f811c1ce4572b9305bd361e1c61672663445aee52b539"
+        }
+      ],
+      "sideB": [
+        {
+          "kind": "full_with_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 10,
+          "startOffset": 0,
+          "endOffset": 33,
+          "exactQuote": "Sometimes I think about exercise.",
+          "spanHashSha256": "bd1808a67cf05b0196ebbf278cb8bb9c9db394899fb118fdd74493523e32dffa"
+        },
+        {
+          "kind": "full_without_terminal_punct",
+          "startBoundaryIndex": 0,
+          "endBoundaryIndex": 9,
+          "startOffset": 0,
+          "endOffset": 32,
+          "exactQuote": "Sometimes I think about exercise",
+          "spanHashSha256": "56d435c9d6b1aee26bbeadddfd898ceeb869e82cb3ead41394f95090fafc3dbb"
+        }
+      ]
+    }
+  ],
+  "liveProviderAttempts": 0,
+  "productionReady": false
+}

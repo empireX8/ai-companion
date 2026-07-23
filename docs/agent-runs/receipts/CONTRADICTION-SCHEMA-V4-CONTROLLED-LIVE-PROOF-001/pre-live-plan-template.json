@@ -1,0 +1,96 @@
+{
+  "taskId": "CONTRADICTION-SCHEMA-V4-CONTROLLED-LIVE-PROOF-001",
+  "campaignId": "CONTRADICTION-EXTRACTION-QUALITY-REPAIR-001",
+  "sliceId": "CONTRADICTION-SCHEMA-V4-CONTROLLED-LIVE-PROOF-001",
+  "campaignSlice": "CEQR-021",
+  "proofVersion": "contradiction-schema-v4-controlled-live-proof-v1",
+  "branch": "desktop-contradiction-schema-v4-controlled-live-proof-001",
+  "worktreePath": "/Users/user/ai-companion-worktrees/desktop-contradiction-schema-v4-controlled-live-proof-001",
+  "baseHead": "785d88640fdb284805a958f5a7f25cd0c68b7188",
+  "committedExecutionHead": "PENDING_POST_REVIEW_COMMIT_FREEZE",
+  "providerId": "openai",
+  "adjudicatorModelId": "gpt-4o-mini",
+  "refereeModelId": "gpt-4o-mini",
+  "schemaVersion": "contradiction-adjudication-schema-v4",
+  "promptVersion": "contradiction-adjudication-prompt-v4",
+  "liveAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-ceqr021-schema-v4",
+  "liveAddendumSha256": "bfb460a5b8e6772629492f4934b40e27ef98cb1700f3dc015971d2494181a0b2",
+  "kernelContract": "orvek-intelligence-kernel-v1",
+  "timeoutMs": 45000,
+  "retryCount": 0,
+  "totalCallBudget": 6,
+  "expectedAdjudicatorCalls": 3,
+  "expectedRefereeCalls": 1,
+  "caseSha256ById": {
+    "clear_contradiction_candidate": "6218eceeae317f5c31a5ca70b4d1f8f8c8e1276cb816f5d161aec77911a9cec6",
+    "compatible_contextual": "ac9c9dddf6f90528d0d7d28b51833bad8eb593955a541fbfd21a114374113f27",
+    "ambiguous_insufficient": "04baa1844a613c85e97c2642a5f5383112141d25da6c1d517e1ccbcd251fb09e"
+  },
+  "casesAggregateSha256": "0c1b25b93f45013b096948691f24ea93cba4316b4f6d575810bcf35ccf7fa8f0",
+  "catalogSha256ByCaseSide": {
+    "clear_contradiction_candidate": {
+      "A": "ba6e98ed03090c974c57515236271dda239cbc5cb0bdf94ed164d9acf3c2d811",
+      "B": "a0c2bee2034c18f422dc1127bb899637eb67071ae0ad0f960fc1ec1986495507"
+    },
+    "compatible_contextual": {
+      "A": "6028552ac198da9669280b21aba326d385f972590c48cf4778c58f2747aa4231",
+      "B": "6028552ac198da9669280b21aba326d385f972590c48cf4778c58f2747aa4231"
+    },
+    "ambiguous_insufficient": {
+      "A": "ea6340b18b82020cbca87b93dfa37e923143581c782786458150a5d5aee9fda6",
+      "B": "036106a7ae963da73324178f323039b981e830d425c6dda7db8c2b2bb82baa81"
+    }
+  },
+  "approvedSpanSetSha256ByCaseSide": {
+    "clear_contradiction_candidate": {
+      "A": "e5fa8c66a288ccd700179bdfc81766b8964b0e2a1d7f49b729e2973059c002f1",
+      "B": "3910f0bb52fc0a1f907dec863a780763b195c83a234bb328b8f643440740c2a3"
+    },
+    "compatible_contextual": {
+      "A": "03c5914f9ffea73ae20ebc30eb7b47abb336074b0fb982e6b951c7a0f76786f4",
+      "B": "c6a2464a80de3d142d714e8f61754119008011bc965fb1a2a6dfa502d8be13f3"
+    },
+    "ambiguous_insufficient": {
+      "A": "d934bf0e7510568c5a65f8caa40e4a22bc00be12a79bb8f45bf71fe13788466c",
+      "B": "714306db55d492d16230cc3c7557f85b335811172fc06a30b69e8d16073cc735"
+    }
+  },
+  "sourceSha256ByCaseSide": {
+    "clear_contradiction_candidate": {
+      "A": "a1b0fdd2dd1e8d54e28b54c6ffb3ddac17d2dde9f080bd65b94a22b758442f8f",
+      "B": "32e9770c30a53399d11118c96d4e4f13b908c1c413041a81a3e68fd2018dfdc2"
+    },
+    "compatible_contextual": {
+      "A": "a83319815e32d9389850f0248a530733463ac2da7f38e4981ea7c48aa7359fa8",
+      "B": "46af6a51e9dff521935f12bf9e9124abccbdbee0971092a3104765ff08cd057f"
+    },
+    "ambiguous_insufficient": {
+      "A": "224d6efd6bd4c75015b0fc877f047209e054bbfb1f10fbc82e30ade571f66ed2",
+      "B": "f27a1891919d26080b00a6a8619e67caadd59c500f4af1c859a78a18fe0d237e"
+    }
+  },
+  "guards": {
+    "allowEnv": "ORVEK_CEQR021_ALLOW_CONTROLLED_LIVE_SCHEMA_V4_PROOF",
+    "allowValue": "ALLOW_SCHEMA_V4_CONTROLLED_LIVE_PROOF",
+    "confirmEnv": "ORVEK_CEQR021_CONFIRM_SYNTHETIC_ONLY_ONE_SHOT",
+    "confirmValue": "CONFIRM_SYNTHETIC_ONLY_ONE_SHOT"
+  },
+  "canonicalPaths": {
+    "receiptDir": "/Users/user/ai-companion-worktrees/desktop-contradiction-schema-v4-controlled-live-proof-001/docs/agent-runs/receipts/CONTRADICTION-SCHEMA-V4-CONTROLLED-LIVE-PROOF-001",
+    "oneshotClaim": "/Users/user/ai-companion-worktrees/desktop-contradiction-schema-v4-controlled-live-proof-001/docs/agent-runs/receipts/CONTRADICTION-SCHEMA-V4-CONTROLLED-LIVE-PROOF-001/ceqr021-oneshot-claim.json",
+    "liveReceipt": "/Users/user/ai-companion-worktrees/desktop-contradiction-schema-v4-controlled-live-proof-001/docs/agent-runs/receipts/CONTRADICTION-SCHEMA-V4-CONTROLLED-LIVE-PROOF-001/live-execution-receipt.json",
+    "finalFrozenPlan": "/Users/user/ai-companion-worktrees/desktop-contradiction-schema-v4-controlled-live-proof-001/docs/agent-runs/receipts/CONTRADICTION-SCHEMA-V4-CONTROLLED-LIVE-PROOF-001/final-frozen-live-plan.json",
+    "unarmedClaimTemplate": "/Users/user/ai-companion-worktrees/desktop-contradiction-schema-v4-controlled-live-proof-001/docs/agent-runs/receipts/CONTRADICTION-SCHEMA-V4-CONTROLLED-LIVE-PROOF-001/ceqr021-unarmed-claim-template.json"
+  },
+  "hardSafetyBoundaries": [
+    "No OpenAI call authorised by this template.",
+    "No armed canonical claim created by offline preparation.",
+    "No writer/persistence/account/database access.",
+    "No CEQR-019 rerun.",
+    "No retries; budget 6; synthetic sources only.",
+    "Committed execution HEAD remains PENDING_POST_REVIEW_COMMIT_FREEZE until freeze script."
+  ],
+  "productionReady": false,
+  "liveAuthorisedByThisTemplate": false,
+  "liveProviderAttempts": 0
+}
