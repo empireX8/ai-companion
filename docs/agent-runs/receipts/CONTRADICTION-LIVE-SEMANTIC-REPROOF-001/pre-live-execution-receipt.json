@@ -1,0 +1,25 @@
+{
+  "slice": "CONTRADICTION-LIVE-SEMANTIC-REPROOF-001",
+  "campaignSlice": "CEQR-019",
+  "proofVersion": "contradiction-controlled-live-semantic-reproof-v1",
+  "phase": "offline_preparation",
+  "classification": "HOLD_LIVE_SEMANTIC_REPROOF_NOT_YET_EXECUTED",
+  "offlineHarnessClassification": "PASS_OFFLINE_LIVE_SEMANTIC_REPROOF_HARNESS_READY",
+  "liveAuthorised": false,
+  "liveExecuted": false,
+  "liveProviderAttempts": 0,
+  "realAccountQueries": 0,
+  "realDatabaseQueries": 0,
+  "realDatabaseMutations": 0,
+  "writerCalls": 0,
+  "persistenceCalls": 0,
+  "liveProofObtained": false,
+  "productionReady": false,
+  "proposedLiveCommand": "cd /Users/user/ai-companion-worktrees/desktop-contradiction-live-semantic-reproof-001\nset -a && source /Users/user/ai-companion/.env && set +a\nCEQR019_LIVE_SEMANTIC_REPROOF_AUTHORIZED=YES \\\nCONTRADICTION_LIVE_ADJUDICATOR_MODEL=gpt-4o-mini \\\nCONTRADICTION_LIVE_REFEREE_MODEL=gpt-4o-mini \\\nCONTRADICTION_LIVE_PROVIDER_TIMEOUT_MS=45000 \\\nCONTRADICTION_LIVE_MAX_TOTAL_CALLS=6 \\\nRUN_LIVE_CONTRADICTION_PROVIDER_PROOF=1 \\\n  npx ts-node --transpile-only \\\n  --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' \\\n  scripts/run-contradiction-controlled-live-semantic-reproof.ts",
+  "notes": [
+    "Offline preparation only — live provider execution is not authorised by this receipt.",
+    "CEQR-017 remains historical; CEQR-018 proved only the offline repair.",
+    "No fabricated provider results are recorded.",
+    "Production readiness remains NO."
+  ]
+}

@@ -1,0 +1,282 @@
+{
+  "slice": "CONTRADICTION-LIVE-SEMANTIC-REPROOF-001",
+  "campaignSlice": "CEQR-019",
+  "proofVersion": "contradiction-controlled-live-semantic-reproof-v1",
+  "phase": "live_semantic_reproof",
+  "liveAuthorised": true,
+  "liveExecuted": true,
+  "liveProviderAttempts": 3,
+  "classification": "FAIL_TRUNCATED_OR_INVALID_EVIDENCE_SPAN",
+  "schemaVersion": "contradiction-adjudication-schema-v3",
+  "casesAggregateSha256": "0c1b25b93f45013b096948691f24ea93cba4316b4f6d575810bcf35ccf7fa8f0",
+  "boundaryCounters": {
+    "adjudicatorCalls": 3,
+    "refereeCalls": 0,
+    "writerCalls": 0,
+    "persistenceCalls": 0,
+    "accountGateCalls": 0,
+    "realDatabaseCalls": 0
+  },
+  "caseObservations": [
+    {
+      "caseId": "clear_contradiction_candidate",
+      "caseStatus": "failed_safely",
+      "proofOutcome": "failed_safely",
+      "attemptedAdjudicationCount": 1,
+      "adjudicationOutcome": "validation_failed",
+      "deterministicValidationStatus": "invalid",
+      "validationErrors": [
+        "lexical_boundary_integrity: lexical_boundary_integrity: endOffset falls inside a Unicode alphanumeric word (mid-word truncation). This gate proves lexical boundary integrity only — not complete semantic proposition support.",
+        "clear_contradiction requires two valid exact evidence spans."
+      ],
+      "semanticClassification": null,
+      "bothCanSimultaneouslyBeTrue": null,
+      "changedBeliefOverTime": null,
+      "intentionVersusOutcome": null,
+      "goalVersusObstacle": null,
+      "emotionalOrPhysiologicalVersusReasoningStandard": null,
+      "abstentionReason": null,
+      "evidenceA": null,
+      "evidenceB": null,
+      "refereeCallCount": 0,
+      "writerInvoked": false,
+      "writeExecuted": false,
+      "contradictionNodeId": null,
+      "clearContradictionWriteProven": false
+    },
+    {
+      "caseId": "compatible_contextual",
+      "caseStatus": "failed_safely",
+      "proofOutcome": "failed_safely",
+      "attemptedAdjudicationCount": 1,
+      "adjudicationOutcome": "validation_failed",
+      "deterministicValidationStatus": "invalid",
+      "validationErrors": [
+        "lexical_boundary_integrity: lexical_boundary_integrity: endOffset falls inside a Unicode alphanumeric word (mid-word truncation). This gate proves lexical boundary integrity only — not complete semantic proposition support."
+      ],
+      "semanticClassification": null,
+      "bothCanSimultaneouslyBeTrue": null,
+      "changedBeliefOverTime": null,
+      "intentionVersusOutcome": null,
+      "goalVersusObstacle": null,
+      "emotionalOrPhysiologicalVersusReasoningStandard": null,
+      "abstentionReason": null,
+      "evidenceA": null,
+      "evidenceB": null,
+      "refereeCallCount": 0,
+      "writerInvoked": false,
+      "writeExecuted": false,
+      "contradictionNodeId": null,
+      "clearContradictionWriteProven": null
+    },
+    {
+      "caseId": "ambiguous_insufficient",
+      "caseStatus": "failed_safely",
+      "proofOutcome": "failed_safely",
+      "attemptedAdjudicationCount": 1,
+      "adjudicationOutcome": "validation_failed",
+      "deterministicValidationStatus": "invalid",
+      "validationErrors": [
+        "lexical_boundary_integrity: lexical_boundary_integrity: endOffset falls inside a Unicode alphanumeric word (mid-word truncation). This gate proves lexical boundary integrity only — not complete semantic proposition support."
+      ],
+      "semanticClassification": null,
+      "bothCanSimultaneouslyBeTrue": null,
+      "changedBeliefOverTime": null,
+      "intentionVersusOutcome": null,
+      "goalVersusObstacle": null,
+      "emotionalOrPhysiologicalVersusReasoningStandard": null,
+      "abstentionReason": null,
+      "evidenceA": null,
+      "evidenceB": null,
+      "refereeCallCount": 0,
+      "writerInvoked": false,
+      "writeExecuted": false,
+      "contradictionNodeId": null,
+      "clearContradictionWriteProven": null
+    }
+  ],
+  "underlyingLiveProof": {
+    "ran": true,
+    "proofVersion": "contradiction-live-provider-referee-proof-v1",
+    "providerId": "openai",
+    "adjudicatorModelId": "gpt-4o-mini",
+    "refereeModelId": "gpt-4o-mini",
+    "independenceLevel": "separate_call_same_provider_same_model",
+    "maxRetries": 0,
+    "timeoutMs": 45000,
+    "providerAttemptCountExact": true,
+    "adjudicatorPromptAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v3",
+    "adjudicatorCallCount": 3,
+    "refereeCallCount": 0,
+    "totalCallCount": 3,
+    "maxTotalCalls": 6,
+    "cases": [
+      {
+        "caseId": "clear_contradiction_candidate",
+        "status": "failed_safely",
+        "proofOutcome": "failed_safely",
+        "writeExecuted": false,
+        "writerInvoked": false,
+        "adjudicatorCallCount": 1,
+        "refereeCallCount": 0,
+        "contradictionNodeId": null,
+        "sideAQuote": null,
+        "sideBQuote": null,
+        "presentationStatus": "not_requested",
+        "failureCode": "adjudication_failed",
+        "failureMessage": "Selection failed closed (adjudication_failed).",
+        "latencyMs": 6381,
+        "harnessNodeCountAfter": 0,
+        "harnessSpanCountAfter": 0,
+        "gateStoppedAt": "selection",
+        "sanitizedAdjudicationDiagnostics": {
+          "providerId": "openai",
+          "modelId": "gpt-4o-mini",
+          "schemaVersion": "contradiction-adjudication-schema-v3",
+          "promptVersion": "contradiction-adjudication-prompt-v3",
+          "parseValidationOutcome": "invalid",
+          "adjudicationOutcome": "validation_failed",
+          "adjudicationErrorCode": "validation_failed",
+          "validationErrorCodes": [
+            "lexical_boundary_integrity",
+            "clear_contradiction_requires_valid_spans",
+            "validation_failed"
+          ],
+          "failingFieldPaths": [
+            "evidenceClaim"
+          ],
+          "evidenceFailureSide": "unknown",
+          "sourceTextLengths": {
+            "sideA": 30,
+            "sideB": 33
+          },
+          "exactQuoteMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "offsetsMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "earliestGate": "deterministic_validation"
+        }
+      },
+      {
+        "caseId": "compatible_contextual",
+        "status": "failed_safely",
+        "proofOutcome": "failed_safely",
+        "writeExecuted": false,
+        "writerInvoked": false,
+        "adjudicatorCallCount": 1,
+        "refereeCallCount": 0,
+        "contradictionNodeId": null,
+        "sideAQuote": null,
+        "sideBQuote": null,
+        "presentationStatus": "not_requested",
+        "failureCode": "adjudication_failed",
+        "failureMessage": "Selection failed closed (adjudication_failed).",
+        "latencyMs": 3673,
+        "harnessNodeCountAfter": 0,
+        "harnessSpanCountAfter": 0,
+        "gateStoppedAt": "selection",
+        "sanitizedAdjudicationDiagnostics": {
+          "providerId": "openai",
+          "modelId": "gpt-4o-mini",
+          "schemaVersion": "contradiction-adjudication-schema-v3",
+          "promptVersion": "contradiction-adjudication-prompt-v3",
+          "parseValidationOutcome": "invalid",
+          "adjudicationOutcome": "validation_failed",
+          "adjudicationErrorCode": "validation_failed",
+          "validationErrorCodes": [
+            "lexical_boundary_integrity",
+            "validation_failed"
+          ],
+          "failingFieldPaths": [
+            "evidenceClaim"
+          ],
+          "evidenceFailureSide": "unknown",
+          "sourceTextLengths": {
+            "sideA": 30,
+            "sideB": 30
+          },
+          "exactQuoteMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "offsetsMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "earliestGate": "deterministic_validation"
+        }
+      },
+      {
+        "caseId": "ambiguous_insufficient",
+        "status": "failed_safely",
+        "proofOutcome": "failed_safely",
+        "writeExecuted": false,
+        "writerInvoked": false,
+        "adjudicatorCallCount": 1,
+        "refereeCallCount": 0,
+        "contradictionNodeId": null,
+        "sideAQuote": null,
+        "sideBQuote": null,
+        "presentationStatus": "not_requested",
+        "failureCode": "adjudication_failed",
+        "failureMessage": "Selection failed closed (adjudication_failed).",
+        "latencyMs": 4493,
+        "harnessNodeCountAfter": 0,
+        "harnessSpanCountAfter": 0,
+        "gateStoppedAt": "selection",
+        "sanitizedAdjudicationDiagnostics": {
+          "providerId": "openai",
+          "modelId": "gpt-4o-mini",
+          "schemaVersion": "contradiction-adjudication-schema-v3",
+          "promptVersion": "contradiction-adjudication-prompt-v3",
+          "parseValidationOutcome": "invalid",
+          "adjudicationOutcome": "validation_failed",
+          "adjudicationErrorCode": "validation_failed",
+          "validationErrorCodes": [
+            "lexical_boundary_integrity",
+            "validation_failed"
+          ],
+          "failingFieldPaths": [
+            "evidenceClaim"
+          ],
+          "evidenceFailureSide": "unknown",
+          "sourceTextLengths": {
+            "sideA": 44,
+            "sideB": 33
+          },
+          "exactQuoteMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "offsetsMatched": {
+            "sideA": null,
+            "sideB": null
+          },
+          "earliestGate": "deterministic_validation"
+        }
+      }
+    ],
+    "clearContradictionWriteProven": false,
+    "compatibleCaseNoWrite": false,
+    "ambiguousCaseNoWrite": true,
+    "unsafeMutationDetected": false,
+    "evidenceOutputMutated": false,
+    "realAccountMutated": false,
+    "productionIngestionWired": false,
+    "isolatedDatabasePersistenceProven": false,
+    "productionReady": false,
+    "classificationHint": "HOLD_LIVE_SEMANTIC_PROOF_NOT_OBTAINED"
+  },
+  "productionReady": false,
+  "notes": [
+    "Synthetic source material only — no real account identifier required.",
+    "No real database client and no production writer path.",
+    "PASS requires complete inspectable case observations for all three frozen cases.",
+    "Offline preparation is not live proof; production readiness remains NO.",
+    "Provider schema rejection is a valid HOLD and must not trigger schema weakening."
+  ]
+}

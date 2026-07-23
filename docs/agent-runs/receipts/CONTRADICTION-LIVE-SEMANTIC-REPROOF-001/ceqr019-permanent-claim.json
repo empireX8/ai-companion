@@ -1,0 +1,22 @@
+{
+  "slice": "CONTRADICTION-LIVE-SEMANTIC-REPROOF-001",
+  "campaignSlice": "CEQR-019",
+  "proofVersion": "contradiction-controlled-live-semantic-reproof-v1",
+  "purpose": "post_repair_controlled_live_semantic_reproof",
+  "status": "HOLD_LIVE_SEMANTIC_REPROOF_NOT_YET_EXECUTED",
+  "statements": {
+    "thisIsNewPostRepairProof": true,
+    "ceqr017RemainsHistorical": true,
+    "ceqr018ProvedOnlyOfflineRepair": true,
+    "ceqr019HasNotPassedUntilRealProviderResultCaptured": true,
+    "offlinePreparationIsNotLiveProof": true,
+    "noProductionReadinessClaimFollowsFromSuccess": true
+  },
+  "neverAutoDelete": true,
+  "liveProofObtained": false,
+  "productionReady": false,
+  "schemaVersion": "contradiction-adjudication-schema-v3",
+  "casesAggregateSha256": "0c1b25b93f45013b096948691f24ea93cba4316b4f6d575810bcf35ccf7fa8f0",
+  "historicalCeqr017LiveReceiptSha256": "b620aa7f718d4ace768a9a518a4d8cb32ca1b54662291280b3f6545fb5514fdd",
+  "historicalCeqr017PermanentClaimSha256": "f313cbafb264f84d158a8aee20ca2276520fbf85940be7f910b87bead2c5cef0"
+}

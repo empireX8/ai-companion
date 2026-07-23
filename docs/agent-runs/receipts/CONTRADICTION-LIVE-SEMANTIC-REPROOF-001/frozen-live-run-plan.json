@@ -1,0 +1,59 @@
+{
+  "slice": "CONTRADICTION-LIVE-SEMANTIC-REPROOF-001",
+  "campaignSlice": "CEQR-019",
+  "proofVersion": "contradiction-controlled-live-semantic-reproof-v1",
+  "providerName": "openai",
+  "adjudicatorModelName": "gpt-4o-mini",
+  "refereeModelName": "gpt-4o-mini",
+  "schemaVersion": "contradiction-adjudication-schema-v3",
+  "promptVersion": "contradiction-adjudication-prompt-v3",
+  "liveAddendumVersion": "contradiction-live-adjudicator-prompt-addendum-v3",
+  "kernelContract": "orvek-intelligence-kernel-v1",
+  "timeoutMs": 45000,
+  "retryCount": 0,
+  "maximumProviderCallBudget": 6,
+  "authorisationGuardEnv": "CEQR019_LIVE_SEMANTIC_REPROOF_AUTHORIZED",
+  "authorisationGuardRequiredValue": "YES",
+  "underlyingOptInEnv": "RUN_LIVE_CONTRADICTION_PROVIDER_PROOF",
+  "syntheticCases": [
+    {
+      "id": "clear_contradiction_candidate",
+      "sideAText": "I do not drink alcohol at all.",
+      "sideBText": "I drank several beers last night.",
+      "referenceStatement": "I do not drink alcohol at all."
+    },
+    {
+      "id": "compatible_contextual",
+      "sideAText": "I avoid coffee in the evening.",
+      "sideBText": "I drink coffee in the morning.",
+      "referenceStatement": "I avoid coffee in the evening."
+    },
+    {
+      "id": "ambiguous_insufficient",
+      "sideAText": "I might go running later if I feel up to it.",
+      "sideBText": "Sometimes I think about exercise.",
+      "referenceStatement": "I might go running later if I feel up to it."
+    }
+  ],
+  "caseSha256ById": {
+    "clear_contradiction_candidate": "6218eceeae317f5c31a5ca70b4d1f8f8c8e1276cb816f5d161aec77911a9cec6",
+    "compatible_contextual": "ac9c9dddf6f90528d0d7d28b51833bad8eb593955a541fbfd21a114374113f27",
+    "ambiguous_insufficient": "04baa1844a613c85e97c2642a5f5383112141d25da6c1d517e1ccbcd251fb09e"
+  },
+  "casesAggregateSha256": "0c1b25b93f45013b096948691f24ea93cba4316b4f6d575810bcf35ccf7fa8f0",
+  "outputPaths": {
+    "receiptDir": "/Users/user/ai-companion-worktrees/desktop-contradiction-live-semantic-reproof-001/docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001",
+    "permanentClaim": "/Users/user/ai-companion-worktrees/desktop-contradiction-live-semantic-reproof-001/docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/ceqr019-permanent-claim.json",
+    "liveRunClaim": "/Users/user/ai-companion-worktrees/desktop-contradiction-live-semantic-reproof-001/docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/live-run-oneshot-claim.json",
+    "frozenPlan": "/Users/user/ai-companion-worktrees/desktop-contradiction-live-semantic-reproof-001/docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/frozen-live-run-plan.json",
+    "preLiveReceipt": "/Users/user/ai-companion-worktrees/desktop-contradiction-live-semantic-reproof-001/docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/pre-live-execution-receipt.json",
+    "liveReceipt": "/Users/user/ai-companion-worktrees/desktop-contradiction-live-semantic-reproof-001/docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-REPROOF-001/live-execution-receipt.json"
+  },
+  "historicalClaimPathsMustRemainUnchanged": {
+    "ceqr017LiveReceipt": "/Users/user/ai-companion-worktrees/desktop-contradiction-live-semantic-reproof-001/docs/agent-runs/receipts/CONTRADICTION-CONTROLLED-LIVE-AUTHORITY-REPROOF-001/live-execution-receipt.json",
+    "ceqr017PermanentClaim": "/Users/user/ai-companion-worktrees/desktop-contradiction-live-semantic-reproof-001/docs/agent-runs/receipts/CONTRADICTION-CONTROLLED-LIVE-AUTHORITY-REPROOF-001/phase2-live-run-claim.json",
+    "ceqr018ReceiptDir": "/Users/user/ai-companion-worktrees/desktop-contradiction-live-semantic-reproof-001/docs/agent-runs/receipts/CONTRADICTION-LIVE-SEMANTIC-CONSISTENCY-REPAIR-001"
+  },
+  "productionReady": false,
+  "liveProofObtained": false
+}
