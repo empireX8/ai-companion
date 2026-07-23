@@ -7,7 +7,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
-
 import {
   adjudicateContradiction,
   buildContradictionAdjudicationPrompt,
@@ -21,14 +20,23 @@ import {
   KERNEL_FIRST_PROOF_OBJECT,
   type ContradictionAdjudicationResult,
   type ContradictionModelResult,
+  type ContradictionModelTransportResult,
 } from "../contradiction-adjudicator";
 import {
+  checkLexicalBoundaryCatalogLimits,
   claimForSubstring,
   OBJECTIVITY_REFEREE_OUTCOMES,
+  type EvidenceSpanSelection,
   type KernelSourceUnit,
   type ObjectivityReferee,
   type StructuredModelRunner,
 } from "../orvek-intelligence-kernel";
+
+import {
+  transportSelectionForFullSource,
+  transportSelectionForOffsets,
+  transportSelectionForSubstring,
+} from "./helpers/ceqr020-transport-selection";
 
 const FIXED_NOW = () => new Date("2026-07-20T12:00:00.000Z");
 
@@ -46,34 +54,24 @@ function source(
   };
 }
 
+/** Provider-transport fixture (boundary indices). Not a domain ExactEvidenceClaim. */
 function baseModelResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-  overrides: Partial<ContradictionModelResult> & {
+  overrides: Record<string, unknown> & {
     quoteA?: string;
     quoteB?: string;
   } = {},
-): ContradictionModelResult {
+  // Transport-shaped fixture for injected runners / consistency checks.
+): ContradictionModelTransportResult {
   const quoteA = overrides.quoteA ?? sideA.sourceText;
   const quoteB = overrides.quoteB ?? sideB.sourceText;
   const claimA =
-    overrides.evidenceClaimA ??
-    claimForSubstring(sideA, quoteA) ??
-    {
-      sourceId: sideA.sourceId,
-      exactQuote: quoteA,
-      startOffset: 0,
-      endOffset: quoteA.length,
-    };
+    (overrides.evidenceClaimA as EvidenceSpanSelection | undefined) ??
+    transportSelectionForSubstring(sideA.sourceText, quoteA);
   const claimB =
-    overrides.evidenceClaimB ??
-    claimForSubstring(sideB, quoteB) ??
-    {
-      sourceId: sideB.sourceId,
-      exactQuote: quoteB,
-      startOffset: 0,
-      endOffset: quoteB.length,
-    };
+    (overrides.evidenceClaimB as EvidenceSpanSelection | undefined) ??
+    transportSelectionForSubstring(sideB.sourceText, quoteB);
 
   const {
     quoteA: _qa,
@@ -118,21 +116,18 @@ function baseModelResult(
     abstentionReason: null,
     proposedObjectType: KERNEL_FIRST_PROOF_OBJECT,
     ...rest,
-  };
+  } as ContradictionModelTransportResult;
 }
 
 function fakeRunner(
-  result:
-    | ContradictionModelResult
-    | unknown
-    | (() => ContradictionModelResult | unknown),
+  result: unknown | (() => unknown),
 ): StructuredModelRunner {
   return {
     async runStructured() {
       const object = typeof result === "function" ? result() : result;
       return {
         ok: true as const,
-        object: object as ContradictionModelResult,
+        object,
         providerId: "test-fake",
         modelId: "test-fake-model",
         rawText: null,
@@ -616,11 +611,10 @@ describe("CEQR-001 contradiction adjudication contract", () => {
       modelRunner: fakeRunner({
         ...good,
         evidenceClaimA: {
+          ...transportSelectionForFullSource(sideA.sourceText),
           sourceId: sideA.sourceId,
-          // Fabricated quote text is ignored; offsets select the authoritative slice.
+          // Fabricated quote text is ignored; boundary indices select the authoritative slice.
           exactQuote: "I always drink alcohol",
-          startOffset: 0,
-          endOffset: sideA.sourceText.length,
         },
       }),
       now: FIXED_NOW,
@@ -633,7 +627,7 @@ describe("CEQR-001 contradiction adjudication contract", () => {
     );
   });
 
-  it("K2. INVALID OFFSETS still fail closed (CEQR-016)", async () => {
+  it("K2. INVALID BOUNDARY INDICES still fail closed (CEQR-016)", async () => {
     const sideA = source({
       sourceId: "src-fab-a2",
       label: "A",
@@ -652,8 +646,8 @@ describe("CEQR-001 contradiction adjudication contract", () => {
       modelRunner: fakeRunner({
         ...good,
         evidenceClaimA: {
-          startOffset: 0,
-          endOffset: sideA.sourceText.length + 5,
+          startBoundaryIndex: 0,
+          endBoundaryIndex: 999,
         },
       }),
       now: FIXED_NOW,
@@ -661,12 +655,14 @@ describe("CEQR-001 contradiction adjudication contract", () => {
 
     expect(result.outcome).toBe("validation_failed");
     expect(
-      result.validation.errors.some((e) => /invalid_offsets/i.test(e)),
+      result.validation.errors.some((e) =>
+        /invalid_boundary_index|boundary index out of range/i.test(e),
+      ),
     ).toBe(true);
     expect(result.semantic).toBeNull();
   });
 
-  it("L. INVALID OFFSETS — deterministic span validation failure", async () => {
+  it("L. INVALID BOUNDARY INDICES — deterministic span validation failure", async () => {
     const sideA = source({
       sourceId: "src-off-a",
       label: "A",
@@ -687,15 +683,18 @@ describe("CEQR-001 contradiction adjudication contract", () => {
         evidenceClaimB: {
           sourceId: sideB.sourceId,
           exactQuote: "I drank alcohol last night.",
-          startOffset: 5,
-          endOffset: 2,
+          // Nonnegative ints pass Zod; out-of-range fails closed deterministically.
+          startBoundaryIndex: 0,
+          endBoundaryIndex: 999,
         },
       }),
       now: FIXED_NOW,
     });
 
     expect(result.outcome).toBe("validation_failed");
-    expect(result.validation.errors.some((e) => /invalid_offsets/i.test(e))).toBe(
+    expect(result.validation.errors.some((e) =>
+      /invalid_boundary_index|invalid boundary|out of range/i.test(e),
+    )).toBe(
       true,
     );
   });
@@ -756,8 +755,8 @@ describe("CEQR-001 contradiction adjudication contract", () => {
         evidenceClaimB: {
           sourceId: sideB.sourceId,
           exactQuote: "",
-          startOffset: 0,
-          endOffset: 0,
+          startBoundaryIndex: 0,
+          endBoundaryIndex: 0,
         },
       }),
       now: FIXED_NOW,
@@ -909,10 +908,10 @@ describe("CEQR-001 contradiction adjudication contract", () => {
 
     expect(KERNEL_CONTRACT_VERSION).toBe("orvek-intelligence-kernel-v1");
     expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION).toBe(
-      "contradiction-adjudication-schema-v3",
+      "contradiction-adjudication-schema-v4",
     );
     expect(CONTRADICTION_ADJUDICATION_PROMPT_VERSION).toBe(
-      "contradiction-adjudication-prompt-v3",
+      "contradiction-adjudication-prompt-v4",
     );
     expect(result.audit.kernelContractVersion).toBe(KERNEL_CONTRACT_VERSION);
     expect(result.audit.schemaVersion).toBe(
@@ -976,10 +975,9 @@ describe("CEQR-001 contradiction adjudication contract", () => {
       modelRunner: fakeRunner({
         ...good,
         evidenceClaimA: {
+          ...transportSelectionForFullSource(sideA.sourceText),
           sourceId: sideB.sourceId,
           exactQuote: sideB.sourceText,
-          startOffset: 0,
-          endOffset: sideA.sourceText.length,
         },
       }),
       now: FIXED_NOW,
@@ -1044,7 +1042,16 @@ describe("CEQR-003 context and qualifier preservation", () => {
       label: "B",
       sourceText: "I ate cake once at a birthday.",
     });
-    const { system, prompt } = buildContradictionAdjudicationPrompt(sideA, sideB);
+    const limits = checkLexicalBoundaryCatalogLimits({
+      sideAText: sideA.sourceText,
+      sideBText: sideB.sourceText,
+    });
+    expect(limits.ok).toBe(true);
+    if (!limits.ok) return;
+    const { system, prompt } = buildContradictionAdjudicationPrompt(sideA, sideB, {
+      sideACatalog: limits.sideACatalog,
+      sideBCatalog: limits.sideBCatalog,
+    });
 
     expect(system).toMatch(/preserve all material qualifications/i);
     expect(system).toMatch(/PARTIAL COMPLIANCE MUST NOT BE classified as clear_contradiction/);
@@ -2088,10 +2095,9 @@ describe("CEQR-003 context and qualifier preservation", () => {
       modelRunner: fakeRunner({
         ...good,
         evidenceClaimA: {
+          ...transportSelectionForFullSource(sideA.sourceText),
           sourceId: sideA.sourceId,
           exactQuote: "always avoid sugar",
-          startOffset: 0,
-          endOffset: sideA.sourceText.length,
         },
       }),
       now: FIXED_NOW,
@@ -2110,15 +2116,17 @@ describe("CEQR-003 context and qualifier preservation", () => {
       modelRunner: fakeRunner({
         ...good,
         evidenceClaimB: {
-          startOffset: 20,
-          endOffset: 5,
+          startBoundaryIndex: 20,
+          endBoundaryIndex: 5,
         },
       }),
       now: FIXED_NOW,
     });
     expect(badOffsets.outcome).toBe("validation_failed");
     expect(
-      badOffsets.validation.errors.some((e) => /invalid_offsets/i.test(e)),
+      badOffsets.validation.errors.some((e) =>
+        /invalid_boundary_index|boundary index out of range/i.test(e),
+      ),
     ).toBe(true);
 
     const wrongSideIgnored = await adjudicateContradiction({
@@ -2127,10 +2135,9 @@ describe("CEQR-003 context and qualifier preservation", () => {
       modelRunner: fakeRunner({
         ...good,
         evidenceClaimA: {
+          ...transportSelectionForOffsets(sideA.sourceText, 2, 9), // "usually"
           sourceId: sideB.sourceId,
           exactQuote: sideB.sourceText,
-          startOffset: 2,
-          endOffset: 9, // "usually" — lexically valid whole-word span
         },
       }),
       now: FIXED_NOW,

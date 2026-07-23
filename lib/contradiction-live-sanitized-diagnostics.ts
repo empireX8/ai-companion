@@ -1,14 +1,20 @@
 /**
- * CEQR-012 — sanitized adjudication failure diagnostics for live proof receipts.
+ * CEQR-012 + CEQR-020 — sanitized adjudication failure diagnostics for live
+ * proof receipts.
  *
- * Records validation codes / field paths / lengths / match flags only.
- * Never records raw provider object, credentials, or unrestricted model text.
+ * Records validation codes / field paths / lengths / match flags / failed
+ * transport offsets (CEQR-020) only.
+ * Never records raw provider object, credentials, unrestricted model text,
+ * or provider-authored exactQuote as evidence authority.
  *
  * Does NOT claim live-wrapper / prompt-addendum provenance — this helper is
  * also used by the generic same-session selector.
  */
 
+import { createHash } from "crypto";
+
 import type { ContradictionAdjudicationResult } from "./contradiction-adjudicator";
+import type { EvidenceSideBindDiagnostic } from "./orvek-intelligence-kernel/evidence-validation";
 import type { KernelSourceUnit } from "./orvek-intelligence-kernel/types";
 
 export type SanitizedAdjudicationEarliestGate =
@@ -20,7 +26,28 @@ export type SanitizedAdjudicationEarliestGate =
   | "semantic_accepted_non_class_a"
   | "unknown";
 
-export type EvidenceFailureSide = "sideA" | "sideB" | "unknown" | null;
+export type EvidenceFailureSide = "sideA" | "sideB" | "both" | "unknown" | null;
+
+export type SanitizedSideOffsetDiagnostics = {
+  startBoundaryIndex: number | null;
+  endBoundaryIndex: number | null;
+  startOffset: number | null;
+  endOffset: number | null;
+  selectedSpanLength: number | null;
+  sourceLengthUtf16: number | null;
+  sourceLengthCodePoints: number | null;
+  validationCode: string | null;
+  validationOk: boolean | null;
+  boundaryCategoryBeforeStart: string | null;
+  boundaryCategoryAtStart: string | null;
+  boundaryCategoryBeforeEnd: string | null;
+  boundaryCategoryAtEnd: string | null;
+  splitsSurrogateAtStart: boolean | null;
+  splitsSurrogateAtEnd: boolean | null;
+  endOffsetInsideAlphanumericWord: boolean | null;
+  startOffsetInsideAlphanumericWord: boolean | null;
+  exactQuoteWouldEqualAuthoritativeSlice: boolean | null;
+};
 
 export type SanitizedAdjudicationDiagnostics = {
   providerId: string | null;
@@ -33,9 +60,8 @@ export type SanitizedAdjudicationDiagnostics = {
   validationErrorCodes: string[];
   failingFieldPaths: string[];
   /**
-   * Side of the first evidence-span failure when the validator message
-   * explicitly identifies it; otherwise `"unknown"` for unlabelled span codes,
-   * or `null` when no span failure is present.
+   * Side of evidence-span failure(s). Prefers bind diagnostics; falls back to
+   * message parsing. `"both"` when A and B fail. `"unknown"` when unlabelled.
    */
   evidenceFailureSide: EvidenceFailureSide;
   sourceTextLengths: {
@@ -50,6 +76,21 @@ export type SanitizedAdjudicationDiagnostics = {
     sideA: boolean | null;
     sideB: boolean | null;
   };
+  /** CEQR-020: sanitized failed/resolved offset diagnostics per side. */
+  sideOffsetDiagnostics: {
+    sideA: SanitizedSideOffsetDiagnostics | null;
+    sideB: SanitizedSideOffsetDiagnostics | null;
+  };
+  /** SHA-256 of authoritative source texts (not raw account text storage). */
+  sourceTextHashes: {
+    sideA: string | null;
+    sideB: string | null;
+  };
+  /**
+   * Stable fingerprint of the raw provider object when present on the
+   * adjudication envelope — never the raw object itself.
+   */
+  rawProviderObjectSha256: string | null;
   earliestGate: SanitizedAdjudicationEarliestGate;
 };
 
@@ -57,9 +98,11 @@ const KNOWN_SPAN_CODES = [
   "source_id_mismatch",
   "cross_side_source",
   "invalid_offsets",
+  "invalid_boundary_index",
   "empty_quote",
   "fabricated_quote",
   "lexical_boundary_integrity",
+  "lexical_boundary_catalog_limit_exceeded",
 ] as const;
 
 function extractCodeFromError(error: string): string | null {
@@ -67,6 +110,10 @@ function extractCodeFromError(error: string): string | null {
     (code) => error.startsWith(`${code}:`) || error.includes(`${code}:`),
   );
   if (span) return span;
+  if (error.startsWith("Side A:") || error.startsWith("Side B:")) {
+    const rest = error.replace(/^Side [AB]:\s*/, "");
+    return extractCodeFromError(rest);
+  }
   if (error.startsWith("schema_parse_failed")) return "schema_parse_failed";
   if (error.startsWith("internal_inconsistency")) return "internal_inconsistency";
   if (error.startsWith("Unsupported proposed object type")) {
@@ -109,16 +156,10 @@ export function resolveEvidenceFailureSide(error: string): EvidenceFailureSide {
   if (error.includes("Side B evidence claim must not point at the Side A")) {
     return "sideB";
   }
-  if (
-    /\bSide A\b/i.test(error) ||
-    error.includes("evidenceClaimA")
-  ) {
+  if (error.startsWith("Side A:") || /\bSide A\b/i.test(error) || error.includes("evidenceClaimA")) {
     return "sideA";
   }
-  if (
-    /\bSide B\b/i.test(error) ||
-    error.includes("evidenceClaimB")
-  ) {
+  if (error.startsWith("Side B:") || /\bSide B\b/i.test(error) || error.includes("evidenceClaimB")) {
     return "sideB";
   }
   return "unknown";
@@ -179,16 +220,15 @@ function deriveQuoteOffsetFlags(errors: string[]): {
     sideA: null as boolean | null,
     sideB: null as boolean | null,
   };
-  let evidenceFailureSide: EvidenceFailureSide = null;
+  const sides = new Set<"sideA" | "sideB" | "unknown">();
 
   for (const error of errors) {
     const code = extractCodeFromError(error);
     const side = resolveEvidenceFailureSide(error);
-    if (side != null && evidenceFailureSide == null) {
-      evidenceFailureSide = side;
+    if (side === "sideA" || side === "sideB" || side === "unknown") {
+      sides.add(side);
     }
 
-    // Only set side-specific match flags when the side is explicitly known.
     if (side !== "sideA" && side !== "sideB") {
       continue;
     }
@@ -196,10 +236,24 @@ function deriveQuoteOffsetFlags(errors: string[]): {
     if (code === "fabricated_quote" || code === "empty_quote") {
       exactQuoteMatched[side] = false;
       offsetsMatched[side] = false;
-    } else if (code === "invalid_offsets") {
+    } else if (
+      code === "invalid_offsets" ||
+      code === "invalid_boundary_index" ||
+      code === "lexical_boundary_integrity"
+    ) {
       offsetsMatched[side] = false;
     }
-    // source_id_mismatch / cross_side_source: leave match flags null.
+  }
+
+  let evidenceFailureSide: EvidenceFailureSide = null;
+  if (sides.has("sideA") && sides.has("sideB")) {
+    evidenceFailureSide = "both";
+  } else if (sides.has("sideA")) {
+    evidenceFailureSide = "sideA";
+  } else if (sides.has("sideB")) {
+    evidenceFailureSide = "sideB";
+  } else if (sides.has("unknown")) {
+    evidenceFailureSide = "unknown";
   }
 
   return { exactQuoteMatched, offsetsMatched, evidenceFailureSide };
@@ -223,10 +277,46 @@ function resolveEarliestGate(
   return "unknown";
 }
 
+function sanitizeSideDiagnostic(
+  diag: EvidenceSideBindDiagnostic | undefined,
+): SanitizedSideOffsetDiagnostics | null {
+  if (!diag) return null;
+  return {
+    startBoundaryIndex: diag.startBoundaryIndex,
+    endBoundaryIndex: diag.endBoundaryIndex,
+    startOffset: diag.startOffset,
+    endOffset: diag.endOffset,
+    selectedSpanLength: diag.selectedSpanLength,
+    sourceLengthUtf16: diag.sourceLengthUtf16,
+    sourceLengthCodePoints: diag.sourceLengthCodePoints,
+    validationCode: diag.validationCode,
+    validationOk: diag.validationOk,
+    boundaryCategoryBeforeStart: diag.boundaryCategoryBeforeStart,
+    boundaryCategoryAtStart: diag.boundaryCategoryAtStart,
+    boundaryCategoryBeforeEnd: diag.boundaryCategoryBeforeEnd,
+    boundaryCategoryAtEnd: diag.boundaryCategoryAtEnd,
+    splitsSurrogateAtStart: diag.splitsSurrogateAtStart,
+    splitsSurrogateAtEnd: diag.splitsSurrogateAtEnd,
+    endOffsetInsideAlphanumericWord: diag.endOffsetInsideAlphanumericWord,
+    startOffsetInsideAlphanumericWord: diag.startOffsetInsideAlphanumericWord,
+    exactQuoteWouldEqualAuthoritativeSlice:
+      diag.exactQuoteWouldEqualAuthoritativeSlice,
+  };
+}
+
+function hashSourceText(text: string | null | undefined): string | null {
+  if (text == null) return null;
+  return createHash("sha256").update(text, "utf8").digest("hex");
+}
+
 /**
  * Build receipt-safe diagnostics from a landed adjudication result.
  * Does not include exact quotes, propositions, rationale, or raw provider JSON.
  * Does not claim live prompt-addendum provenance.
+ *
+ * `rawProviderObjectSha256` is taken from the adjudication result only
+ * (runtime-wired by `adjudicateContradiction`). Callers cannot inject a
+ * fingerprint override as diagnostic authority.
  */
 export function buildSanitizedAdjudicationDiagnostics(args: {
   adjudication: ContradictionAdjudicationResult;
@@ -251,8 +341,29 @@ export function buildSanitizedAdjudicationDiagnostics(args: {
   const failingFieldPaths = [
     ...new Set(errors.flatMap((e) => extractFieldPaths(e))),
   ];
-  const { exactQuoteMatched, offsetsMatched, evidenceFailureSide } =
+  const { exactQuoteMatched, offsetsMatched, evidenceFailureSide: fromErrors } =
     deriveQuoteOffsetFlags(errors);
+
+  const bindDiags = adjudication.evidenceBindDiagnostics ?? [];
+  const sideADiag = bindDiags.find((d) => d.side === "A");
+  const sideBDiag = bindDiags.find((d) => d.side === "B");
+
+  let evidenceFailureSide = fromErrors;
+  if (sideADiag || sideBDiag) {
+    const aFail = sideADiag != null && !sideADiag.validationOk;
+    const bFail = sideBDiag != null && !sideBDiag.validationOk;
+    if (aFail && bFail) evidenceFailureSide = "both";
+    else if (aFail) evidenceFailureSide = "sideA";
+    else if (bFail) evidenceFailureSide = "sideB";
+  }
+
+  // Enrich offsetsMatched from bind diagnostics.
+  if (sideADiag && !sideADiag.validationOk) {
+    offsetsMatched.sideA = false;
+  }
+  if (sideBDiag && !sideBDiag.validationOk) {
+    offsetsMatched.sideB = false;
+  }
 
   return {
     providerId: adjudication.audit.providerId,
@@ -271,6 +382,15 @@ export function buildSanitizedAdjudicationDiagnostics(args: {
     },
     exactQuoteMatched,
     offsetsMatched,
+    sideOffsetDiagnostics: {
+      sideA: sanitizeSideDiagnostic(sideADiag),
+      sideB: sanitizeSideDiagnostic(sideBDiag),
+    },
+    sourceTextHashes: {
+      sideA: hashSourceText(args.sideA?.sourceText),
+      sideB: hashSourceText(args.sideB?.sourceText),
+    },
+    rawProviderObjectSha256: adjudication.rawProviderObjectSha256,
     earliestGate: resolveEarliestGate(adjudication),
   };
 }
@@ -288,3 +408,10 @@ export function pickSanitizedDiagnosticsFromRejectionSummaries(
   }
   return null;
 }
+
+// Re-export fingerprint helpers for tests/receipts that need the canonicalizer.
+export {
+  fingerprintRawProviderObject,
+  fingerprintRawProviderObjectSha256OrNull,
+  canonicalizeJsonForFingerprint,
+} from "./contradiction-provider-object-fingerprint";

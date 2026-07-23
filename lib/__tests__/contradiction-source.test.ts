@@ -6,7 +6,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-
 import type {
   ContradictionModelResult,
   ContradictionModelTransportResult,
@@ -24,11 +23,14 @@ import {
   type SemanticallySelectedContradictionPair,
 } from "../contradiction-same-session-selection";
 import {
-  claimForSubstring,
   type KernelSourceUnit,
   type ObjectivityReferee,
   type StructuredModelRunner,
 } from "../orvek-intelligence-kernel";
+
+import {
+  transportSelectionForSubstring,
+} from "./helpers/ceqr020-transport-selection";
 
 const FIXED_NOW = () => new Date("2026-07-20T12:00:00.000Z");
 const USER_A = "user-a";
@@ -62,22 +64,10 @@ function baseModelResult(
   const quoteB = overrides.quoteB ?? sideB.sourceText;
   const claimA =
     overrides.evidenceClaimA ??
-    claimForSubstring(sideA, quoteA) ??
-    {
-      sourceId: sideA.sourceId,
-      exactQuote: quoteA,
-      startOffset: 0,
-      endOffset: quoteA.length,
-    };
+    transportSelectionForSubstring(sideA.sourceText, quoteA);
   const claimB =
     overrides.evidenceClaimB ??
-    claimForSubstring(sideB, quoteB) ??
-    {
-      sourceId: sideB.sourceId,
-      exactQuote: quoteB,
-      startOffset: 0,
-      endOffset: quoteB.length,
-    };
+    transportSelectionForSubstring(sideB.sourceText, quoteB);
 
   const {
     quoteA: _qa,
@@ -742,8 +732,8 @@ describe("CEQR-004 zero-or-one selection", () => {
     const { runner } = fixedRunner(
       baseModelResult(a1, sideB, {
         evidenceClaimA: {
-          startOffset: 0,
-          endOffset: a1.sourceText.length + 2,
+          startBoundaryIndex: 0,
+          endBoundaryIndex: 999,
         },
       }),
     );

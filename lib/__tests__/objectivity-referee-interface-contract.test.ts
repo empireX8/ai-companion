@@ -7,7 +7,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { join } from "path";
-
 import {
   adjudicateContradiction,
   KERNEL_CONTRACT_VERSION,
@@ -31,6 +30,10 @@ import {
   claimForSubstring,
   type KernelSourceUnit,
 } from "../orvek-intelligence-kernel";
+
+import {
+  transportSelectionForSubstring,
+} from "./helpers/ceqr020-transport-selection";
 
 const FIXED_NOW = () => new Date("2026-07-20T12:00:00.000Z");
 const SESSION = "session-ref";
@@ -83,20 +86,8 @@ function baseModelResult(
     emotionalOrPhysiologicalVersusReasoningStandard: false,
     classification: "clear_contradiction",
     confidence: 0.86,
-    evidenceClaimA:
-      claimForSubstring(sideA, quoteA) ?? {
-        sourceId: sideA.sourceId,
-        exactQuote: quoteA,
-        startOffset: 0,
-        endOffset: quoteA.length,
-      },
-    evidenceClaimB:
-      claimForSubstring(sideB, quoteB) ?? {
-        sourceId: sideB.sourceId,
-        exactQuote: quoteB,
-        startOffset: 0,
-        endOffset: quoteB.length,
-      },
+    evidenceClaimA: transportSelectionForSubstring(sideA.sourceText, quoteA),
+    evidenceClaimB: transportSelectionForSubstring(sideB.sourceText, quoteB),
     rationale: "Incompatible propositions.",
     alternativeInterpretation: "Temporal change.",
     whatWouldChangeClassification: "Explicit time scope.",
@@ -514,8 +505,8 @@ describe("Objectivity Referee interface — dependency gate", () => {
       modelRunner: fakeRunner(
         baseModelResult(sideA, sideB, {
           evidenceClaimA: {
-            startOffset: 0,
-            endOffset: sideA.sourceText.length + 50,
+            startBoundaryIndex: 0,
+            endBoundaryIndex: 999,
           },
         }),
       ),

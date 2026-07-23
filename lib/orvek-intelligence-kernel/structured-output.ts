@@ -1,15 +1,18 @@
 /**
  * Shared structured-output helpers for kernel adjudicators
- * (CEQR-001 + CEQR-016 + CEQR-018).
+ * (CEQR-001 + CEQR-016 + CEQR-018 + CEQR-020).
  *
  * CEQR-016 splits provider transport from domain evidence authority:
- * - transport evidence selections carry only startOffset/endOffset;
  * - sourceId and exactQuote are code-owned after deterministic binding.
  *
  * CEQR-018 makes forbidden clear_contradiction + compatibility-flag
  * combinations structurally unrepresentable in the provider transport
  * contract via classification-discriminated variants (Zod union → JSON
  * Schema anyOf). Deterministic validation remains defence in depth.
+ *
+ * CEQR-020 replaces raw UTF-16 offset transport with code-owned lexical
+ * boundary indices (startBoundaryIndex / endBoundaryIndex). Code maps
+ * indices to offsets; mid-word cuts are absent from the catalog.
  *
  * TRANSPORT and DOMAIN schemas/types/parsers remain distinct:
  * - provider I/O uses contradictionModelTransportResultSchema;
@@ -34,15 +37,29 @@ export const exactEvidenceClaimSchema = z.object({
 });
 
 /**
- * Provider-transport evidence selection (CEQR-016).
- * Model selects offsets only; code owns sourceId and exactQuote.
+ * Provider-transport evidence selection (CEQR-020 / schema-v4).
+ * Model selects indices into the code-owned lexical boundary catalog.
+ * Code maps indices → UTF-16 offsets and owns sourceId / exactQuote.
+ *
+ * OpenAI-compatible integer contract: non-negative integers. Dynamic upper
+ * bound remains code-owned and enforced by deterministic catalog range gates
+ * (Zod cannot encode per-request catalog length in a static strict schema).
  */
 export const evidenceSpanSelectionSchema = z.object({
-  startOffset: z.number(),
-  endOffset: z.number(),
+  startBoundaryIndex: z.number().int().nonnegative(),
+  endBoundaryIndex: z.number().int().nonnegative(),
 });
 
 export type EvidenceSpanSelection = z.infer<typeof evidenceSpanSelectionSchema>;
+
+/**
+ * Historical CEQR-016…019 raw-offset transport shape (immutable receipts only).
+ * Not used by the active provider contract.
+ */
+export const historicalEvidenceSpanOffsetSelectionSchema = z.object({
+  startOffset: z.number(),
+  endOffset: z.number(),
+});
 
 export const propositionFieldsSchema = z.object({
   normalizedProposition: z.string(),
@@ -111,10 +128,11 @@ export const abstentionTransportSchema = z.object({
 });
 
 /**
- * Provider transport schema (CEQR-018 / contradiction-adjudication-schema-v3).
+ * Provider transport schema (CEQR-020 / contradiction-adjudication-schema-v4).
  *
  * Classification-discriminated union (emits JSON Schema `anyOf`, not `oneOf`).
- * Evidence slots remain offset selections only — no authoritative sourceId/exactQuote.
+ * Evidence slots are lexical boundary-index selections — no authoritative
+ * sourceId/exactQuote and no raw character offsets authored by the provider.
  *
  * Forbidden: clear_contradiction with any compatibility flag true.
  * Forbidden: classified result with affirmative abstentionReason.

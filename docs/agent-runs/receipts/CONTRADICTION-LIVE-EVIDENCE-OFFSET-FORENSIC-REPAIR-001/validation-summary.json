@@ -1,0 +1,52 @@
+{
+  "slice": "CONTRADICTION-LIVE-EVIDENCE-OFFSET-FORENSIC-REPAIR-001",
+  "campaignSlice": "CEQR-020",
+  "classification": "PASS_OFFLINE_OFFSET_FORENSIC_REPAIR_READY_FOR_NEW_LIVE_PROOF",
+  "priorIndependentReviews": [
+    "HOLD_STRUCTURAL_TRANSPORT_REPAIR_INCOMPLETE",
+    "HOLD_STRUCTURAL_TRANSPORT_REPAIR_INCOMPLETE"
+  ],
+  "ceqr019LiveExecutionImmutable": true,
+  "ceqr019LiveResult": "FAIL_TRUNCATED_OR_INVALID_EVIDENCE_SPAN",
+  "ceqr019LiveProviderAttempts": 3,
+  "ceqr020LiveProviderAttempts": 0,
+  "realAccountQueries": 0,
+  "realDatabaseQueriesOrMutations": 0,
+  "writerPersistenceCalls": 0,
+  "productionReady": false,
+  "futureLiveRunAuthorisedAutomatically": false,
+  "validatorVerdict": "CORRECT_NOT_WEAKENED",
+  "selectedTransportRepair": "architecture_B_lexical_boundary_index_schema_v4",
+  "catalogBoundArchitecture": "A_strict_max_source_and_entry_count",
+  "catalogMaxSourceUtf16": 512,
+  "catalogMaxEntries": 256,
+  "sourceLengthCheckedBeforeEnumeration": true,
+  "entryEnumerationBoundedAtMaxPlusOne": true,
+  "rawProviderFingerprintRuntimeWired": true,
+  "rawProviderFingerprintLiveProviderExecuted": false,
+  "invalidSpanOffsetsRetainedInDiagnostics": true,
+  "sameSessionModelCallCountIsActualRunStructured": true,
+  "boundaryDiagnosticsIndependentlyInspected": true,
+  "offlineValidation": {
+    "focusedCeqr020Tests": "PASS",
+    "contradictionAdjudicationTests": "PASS",
+    "structuredOutputAndEvidenceTests": "PASS",
+    "semanticConsistencyTests": "PASS",
+    "naturalEntryWriterBlockTests": "PASS",
+    "liveProviderAdapterOfflineTests": "PASS",
+    "ceqr017018019ImmutabilityTests": "PASS",
+    "objectivityRefereeInterfaceTests": "PASS",
+    "typescript": "PASS",
+    "changedFileEslint": "PASS_WARNINGS_ONLY_ZERO_ERRORS",
+    "gitDiffCheck": "PASS",
+    "jsonReceiptParse": "PASS",
+    "build": "NOT_RUN"
+  },
+  "notes": [
+    "Second independent-review remaining blockers repaired: pre-enumeration source gate, same-session modelCallCount authenticity, independent start/end boundary diagnostics.",
+    "CEQR-019 live execution is immutable; provider attempts remain 3.",
+    "CEQR-020 live provider attempts are 0.",
+    "Exact CEQR-019 raw offsets remain UNKNOWN (not retained).",
+    "Production readiness remains NO; no future live run is authorised automatically."
+  ]
+}

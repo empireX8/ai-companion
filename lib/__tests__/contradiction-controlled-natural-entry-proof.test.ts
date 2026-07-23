@@ -12,7 +12,6 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
 import type { ContradictionModelTransportResult } from "../contradiction-adjudicator";
 import { KERNEL_FIRST_PROOF_OBJECT } from "../contradiction-adjudicator";
 import {
@@ -35,6 +34,11 @@ import {
   type ObjectivityReferee,
   type StructuredModelRunner,
 } from "../orvek-intelligence-kernel";
+
+import {
+  transportSelectionForFullSource,
+  transportSelectionForSubstring,
+} from "./helpers/ceqr020-transport-selection";
 
 const PROOF_USER = "ceqr010-proof-user-isolated";
 const KAY_ACCOUNT = "user_34TUYA53pI1QRLK73O22Kve1a1G";
@@ -61,12 +65,10 @@ function classAResult(
 ): ContradictionModelTransportResult {
   const claimA =
     overrides.evidenceClaimA ??
-    claimForSubstring(sideA, QUOTE_A) ??
-    claimForSubstring(sideA, sideA.sourceText)!;
+    transportSelectionForSubstring(sideA.sourceText, QUOTE_A);
   const claimB =
     overrides.evidenceClaimB ??
-    claimForSubstring(sideB, QUOTE_B) ??
-    claimForSubstring(sideB, sideB.sourceText)!;
+    transportSelectionForSubstring(sideB.sourceText, QUOTE_B);
 
   return {
     propositionA: {
@@ -95,14 +97,8 @@ function classAResult(
     emotionalOrPhysiologicalVersusReasoningStandard: false,
     classification: "clear_contradiction",
     confidence: 0.86,
-    evidenceClaimA: {
-      startOffset: claimA.startOffset,
-      endOffset: claimA.endOffset,
-    },
-    evidenceClaimB: {
-      startOffset: claimB.startOffset,
-      endOffset: claimB.endOffset,
-    },
+    evidenceClaimA: claimA,
+    evidenceClaimB: claimB,
     rationale: "Incompatible under matching scope.",
     alternativeInterpretation: "Temporal change.",
     whatWouldChangeClassification: "Explicit time-scoped belief change.",
@@ -1144,8 +1140,8 @@ describe("CEQR-010 controlled natural-entry proof (corrected)", () => {
         (a, b) =>
           classAResult(a, b, {
             evidenceClaimA: {
-              startOffset: 0,
-              endOffset: a.sourceText.length + 40,
+              startBoundaryIndex: 0,
+              endBoundaryIndex: 999,
             },
           }),
       ]),
@@ -1336,8 +1332,8 @@ describe("CEQR-010 controlled natural-entry proof (corrected)", () => {
       modelRunner: sequenceRunner([
         (a, b) =>
           classAResult(a, b, {
-            evidenceClaimA: claimForSubstring(a, QUOTE_B)!,
-            evidenceClaimB: claimForSubstring(b, QUOTE_A)!,
+            evidenceClaimA: transportSelectionForFullSource(a.sourceText),
+            evidenceClaimB: transportSelectionForFullSource(b.sourceText),
           }),
       ]),
       objectivityReferee: bindReferee({ outcome: "PASS", rationale: "fixture" }),

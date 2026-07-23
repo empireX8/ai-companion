@@ -8,7 +8,6 @@ import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
 import { Output } from "ai";
-
 import {
   adjudicateContradiction,
   collectSemanticConsistencyErrors,
@@ -46,6 +45,10 @@ import {
   contradictionModelTransportResultSchema,
   evidenceSpanSelectionSchema,
 } from "../orvek-intelligence-kernel/structured-output";
+
+import {
+  transportSelectionForFullSource,
+} from "./helpers/ceqr020-transport-selection";
 
 const FIXED_NOW = () => new Date("2026-07-22T12:00:00.000Z");
 
@@ -96,14 +99,8 @@ function baseClearTransport(
     emotionalOrPhysiologicalVersusReasoningStandard: false,
     classification: "clear_contradiction",
     confidence: 0.9,
-    evidenceClaimA: {
-      startOffset: 0,
-      endOffset: sideA.sourceText.length,
-    },
-    evidenceClaimB: {
-      startOffset: 0,
-      endOffset: sideB.sourceText.length,
-    },
+    evidenceClaimA: transportSelectionForFullSource(sideA.sourceText),
+    evidenceClaimB: transportSelectionForFullSource(sideB.sourceText),
     rationale: "Opposed under matching scope.",
     alternativeInterpretation: "none",
     whatWouldChangeClassification: "qualifier change",
@@ -319,8 +316,8 @@ describe("CEQR-018 provider transport semantic consistency", () => {
 
   it("11–12. sourceId/exactQuote absent from transport authority; forged fields non-authoritative", async () => {
     expect(Object.keys(evidenceSpanSelectionSchema.shape).sort()).toEqual([
-      "endOffset",
-      "startOffset",
+      "endBoundaryIndex",
+      "startBoundaryIndex",
     ]);
     expect(clearContradictionTransportSchema.shape.evidenceClaimA.shape).not.toHaveProperty(
       "sourceId",
@@ -331,14 +328,12 @@ describe("CEQR-018 provider transport semantic consistency", () => {
 
     const forged = baseClearTransport(sideA, sideB, {
       evidenceClaimA: {
-        startOffset: 0,
-        endOffset: sideA.sourceText.length,
+        ...transportSelectionForFullSource(sideA.sourceText),
         sourceId: "forged-a",
         exactQuote: "FORGED A",
       },
       evidenceClaimB: {
-        startOffset: 0,
-        endOffset: sideB.sourceText.length,
+        ...transportSelectionForFullSource(sideB.sourceText),
         sourceId: "forged-b",
         exactQuote: "FORGED B",
       },
@@ -716,14 +711,8 @@ describe("CEQR-018 compatible case / no candidate / writer-block proof", () => {
           ok: true as const,
           object: baseClearTransport(sideA, sideB, {
             classification: "clear_contradiction",
-            evidenceClaimA: {
-              startOffset: 0,
-              endOffset: sideAText.length,
-            },
-            evidenceClaimB: {
-              startOffset: 0,
-              endOffset: 27,
-            },
+            evidenceClaimA: transportSelectionForFullSource(sideAText),
+            evidenceClaimB: { startBoundaryIndex: 0, endBoundaryIndex: 999 },
           }),
           providerId: "test-fake",
           modelId: "test-fake-model",
@@ -771,13 +760,13 @@ describe("CEQR-018 compatible case / no candidate / writer-block proof", () => {
 describe("CEQR-018 provider-facing schema fidelity", () => {
   it("provider-facing OpenAI schema nests anyOf with const:false under root object", async () => {
     expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION).toBe(
-      "contradiction-adjudication-schema-v3",
+      "contradiction-adjudication-schema-v4",
     );
     expect(CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V2).toBe(
       "contradiction-adjudication-schema-v2",
     );
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v3",
+      "contradiction-live-adjudicator-prompt-addendum-v4",
     );
 
     const out = Output.object({

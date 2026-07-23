@@ -119,7 +119,7 @@ describe("CEQR-015 live evidence prompt rerun receipts", () => {
       "contradiction-live-adjudicator-prompt-addendum-v2",
     );
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v3",
+      "contradiction-live-adjudicator-prompt-addendum-v4",
     );
     expect(receipt.adjudicatorPromptAddendumVersion).not.toBe(
       CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,

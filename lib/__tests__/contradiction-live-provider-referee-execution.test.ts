@@ -6,7 +6,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-
 import {
   buildAdjudicatorRunnerRequestProbe,
   buildObjectivityRefereeLivePrompt,
@@ -55,6 +54,11 @@ import type {
   ContradictionModelTransportResult,
 } from "../contradiction-adjudicator";
 
+import {
+  transportSelectionForFullSource,
+  transportSelectionForSubstring,
+} from "./helpers/ceqr020-transport-selection";
+
 const FIXED_NOW = () => new Date("2026-07-21T20:00:00.000Z");
 
 function classAResult(
@@ -90,20 +94,8 @@ function classAResult(
     emotionalOrPhysiologicalVersusReasoningStandard: false,
     classification: "clear_contradiction",
     confidence: 0.9,
-    evidenceClaimA:
-      claimForSubstring(sideA, quoteA) ?? {
-        sourceId: sideA.sourceId,
-        exactQuote: quoteA,
-        startOffset: 0,
-        endOffset: quoteA.length,
-      },
-    evidenceClaimB:
-      claimForSubstring(sideB, quoteB) ?? {
-        sourceId: sideB.sourceId,
-        exactQuote: quoteB,
-        startOffset: 0,
-        endOffset: quoteB.length,
-      },
+    evidenceClaimA: transportSelectionForSubstring(sideA.sourceText, quoteA),
+    evidenceClaimB: transportSelectionForSubstring(sideB.sourceText, quoteB),
     rationale: "Universal abstinence conflicts with reported drinking.",
     alternativeInterpretation: "Belief change over time.",
     whatWouldChangeClassification: "Explicit timeframe separation.",
@@ -990,12 +982,12 @@ describe("CEQR-011 live provider adapters (deterministic)", () => {
         classification: "clear_contradiction",
         confidence: 0.9,
         evidenceClaimA: {
-          startOffset: 0,
-          endOffset: 1,
+          startBoundaryIndex: 0,
+          endBoundaryIndex: 1,
         },
         evidenceClaimB: {
-          startOffset: 0,
-          endOffset: 1,
+          startBoundaryIndex: 0,
+          endBoundaryIndex: 1,
         },
         rationale: "r",
         alternativeInterpretation: "alt",
@@ -1086,7 +1078,7 @@ describe("CEQR-011 live provider adapters (deterministic)", () => {
     expect(inner.calls[0]?.system).not.toContain(
       "contradiction-live-adjudicator-prompt-addendum",
     );
-    expect(inner.calls[0]?.system).not.toContain("UTF-16");
+    expect(inner.calls[0]?.system).toContain("UTF-16");
     expect(inner.calls[0]?.system).not.toContain("NEUTRAL FORMATTING EXAMPLE");
     expect(inner.calls[0]?.prompt).toBe(userPrompt);
     expect(inner.calls[0]?.prompt).not.toContain("sourceTextLengthChars");
@@ -1204,10 +1196,8 @@ describe("CEQR-011 evidence fail-closed before referee/writer", () => {
       (base, sideA) => ({
         ...base,
         evidenceClaimA: {
-          ...base.evidenceClaimA,
+          ...transportSelectionForFullSource(sideA.sourceText),
           exactQuote: "this quote is not in the source text at all",
-          startOffset: 0,
-          endOffset: sideA.sourceText.length,
         },
       }),
     );
@@ -1219,8 +1209,8 @@ describe("CEQR-011 evidence fail-closed before referee/writer", () => {
       (base, sideA) => ({
         ...base,
         evidenceClaimA: {
-          startOffset: 0,
-          endOffset: sideA.sourceText.length + 5,
+          startBoundaryIndex: 0,
+          endBoundaryIndex: 999,
         },
       }),
     );
@@ -1553,7 +1543,7 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         timeoutMs: 45000,
         providerAttemptCountExact: true,
         adjudicatorPromptAddendumVersion:
-          "contradiction-live-adjudicator-prompt-addendum-v3",
+          "contradiction-live-adjudicator-prompt-addendum-v4",
         adjudicatorCallCount: 2,
         refereeCallCount: 1,
         totalCallCount: 3,
@@ -1613,7 +1603,7 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         timeoutMs: 45000,
         providerAttemptCountExact: true,
         adjudicatorPromptAddendumVersion:
-          "contradiction-live-adjudicator-prompt-addendum-v3",
+          "contradiction-live-adjudicator-prompt-addendum-v4",
         adjudicatorCallCount: 3,
         refereeCallCount: 0,
         totalCallCount: 3,
@@ -1646,7 +1636,7 @@ describe("CEQR-011 liveProofResultToExitCode", () => {
         timeoutMs: 45000,
         providerAttemptCountExact: true,
         adjudicatorPromptAddendumVersion:
-          "contradiction-live-adjudicator-prompt-addendum-v3",
+          "contradiction-live-adjudicator-prompt-addendum-v4",
         adjudicatorCallCount: 2,
         refereeCallCount: 2,
         totalCallCount: 4,

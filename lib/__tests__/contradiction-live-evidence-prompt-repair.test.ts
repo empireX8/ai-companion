@@ -6,7 +6,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
-
 import {
   CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
   CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1,
@@ -22,7 +21,6 @@ import {
 } from "../contradiction-live-provider-referee-proof";
 import {
   adjudicateContradiction,
-  type ContradictionModelResult,
 } from "../contradiction-adjudicator";
 import {
   claimForSubstring,
@@ -35,27 +33,35 @@ import {
   type StructuredModelRunnerResult,
 } from "../orvek-intelligence-kernel";
 
+import {
+  transportSelectionForFullSource,
+} from "./helpers/ceqr020-transport-selection";
+
 /** Frozen historical v2 addendum marker retained for identity documentation only. */
 const HISTORICAL_V2_ADDENDUM_SNIPPET = "SOURCE ID AUTHORITY:";
 
 const EXPECTED_V3_ADDENDUM = [
   "",
-  "LIVE PROVIDER EVIDENCE HARD RULES (CEQR-016 / addendum-v3):",
+  "LIVE PROVIDER EVIDENCE HARD RULES (CEQR-020 / addendum-v4):",
   "EVIDENCE TRANSPORT AUTHORITY:",
-  "- evidenceClaimA and evidenceClaimB MUST contain ONLY startOffset and endOffset.",
+  "- evidenceClaimA and evidenceClaimB MUST contain ONLY startBoundaryIndex and endBoundaryIndex.",
   "- Do NOT author sourceId.",
   "- Do NOT author exactQuote.",
+  "- Do NOT author raw startOffset/endOffset character counts.",
   "- Deterministic code copies sourceId from the authoritative Side A / Side B units.",
+  "- Deterministic code maps boundary indices to UTF-16 offsets via the code-owned catalog.",
   "- Deterministic code derives exactQuote as sourceText.slice(startOffset, endOffset).",
-  "- Side A offsets apply only to Side A sourceText; Side B offsets apply only to Side B sourceText.",
+  "- Side A indices apply only to Side A catalog; Side B indices apply only to Side B catalog.",
   "- Never swap Side A and Side B ordering.",
   "",
-  "OFFSETS:",
-  "- startOffset/endOffset are zero-based, start inclusive, end exclusive.",
-  "- endOffset MUST be greater than startOffset.",
-  "- endOffset MUST NOT exceed the corresponding decoded sourceText length.",
-  "- Invalid, reversed, negative, non-integer, or out-of-range offsets fail closed.",
+  "BOUNDARY INDICES:",
+  "- startBoundaryIndex/endBoundaryIndex are zero-based indices into the printed catalog.",
+  "- Because the catalog is ordered by increasing UTF-16 offset, endBoundaryIndex MUST be greater than startBoundaryIndex.",
+  "- The resolved endOffset MUST be greater than the resolved startOffset.",
+  "- Out-of-range, reversed, negative, or non-integer indices fail closed.",
+  "- Mid-word character cuts are structurally absent from the catalog.",
   "- Do not rely on clamping, fuzzy matching, substring search, or full-source fallback.",
+  "- Sources that exceed the code-owned catalog length/entry bounds fail closed before provider invocation.",
   "",
   "- qualifications must be a non-empty string; use the literal \"none\" when there are no material qualifiers.",
   "- Never invent wording that does not appear in the sourceText.",
@@ -70,9 +76,7 @@ const EXPECTED_V3_ADDENDUM = [
 function classAResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-): ContradictionModelResult {
-  const quoteA = sideA.sourceText;
-  const quoteB = sideB.sourceText;
+): Record<string, unknown> {
   return {
     propositionA: {
       normalizedProposition: "Speaker does not drink alcohol",
@@ -100,20 +104,8 @@ function classAResult(
     emotionalOrPhysiologicalVersusReasoningStandard: false,
     classification: "clear_contradiction",
     confidence: 0.9,
-    evidenceClaimA:
-      claimForSubstring(sideA, quoteA) ?? {
-        sourceId: sideA.sourceId,
-        exactQuote: quoteA,
-        startOffset: 0,
-        endOffset: quoteA.length,
-      },
-    evidenceClaimB:
-      claimForSubstring(sideB, quoteB) ?? {
-        sourceId: sideB.sourceId,
-        exactQuote: quoteB,
-        startOffset: 0,
-        endOffset: quoteB.length,
-      },
+    evidenceClaimA: transportSelectionForFullSource(sideA.sourceText),
+    evidenceClaimB: transportSelectionForFullSource(sideB.sourceText),
     rationale: "Universal abstinence conflicts with reported drinking.",
     alternativeInterpretation: "Belief change over time.",
     whatWouldChangeClassification: "Explicit timeframe separation.",
@@ -125,7 +117,7 @@ function classAResult(
 function compatibleResult(
   sideA: KernelSourceUnit,
   sideB: KernelSourceUnit,
-): ContradictionModelResult {
+): Record<string, unknown> {
   return {
     ...classAResult(sideA, sideB),
     classification: "compatible_states",
@@ -220,7 +212,7 @@ function sideUnits(): { sideA: KernelSourceUnit; sideB: KernelSourceUnit } {
 describe("CEQR-014 / CEQR-016 live evidence addendum version identity", () => {
   it("reports honest new v3 identity and retains historical v1/v2 identities", async () => {
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v3",
+      "contradiction-live-adjudicator-prompt-addendum-v4",
     );
     expect(CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1).toBe(
       "contradiction-live-adjudicator-prompt-addendum-v1",
@@ -251,7 +243,7 @@ describe("CEQR-014 / CEQR-016 live evidence addendum version identity", () => {
       }),
     });
     expect(bundle.adjudicatorPromptAddendumVersion).toBe(
-      "contradiction-live-adjudicator-prompt-addendum-v3",
+      "contradiction-live-adjudicator-prompt-addendum-v4",
     );
     expect(bundle.adjudicatorPromptAddendumVersion).not.toBe(
       "contradiction-live-adjudicator-prompt-addendum-v1",
@@ -263,7 +255,7 @@ describe("CEQR-014 / CEQR-016 live evidence addendum version identity", () => {
 });
 
 describe("CEQR-014 / CEQR-016 captured StructuredModelRunner prompt contract", () => {
-  it("appends v3 evidence rules to system; leaves request.prompt byte-for-byte unchanged; returns same object by reference", async () => {
+  it("appends v4 evidence rules to system; leaves request.prompt byte-for-byte unchanged; returns same object by reference", async () => {
     const object = { marker: "provider-object", classification: "clear_contradiction" };
     const userPrompt = [
       "Side A sourceId: message:a",
@@ -311,13 +303,13 @@ describe("CEQR-014 / CEQR-016 captured StructuredModelRunner prompt contract", (
     expect(system).toContain("Do NOT author sourceId.");
     expect(system).toContain("Do NOT author exactQuote.");
     expect(system).toContain(
-      "evidenceClaimA and evidenceClaimB MUST contain ONLY startOffset and endOffset.",
+      "evidenceClaimA and evidenceClaimB MUST contain ONLY startBoundaryIndex and endBoundaryIndex.",
     );
     expect(system).toContain(
       "Deterministic code derives exactQuote as sourceText.slice(startOffset, endOffset).",
     );
     expect(system).toContain(
-      "startOffset/endOffset are zero-based, start inclusive, end exclusive",
+      "startBoundaryIndex/endBoundaryIndex are zero-based indices into the printed catalog.",
     );
     expect(system).not.toContain(HISTORICAL_V2_ADDENDUM_SNIPPET);
     expect(system).not.toContain("EXACT QUOTE AUTHORITY:");
@@ -426,8 +418,8 @@ describe("CEQR-014 fail-closed evidence validation unchanged", () => {
           object: {
             ...base,
             evidenceClaimA: {
-              startOffset: 0,
-              endOffset: sideA.sourceText.length + 5,
+              startBoundaryIndex: 0,
+              endBoundaryIndex: 999,
               // Provider-authored exactQuote is ignored; invalid offsets fail closed.
               exactQuote: "fabricated quote not in source",
             },
@@ -459,7 +451,16 @@ describe("CEQR-014 fail-closed evidence validation unchanged", () => {
     expect(result.cases[0]!.writeExecuted).toBe(false);
     expect(
       result.cases[0]!.sanitizedAdjudicationDiagnostics?.validationErrorCodes,
-    ).toEqual(expect.arrayContaining(["invalid_offsets"]));
+    ).toEqual(
+      expect.arrayContaining([
+        "validation_failed",
+        "clear_contradiction_requires_valid_spans",
+      ]),
+    );
+    expect(
+      result.cases[0]!.sanitizedAdjudicationDiagnostics?.sideOffsetDiagnostics
+        ?.sideA?.validationCode,
+    ).toBe("invalid_boundary_index");
   });
 
   it("valid non-Class-A output does not reach referee", async () => {
@@ -508,7 +509,7 @@ describe("CEQR-014 fail-closed evidence validation unchanged", () => {
           object: {
             ...base,
             evidenceClaimA: {
-              ...base.evidenceClaimA,
+              ...(base.evidenceClaimA as Record<string, unknown>),
               sourceId: sideA.messageId ?? "wrong-id",
             },
           },
@@ -559,6 +560,9 @@ describe("CEQR-014 / CEQR-016 non-repair / non-live invariants", () => {
     );
     expect(src).toContain(
       "contradiction-live-adjudicator-prompt-addendum-v3",
+    );
+    expect(src).toContain(
+      "contradiction-live-adjudicator-prompt-addendum-v4",
     );
     expect(src).toContain(
       "CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1",

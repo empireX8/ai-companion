@@ -23,12 +23,12 @@ import { createHash } from "crypto";
 import { basename, join, resolve } from "path";
 
 import {
-  CONTRADICTION_ADJUDICATION_PROMPT_VERSION,
+  CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V3,
   type ContradictionAdjudicationResult,
 } from "./contradiction-adjudicator";
 import type { ControlledNaturalEntryProofResult } from "./contradiction-controlled-natural-entry-proof";
 import {
-  CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION,
+  CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V3,
   CONTRADICTION_LIVE_DEFAULT_ADJUDICATOR_MODEL,
   CONTRADICTION_LIVE_DEFAULT_REFEREE_MODEL,
   CONTRADICTION_LIVE_DEFAULT_TIMEOUT_MS,
@@ -50,7 +50,7 @@ import {
   type LiveSyntheticCaseId,
 } from "./contradiction-live-provider-referee-proof";
 import {
-  CONTRADICTION_ADJUDICATION_SCHEMA_VERSION,
+  CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V3,
   KERNEL_CONTRACT_VERSION,
 } from "./orvek-intelligence-kernel/contracts";
 
@@ -455,21 +455,23 @@ export function assertCeqr019LandedConstants():
   if (CONTRADICTION_LIVE_DEFAULT_TIMEOUT_MS !== CEQR_019_EXPECTED_TIMEOUT_MS) {
     mismatches.push("timeoutMs");
   }
+  // CEQR-019 froze schema-v3 / prompt-v3 / addendum-v3. Current active
+  // identities may advance (CEQR-020+); historical constants must remain.
   if (
-    CONTRADICTION_ADJUDICATION_SCHEMA_VERSION !==
-    CEQR_019_EXPECTED_SCHEMA_VERSION
+    (CONTRADICTION_ADJUDICATION_SCHEMA_VERSION_V3 as string) !==
+    (CEQR_019_EXPECTED_SCHEMA_VERSION as string)
   ) {
     mismatches.push("schemaVersion");
   }
   if (
-    CONTRADICTION_ADJUDICATION_PROMPT_VERSION !==
-    CEQR_019_EXPECTED_PROMPT_VERSION
+    (CONTRADICTION_ADJUDICATION_PROMPT_VERSION_V3 as string) !==
+    (CEQR_019_EXPECTED_PROMPT_VERSION as string)
   ) {
     mismatches.push("promptVersion");
   }
   if (
-    CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION !==
-    CEQR_019_EXPECTED_LIVE_ADDENDUM_VERSION
+    (CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V3 as string) !==
+    (CEQR_019_EXPECTED_LIVE_ADDENDUM_VERSION as string)
   ) {
     mismatches.push("liveAddendumVersion");
   }

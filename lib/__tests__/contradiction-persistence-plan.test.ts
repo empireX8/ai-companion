@@ -178,6 +178,9 @@ function buildAdjudication(args: {
     errorMessage: null,
     persistenceDecision: null,
     createCandidate: undefined,
+    evidenceBindDiagnostics: null,
+    rawEvidenceTransportSelections: null,
+    rawProviderObjectSha256: null,
   };
 }
 

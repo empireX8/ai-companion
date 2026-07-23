@@ -52,12 +52,12 @@ export const OBJECTIVITY_REFEREE_LIVE_PROMPT_VERSION =
   "objectivity-referee-live-prompt-v1" as const;
 
 /**
- * Live adjudicator system-addendum identity (CEQR-016 deterministic evidence
- * authority). Describes the addendum; must not be injected into the provider
- * prompt. Historical CEQR-011…015 receipts retain v1/v2 and must not be rewritten.
+ * Live adjudicator system-addendum identity (CEQR-020 lexical boundary-index
+ * transport). Describes the addendum; must not be injected into the provider
+ * prompt. Historical CEQR-011…019 receipts retain v1–v3 and must not be rewritten.
  */
 export const CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION =
-  "contradiction-live-adjudicator-prompt-addendum-v3" as const;
+  "contradiction-live-adjudicator-prompt-addendum-v4" as const;
 
 /** Historical identity used by CEQR-011 through CEQR-013 live runs. */
 export const CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1 =
@@ -66,6 +66,10 @@ export const CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V1 =
 /** Historical identity used by CEQR-014 / CEQR-015 live evidence prompt repair. */
 export const CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V2 =
   "contradiction-live-adjudicator-prompt-addendum-v2" as const;
+
+/** Historical identity used by CEQR-016…019 offsets-only live runs. */
+export const CONTRADICTION_LIVE_ADJUDICATOR_PROMPT_ADDENDUM_VERSION_V3 =
+  "contradiction-live-adjudicator-prompt-addendum-v3" as const;
 
 export type ContradictionLiveIndependenceLevel =
   | "separate_call_same_provider_same_model"
@@ -291,28 +295,32 @@ export function wrapRunnerWithOpenAiStrictSchemas(
 }
 
 /**
- * CEQR-016 live evidence addendum v3 (structural companion to deterministic binding).
- * Instructs the model to author offsets only. Does not alter provider output
- * after generation. sourceId / exactQuote are code-owned in the adjudicator.
+ * CEQR-020 live evidence addendum v4 (structural companion to boundary-index binding).
+ * Instructs the model to author boundary indices only. Does not alter provider
+ * output after generation. sourceId / exactQuote / offsets are code-owned.
  */
 const LIVE_ADJUDICATOR_EVIDENCE_ADDENDUM = [
   "",
-  "LIVE PROVIDER EVIDENCE HARD RULES (CEQR-016 / addendum-v3):",
+  "LIVE PROVIDER EVIDENCE HARD RULES (CEQR-020 / addendum-v4):",
   "EVIDENCE TRANSPORT AUTHORITY:",
-  "- evidenceClaimA and evidenceClaimB MUST contain ONLY startOffset and endOffset.",
+  "- evidenceClaimA and evidenceClaimB MUST contain ONLY startBoundaryIndex and endBoundaryIndex.",
   "- Do NOT author sourceId.",
   "- Do NOT author exactQuote.",
+  "- Do NOT author raw startOffset/endOffset character counts.",
   "- Deterministic code copies sourceId from the authoritative Side A / Side B units.",
+  "- Deterministic code maps boundary indices to UTF-16 offsets via the code-owned catalog.",
   "- Deterministic code derives exactQuote as sourceText.slice(startOffset, endOffset).",
-  "- Side A offsets apply only to Side A sourceText; Side B offsets apply only to Side B sourceText.",
+  "- Side A indices apply only to Side A catalog; Side B indices apply only to Side B catalog.",
   "- Never swap Side A and Side B ordering.",
   "",
-  "OFFSETS:",
-  "- startOffset/endOffset are zero-based, start inclusive, end exclusive.",
-  "- endOffset MUST be greater than startOffset.",
-  "- endOffset MUST NOT exceed the corresponding decoded sourceText length.",
-  "- Invalid, reversed, negative, non-integer, or out-of-range offsets fail closed.",
+  "BOUNDARY INDICES:",
+  "- startBoundaryIndex/endBoundaryIndex are zero-based indices into the printed catalog.",
+  "- Because the catalog is ordered by increasing UTF-16 offset, endBoundaryIndex MUST be greater than startBoundaryIndex.",
+  "- The resolved endOffset MUST be greater than the resolved startOffset.",
+  "- Out-of-range, reversed, negative, or non-integer indices fail closed.",
+  "- Mid-word character cuts are structurally absent from the catalog.",
   "- Do not rely on clamping, fuzzy matching, substring search, or full-source fallback.",
+  "- Sources that exceed the code-owned catalog length/entry bounds fail closed before provider invocation.",
   "",
   "- qualifications must be a non-empty string; use the literal \"none\" when there are no material qualifiers.",
   "- Never invent wording that does not appear in the sourceText.",

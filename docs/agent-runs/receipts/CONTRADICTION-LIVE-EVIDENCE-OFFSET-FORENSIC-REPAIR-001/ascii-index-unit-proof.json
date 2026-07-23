@@ -1,0 +1,55 @@
+{
+  "campaignSlice": "CEQR-020",
+  "allEqual": true,
+  "rows": [
+    {
+      "caseId": "clear_contradiction_candidate",
+      "side": "A",
+      "sourceText": "I do not drink alcohol at all.",
+      "utf16Length": 30,
+      "codePointLength": 30,
+      "equal": true
+    },
+    {
+      "caseId": "clear_contradiction_candidate",
+      "side": "B",
+      "sourceText": "I drank several beers last night.",
+      "utf16Length": 33,
+      "codePointLength": 33,
+      "equal": true
+    },
+    {
+      "caseId": "compatible_contextual",
+      "side": "A",
+      "sourceText": "I avoid coffee in the evening.",
+      "utf16Length": 30,
+      "codePointLength": 30,
+      "equal": true
+    },
+    {
+      "caseId": "compatible_contextual",
+      "side": "B",
+      "sourceText": "I drink coffee in the morning.",
+      "utf16Length": 30,
+      "codePointLength": 30,
+      "equal": true
+    },
+    {
+      "caseId": "ambiguous_insufficient",
+      "side": "A",
+      "sourceText": "I might go running later if I feel up to it.",
+      "utf16Length": 44,
+      "codePointLength": 44,
+      "equal": true
+    },
+    {
+      "caseId": "ambiguous_insufficient",
+      "side": "B",
+      "sourceText": "Sometimes I think about exercise.",
+      "utf16Length": 33,
+      "codePointLength": 33,
+      "equal": true
+    }
+  ],
+  "conclusion": "UTF-16 length equals Unicode code-point length for every CEQR-019 frozen source; index-unit mismatch cannot explain the historical ASCII failures."
+}
