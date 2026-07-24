@@ -14,6 +14,7 @@
     "db:seed": "ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' prisma/seed.ts",
     "eval:patterns": "ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' scripts/eval-patterns.ts",
     "validate:live-evidence-depth-runtime": "ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' scripts/dev/validate-live-evidence-depth-runtime.ts",
+    "prove:contradiction-real-db-round-trip": "bash scripts/dev/prove-contradiction-real-db-round-trip.sh",
     "db:local": "docker start companion-db 2>/dev/null || docker run -d --name companion-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=companion -p 5432:5432 postgres:16-alpine && echo 'Waiting for Postgres...' && sleep 3 && echo 'companion-db is ready.'",
     "db:stop": "docker stop companion-db && echo 'companion-db stopped.'",
     "db:migrate": "prisma migrate dev",
