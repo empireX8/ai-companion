@@ -113,7 +113,7 @@ function canonicalGetObjectFromLiveApi(liveApi: OrvekDataApi) {
 }
 
 describe("actual /your-map runtime profile facts", () => {
-  it("production chain voids route children and mounts canonical MapPage", () => {
+  it("production chain routes workbench-owned paths through canonical MapPage", () => {
     const shell = readSource(
       "components/orvek-workbench/OrvekWorkbenchShell.tsx",
     );
@@ -128,7 +128,9 @@ describe("actual /your-map runtime profile facts", () => {
     );
     const route = readSource("app/(root)/(routes)/your-map/page.tsx");
 
-    expect(shell).toContain("void children");
+    expect(shell).toContain("isCanonicalWorkbenchRoute");
+    expect(shell).toContain('pathname === "/"');
+    expect(shell).toContain('return <>{children}</>');
     expect(shell).toContain("CanonicalLiveRuntimeEntry");
     expect(entry).toContain("useOrvekHybridWorkbenchDataApi");
     expect(entry).toContain("buildCanonicalLiveRuntimeData");

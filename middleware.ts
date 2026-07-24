@@ -33,6 +33,10 @@ const AUTHENTICATED_LEGACY_ALLOWED_ROUTE_PREFIXES = [
   "/watch-for",
 ] as const;
 
+const AUTHENTICATED_LEGACY_ALLOWED_EXACT_PATHS = [
+  "/contradictions/candidates",
+] as const;
+
 const INTERNAL_OR_DEV_PRESERVED_ROUTE_PREFIXES = [
   "/internal/user-map/review",
   "/dev/orvek-v0-reference",
@@ -61,12 +65,19 @@ function isRouteInPrefixes(pathname: string, prefixes: readonly string[]): boole
   return prefixes.some((prefix) => matchesRoutePrefix(pathname, prefix));
 }
 
+function isPathInList(pathname: string, paths: readonly string[]): boolean {
+  return paths.some((path) => pathname === path);
+}
+
 function isLegacyPublicBlockedRoute(pathname: string): boolean {
   return isRouteInPrefixes(pathname, LEGACY_PUBLIC_BLOCKED_ROUTE_PREFIXES);
 }
 
 function isAuthenticatedLegacyAllowedRoute(pathname: string): boolean {
-  return isRouteInPrefixes(pathname, AUTHENTICATED_LEGACY_ALLOWED_ROUTE_PREFIXES);
+  return (
+    isPathInList(pathname, AUTHENTICATED_LEGACY_ALLOWED_EXACT_PATHS) ||
+    isRouteInPrefixes(pathname, AUTHENTICATED_LEGACY_ALLOWED_ROUTE_PREFIXES)
+  );
 }
 
 function isPreservedInternalOrDevRoute(pathname: string): boolean {

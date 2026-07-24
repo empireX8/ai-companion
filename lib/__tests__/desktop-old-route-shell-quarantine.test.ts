@@ -95,7 +95,7 @@ function relativeFromRoot(absolutePath: string): string {
 }
 
 describe("desktop old-route / old-shell quarantine audit", () => {
-  it("1 — root hard-swap chain mounts CanonicalWorkbench and ignores route children", () => {
+  it("1 — root hard-swap chain mounts CanonicalWorkbench only for workbench-owned routes", () => {
     const layout = readSource("app/(root)/layout.tsx");
     const appShell = readSource("components/layout/AppShell.tsx");
     const shell = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
@@ -109,7 +109,10 @@ describe("desktop old-route / old-shell quarantine audit", () => {
 
     expect(layout).toContain("AppShell");
     expect(appShell).toContain("OrvekWorkbenchShell");
-    expect(shell).toContain("void children");
+    expect(shell).toContain("usePathname");
+    expect(shell).toContain("isCanonicalWorkbenchRoute");
+    expect(shell).toContain('pathname === "/"');
+    expect(shell).toContain('return <>{children}</>');
     expect(shell).toContain("CanonicalLiveRuntimeEntry");
     expect(runtime).toContain("useOrvekHybridWorkbenchDataApi");
     expect(runtime).toContain("CanonicalWorkbench");

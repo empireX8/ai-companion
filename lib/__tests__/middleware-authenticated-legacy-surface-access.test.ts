@@ -63,6 +63,71 @@ describe("middleware authenticated legacy surface access", () => {
     expect(auth.protect).not.toHaveBeenCalled();
   });
 
+  it("allows only the authenticated candidate review route through the quarantine", async () => {
+    const middleware = (await import("../../middleware")).default as unknown as (
+      auth: MiddlewareAuth,
+      request: ReturnType<typeof makeRequest>
+    ) => Promise<Response | void>;
+    const auth = makeAuth("user-1");
+
+    const response = await middleware(auth, makeRequest("/contradictions/candidates"));
+
+    expect(response).toBeUndefined();
+    expect(auth.protect).not.toHaveBeenCalled();
+  });
+
+  it("keeps unauthenticated candidate review unavailable", async () => {
+    const middleware = (await import("../../middleware")).default as unknown as (
+      auth: MiddlewareAuth,
+      request: ReturnType<typeof makeRequest>
+    ) => Promise<Response | void>;
+    const auth = makeAuth(null);
+
+    const response = await middleware(auth, makeRequest("/contradictions/candidates"));
+
+    expect(response?.status).toBe(404);
+    expect(auth.protect).not.toHaveBeenCalled();
+  });
+
+  it("keeps unrelated contradiction routes quarantined for authenticated users", async () => {
+    const middleware = (await import("../../middleware")).default as unknown as (
+      auth: MiddlewareAuth,
+      request: ReturnType<typeof makeRequest>
+    ) => Promise<Response | void>;
+    const auth = makeAuth("user-1");
+
+    const response = await middleware(auth, makeRequest("/contradictions"));
+
+    expect(response?.status).toBe(404);
+    expect(auth.protect).not.toHaveBeenCalled();
+  });
+
+  it("keeps contradiction candidate child routes quarantined for authenticated users", async () => {
+    const middleware = (await import("../../middleware")).default as unknown as (
+      auth: MiddlewareAuth,
+      request: ReturnType<typeof makeRequest>
+    ) => Promise<Response | void>;
+    const auth = makeAuth("user-1");
+
+    const response = await middleware(auth, makeRequest("/contradictions/candidates/contr-1"));
+
+    expect(response?.status).toBe(404);
+    expect(auth.protect).not.toHaveBeenCalled();
+  });
+
+  it("keeps contradiction detail routes quarantined for authenticated users", async () => {
+    const middleware = (await import("../../middleware")).default as unknown as (
+      auth: MiddlewareAuth,
+      request: ReturnType<typeof makeRequest>
+    ) => Promise<Response | void>;
+    const auth = makeAuth("user-1");
+
+    const response = await middleware(auth, makeRequest("/contradictions/contr-1"));
+
+    expect(response?.status).toBe(404);
+    expect(auth.protect).not.toHaveBeenCalled();
+  });
+
   it("keeps unauthenticated active-questions routes masked as not found", async () => {
     const middleware = (await import("../../middleware")).default as unknown as (
       auth: MiddlewareAuth,
