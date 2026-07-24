@@ -11,8 +11,16 @@ import {
   DurableFieldworkCheckInControls,
   supportsDurableCorrection,
 } from "@/components/orvek-v0/durable-user-action-controls"
+import { ContradictionDualSourceView } from "@/components/contradiction/ContradictionDualSourceView"
 import { hasLiveExploreChatFromProvider } from "@/lib/orvek-v0/production/free-explore-chat-presentation"
 import { EXPLORE_CONVERSATION_MOVEMENT_EMPTY_COPY } from "@/lib/explore-surface"
+import {
+  beginContradictionInspectorDetailLoad,
+  createEmptyContradictionInspectorDetailState,
+  failContradictionInspectorDetailLoad,
+  resolveContradictionInspectorDetailLoad,
+  selectRenderableContradictionInspectorDetail,
+} from "@/lib/contradiction-inspector-detail-state"
 import {
   composeProductionModelUpdateCanonicalViewModel,
   type AffectedObjectPresentationContext,
@@ -27,6 +35,7 @@ import {
   INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT,
   INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT,
   type InspectorEvidenceLinkItem,
+  type InspectorContradictionProjection,
   type InspectorModelUpdateDetail,
 } from "@/lib/inspector-object-api"
 import type { WhatChangedListItem } from "@/lib/public-intelligence-safe-slice"
@@ -598,6 +607,16 @@ function ObjectDetail({ obj }: { obj: OrvekObject }) {
   const [outcomeAdded, setOutcomeAdded] = useState(false)
   const [checkin, setCheckin] = useState("")
   const [checkedIn, setCheckedIn] = useState(false)
+  const currentContradictionId =
+    obj.inspectorObjectType === "contradiction_node" ? obj.inspectorObjectId ?? obj.id : null
+  const [contradictionDetailState, setContradictionDetailState] = useState(
+    createEmptyContradictionInspectorDetailState,
+  )
+  const contradictionDetail: InspectorContradictionProjection | null =
+    selectRenderableContradictionInspectorDetail(
+      contradictionDetailState,
+      currentContradictionId,
+    )
 
   const receipts = getObjects(obj.receiptIds)
   const related = getObjects(obj.relatedIds)
@@ -613,6 +632,36 @@ function ObjectDetail({ obj }: { obj: OrvekObject }) {
     obj.type === "active-question" ||
     obj.type === "decision" ||
     obj.type === "investigation"
+
+  useEffect(() => {
+    setContradictionDetailState(beginContradictionInspectorDetailLoad(currentContradictionId))
+
+    if (!currentContradictionId) {
+      return
+    }
+
+    let cancelled = false
+
+    void fetchInspectorContradiction(currentContradictionId)
+      .then((detail) => {
+        if (!cancelled) {
+          setContradictionDetailState((state) =>
+            resolveContradictionInspectorDetailLoad(state, currentContradictionId, detail),
+          )
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setContradictionDetailState((state) =>
+            failContradictionInspectorDetailLoad(state, currentContradictionId),
+          )
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [currentContradictionId])
 
   return (
     <div className="pb-6">
@@ -634,6 +683,25 @@ function ObjectDetail({ obj }: { obj: OrvekObject }) {
           </p>
         )}
       </div>
+
+      {contradictionDetail ? (
+        <Block label="Active signal">
+          <p className="text-[13px] text-muted-foreground">
+            {`${contradictionDetail.status.replace(/_/g, " ")} · ${contradictionDetail.evidenceCount} evidence`}
+          </p>
+          <div className="mt-2">
+            <ContradictionDualSourceView
+              interpretationA={contradictionDetail.sideA}
+              interpretationB={contradictionDetail.sideB}
+              dualSource={contradictionDetail.dualSource}
+            />
+          </div>
+          <p className="mt-2 text-[12px] text-muted-foreground">
+            Raw message evidence stays on the signal detail surface. Use the full page for deeper
+            review.
+          </p>
+        </Block>
+      ) : null}
 
       {/* receipt source */}
       {obj.type === "receipt" && obj.sourceText && (

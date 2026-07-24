@@ -36,7 +36,7 @@ const OLD_SHELL_MARKERS = [
 ] as const;
 
 describe("desktop hard-swap regression sweep", () => {
-  it("1 — root hard-swap shell mounts canonical workbench and ignores route children", () => {
+  it("1 — root hard-swap shell mounts canonical workbench only on workbench routes", () => {
     const appLayout = readSource("app/(root)/layout.tsx");
     const appShell = readSource("components/layout/AppShell.tsx");
     const shell = readSource("components/orvek-workbench/OrvekWorkbenchShell.tsx");
@@ -44,7 +44,9 @@ describe("desktop hard-swap regression sweep", () => {
 
     expect(appLayout).toContain("AppShell");
     expect(appShell).toContain("OrvekWorkbenchShell");
-    expect(shell).toContain("void children");
+    expect(shell).toContain("usePathname");
+    expect(shell).toContain("isCanonicalWorkbenchRoute");
+    expect(shell).toContain('return <>{children}</>');
     expect(shell).toContain("CanonicalLiveRuntimeEntry");
     const runtime = readSource(
       "components/orvek-v0-canonical/canonical-live-runtime-entry.tsx",
