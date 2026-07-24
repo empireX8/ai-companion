@@ -949,11 +949,12 @@ describe("CEQR-004 live/import wiring and materialisation boundary", () => {
     return readFileSync(join(root, rel), "utf8");
   }
 
-  it("21. LIVE QUERY CONTRACT — route passes session/message provenance", () => {
+  it("21. LIVE QUERY CONTRACT — route passes session/message provenance via production ingestion", () => {
     const route = read("app/api/message/route.ts");
-    expect(route).toMatch(/sessionId:\s*session\.id/);
-    expect(route).toMatch(/messageId:\s*userMessage\.id/);
-    expect(route).toMatch(/detectContradictions/);
+    expect(route).toMatch(/session:\s*\{\s*id:\s*session\.id/);
+    expect(route).toMatch(/id:\s*userMessage\.id/);
+    expect(route).toMatch(/runProductionContradictionIngestion/);
+    expect(route).not.toMatch(/detectContradictions/);
   });
 
   it("22. IMPORT QUERY CONTRACT — imported conversation session is passed", () => {
@@ -976,12 +977,17 @@ describe("CEQR-004 live/import wiring and materialisation boundary", () => {
     expect(materialization).not.toMatch(/selectSameSessionContradiction/);
   });
 
-  it("does not add production model invocation on message/import paths", () => {
+  it("does not add direct selection/adjudicator invocation on message/import paths", () => {
     const route = read("app/api/message/route.ts");
     const importPath = read("lib/import-chatgpt.ts");
     const backfill = read("lib/contradiction-backfill.ts");
 
-    for (const src of [route, importPath, backfill]) {
+    expect(route).not.toMatch(/selectSameSessionContradiction/);
+    expect(route).not.toMatch(/contradiction-same-session-selection/);
+    expect(route).not.toMatch(/adjudicateContradiction/);
+    expect(route).toMatch(/runProductionContradictionIngestion/);
+
+    for (const src of [importPath, backfill]) {
       expect(src).not.toMatch(/selectSameSessionContradiction/);
       expect(src).not.toMatch(/contradiction-same-session-selection/);
       expect(src).not.toMatch(/adjudicateContradiction/);

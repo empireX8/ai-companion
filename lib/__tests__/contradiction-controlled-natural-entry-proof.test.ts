@@ -1509,18 +1509,23 @@ describe("CEQR-010 controlled natural-entry proof (corrected)", () => {
   });
 
   it("boundary: no KernelSourceUnit public input; no plan egress; no live deps", () => {
-    const src = readFileSync(
+    const proofSrc = readFileSync(
       join(process.cwd(), "lib/contradiction-controlled-natural-entry-proof.ts"),
       "utf8",
     );
-    expect(src).toContain("currentMessage: CurrentMessageSource");
-    expect(src).toContain("references: SameSessionReferenceRow[]");
-    expect(src).not.toMatch(/sideB:\s*KernelSourceUnit/);
-    expect(src).not.toMatch(/sideACandidates:\s*SideACandidate/);
-    expect(src).not.toMatch(/executePersistence/);
-    expect(src).not.toMatch(/authorisedPlanForHarness/);
-    expect(src).not.toMatch(/prismadb/);
-    expect(src).not.toMatch(/createAiSdkStructuredModelRunner/);
-    expect(src).not.toContain(KAY_ACCOUNT);
+    const naturalSrc = readFileSync(
+      join(process.cwd(), "lib/contradiction-natural-entry.ts"),
+      "utf8",
+    );
+    expect(naturalSrc).toContain("currentMessage: CurrentMessageSource");
+    expect(naturalSrc).toContain("references: SameSessionReferenceRow[]");
+    expect(naturalSrc).not.toMatch(/sideB:\s*KernelSourceUnit/);
+    expect(naturalSrc).not.toMatch(/sideACandidates:\s*SideACandidate/);
+    expect(proofSrc).toMatch(/runContradictionNaturalEntry/);
+    expect(proofSrc).not.toMatch(/executePersistence/);
+    expect(proofSrc).not.toMatch(/authorisedPlanForHarness/);
+    expect(proofSrc).not.toMatch(/prismadb/);
+    expect(proofSrc).not.toMatch(/createAiSdkStructuredModelRunner/);
+    expect(proofSrc).not.toContain(KAY_ACCOUNT);
   });
 });
