@@ -997,14 +997,13 @@ describe("CEQR-001 runtime non-wiring boundary", () => {
     return readFileSync(join(root, rel), "utf8");
   }
 
-  it("does not wire adjudicator into message route, import, or materialisation", () => {
+  it("does not wire adjudicator into import or materialisation; message route uses production ingestion boundary", () => {
     const messageRoute = read("app/api/message/route.ts");
     const importPath = read("lib/import-chatgpt.ts");
     const materialization = read("lib/contradiction-materialization.ts");
     const detection = read("lib/contradiction-detection.ts");
 
     for (const [name, src] of [
-      ["message route", messageRoute],
       ["import-chatgpt", importPath],
       ["contradiction-materialization", materialization],
       ["contradiction-detection", detection],
@@ -1014,8 +1013,13 @@ describe("CEQR-001 runtime non-wiring boundary", () => {
       expect(src, name).not.toMatch(/adjudicateContradiction/);
     }
 
-    expect(messageRoute).toMatch(/detectContradictions/);
-    expect(messageRoute).toMatch(/materializeContradictions/);
+    expect(messageRoute).not.toMatch(/contradiction-adjudicator/);
+    expect(messageRoute).not.toMatch(/orvek-intelligence-kernel/);
+    expect(messageRoute).not.toMatch(/adjudicateContradiction/);
+    expect(messageRoute).toMatch(/runProductionContradictionIngestion/);
+    expect(messageRoute).not.toMatch(/detectContradictions/);
+    expect(messageRoute).not.toMatch(/materializeContradictions/);
+
     expect(importPath).toMatch(/detectContradictions/);
     expect(importPath).toMatch(/materializeContradictions/);
   });
@@ -2149,7 +2153,7 @@ describe("CEQR-003 context and qualifier preservation", () => {
     expect(wrongSideIgnored.semantic?.evidenceClaimA.exactQuote).toBe("usually");
   });
 
-  it("22. STRUCTURAL BOUNDARY — no new adjudicator/kernel imports on runtime paths", () => {
+  it("22. STRUCTURAL BOUNDARY — no direct adjudicator/kernel imports on runtime paths", () => {
     const root = process.cwd();
     const read = (rel: string) => readFileSync(join(root, rel), "utf8");
     for (const rel of [

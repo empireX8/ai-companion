@@ -22,6 +22,7 @@ import type { ReferenceStatus, ReferenceType } from "@prisma/client";
 import {
   adjudicateContradiction,
   classificationAllowsContradictionNodeSemantics,
+  KERNEL_FIRST_PROOF_OBJECT,
   type ContradictionAdjudicationResult,
 } from "./contradiction-adjudicator";
 import {
@@ -30,11 +31,24 @@ import {
 } from "./contradiction-live-sanitized-diagnostics";
 import type { StructuredModelRunner } from "./orvek-intelligence-kernel/model-runner";
 import type { ObjectivityReferee } from "./orvek-intelligence-kernel/objectivity-referee";
-import { defaultRefereeStatus } from "./orvek-intelligence-kernel/objectivity-referee";
+import {
+  defaultRefereeStatus,
+  objectivityRefereeResultToStatus,
+  runObjectivityRefereeSafely,
+} from "./orvek-intelligence-kernel/objectivity-referee";
 import type {
   KernelSourceUnit,
   RefereeStatus,
 } from "./orvek-intelligence-kernel/types";
+
+/**
+ * `per_class_a` — referee runs inside each clear_contradiction adjudication.
+ * `sole_winner_only` — adjudicate without referee; run at most one referee call
+ * after zero-or-one Class A selection (production provider-call bound).
+ */
+export type SameSessionSelectionRefereeMode =
+  | "per_class_a"
+  | "sole_winner_only";
 
 export type ContradictionSelectionOutcome =
   | "selected"
@@ -349,11 +363,24 @@ export async function selectSameSessionContradictionPair(input: {
   sideACandidates: SideACandidate[];
   modelRunner: StructuredModelRunner;
   objectivityReferee?: ObjectivityReferee;
+  /**
+   * Deterministic cap on adjudicator invocations. Candidates beyond the cap are
+   * excluded from semantic adjudication (ordering may prioritise; markers /
+   * overlap never establish eligibility).
+   */
+  maxAdjudicatorCandidates?: number;
+  /**
+   * Defaults to `per_class_a`. Production ingestion uses `sole_winner_only`
+   * so at most one referee call occurs after zero-or-one selection.
+   */
+  refereeMode?: SameSessionSelectionRefereeMode;
   now?: () => Date;
   abortSignal?: AbortSignal;
 }): Promise<ContradictionSameSessionSelectionResult> {
   const sideB = input.sideB;
   const consideredCount = input.sideACandidates.length;
+  const refereeMode: SameSessionSelectionRefereeMode =
+    input.refereeMode ?? "per_class_a";
 
   if (consideredCount === 0) {
     return emptyResult("no_same_session_sources", {
@@ -387,6 +414,21 @@ export async function selectSameSessionContradictionPair(input: {
     });
   }
 
+  const cappedLimit =
+    typeof input.maxAdjudicatorCandidates === "number" &&
+    Number.isFinite(input.maxAdjudicatorCandidates) &&
+    input.maxAdjudicatorCandidates >= 0
+      ? Math.floor(input.maxAdjudicatorCandidates)
+      : sameSessionCandidates.length;
+
+  const adjudicateCandidates = sameSessionCandidates.slice(0, cappedLimit);
+  for (const candidate of sameSessionCandidates.slice(cappedLimit)) {
+    rejectionSummaries.push({
+      referenceId: candidate.referenceId ?? null,
+      reason: "beyond_adjudicator_candidate_cap",
+    });
+  }
+
   const eligible: Array<{
     candidate: SideACandidate;
     adjudication: ContradictionAdjudicationResult;
@@ -398,7 +440,11 @@ export async function selectSameSessionContradictionPair(input: {
   let modelFailureCount = 0;
   let validationFailureCount = 0;
 
-  for (const candidate of sameSessionCandidates) {
+  // sole_winner_only: withhold referee until a single Class A winner exists.
+  const adjudicationReferee =
+    refereeMode === "sole_winner_only" ? undefined : input.objectivityReferee;
+
+  for (const candidate of adjudicateCandidates) {
     // Count actual StructuredModelRunner.runStructured invocations only —
     // deterministic pre-provider rejection (catalog limits) must not inflate
     // modelCallCount.
@@ -416,7 +462,7 @@ export async function selectSameSessionContradictionPair(input: {
         sideA: candidate.sideA,
         sideB,
         modelRunner: countingRunner,
-        objectivityReferee: input.objectivityReferee,
+        objectivityReferee: adjudicationReferee,
         now: input.now,
         abortSignal: input.abortSignal,
       });
@@ -459,12 +505,16 @@ export async function selectSameSessionContradictionPair(input: {
   }
 
   const eligibleCount = eligible.length;
+  const adjudicatedCount = adjudicateCandidates.length;
 
   if (eligibleCount === 0) {
     let outcome: ContradictionSelectionOutcome = "no_semantic_match";
-    if (modelFailureCount === sameSessionCount) {
+    if (adjudicatedCount > 0 && modelFailureCount === adjudicatedCount) {
       outcome = "model_failed";
-    } else if (validationFailureCount === sameSessionCount) {
+    } else if (
+      adjudicatedCount > 0 &&
+      validationFailureCount === adjudicatedCount
+    ) {
       outcome = "adjudication_failed";
     }
 
@@ -498,11 +548,78 @@ export async function selectSameSessionContradictionPair(input: {
       attemptedAdjudications,
       modelCallCount,
       // Ambiguity abstention: never pick first / highest confidence.
+      // sole_winner_only: no referee call on multi-Class-A abstention.
       refereeStatus: defaultRefereeStatus(),
     });
   }
 
-  const only = eligible[0]!;
+  // sole_winner_only: a sole Class A is not established while another
+  // adjudicated (capped-pool) candidate remains unresolved via model or
+  // validation failure. Candidates beyond the cap are not adjudication failures.
+  if (refereeMode === "sole_winner_only") {
+    if (modelFailureCount > 0) {
+      return emptyResult("model_failed", {
+        consideredCount,
+        sameSessionCount,
+        sourceCompleteCount: sameSessionCount,
+        eligibleCount,
+        rejectionSummaries,
+        attemptedAdjudications,
+        modelCallCount,
+        refereeStatus: defaultRefereeStatus(),
+      });
+    }
+    if (validationFailureCount > 0) {
+      return emptyResult("adjudication_failed", {
+        consideredCount,
+        sameSessionCount,
+        sourceCompleteCount: sameSessionCount,
+        eligibleCount,
+        rejectionSummaries,
+        attemptedAdjudications,
+        modelCallCount,
+        refereeStatus: defaultRefereeStatus(),
+      });
+    }
+  }
+
+  let only = eligible[0]!;
+
+  if (refereeMode === "sole_winner_only" && input.objectivityReferee) {
+    const semantic = only.adjudication.semantic;
+    if (semantic) {
+      const referee = await runObjectivityRefereeSafely({
+        referee: input.objectivityReferee,
+        input: {
+          proposedObjectType: KERNEL_FIRST_PROOF_OBJECT,
+          validatedSemanticResult: semantic,
+          evidenceSummary: `${only.candidate.sideA.label} ↔ ${sideB.label}`,
+          confidence: semantic.confidence,
+          alternativeInterpretation: semantic.alternativeInterpretation,
+          qualificationContext: [
+            semantic.propositionA.qualifications,
+            semantic.propositionB.qualifications,
+            semantic.contextAndScope,
+          ].join(" | "),
+          validationWarnings: only.adjudication.validation.warnings,
+        },
+      });
+      const refereeStatus = objectivityRefereeResultToStatus(referee);
+      only = {
+        candidate: only.candidate,
+        adjudication: {
+          ...only.adjudication,
+          referee,
+          refereeStatus,
+          audit: {
+            ...only.adjudication.audit,
+            refereeStatus,
+          },
+        },
+      };
+    }
+  }
+
   const selectedPair: SemanticallySelectedContradictionPair = {
     sideA: only.candidate.sideA,
     sideB,
@@ -543,6 +660,8 @@ export async function selectSameSessionContradictionFromReferences(input: {
   references: SameSessionReferenceRow[];
   modelRunner: StructuredModelRunner;
   objectivityReferee?: ObjectivityReferee;
+  maxAdjudicatorCandidates?: number;
+  refereeMode?: SameSessionSelectionRefereeMode;
   now?: () => Date;
   abortSignal?: AbortSignal;
 }): Promise<ContradictionSameSessionSelectionResult> {
@@ -624,6 +743,8 @@ export async function selectSameSessionContradictionFromReferences(input: {
     sideACandidates,
     modelRunner: input.modelRunner,
     objectivityReferee: input.objectivityReferee,
+    maxAdjudicatorCandidates: input.maxAdjudicatorCandidates,
+    refereeMode: input.refereeMode,
     now: input.now,
     abortSignal: input.abortSignal,
   });
@@ -652,6 +773,8 @@ export async function selectSameSessionContradictionForMessage(input: {
   referenceStatuses?: ReferenceStatus[];
   modelRunner: StructuredModelRunner;
   objectivityReferee?: ObjectivityReferee;
+  maxAdjudicatorCandidates?: number;
+  refereeMode?: SameSessionSelectionRefereeMode;
   db: ContradictionSameSessionSelectionDb;
   now?: () => Date;
   abortSignal?: AbortSignal;
@@ -677,6 +800,8 @@ export async function selectSameSessionContradictionForMessage(input: {
     references,
     modelRunner: input.modelRunner,
     objectivityReferee: input.objectivityReferee,
+    maxAdjudicatorCandidates: input.maxAdjudicatorCandidates,
+    refereeMode: input.refereeMode,
     now: input.now,
     abortSignal: input.abortSignal,
   });

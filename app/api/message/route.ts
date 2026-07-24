@@ -11,8 +11,11 @@ import {
   scoreTokenOverlap,
   shouldPromptForMemoryUpdate,
 } from "@/lib/memory-governance";
-import { detectContradictions } from "@/lib/contradiction-detection";
-import { materializeContradictions } from "@/lib/contradiction-materialization";
+import {
+  compactProductionIngestionLog,
+  runProductionContradictionIngestion,
+} from "@/lib/contradiction-production-ingestion";
+import { createPrismaContradictionProductionAdapter } from "@/lib/contradiction-production-db-adapter";
 import { getTop3WithOptionalSurfacing } from "@/lib/contradiction-surface";
 import prismadb from "@/lib/prismadb";
 import { getRelevantReferenceMemory } from "@/lib/reference-memory";
@@ -323,9 +326,9 @@ export async function POST(req: Request) {
     }
 
     // ── Background work scheduled via after() ──
-    // Memory writes, audit, profile derivation, contradiction detection, pattern
-    // derivation, and the app-message candidate bridge all run after the response
-    // is sent, so they never delay the main stream.
+    // Memory writes, audit, profile derivation, pattern derivation, and the
+    // app-message candidate bridge all run after the response is sent, so they
+    // never delay the main stream.
     after(async () => {
       try {
         await memory.appendToTranscript(memoryKey, `Human: ${normalizedContent}`);
@@ -359,28 +362,6 @@ export async function POST(req: Request) {
           reqId,
         });
 
-        // Contradiction detection (LLM call) — moved off critical path
-        console.debug(tag, "contradiction_detection_start (async)", Date.now() - tServer);
-        if (normalizedContent.length >= 15) {
-          const detections = await detectContradictions({
-            userId,
-            sessionId: session.id,
-            messageId: userMessage.id,
-            messageContent: normalizedContent,
-            db: prismadb as unknown as Parameters<typeof detectContradictions>[0]["db"],
-          });
-
-          if (detections.length) {
-            await materializeContradictions({
-              userId,
-              detections,
-              sessionId: session.id,
-              messageId: userMessage.id,
-              quote: normalizedContent,
-              db: prismadb as unknown as Parameters<typeof materializeContradictions>[0]["db"],
-            });
-          }
-        }
         // Native pattern derivation — non-blocking, immediate-or-scheduled
         await triggerNativeDerivationIfDue(
           { userId },
@@ -412,6 +393,36 @@ export async function POST(req: Request) {
         } catch (error) {
           console.error(`[MESSAGE_APP_CANDIDATE_BRIDGE_ERROR][${reqId}]`, error);
         }
+      }
+    });
+
+    // ── Contradiction production ingestion (separate after() registration) ──
+    // Registered independently so memory/audit/profile/pattern failure or delay
+    // cannot prevent this callback from being scheduled. Failures here never
+    // fail the chat response. Gate defaults OFF
+    // (RUN_PRODUCTION_CONTRADICTION_INGESTION).
+    after(async () => {
+      try {
+        console.debug(tag, "contradiction_ingestion_start (async)", Date.now() - tServer);
+        const ingestionResult = await runProductionContradictionIngestion({
+          userId,
+          session: { id: session.id },
+          currentMessage: {
+            id: userMessage.id,
+            content: normalizedContent,
+            role: "user",
+          },
+          db: createPrismaContradictionProductionAdapter(prismadb),
+        });
+        console.log(
+          `[MESSAGE_CONTRADICTION_INGESTION][${reqId}]`,
+          compactProductionIngestionLog(ingestionResult),
+        );
+      } catch (error) {
+        console.error(`[MESSAGE_CONTRADICTION_INGESTION_ERROR][${reqId}]`, {
+          code: "ingestion_unhandled_error",
+        });
+        void error;
       }
     });
 

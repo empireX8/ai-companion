@@ -1,10 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { afterCallbacks } = vi.hoisted(() => ({
+  afterCallbacks: [] as Array<() => void | Promise<void>>,
+}));
+
 const authMock = vi.fn();
 const streamTextMock = vi.fn();
 const openaiMock = vi.fn();
-const detectContradictionsMock = vi.fn();
-const materializeContradictionsMock = vi.fn();
+const runProductionContradictionIngestionMock = vi.fn();
+const createPrismaContradictionProductionAdapterMock = vi.fn(() => ({
+  kind: "fake-production-db-adapter",
+}));
 const getTop3WithOptionalSurfacingMock = vi.fn();
 const getRelevantReferenceMemoryMock = vi.fn();
 const ensureWeeklyAuditForCurrentWeekMock = vi.fn();
@@ -261,16 +267,19 @@ vi.mock("next/server", () => ({
     json: (body: unknown, init?: ResponseInit) => Response.json(body, init),
   },
   after: (callback: () => void | Promise<void>) => {
+    afterCallbacks.push(callback);
     void callback();
   },
 }));
 
-vi.mock("@/lib/contradiction-detection", () => ({
-  detectContradictions: detectContradictionsMock,
+vi.mock("@/lib/contradiction-production-ingestion", () => ({
+  runProductionContradictionIngestion: runProductionContradictionIngestionMock,
+  compactProductionIngestionLog: (result: unknown) => result,
 }));
 
-vi.mock("@/lib/contradiction-materialization", () => ({
-  materializeContradictions: materializeContradictionsMock,
+vi.mock("@/lib/contradiction-production-db-adapter", () => ({
+  createPrismaContradictionProductionAdapter:
+    createPrismaContradictionProductionAdapterMock,
 }));
 
 vi.mock("@/lib/memory-governance", async () => {
@@ -361,6 +370,7 @@ const flushAsyncWork = async () => {
 describe("native chat memory/reference capture", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    afterCallbacks.length = 0;
     idSeq = 0;
     sessions = [{ id: "sess1", userId: "u1", origin: "APP", surfaceType: "journal_chat" }];
     messages = [];
@@ -371,13 +381,14 @@ describe("native chat memory/reference capture", () => {
       toTextStreamResponse: () => new Response("ok"),
     });
     openaiMock.mockReturnValue({ provider: "openai" });
-    detectContradictionsMock.mockResolvedValue([]);
-    materializeContradictionsMock.mockResolvedValue({
-      nodesCreated: 0,
-      evidenceCreated: 0,
-      reusedExistingNodes: 0,
-      duplicateEvidenceSkips: 0,
-      terminalCollisionSkips: 0,
+    runProductionContradictionIngestionMock.mockResolvedValue({
+      gatedOff: true,
+      outcome: "gated_off",
+      writerInvoked: false,
+      writeExecuted: false,
+    });
+    createPrismaContradictionProductionAdapterMock.mockReturnValue({
+      kind: "fake-production-db-adapter",
     });
     getTop3WithOptionalSurfacingMock.mockResolvedValue({ items: [] });
     getRelevantReferenceMemoryMock.mockResolvedValue({
@@ -685,7 +696,7 @@ describe("native chat memory/reference capture", () => {
     await flushAsyncWork();
 
     expect(tryCreateInternalUserMapCandidateFromAppMessageMock).toHaveBeenCalledTimes(1);
-    expect(detectContradictionsMock).toHaveBeenCalledTimes(1);
+    expect(runProductionContradictionIngestionMock).toHaveBeenCalledTimes(1);
     expect(triggerNativeDerivationIfDueMock).toHaveBeenCalledTimes(1);
   });
 
@@ -729,8 +740,51 @@ describe("native chat memory/reference capture", () => {
       content: "I value objectivity and I care about accuracy.",
     });
     expect(processMessageForProfileMock).toHaveBeenCalledTimes(1);
-    expect(detectContradictionsMock).toHaveBeenCalledTimes(1);
+    expect(runProductionContradictionIngestionMock).toHaveBeenCalledTimes(1);
     expect(triggerNativeDerivationIfDueMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs contradiction ingestion from a separate after() even when earlier background work rejects", async () => {
+    ensureWeeklyAuditForCurrentWeekMock.mockRejectedValueOnce(
+      new Error("audit boom — must not suppress contradiction after()"),
+    );
+
+    const route = await import("../../app/api/message/route");
+    const response = await route.POST(
+      new Request("http://localhost/api/message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-request-id": "contradiction-after-isolation-1",
+        },
+        body: JSON.stringify({
+          sessionId: "sess1",
+          content: "I never drink alcohol but I drank last night clearly.",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.text()).resolves.toBe("ok");
+
+    await flushAsyncWork();
+
+    // Two after() registrations: memory/profile/pattern/bridge + contradiction.
+    expect(afterCallbacks.length).toBeGreaterThanOrEqual(2);
+    expect(runProductionContradictionIngestionMock).toHaveBeenCalledTimes(1);
+    expect(runProductionContradictionIngestionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u1",
+        session: { id: "sess1" },
+        currentMessage: expect.objectContaining({
+          id: messages[0]?.id,
+          content: "I never drink alcohol but I drank last night clearly.",
+          role: "user",
+        }),
+      }),
+    );
+    expect(ensureWeeklyAuditForCurrentWeekMock).toHaveBeenCalledTimes(1);
+    expect(createPrismaContradictionProductionAdapterMock).toHaveBeenCalled();
   });
 
   it("keeps manual memory saving behavior unchanged", async () => {
