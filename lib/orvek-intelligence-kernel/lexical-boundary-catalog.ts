@@ -539,14 +539,20 @@ export function formatLexicalBoundaryCatalogForPrompt(
       "formatLexicalBoundaryCatalogForPrompt refused over-limit catalog; checkLexicalBoundaryCatalogLimits must fail closed first.",
     );
   }
+  const maxIndex = Math.max(0, catalog.length - 1);
   const lines = catalog.map(
     (entry) =>
-      `  [${entry.boundaryIndex}] offset=${entry.offset} category=${entry.category}`,
+      `  Boundary ${entry.boundaryIndex}: offset ${entry.offset} (category=${entry.category})`,
   );
   return [
-    `Side ${sideLabel} lexical boundary catalog (code-owned; UTF-16 offsets; select indices only):`,
+    `Side ${sideLabel} lexical boundary catalog (code-owned numbered list):`,
     `  sourceTextLengthUtf16=${sourceText.length}`,
     `  catalogLength=${catalog.length}`,
+    `  validOrdinalIndexRange=0..${maxIndex}`,
+    "  startBoundaryIndex and endBoundaryIndex are positions in this numbered list.",
+    "  They are NOT character offsets and MUST NOT equal sourceTextLengthUtf16 or raw UTF-16 offsets.",
+    `  Values must be integers between 0 and ${maxIndex} inclusive (catalogLength-1).`,
+    "  endBoundaryIndex must reference a valid listed Boundary N and be greater than startBoundaryIndex.",
     ...lines,
   ].join("\n");
 }

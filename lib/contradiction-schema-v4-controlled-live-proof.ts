@@ -31,6 +31,8 @@ import {
   CEQR_021_EXPECTED_REFEREE_MODEL,
   CEQR_021_EXPECTED_SCHEMA_VERSION,
   CEQR_021_EXPECTED_TIMEOUT_MS,
+  CEQR_021_EXECUTION_LOCK_FILENAME,
+  CEQR_021_EXECUTION_LOCK_PROGRESS_FILENAME,
   CEQR_021_FINAL_FROZEN_LIVE_PLAN_FILENAME,
   CEQR_021_HISTORICAL,
   CEQR_021_LIVE_RECEIPT_FILENAME,
@@ -445,6 +447,47 @@ export function verifyCeqr021HistoricalImmutability(
     hashes[`ceqr020:${name}`] = actual;
     if (actual !== expected) {
       mismatches.push(`CEQR-020 ${name} hash mismatch: ${actual}`);
+    }
+  }
+
+  const ceqr021Dir = join(cwd, "docs/agent-runs/receipts", CEQR_021_SLICE_ID);
+  const ceqr021Files: Array<[string, string]> = [
+    [
+      CEQR_021_LIVE_RECEIPT_FILENAME,
+      CEQR_021_HISTORICAL.ceqr021LiveExecutionReceiptSha256,
+    ],
+    [
+      CEQR_021_ONESHOT_CLAIM_FILENAME,
+      CEQR_021_HISTORICAL.ceqr021OneshotClaimSha256,
+    ],
+    [
+      CEQR_021_FINAL_FROZEN_LIVE_PLAN_FILENAME,
+      CEQR_021_HISTORICAL.ceqr021FinalFrozenLivePlanSha256,
+    ],
+    [
+      "15-invalid-credential-live-result.md",
+      CEQR_021_HISTORICAL.ceqr021InvalidCredentialResultMdSha256,
+    ],
+    [
+      CEQR_021_EXECUTION_LOCK_FILENAME,
+      CEQR_021_HISTORICAL.ceqr021ExecutionLockSha256,
+    ],
+    [
+      CEQR_021_EXECUTION_LOCK_PROGRESS_FILENAME,
+      CEQR_021_HISTORICAL.ceqr021ExecutionLockProgressSha256,
+    ],
+  ];
+  for (const [name, expected] of ceqr021Files) {
+    const path = join(ceqr021Dir, name);
+    if (!existsSync(path)) {
+      mismatches.push(`CEQR-021 missing ${name}`);
+      hashes[`ceqr021:${name}`] = null;
+      continue;
+    }
+    const actual = sha256File(path);
+    hashes[`ceqr021:${name}`] = actual;
+    if (actual !== expected) {
+      mismatches.push(`CEQR-021 ${name} hash mismatch: ${actual}`);
     }
   }
 

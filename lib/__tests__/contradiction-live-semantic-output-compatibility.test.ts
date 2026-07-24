@@ -34,7 +34,6 @@ import {
 } from "../contradiction-adjudicator";
 import { notRunObjectivityRefereeResult } from "../orvek-intelligence-kernel/objectivity-referee";
 import {
-  claimForSubstring,
   KERNEL_FIRST_PROOF_OBJECT,
   type KernelSourceUnit,
   type StructuredModelRunner,
@@ -62,7 +61,9 @@ const LANDED_CEQR016_ADDENDUM = [
   "- Never swap Side A and Side B ordering.",
   "",
   "BOUNDARY INDICES:",
-  "- startBoundaryIndex/endBoundaryIndex are zero-based indices into the printed catalog.",
+  "- startBoundaryIndex/endBoundaryIndex are zero-based positions in the printed Boundary N list for that side.",
+  "- They are NOT character offsets. Do not return UTF-16 offsets, string lengths, or slice endpoints as indices.",
+  "- Valid values are integers from 0 to catalogLength-1 inclusive; endBoundaryIndex must reference a listed Boundary N.",
   "- Because the catalog is ordered by increasing UTF-16 offset, endBoundaryIndex MUST be greater than startBoundaryIndex.",
   "- The resolved endOffset MUST be greater than the resolved startOffset.",
   "- Out-of-range, reversed, negative, or non-integer indices fail closed.",
@@ -78,6 +79,10 @@ const LANDED_CEQR016_ADDENDUM = [
   "- Do not mark changedBeliefOverTime merely because one side mentions a past event; require explicit belief-revision language.",
   "- If the propositions cannot both be true under matching actor/subject/timeframe/scope after preserving qualifiers, choose clear_contradiction with the consistency flags above all false.",
   "- If timeframe/scope qualifiers make both true, choose compatible_states instead of clear_contradiction.",
+  "- compatible_states requires concrete, comparable propositions with an explicit preserved qualifier explaining coexistence.",
+  "- Do not choose compatible_states for vague topical overlap or soft non-contradiction dumping.",
+  "- insufficient_or_misaligned_context: use when evidence is sufficient to determine the pair is non-comparable, mispaired, unrelated, or materially underspecified as a contradiction pair (abstentionReason must be null).",
+  "- null classification + non-blank abstentionReason: use ONLY when evidence is insufficient to safely choose any taxonomy classification.",
 ].join("\n");
 
 function classAResult(
@@ -762,7 +767,7 @@ describe("CEQR-012 fail-closed shapes still fail", () => {
   });
 
   it("out-of-range offset still fails closed", async () => {
-    const { result, refereeCalls } = await runMutated((base, sideA) => ({
+    const { result, refereeCalls } = await runMutated((base) => ({
       ...base,
       evidenceClaimA: {
         startBoundaryIndex: 0,
