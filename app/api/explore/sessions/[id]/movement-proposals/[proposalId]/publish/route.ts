@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 
 import prismadb from "@/lib/prismadb";
 import { isExploreGroundingPayload } from "@/lib/explore-grounding-contract";
+import { EXPLORE_MOVEMENT_BLOCKED_UNSAFE_FIXED_SEMANTICS } from "@/lib/explore-movement-fixed-semantics-containment";
 import { publishExploreMovementProposal } from "@/lib/explore-movement-proposal";
 
 type RouteContext = {
@@ -60,6 +61,16 @@ export async function POST(_req: Request, context: RouteContext) {
     }
     if (result === "missing_evidence") {
       return new NextResponse("Proposal missing evidence links", { status: 409 });
+    }
+    if (result === EXPLORE_MOVEMENT_BLOCKED_UNSAFE_FIXED_SEMANTICS) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: EXPLORE_MOVEMENT_BLOCKED_UNSAFE_FIXED_SEMANTICS,
+          status: "blocked",
+        },
+        { status: 409 }
+      );
     }
 
     const assistantMessages = await prismadb.message.findMany({
