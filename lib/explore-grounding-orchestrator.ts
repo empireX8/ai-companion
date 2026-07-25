@@ -1,17 +1,16 @@
 /**
  * Orchestrate Explore reply grounding + optional movement proposal creation.
  * Does not publish ModelUpdates. Does not mutate the durable user-visible model.
+ *
+ * Phase 0 containment: owned-evidence grounding may succeed, but model movement
+ * fails closed until conversation-specific semantic adjudication exists.
+ * Lexical VERIFIED+INFERRED overlap alone must not create ExploreMovementProposal.
  */
 
-import {
-  UnderstandingLinkTargetType,
-  UserMapConclusionVisibility,
-  type PrismaClient,
-} from "@prisma/client";
+import { type PrismaClient } from "@prisma/client";
 
 import {
   emptyExploreGroundingPayload,
-  payloadHasVerifiedAndInferred,
   type ExploreGroundingClaim,
   type ExploreGroundingPayload,
   type ExploreGroundingSource,
@@ -20,7 +19,6 @@ import {
   collectOwnedExploreGroundingCandidates,
   selectExploreGroundingSources,
 } from "./explore-grounding-retrieval";
-import { createExploreMovementProposal } from "./explore-movement-proposal";
 
 export type ExploreGroundingOrchestrationResult = {
   payload: ExploreGroundingPayload;
@@ -70,10 +68,12 @@ export async function orchestrateExploreReplyGrounding(args: {
   userMessageId: string;
   userMessageContent: string;
   assistantReplyContent: string;
+  /**
+   * Retained for caller compatibility. Phase 0 ignores proposal creation:
+   * movement always fails closed without a semantic adjudicator.
+   */
   createProposalWhenSufficient?: boolean;
 }): Promise<ExploreGroundingOrchestrationResult> {
-  const createProposalWhenSufficient = args.createProposalWhenSufficient !== false;
-
   const candidates = await collectOwnedExploreGroundingCandidates({
     userId: args.userId,
     db: args.db,
@@ -97,7 +97,10 @@ export async function orchestrateExploreReplyGrounding(args: {
   }
 
   const claims = buildClaimsFromSources(args.assistantReplyContent, sources);
-  const sufficientForMovement = payloadHasVerifiedAndInferred({
+
+  // Phase 0: preserve safe grounding; fail closed on model movement.
+  // Do not create ExploreMovementProposal or ModelUpdate from lexical overlap.
+  const payload: ExploreGroundingPayload = {
     version: "explore-grounding-v1",
     status: "grounded",
     conversationId: args.conversationId,
@@ -106,25 +109,7 @@ export async function orchestrateExploreReplyGrounding(args: {
     sources,
     claims,
     movementProposal: {
-      status: "none",
-      proposalId: null,
-      modelUpdateId: null,
-      beforeSummary: null,
-      afterSummary: null,
-      rationale: null,
-    },
-  });
-
-  let payload: ExploreGroundingPayload = {
-    version: "explore-grounding-v1",
-    status: "grounded",
-    conversationId: args.conversationId,
-    assistantMessageId: args.assistantMessageId,
-    userMessageId: args.userMessageId,
-    sources,
-    claims,
-    movementProposal: {
-      status: sufficientForMovement ? "none" : "insufficient_evidence",
+      status: "insufficient_evidence",
       proposalId: null,
       modelUpdateId: null,
       beforeSummary: null,
@@ -133,75 +118,7 @@ export async function orchestrateExploreReplyGrounding(args: {
     },
   };
 
-  if (!createProposalWhenSufficient || !sufficientForMovement) {
-    if (!sufficientForMovement) {
-      payload = {
-        ...payload,
-        status: sources.length > 0 ? "grounded" : "insufficient_evidence",
-        movementProposal: {
-          ...payload.movementProposal,
-          status: "insufficient_evidence",
-        },
-      };
-    }
-    return { payload, proposalCreated: false };
-  }
-
-  const currentModel = await args.db.userMapConclusion.findFirst({
-    where: {
-      userId: args.userId,
-      visibility: UserMapConclusionVisibility.user_visible,
-    },
-    orderBy: { updatedAt: "desc" },
-    select: { id: true, title: true, summary: true },
-  });
-
-  if (!currentModel) {
-    payload = {
-      ...payload,
-      movementProposal: {
-        ...payload.movementProposal,
-        status: "insufficient_evidence",
-      },
-    };
-    return { payload, proposalCreated: false };
-  }
-
-  const beforeSummary = currentModel.summary;
-  const afterSummary = `Explore evidence suggests refining: ${currentModel.title} with stop-point sensitivity after meetings.`;
-  const rationale =
-    "Grounded Explore conversation cites owned verified and inferred evidence for a reviewable model movement.";
-  const userFacingSummary =
-    "Possible model movement from Explore: evening stop-point signal after meetings.";
-
-  const proposal = await createExploreMovementProposal({
-    userId: args.userId,
-    db: args.db,
-    conversationId: args.conversationId,
-    assistantMessageId: args.assistantMessageId,
-    userMessageId: args.userMessageId,
-    affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
-    affectedObjectId: currentModel.id,
-    beforeSummary,
-    afterSummary,
-    rationale,
-    userFacingSummary,
-    sources,
-  });
-
-  payload = {
-    ...payload,
-    movementProposal: {
-      status: "proposed",
-      proposalId: proposal.proposalId,
-      modelUpdateId: null,
-      beforeSummary: proposal.beforeSummary,
-      afterSummary: proposal.afterSummary,
-      rationale: proposal.rationale,
-    },
-  };
-
-  return { payload, proposalCreated: true };
+  return { payload, proposalCreated: false };
 }
 
 export async function persistExploreGroundingPayload(args: {

@@ -18,6 +18,11 @@ import {
 
 import type { ExploreGroundingSource } from "./explore-grounding-contract";
 import {
+  EXPLORE_MOVEMENT_BLOCKED_UNSAFE_FIXED_SEMANTICS,
+  matchesUnsafeFixedExploreMovementSignature,
+  type ExploreMovementBlockedUnsafeFixedSemantics,
+} from "./explore-movement-fixed-semantics-containment";
+import {
   PublishModelUpdateCandidateError,
   publishModelUpdateCandidate,
 } from "./model-update-candidate-publish-helper";
@@ -267,6 +272,7 @@ export async function publishExploreMovementProposal(args: {
   | "not_found"
   | "rejected"
   | "missing_evidence"
+  | ExploreMovementBlockedUnsafeFixedSemantics
 > {
   const existing = await args.db.exploreMovementProposal.findFirst({
     where: { id: args.proposalId, userId: args.userId },
@@ -284,6 +290,18 @@ export async function publishExploreMovementProposal(args: {
       status: "published",
       idempotent: true,
     };
+  }
+
+  // Phase 0: block still-proposed rows with the known unsafe fixed signature
+  // before ModelUpdate creation, evidence-link materialisation, or status change.
+  if (
+    matchesUnsafeFixedExploreMovementSignature({
+      afterSummary: existing.afterSummary,
+      rationale: existing.rationale,
+      userFacingSummary: existing.userFacingSummary,
+    })
+  ) {
+    return EXPLORE_MOVEMENT_BLOCKED_UNSAFE_FIXED_SEMANTICS;
   }
 
   const sources = parseSourcesJson(existing.sourcesJson);
