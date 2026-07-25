@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import prismadb from "@/lib/prismadb";
 import { isExploreGroundingPayload } from "@/lib/explore-grounding-contract";
 import { EXPLORE_MOVEMENT_BLOCKED_UNSAFE_FIXED_SEMANTICS } from "@/lib/explore-movement-fixed-semantics-containment";
+import { EXPLORE_MOVEMENT_BLOCKED_UNVERIFIED_SEMANTIC_PROVENANCE } from "@/lib/explore-movement-proposal-provenance";
 import { publishExploreMovementProposal } from "@/lib/explore-movement-proposal";
 
 type RouteContext = {
@@ -50,6 +51,7 @@ export async function POST(_req: Request, context: RouteContext) {
     const result = await publishExploreMovementProposal({
       userId,
       proposalId,
+      conversationId: sessionId,
       db: prismadb,
     });
 
@@ -67,6 +69,16 @@ export async function POST(_req: Request, context: RouteContext) {
         {
           ok: false,
           error: EXPLORE_MOVEMENT_BLOCKED_UNSAFE_FIXED_SEMANTICS,
+          status: "blocked",
+        },
+        { status: 409 }
+      );
+    }
+    if (result === EXPLORE_MOVEMENT_BLOCKED_UNVERIFIED_SEMANTIC_PROVENANCE) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: EXPLORE_MOVEMENT_BLOCKED_UNVERIFIED_SEMANTIC_PROVENANCE,
           status: "blocked",
         },
         { status: 409 }

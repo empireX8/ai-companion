@@ -23,9 +23,10 @@ describe("explore fixed-semantics containment source regression", () => {
     expect(orchestrator).not.toContain(
       UNSAFE_FIXED_EXPLORE_MOVEMENT_USER_FACING_SUMMARY
     );
-    expect(orchestrator).not.toContain("createExploreMovementProposal");
-    expect(orchestrator).toContain('status: "insufficient_evidence"');
-    expect(orchestrator).toContain("proposalCreated: false");
+    // Phase 0 default path still fails closed; semantic create is gated.
+    expect(orchestrator).toContain("insufficient_evidence");
+    expect(orchestrator).toContain("isExploreMovementSemanticEnabled");
+    expect(orchestrator).toContain("createOrReuseSemanticExploreMovementProposal");
   });
 
   it("keeps unsafe signature detection only in the containment module for app code", () => {

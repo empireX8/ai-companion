@@ -25,6 +25,10 @@ import {
   publishExploreMovementProposal,
   rejectExploreMovementProposal,
 } from "../explore-movement-proposal";
+import { buildExploreMovementProposalProvenance } from "../explore-movement-proposal-provenance";
+import {
+  OBJECTIVITY_REFEREE_INTERFACE_VERSION,
+} from "../orvek-intelligence-kernel/objectivity-referee";
 import {
   EXPLORE_ASSAULT_DETERMINISTIC_REPLY_ENV,
   exploreAssaultDeterministicReplyAllowed,
@@ -255,6 +259,46 @@ describe("explore grounding movement assault contract", () => {
       }),
     ];
 
+    const afterSummary = "after summary strengthens evening recovery boundary";
+    const rationale = "unit rationale grounded in owned evidence";
+    const userFacingSummary = "Possible model movement from Explore unit test";
+    const publishableProvenance = buildExploreMovementProposalProvenance({
+      sources,
+      semanticDecision: {
+        outcome: "PROPOSE_CONCLUSION_STRENGTHENING",
+        proposedObjectType: "UserMapConclusion",
+        targetObjectId: seeded.conclusionId,
+        afterSummary,
+        rationale,
+        userFacingSummary,
+        confidence: 0.72,
+        alternativeInterpretation: "Could be a one-off fatigue episode.",
+        qualificationContext: "Applies under stacked meeting load.",
+        evidenceSourceIds: sources.map((source) => source.sourceId),
+      },
+      refereeResult: {
+        interfaceVersion: OBJECTIVITY_REFEREE_INTERFACE_VERSION,
+        executionState: "completed",
+        outcome: "PASS",
+        rationale: "Within owned evidence.",
+        proposedObjectType: "UserMapConclusion",
+        proposedConfidence: 0.72,
+        adjustedConfidence: null,
+        routedObjectType: null,
+        validationErrors: [],
+        continuationAllowed: true,
+        errorMessage: null,
+      },
+      providerMetadata: {
+        providerId: "injected",
+        adjudicatorModelId: "assault-adjudicator",
+        refereeModelId: "assault-referee",
+        adjudicatorCalls: 1,
+        refereeCalls: 1,
+        totalCalls: 2,
+      },
+    });
+
     const created = await createExploreMovementProposal({
       userId: FIXTURE_USER_ID,
       db: prisma,
@@ -263,11 +307,11 @@ describe("explore grounding movement assault contract", () => {
       userMessageId: userMessage.id,
       affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
       affectedObjectId: seeded.conclusionId,
-      beforeSummary: "before summary",
-      afterSummary: "after summary",
-      rationale: "unit rationale",
-      userFacingSummary: "Possible model movement from Explore unit test",
-      sources,
+      beforeSummary: "Commitments lock before the body signals a stop.",
+      afterSummary,
+      rationale,
+      userFacingSummary,
+      provenance: publishableProvenance,
     });
 
     expect(created.proposalId).toBeTruthy();

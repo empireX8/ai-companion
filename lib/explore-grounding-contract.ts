@@ -17,25 +17,33 @@ export const EXPLORE_GROUNDING_EPISTEMIC_STATUSES = [
 export type ExploreGroundingEpistemicStatus =
   (typeof EXPLORE_GROUNDING_EPISTEMIC_STATUSES)[number];
 
+export const EXPLORE_GROUNDING_CLAIM_SUPPORTS = [
+  "verifies",
+  "infers",
+  "context",
+  "insufficient",
+] as const;
+
 export type ExploreGroundingClaimSupport =
-  | "verifies"
-  | "infers"
-  | "context"
-  | "insufficient";
+  (typeof EXPLORE_GROUNDING_CLAIM_SUPPORTS)[number];
 
 export type ExploreGroundingPayloadStatus =
   | "grounded"
   | "ungrounded"
   | "insufficient_evidence";
 
+export const EXPLORE_GROUNDING_SOURCE_FAMILIES = [
+  "journal_entry",
+  "pattern_claim",
+  "pattern_claim_evidence",
+  "usermap_conclusion",
+  "reference_item",
+  "message",
+  "session",
+] as const;
+
 export type ExploreGroundingSourceFamily =
-  | "journal_entry"
-  | "pattern_claim"
-  | "pattern_claim_evidence"
-  | "usermap_conclusion"
-  | "reference_item"
-  | "message"
-  | "session";
+  (typeof EXPLORE_GROUNDING_SOURCE_FAMILIES)[number];
 
 export type ExploreGroundingSource = {
   sourceId: string;
