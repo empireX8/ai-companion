@@ -170,6 +170,37 @@ function makeProposalDb(seed: ProposalRow[]) {
           return row;
         }
       ),
+      updateMany: vi.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: {
+            id?: string;
+            userId?: string;
+            status?: ExploreMovementProposalStatus;
+            modelUpdateId?: string | null;
+          };
+          data: Partial<ProposalRow>;
+        }) => {
+          let count = 0;
+          for (const row of rows) {
+            if (where.id && row.id !== where.id) continue;
+            if (where.userId && row.userId !== where.userId) continue;
+            if (where.status && row.status !== where.status) continue;
+            if (
+              "modelUpdateId" in where &&
+              where.modelUpdateId === null &&
+              row.modelUpdateId !== null
+            ) {
+              continue;
+            }
+            Object.assign(row, data);
+            count += 1;
+          }
+          return { count };
+        }
+      ),
     },
     modelUpdate: {
       create: vi.fn(async () => {
@@ -375,6 +406,7 @@ describe("explore movement fixed-semantics containment", () => {
     expect(rows[0]?.status).toBe(ExploreMovementProposalStatus.proposed);
     expect(rows[0]?.modelUpdateId).toBeNull();
   });
+});
 
   it("keeps foreign-user proposal access blocked", async () => {
     const unsafe = unsafeSignatureFields();
@@ -477,7 +509,7 @@ describe("explore movement fixed-semantics containment", () => {
     expect(raw.exploreMovementProposal.update).not.toHaveBeenCalled();
   });
 
-  it("still publishes a non-unsafe proposed row", async () => {
+  it("blocks unversioned non-unsafe proposed rows before ModelUpdate creation", async () => {
     const { db, rows, modelUpdates, evidenceLinks, raw } = makeProposalDb([
       {
         id: SAFE_PROPOSAL_ID,
@@ -503,17 +535,13 @@ describe("explore movement fixed-semantics containment", () => {
       db,
     });
 
-    expect(result).toEqual({
-      modelUpdateId: "mu_1",
-      status: "published",
-      idempotent: false,
-    });
-    expect(raw.modelUpdate.create).toHaveBeenCalledTimes(1);
-    expect(raw.understandingEvidenceLink.upsert).toHaveBeenCalled();
-    expect(evidenceLinks.length).toBeGreaterThan(0);
-    expect(publishCandidateMock).toHaveBeenCalledTimes(1);
-    expect(modelUpdates).toHaveLength(1);
-    expect(rows[0]?.status).toBe(ExploreMovementProposalStatus.published);
-    expect(rows[0]?.modelUpdateId).toBe("mu_1");
+    expect(result).toBe("blocked_unverified_semantic_provenance");
+    expect(raw.modelUpdate.create).not.toHaveBeenCalled();
+    expect(raw.understandingEvidenceLink.upsert).not.toHaveBeenCalled();
+    expect(raw.exploreMovementProposal.update).not.toHaveBeenCalled();
+    expect(publishCandidateMock).not.toHaveBeenCalled();
+    expect(modelUpdates).toHaveLength(0);
+    expect(evidenceLinks).toHaveLength(0);
+    expect(rows[0]?.status).toBe(ExploreMovementProposalStatus.proposed);
+    expect(rows[0]?.modelUpdateId).toBeNull();
   });
-});

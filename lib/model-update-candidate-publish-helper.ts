@@ -46,6 +46,11 @@ export async function publishModelUpdateCandidate(
     db?: PrismaClient;
     now?: () => Date;
     skipEvidenceDepthMaterialization?: boolean;
+    /**
+     * When true, run the visibility flip on `db` without opening a nested
+     * `$transaction` (caller already holds an interactive transaction).
+     */
+    alreadyInTransaction?: boolean;
     materializeEvidenceDepthForPublish?: typeof maybeMaterializeEvidenceDepthForPublishedModelUpdate;
     checkPublicTargetEligibility?: Parameters<
       typeof maybeMaterializeEvidenceDepthForPublishedModelUpdate
@@ -104,8 +109,10 @@ export async function publishModelUpdateCandidate(
     );
   }
 
-  const published = await db.$transaction(async (tx) => {
-    const updateResult = await tx.modelUpdate.updateMany({
+  const flipVisibility = async (client: {
+    modelUpdate: PrismaClient["modelUpdate"];
+  }) => {
+    const updateResult = await client.modelUpdate.updateMany({
       where: {
         id: modelUpdateId,
         userId,
@@ -126,7 +133,7 @@ export async function publishModelUpdateCandidate(
       );
     }
 
-    const updated = await tx.modelUpdate.findFirst({
+    const updated = await client.modelUpdate.findFirst({
       where: {
         id: modelUpdateId,
         userId,
@@ -147,7 +154,11 @@ export async function publishModelUpdateCandidate(
     }
 
     return updated;
-  });
+  };
+
+  const published = options?.alreadyInTransaction
+    ? await flipVisibility(db)
+    : await db.$transaction(async (tx) => flipVisibility(tx));
 
   try {
     const movementRationale = await resolveMovementRationaleForPublishedModelUpdate({
