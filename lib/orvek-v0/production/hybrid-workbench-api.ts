@@ -33,6 +33,17 @@ import {
   withTodayObjectGraphParity,
   type LiveTodayGraphParity,
 } from "./today-object-graph-parity";
+import {
+  isCompositionWorkbenchApi,
+  type HybridWorkbenchAuthorityOptions,
+} from "./workbench-authority";
+
+export type { HybridWorkbenchAuthorityOptions } from "./workbench-authority";
+export {
+  allowsCompositionWorkbenchAuthority,
+  isCompositionWorkbenchApi,
+  isVisualReferencePath,
+} from "./workbench-authority";
 
 const TIMELINE_SHELL_GROUP_HEADINGS = [
   "Today",
@@ -66,16 +77,41 @@ export function injectLiveMovementIdsIntoTimelineGroups(
   }));
 }
 
-function mergeTodayOverlay(baseApi: OrvekDataApi, todayApi: OrvekDataApi): OrvekDataApi {
-  const reportId = todayApi.today?.report?.reportId ?? null;
-  const compositionReport =
-    Boolean(reportId) && todayApi.getObject(reportId)?.type === "report";
+function isReferenceCompositionTodayApi(api: OrvekDataApi): boolean {
+  if (isCompositionWorkbenchApi(api)) {
+    return true;
+  }
+  const reportId = api.today?.report?.reportId ?? null;
+  if (!reportId) {
+    return false;
+  }
+  const report = api.getObject(reportId);
+  return report?.type === "report" && report.reportProvenance === "reference_sample";
+}
 
-  // Explicit CanonicalTodayComposition densograph: prefer todayApi.getObject over
-  // MU-report parity filtering (which would drop decision/report/receipt projections).
-  if (compositionReport) {
+function mergeTodayOverlay(
+  baseApi: OrvekDataApi,
+  todayApi: OrvekDataApi,
+  allowCompositionWorkbenchAuthority: boolean,
+): OrvekDataApi {
+  const reportId = todayApi.today?.report?.reportId ?? null;
+  const reportObject = reportId ? todayApi.getObject(reportId) : undefined;
+  const reportDensograph =
+    Boolean(reportId) && reportObject?.type === "report";
+  const referenceComposition = isReferenceCompositionTodayApi(todayApi);
+
+  // Persisted reference/composition densographs are not production authority.
+  if (referenceComposition && !allowCompositionWorkbenchAuthority) {
+    return baseApi;
+  }
+
+  // Explicit densograph path: composition (when allowed) or live MU report objects.
+  // Prefer todayApi.getObject over MU-report parity filtering (which would drop
+  // decision/report/receipt projections).
+  if (reportDensograph) {
     const baseGetObject = baseApi.getObject.bind(baseApi);
-    const hasWorkbench = (todayApi.mapCategories?.length ?? 0) > 0;
+    const hasWorkbench =
+      allowCompositionWorkbenchAuthority && isCompositionWorkbenchApi(todayApi);
     return {
       ...baseApi,
       today: todayApi.today,
@@ -737,9 +773,16 @@ export function buildHybridWorkbenchDataApi(
   activeQuestionsApi?: OrvekDataApi,
   investigationsApi?: OrvekDataApi,
   freeExploreChatApi?: OrvekDataApi,
+  options?: HybridWorkbenchAuthorityOptions,
 ): OrvekDataApi {
+  // Production default: live providers win. Composition may own rails only when
+  // explicitly opted in (dev live-candidate / deterministic reference tests).
+  const allowCompositionWorkbenchAuthority =
+    options?.allowCompositionWorkbenchAuthority === true;
   const compositionWorkbench =
-    Boolean(todayApi) && (todayApi!.mapCategories?.length ?? 0) > 0;
+    allowCompositionWorkbenchAuthority &&
+    Boolean(todayApi) &&
+    isCompositionWorkbenchApi(todayApi);
   const mergeMap =
     !compositionWorkbench && shouldMergeMapProductionApi(mapApi);
   const mergeTimeline =
@@ -763,7 +806,7 @@ export function buildHybridWorkbenchDataApi(
   let normalizedMapApi: OrvekDataApi | undefined;
 
   if (todayApi) {
-    api = mergeTodayOverlay(api, todayApi);
+    api = mergeTodayOverlay(api, todayApi, allowCompositionWorkbenchAuthority);
   }
 
   if (mapApi) {

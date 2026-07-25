@@ -7,6 +7,7 @@ import type { WatchForItem } from "../../watch-for";
 import type { OrvekDataApi } from "../data-provider";
 import { ORVEK_DISPLAY_CONTRACT_PRODUCTION } from "../display-contract";
 import type { OrvekObject } from "../orvek-types";
+import { withResolvedCanonicalSourceType } from "../../orvek-intelligence-object-authority";
 
 export const EXPERIMENT_TITLE_MAX_LENGTH = 120;
 export const EXPERIMENT_SUMMARY_MAX_LENGTH = 200;
@@ -364,7 +365,7 @@ export function watchForItemToFieldworkObject(item: WatchForItem): OrvekObject {
     inspectorObjectId = item.linkedObjectId;
   }
 
-  return {
+  return withResolvedCanonicalSourceType({
     id: item.id,
     type: "fieldwork",
     title: item.prompt,
@@ -378,7 +379,7 @@ export function watchForItemToFieldworkObject(item: WatchForItem): OrvekObject {
     checkInOutcome: item.observationOutcome ?? undefined,
     checkInCompletedAt: item.completedAt ?? undefined,
     lastUpdated: item.updatedAt,
-  };
+  });
 }
 
 export function normalizeExperimentProductionDataApi(api: OrvekDataApi): OrvekDataApi {

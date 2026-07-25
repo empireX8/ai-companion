@@ -1,0 +1,1301 @@
+{
+  "contractId": "ORVEK-INTELLIGENCE-OBJECT-AUTHORITY-001",
+  "delivery": "DEL-005",
+  "assault": "ASSAULT_B",
+  "version": 1,
+  "controllingAudit": "docs/audits/FULL-ORVEK-LIVE-DATA-INTELLIGENCE-ARCHITECTURE-AUDIT-001.md",
+  "roles": [
+    "RAW_EVIDENCE",
+    "EXPLICIT_MEMORY",
+    "PATTERN_INTELLIGENCE",
+    "CANONICAL_CURRENT_MODEL",
+    "CONTRADICTION_OR_CONFLICT",
+    "OPEN_INQUIRY",
+    "FIELDWORK_OR_OBSERVATION",
+    "INTERNAL_CANDIDATE_OR_PROPOSAL",
+    "ACTION_PROJECTION",
+    "DECISION",
+    "OUTCOME",
+    "MODEL_MOVEMENT_LEDGER",
+    "USER_FACING_PROJECTION",
+    "LEGACY_OR_TRANSLATION_INPUT"
+  ],
+  "patternFamilies": [
+    "trigger_condition",
+    "inner_critic",
+    "repetitive_loop",
+    "contradiction_drift",
+    "recovery_stabilizer"
+  ],
+  "productionLiveAuthorityRule": "Authenticated production: genuine owned live provider data wins; else honest empty/unavailable. Reference/composition cannot suppress live rails except on explicit composition-authority paths.",
+  "objects": [
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": true,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned APP or imported session.",
+      "correctionRule": "Do not rewrite conversational history as model truth.",
+      "supersessionRule": "Not superseded; remains receipt substrate.",
+      "evidenceLinkExpectations": "May be UEL source as session.",
+      "productionWriters": [
+        "session create routes",
+        "import processor"
+      ],
+      "productionReaders": [
+        "message prompt",
+        "Timeline",
+        "Explore",
+        "patterns"
+      ],
+      "userVisibleSurfaces": [
+        "Explore",
+        "Timeline"
+      ],
+      "knownOverlapWith": [
+        "Message"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PRESENT",
+      "objectName": "Session",
+      "canonicalRole": "RAW_EVIDENCE"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": true,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": true,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned message under owned session.",
+      "correctionRule": "Preserve original text; corrections are separate objects.",
+      "supersessionRule": "Immutable evidence; not replaced by ModelUpdate.",
+      "evidenceLinkExpectations": "May be UEL source as message; EvidenceSpan FK.",
+      "productionWriters": [
+        "message route",
+        "import processor",
+        "Explore send"
+      ],
+      "productionReaders": [
+        "assistant prompt",
+        "patterns",
+        "profile",
+        "contradictions",
+        "Timeline",
+        "Explore"
+      ],
+      "userVisibleSurfaces": [
+        "Explore",
+        "Timeline",
+        "Inspector"
+      ],
+      "knownOverlapWith": [
+        "EvidenceSpan",
+        "JournalEntry"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PRESENT",
+      "objectName": "Message",
+      "canonicalRole": "RAW_EVIDENCE"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": true,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned journal entry.",
+      "correctionRule": "User edit of entry text is allowed; does not auto-mutate model objects.",
+      "supersessionRule": "Not current model truth.",
+      "evidenceLinkExpectations": "Optional PatternClaimEvidence FK; UEL source journal_entry.",
+      "productionWriters": [
+        "journal entry routes"
+      ],
+      "productionReaders": [
+        "patterns",
+        "Today",
+        "Timeline",
+        "Explore grounding"
+      ],
+      "userVisibleSurfaces": [
+        "Timeline",
+        "Today"
+      ],
+      "knownOverlapWith": [
+        "Message",
+        "QuickCheckIn"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "JournalEntry",
+      "canonicalRole": "RAW_EVIDENCE"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": true,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned check-in.",
+      "correctionRule": "Preserve original; not model mutation.",
+      "supersessionRule": "Not current model truth.",
+      "evidenceLinkExpectations": "UEL source quick_check_in.",
+      "productionWriters": [
+        "check-ins route"
+      ],
+      "productionReaders": [
+        "Timeline",
+        "dark engine"
+      ],
+      "userVisibleSurfaces": [
+        "Timeline"
+      ],
+      "knownOverlapWith": [
+        "JournalEntry"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "QuickCheckIn",
+      "canonicalRole": "RAW_EVIDENCE"
+    },
+    {
+      "secondaryRoles": [
+        "LEGACY_OR_TRANSLATION_INPUT"
+      ],
+      "isRawEvidence": true,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned upload session.",
+      "correctionRule": "Processing states only; does not become model truth.",
+      "supersessionRule": "Batch substrate only.",
+      "evidenceLinkExpectations": "Mapped as import_record UEL source convention.",
+      "productionWriters": [
+        "import upload service",
+        "import processor"
+      ],
+      "productionReaders": [
+        "upload status",
+        "import review"
+      ],
+      "userVisibleSurfaces": [
+        "Import Review"
+      ],
+      "knownOverlapWith": [
+        "ImportUploadChunk",
+        "Session"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "ImportUploadSession",
+      "canonicalRole": "RAW_EVIDENCE"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": true,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned through upload session.",
+      "correctionRule": "Temporary; deleted after processing.",
+      "supersessionRule": "Not model truth.",
+      "evidenceLinkExpectations": "Import substrate only.",
+      "productionWriters": [
+        "import upload service"
+      ],
+      "productionReaders": [
+        "import processor"
+      ],
+      "userVisibleSurfaces": [],
+      "knownOverlapWith": [
+        "ImportUploadSession"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "ImportUploadChunk",
+      "canonicalRole": "RAW_EVIDENCE"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": true,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": true,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned span with Message FK.",
+      "correctionRule": "Immutable exact quote location.",
+      "supersessionRule": "Never rewritten as current model.",
+      "evidenceLinkExpectations": "UEL source evidence_span; profile/contradiction lineage.",
+      "productionWriters": [
+        "derivation ensureEvidenceSpan",
+        "contradiction ingestion"
+      ],
+      "productionReaders": [
+        "profile links",
+        "contradiction lineage",
+        "Inspector"
+      ],
+      "userVisibleSurfaces": [
+        "Inspector"
+      ],
+      "knownOverlapWith": [
+        "Message"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PRESENT",
+      "objectName": "EvidenceSpan",
+      "canonicalRole": "RAW_EVIDENCE"
+    },
+    {
+      "secondaryRoles": [
+        "CANONICAL_CURRENT_MODEL"
+      ],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": true,
+      "canStrengthenAnotherObject": true,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": true,
+      "eligibilityRequirements": "Active qualifying owned ReferenceItem (not candidate-only).",
+      "correctionRule": "User archive/supersede; preserve originals.",
+      "supersessionRule": "Superseded/archived lose future-AI eligibility.",
+      "evidenceLinkExpectations": "UEL source reference_item; not PatternClaim or ModelUpdate.",
+      "productionWriters": [
+        "reference memory writers",
+        "import review accept"
+      ],
+      "productionReaders": [
+        "assistant prompt",
+        "Map context",
+        "Explore grounding",
+        "import review"
+      ],
+      "userVisibleSurfaces": [
+        "Map context",
+        "Import Review",
+        "Inspector"
+      ],
+      "knownOverlapWith": [
+        "ProfileArtifact",
+        "UserMapConclusion",
+        "PatternClaim"
+      ],
+      "migrationTranslationRule": "Do not merge into ProfileArtifact/PatternClaim/UMC in this delivery.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "ReferenceItem",
+      "canonicalRole": "EXPLICIT_MEMORY"
+    },
+    {
+      "secondaryRoles": [
+        "INTERNAL_CANDIDATE_OR_PROPOSAL"
+      ],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": true,
+      "isCandidateOnly": true,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned candidate artifact; never outranks governed canonical current object.",
+      "correctionRule": "May supply evidence/candidate input only.",
+      "supersessionRule": "Cannot independently compete where qualifying UMC/Reference/Contradiction exists.",
+      "evidenceLinkExpectations": "ProfileArtifactEvidenceLink to spans; UEL source profile_artifact.",
+      "productionWriters": [
+        "profile derivation",
+        "import extraction"
+      ],
+      "productionReaders": [
+        "dark-engine evidence packet"
+      ],
+      "userVisibleSurfaces": [],
+      "knownOverlapWith": [
+        "ReferenceItem",
+        "PatternClaim",
+        "UserMapConclusion"
+      ],
+      "migrationTranslationRule": "Translation-layer only until authorised inventory (DEL-009).",
+      "implementationStatus": "PARTIAL",
+      "objectName": "ProfileArtifact",
+      "canonicalRole": "LEGACY_OR_TRANSLATION_INPUT"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": true,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "One of five PatternType families; evidence-linked; lifecycle qualifying.",
+      "correctionRule": "Governed correction/weakening deferred to DEL-006; preserve five families.",
+      "supersessionRule": "Strengthens model; is not the entire current model; not ModelUpdate.",
+      "evidenceLinkExpectations": "PatternClaimEvidence + UEL source/target pattern_claim.",
+      "productionWriters": [
+        "pattern detector v1",
+        "pattern lifecycle"
+      ],
+      "productionReaders": [
+        "Map",
+        "Inspector",
+        "actions",
+        "Explore grounding"
+      ],
+      "userVisibleSurfaces": [
+        "Map",
+        "Inspector",
+        "Decisions"
+      ],
+      "knownOverlapWith": [
+        "UserMapConclusion",
+        "ProfileArtifact",
+        "ReferenceItem"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PRESENT",
+      "objectName": "PatternClaim",
+      "canonicalRole": "PATTERN_INTELLIGENCE"
+    },
+    {
+      "secondaryRoles": [
+        "PATTERN_INTELLIGENCE"
+      ],
+      "isRawEvidence": true,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": true,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned through PatternClaim.",
+      "correctionRule": "Append-only receipts.",
+      "supersessionRule": "Does not become current model alone.",
+      "evidenceLinkExpectations": "UEL source pattern_claim_evidence.",
+      "productionWriters": [
+        "pattern claim evidence writers"
+      ],
+      "productionReaders": [
+        "pattern lifecycle",
+        "Inspector",
+        "Explore grounding"
+      ],
+      "userVisibleSurfaces": [
+        "Inspector"
+      ],
+      "knownOverlapWith": [
+        "EvidenceSpan",
+        "Message"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PRESENT",
+      "objectName": "PatternClaimEvidence",
+      "canonicalRole": "RAW_EVIDENCE"
+    },
+    {
+      "secondaryRoles": [
+        "CANONICAL_CURRENT_MODEL"
+      ],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": true,
+      "canStrengthenAnotherObject": true,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": true,
+      "eligibilityRequirements": "Confirmed/qualifying open contradiction; controlled ingestion gate unchanged.",
+      "correctionRule": "Lifecycle transitions; preserve dual-source evidence.",
+      "supersessionRule": "Resolved/dismissed lose normal future-interpretation effect.",
+      "evidenceLinkExpectations": "ContradictionEvidence + UEL target contradiction_node.",
+      "productionWriters": [
+        "contradiction production ingestion"
+      ],
+      "productionReaders": [
+        "assistant prompt",
+        "Map conflicts",
+        "Today",
+        "Inspector"
+      ],
+      "userVisibleSurfaces": [
+        "Map",
+        "Today",
+        "Inspector",
+        "contradiction review"
+      ],
+      "knownOverlapWith": [
+        "PatternClaim",
+        "UserMapConclusion"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PRESENT",
+      "objectName": "ContradictionNode",
+      "canonicalRole": "CONTRADICTION_OR_CONFLICT"
+    },
+    {
+      "secondaryRoles": [
+        "CONTRADICTION_OR_CONFLICT"
+      ],
+      "isRawEvidence": true,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": true,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned through ContradictionNode.",
+      "correctionRule": "Append evidence; preserve lineage.",
+      "supersessionRule": "Not current truth alone.",
+      "evidenceLinkExpectations": "UEL source contradiction_evidence.",
+      "productionWriters": [
+        "contradiction writers"
+      ],
+      "productionReaders": [
+        "contradiction detail",
+        "Inspector"
+      ],
+      "userVisibleSurfaces": [
+        "Inspector"
+      ],
+      "knownOverlapWith": [
+        "EvidenceSpan",
+        "Message"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PRESENT",
+      "objectName": "ContradictionEvidence",
+      "canonicalRole": "RAW_EVIDENCE"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": true,
+      "canStrengthenAnotherObject": true,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": true,
+      "eligibilityRequirements": "Qualifying current owned UserMapConclusion for the concept.",
+      "correctionRule": "User/Inspector correction; preserve prior versions via supersession.",
+      "supersessionRule": "Where qualifying UMC exists, it outranks movement-ledger ModelUpdate as current representation.",
+      "evidenceLinkExpectations": "UEL target usermap_conclusion.",
+      "productionWriters": [
+        "candidate publish helper",
+        "UMC correction writers"
+      ],
+      "productionReaders": [
+        "Map",
+        "Today",
+        "Explore grounding",
+        "Inspector",
+        "reports"
+      ],
+      "userVisibleSurfaces": [
+        "Map",
+        "Today",
+        "Inspector"
+      ],
+      "knownOverlapWith": [
+        "PatternClaim",
+        "ReferenceItem",
+        "ProfileArtifact",
+        "ModelUpdate"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "UserMapConclusion",
+      "canonicalRole": "CANONICAL_CURRENT_MODEL"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned investigation; open status is not current truth.",
+      "correctionRule": "Lifecycle open/active/resolved/archived.",
+      "supersessionRule": "Open inquiry is not current truth merely because it exists.",
+      "evidenceLinkExpectations": "UEL target investigation.",
+      "productionWriters": [
+        "investigation publish helper"
+      ],
+      "productionReaders": [
+        "Explore",
+        "Today",
+        "Timeline",
+        "Inspector"
+      ],
+      "userVisibleSurfaces": [
+        "Explore Active Questions/Investigations",
+        "Today"
+      ],
+      "knownOverlapWith": [
+        "FieldworkAssignment",
+        "UserMapConclusion"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "Investigation",
+      "canonicalRole": "OPEN_INQUIRY"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned visible fieldwork assignment.",
+      "correctionRule": "Observation/check-in updates; not model mutation.",
+      "supersessionRule": "Not current truth; not model movement.",
+      "evidenceLinkExpectations": "UEL target fieldwork_assignment.",
+      "productionWriters": [
+        "fieldwork publish helper"
+      ],
+      "productionReaders": [
+        "Explore Fieldwork",
+        "Today",
+        "Timeline",
+        "Inspector"
+      ],
+      "userVisibleSurfaces": [
+        "Explore Experiment/Fieldwork",
+        "Today"
+      ],
+      "knownOverlapWith": [
+        "Investigation",
+        "SurfacedAction"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "FieldworkAssignment",
+      "canonicalRole": "FIELDWORK_OR_OBSERVATION"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": true,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "User-reviewable proposal only; Phase 0 containment active.",
+      "correctionRule": "Reject/publish gates; unsafe fixed semantics contained (DEL-001A).",
+      "supersessionRule": "Not current model truth; not ModelUpdate until governed publish.",
+      "evidenceLinkExpectations": "sourcesJson; publish may materialize UEL.",
+      "productionWriters": [
+        "explore movement proposal helpers"
+      ],
+      "productionReaders": [
+        "Explore review",
+        "Inspector"
+      ],
+      "userVisibleSurfaces": [
+        "Explore"
+      ],
+      "knownOverlapWith": [
+        "ModelUpdate",
+        "UserMapConclusion"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "ExploreMovementProposal",
+      "canonicalRole": "INTERNAL_CANDIDATE_OR_PROPOSAL"
+    },
+    {
+      "secondaryRoles": [
+        "USER_FACING_PROJECTION"
+      ],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned surfaced action row.",
+      "correctionRule": "Action-state transitions; not Decision schema.",
+      "supersessionRule": "Not automatically a genuine user Decision; does not own model truth.",
+      "evidenceLinkExpectations": "UEL target/source surfaced_action; scalar linked claim/goal IDs.",
+      "productionWriters": [
+        "actions-v1"
+      ],
+      "productionReaders": [
+        "Today",
+        "Decisions",
+        "Timeline",
+        "Inspector"
+      ],
+      "userVisibleSurfaces": [
+        "Decisions",
+        "Today"
+      ],
+      "knownOverlapWith": [
+        "Decision",
+        "PatternClaimAction",
+        "Outcome"
+      ],
+      "migrationTranslationRule": "Future Decision object is DEL-004; do not fabricate Decision rows here.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "SurfacedAction",
+      "canonicalRole": "ACTION_PROJECTION"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": true,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned published movement ledger row.",
+      "correctionRule": "Immutable audit trail; do not mutate as current object.",
+      "supersessionRule": "Not itself the canonical current model object; target mutation is DEL-007.",
+      "evidenceLinkExpectations": "UEL target model_update; affected object scalar type/id.",
+      "productionWriters": [
+        "model update publish helpers",
+        "Explore publish"
+      ],
+      "productionReaders": [
+        "Today",
+        "Timeline",
+        "Map preview",
+        "Explore",
+        "Inspector/report"
+      ],
+      "userVisibleSurfaces": [
+        "Today",
+        "Timeline",
+        "Reports/What Changed",
+        "Model Movement"
+      ],
+      "knownOverlapWith": [
+        "UserMapConclusion",
+        "ExploreMovementProposal"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "ModelUpdate",
+      "canonicalRole": "MODEL_MOVEMENT_LEDGER"
+    },
+    {
+      "secondaryRoles": [
+        "MODEL_MOVEMENT_LEDGER"
+      ],
+      "isRawEvidence": true,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned polymorphic link with supported pair + ownership checks.",
+      "correctionRule": "Lineage only; not semantic truth authority.",
+      "supersessionRule": "Proves edges; does not become current truth.",
+      "evidenceLinkExpectations": "Unique target/source/role tuple; validate ownership-verifiable pair + ownership. timeline_aggregation and user_correction are reserved non-writable sources.",
+      "productionWriters": [
+        "understanding-evidence-link-writer",
+        "publish helpers"
+      ],
+      "productionReaders": [
+        "Inspector",
+        "report builders"
+      ],
+      "userVisibleSurfaces": [
+        "Inspector"
+      ],
+      "knownOverlapWith": [
+        "SurfacedEvidencePointer"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "UnderstandingEvidenceLink",
+      "canonicalRole": "RAW_EVIDENCE"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Owned pointer for Today/Inspector depth overlay.",
+      "correctionRule": "Projection only; must derive from canonical objects/evidence.",
+      "supersessionRule": "Must not become parallel truth store.",
+      "evidenceLinkExpectations": "Scalar model/source IDs; rationale relation.",
+      "productionWriters": [
+        "live evidence depth write hook"
+      ],
+      "productionReaders": [
+        "Today evidence-depth overlay",
+        "Inspector"
+      ],
+      "userVisibleSurfaces": [
+        "Today",
+        "Inspector"
+      ],
+      "knownOverlapWith": [
+        "UnderstandingEvidenceLink",
+        "ModelUpdate"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PARTIAL",
+      "objectName": "SurfacedEvidencePointer",
+      "canonicalRole": "USER_FACING_PROJECTION"
+    },
+    {
+      "secondaryRoles": [
+        "LEGACY_OR_TRANSLATION_INPUT"
+      ],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Reference/dev/test only; never production authority (DEL-003).",
+      "correctionRule": "Persisted rows ignored in production runtime; no destructive delete.",
+      "supersessionRule": "Live providers outrank composition.",
+      "evidenceLinkExpectations": "Embedded densograph IDs; no relational lineage.",
+      "productionWriters": [
+        "exact/full reference seed (dev)"
+      ],
+      "productionReaders": [
+        "dev live-candidate composition path",
+        "tests"
+      ],
+      "userVisibleSurfaces": [
+        "dev composition routes only"
+      ],
+      "knownOverlapWith": [
+        "CanonicalModelMovementReport"
+      ],
+      "migrationTranslationRule": "Deployed inventory/cleanup deferred to DEL-009.",
+      "implementationStatus": "REFERENCE_ONLY",
+      "objectName": "CanonicalTodayComposition",
+      "canonicalRole": "USER_FACING_PROJECTION"
+    },
+    {
+      "secondaryRoles": [
+        "LEGACY_OR_TRANSLATION_INPUT"
+      ],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Reference/dev/test report snapshot only.",
+      "correctionRule": "Not live ModelUpdate authority in production.",
+      "supersessionRule": "Live movement/report projections outrank.",
+      "evidenceLinkExpectations": "Related IDs as JSON arrays.",
+      "productionWriters": [
+        "exact/full reference seed (dev)"
+      ],
+      "productionReaders": [
+        "dev composition path",
+        "tests"
+      ],
+      "userVisibleSurfaces": [
+        "dev composition routes only"
+      ],
+      "knownOverlapWith": [
+        "ModelUpdate",
+        "CanonicalTodayComposition"
+      ],
+      "migrationTranslationRule": "Deployed inventory deferred to DEL-009.",
+      "implementationStatus": "REFERENCE_ONLY",
+      "objectName": "CanonicalModelMovementReport",
+      "canonicalRole": "USER_FACING_PROJECTION"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Reserved future contract; no schema in this task.",
+      "correctionRule": "DEL-004 will implement persistence.",
+      "supersessionRule": "SurfacedAction must not masquerade as Decision.",
+      "evidenceLinkExpectations": "Reserved; must link evidence when implemented.",
+      "productionWriters": [],
+      "productionReaders": [],
+      "userVisibleSurfaces": [
+        "Decisions shell (future)"
+      ],
+      "knownOverlapWith": [
+        "SurfacedAction",
+        "Outcome"
+      ],
+      "migrationTranslationRule": "No fabricated Decision rows; DEL-004 owns implementation.",
+      "implementationStatus": "RESERVED_FUTURE",
+      "objectName": "Decision",
+      "canonicalRole": "DECISION"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Reserved future contract; no schema in this task.",
+      "correctionRule": "DEL-004 will implement durable outcome truth.",
+      "supersessionRule": "Local React outcome state is not Outcome authority.",
+      "evidenceLinkExpectations": "Reserved; must link decision + evidence when implemented.",
+      "productionWriters": [],
+      "productionReaders": [],
+      "userVisibleSurfaces": [
+        "Decisions / Inspector (future)"
+      ],
+      "knownOverlapWith": [
+        "SurfacedAction",
+        "Decision"
+      ],
+      "migrationTranslationRule": "No fabricated Outcome rows; DEL-004 owns implementation.",
+      "implementationStatus": "RESERVED_FUTURE",
+      "objectName": "Outcome",
+      "canonicalRole": "OUTCOME"
+    },
+    {
+      "secondaryRoles": [],
+      "isRawEvidence": false,
+      "canBeCurrentTruth": false,
+      "canStrengthenAnotherObject": false,
+      "isCandidateOnly": false,
+      "isImmutableHistory": false,
+      "mayEnterFutureAiContext": false,
+      "eligibilityRequirements": "Today/Map/Timeline/Inspector/report cards must derive from canonical objects.",
+      "correctionRule": "Change data adapters, not parallel truth stores.",
+      "supersessionRule": "Projections never outrank canonical objects.",
+      "evidenceLinkExpectations": "Must retain inspectable live IDs/evidence.",
+      "productionWriters": [
+        "production page APIs",
+        "hybrid workbench"
+      ],
+      "productionReaders": [
+        "canonical shell pages",
+        "Inspector"
+      ],
+      "userVisibleSurfaces": [
+        "Today",
+        "Map",
+        "Decisions",
+        "Timeline",
+        "Explore",
+        "Reports"
+      ],
+      "knownOverlapWith": [
+        "CanonicalTodayComposition",
+        "SurfacedEvidencePointer"
+      ],
+      "migrationTranslationRule": "No migration in DEL-005; preserve existing rows.",
+      "implementationStatus": "PRESENT",
+      "objectName": "UserFacingProjection",
+      "canonicalRole": "USER_FACING_PROJECTION"
+    }
+  ],
+  "evidenceLinkSupportedPairs": [
+    {
+      "sourceType": "pattern_claim",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "pattern_claim",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "pattern_claim",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "pattern_claim",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "pattern_claim",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "pattern_claim",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "pattern_claim",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "pattern_claim_evidence",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "pattern_claim_evidence",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "pattern_claim_evidence",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "pattern_claim_evidence",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "pattern_claim_evidence",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "pattern_claim_evidence",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "pattern_claim_evidence",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "contradiction_node",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "contradiction_node",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "contradiction_node",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "contradiction_node",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "contradiction_node",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "contradiction_node",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "contradiction_node",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "contradiction_evidence",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "contradiction_evidence",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "contradiction_evidence",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "contradiction_evidence",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "contradiction_evidence",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "contradiction_evidence",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "contradiction_evidence",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "profile_artifact",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "profile_artifact",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "profile_artifact",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "profile_artifact",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "profile_artifact",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "profile_artifact",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "profile_artifact",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "evidence_span",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "evidence_span",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "evidence_span",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "evidence_span",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "evidence_span",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "evidence_span",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "evidence_span",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "reference_item",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "reference_item",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "reference_item",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "reference_item",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "reference_item",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "reference_item",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "reference_item",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "surfaced_action",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "surfaced_action",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "surfaced_action",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "surfaced_action",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "surfaced_action",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "surfaced_action",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "surfaced_action",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "quick_check_in",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "quick_check_in",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "quick_check_in",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "quick_check_in",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "quick_check_in",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "quick_check_in",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "quick_check_in",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "journal_entry",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "journal_entry",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "journal_entry",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "journal_entry",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "journal_entry",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "journal_entry",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "journal_entry",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "session",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "session",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "session",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "session",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "session",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "session",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "session",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "message",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "message",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "message",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "message",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "message",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "message",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "message",
+      "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "import_record",
+      "targetType": "usermap_conclusion"
+    },
+    {
+      "sourceType": "import_record",
+      "targetType": "investigation"
+    },
+    {
+      "sourceType": "import_record",
+      "targetType": "model_update"
+    },
+    {
+      "sourceType": "import_record",
+      "targetType": "fieldwork_assignment"
+    },
+    {
+      "sourceType": "import_record",
+      "targetType": "surfaced_action"
+    },
+    {
+      "sourceType": "import_record",
+      "targetType": "pattern_claim"
+    },
+    {
+      "sourceType": "import_record",
+      "targetType": "contradiction_node"
+    }
+  ],
+  "deferredItems": [
+    {
+      "id": "DEL-009-COMPOSITION-ROW-INVENTORY",
+      "reason": "Deployed CanonicalTodayComposition / report row counts and ownership were not inspected.",
+      "requires": "Authorised read-only deployed inventory"
+    },
+    {
+      "id": "DEL-009-ORPHAN-POLYMORPHIC-LINK-INVENTORY",
+      "reason": "Orphan rates for polymorphic UEL / scalar affected-object IDs need deployed inventory before migration.",
+      "requires": "Authorised read-only deployed inventory"
+    },
+    {
+      "id": "DEL-004-DECISION-OUTCOME-SCHEMA",
+      "reason": "Decision and Outcome are reserved contracts only; no schema in this delivery.",
+      "requires": "Approved schema contract in DEL-004"
+    },
+    {
+      "id": "DEL-007-TARGET-OBJECT-MUTATION",
+      "reason": "ModelUpdate ledger does not yet mutate the affected current-model object.",
+      "requires": "DEL-007 authorised implementation"
+    }
+  ],
+  "evidenceLinkPairMeaning": "A supported pair means the current UnderstandingEvidenceLink writer can ownership-verify both ends. It does not independently prove a semantic claim is true. Prisma enum values timeline_aggregation and user_correction remain reserved/deferred and are not writer-eligible.",
+  "reservedNonWritableSourceTypes": [
+    "timeline_aggregation",
+    "user_correction"
+  ]
+}

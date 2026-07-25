@@ -31,6 +31,7 @@ import { buildTodayProductionDataApi } from "@/lib/orvek-v0/production/today-api
 import { buildFreeExploreChatProductionDataApi } from "@/lib/orvek-v0/production/free-explore-chat-api";
 import { isFreeExploreChatSessionSendReady } from "@/lib/orvek-v0/production/free-explore-chat-presentation";
 import { buildHybridWorkbenchDataApi } from "@/lib/orvek-v0/production/hybrid-workbench-api";
+import { allowsCompositionWorkbenchAuthority } from "@/lib/orvek-v0/production/workbench-authority";
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types";
 import {
   applySurfacedEvidenceDepthGate,
@@ -1018,12 +1019,19 @@ export function useOrvekHybridWorkbenchDataApi() {
   ]);
 
   const dataApi = useMemo(() => {
+    // Production ignores persisted composition rows (DEL-003). Explicit
+    // /dev/orvek-v0-canonical-live may keep composition authority for round-trips.
+    const allowCompositionAuthority = allowsCompositionWorkbenchAuthority(pathname);
+    const authoritativeWorkbench = allowCompositionAuthority
+      ? canonicalWorkbench
+      : null;
+
     const todayApi = buildTodayProductionDataApi({
       snapshot,
       isLoading: isLoadingSnapshot,
       briefingDate: DISPLAY_DATE,
       movementDepthById,
-      canonicalWorkbench,
+      canonicalWorkbench: authoritativeWorkbench,
     });
 
     const mapApi = buildMapProductionDataApi({
@@ -1098,6 +1106,9 @@ export function useOrvekHybridWorkbenchDataApi() {
       activeQuestionsApi,
       investigationsApi,
       freeExploreChatApi,
+      {
+        allowCompositionWorkbenchAuthority: allowCompositionAuthority,
+      },
     );
 
     const withProfileFacts = attachMapProfileFactsToDataApi(
@@ -1112,7 +1123,7 @@ export function useOrvekHybridWorkbenchDataApi() {
         importReview,
       },
       // Explicit Today composition owns resurfaced ordering — do not replace with depth overlay.
-      overlay: canonicalWorkbench ? null : surfacedEvidenceDepth,
+      overlay: authoritativeWorkbench ? null : surfacedEvidenceDepth,
     });
   }, [
     baseApi,
@@ -1120,6 +1131,7 @@ export function useOrvekHybridWorkbenchDataApi() {
     snapshot,
     movementDepthById,
     canonicalWorkbench,
+    pathname,
     mapItems,
     openContradictions,
     mapIsLoading,

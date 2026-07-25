@@ -391,6 +391,42 @@ describe("generic evidence-links candidate visibility guard", () => {
     expect(response.status).toBe(201);
     expect(prismaMock.understandingEvidenceLink.create).toHaveBeenCalled();
   });
+
+  it("POST returns 400 VALIDATION_ERROR for unsupported timeline_aggregation pair", async () => {
+    mockPublicEligibleTargets();
+    prismaMock.userMapConclusion.findFirst.mockResolvedValue({ id: "umc-public" });
+
+    const route = await import("../../app/api/understanding/evidence-links/route");
+    const response = await route.POST(
+      new Request("http://localhost/api/understanding/evidence-links", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          targetType: "usermap_conclusion",
+          targetId: "umc-public",
+          sourceType: "timeline_aggregation",
+          sourceId: "agg-1",
+          role: "context",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.status).not.toBe(500);
+    const payload = await response.json();
+    expect(payload.code).toBe("VALIDATION_ERROR");
+    expect(payload.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "sourceType+targetType",
+          message: expect.stringContaining(
+            "Unsupported evidence-link pair timeline_aggregation → usermap_conclusion",
+          ),
+        }),
+      ]),
+    );
+    expect(prismaMock.understandingEvidenceLink.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("relatedUnderstanding public target filtering", () => {

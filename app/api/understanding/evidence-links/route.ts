@@ -26,6 +26,7 @@ import {
   UnderstandingEvidenceLinkDuplicateError,
   UnderstandingEvidenceLinkValidationError,
   createUnderstandingEvidenceLinkForUser,
+  EvidenceLinkPairValidationError,
 } from "../../../../lib/understanding-evidence-link-writer";
 
 export const dynamic = "force-dynamic";
@@ -340,6 +341,14 @@ export async function POST(req: Request) {
 
     return Response.json({ item: created }, { status: 201 });
   } catch (error) {
+    if (error instanceof EvidenceLinkPairValidationError) {
+      return errorResponse(400, "Validation failed", "VALIDATION_ERROR", [
+        {
+          field: "sourceType+targetType",
+          message: error.message,
+        },
+      ]);
+    }
     if (error instanceof UnderstandingEvidenceLinkValidationError) {
       return errorResponse(400, "Validation failed", "VALIDATION_ERROR", [
         {

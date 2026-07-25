@@ -11,6 +11,12 @@ import {
   uelMetaWithGraphSlot,
   type EvidencePointerGraphSlot,
 } from "./live-evidence-depth-write-contract";
+import {
+  assertSupportedEvidenceLinkPair,
+  EvidenceLinkPairValidationError,
+} from "./orvek-intelligence-object-authority";
+
+export { EvidenceLinkPairValidationError };
 
 export type UnderstandingEvidenceLinkWriteInput = {
   targetType: UnderstandingLinkTargetType;
@@ -264,6 +270,12 @@ export async function createUnderstandingEvidenceLinkForUser(args: {
 }) {
   const db = (args.db ??
     (prismadb as unknown as UnderstandingEvidenceLinkWriterDb)) as UnderstandingEvidenceLinkWriterDb;
+
+  // DEL-005: reject unsupported polymorphic type pairs before ownership checks.
+  assertSupportedEvidenceLinkPair({
+    sourceType: args.input.sourceType,
+    targetType: args.input.targetType,
+  });
 
   const targetOwned = await verifyUnderstandingEvidenceLinkTargetOwnership({
     userId: args.userId,

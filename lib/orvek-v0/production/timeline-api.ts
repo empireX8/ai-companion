@@ -12,6 +12,7 @@ import type { OrvekDataApi, OrvekTimelineGroup } from "../data-provider";
 import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import type { OrvekObject } from "../orvek-types";
+import { withResolvedCanonicalSourceType } from "../../orvek-intelligence-object-authority";
 import { normalizeTimelineProductionDataApi } from "./timeline-presentation";
 
 const TIMELINE_SHELL_GROUP_HEADINGS = [
@@ -38,7 +39,7 @@ export function buildTimelineProductionDataApi(input: MapTimelineDataInput): Orv
           ? movementDepthById[inspectorObjectId]
           : movementDepthById[row.selectableObjectId ?? ""];
 
-      const base: OrvekObject = {
+      const base: OrvekObject = withResolvedCanonicalSourceType({
         id: row.id,
         type: "timeline-event",
         title: row.title,
@@ -51,20 +52,20 @@ export function buildTimelineProductionDataApi(input: MapTimelineDataInput): Orv
         tags: [row.eventLabel],
         inspectorObjectType: row.inspectorTarget?.objectType,
         inspectorObjectId: row.inspectorTarget?.objectId,
-      };
+      });
 
       objects[row.id] = movementDepth
         ? enrichOrvekObjectWithMovementDepth(base, movementDepth)
         : base;
 
       if (inspectorObjectId && inspectorObjectId !== row.id) {
-        const movementObject: OrvekObject = {
+        const movementObject: OrvekObject = withResolvedCanonicalSourceType({
           ...objects[row.id],
           id: inspectorObjectId,
           type: "model-update",
           inspectorObjectType: "model_update",
           inspectorObjectId,
-        };
+        });
         objects[inspectorObjectId] = movementDepth
           ? enrichOrvekObjectWithMovementDepth(movementObject, movementDepth)
           : movementObject;
@@ -81,7 +82,7 @@ export function buildTimelineProductionDataApi(input: MapTimelineDataInput): Orv
       };
     } else if (!objects[depth.id]) {
       objects[depth.id] = enrichOrvekObjectWithMovementDepth(
-        {
+        withResolvedCanonicalSourceType({
           id: depth.id,
           type: "model-update",
           title: depth.movementSummary,
@@ -89,7 +90,7 @@ export function buildTimelineProductionDataApi(input: MapTimelineDataInput): Orv
           eventType: "Model update",
           inspectorObjectType: "model_update",
           inspectorObjectId: depth.id,
-        },
+        }),
         depth,
       );
     }

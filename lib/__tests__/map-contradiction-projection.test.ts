@@ -246,6 +246,13 @@ describe("Wave 1.1 ContradictionNode → Map Active conflicts projection", () =>
       createMockOrvekDataApi(),
       todayWithComposition,
       liveMapApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { allowCompositionWorkbenchAuthority: true },
     );
 
     expect(hybrid.mapCategories.find((c) => c.id === "goals")?.ids).toEqual(["m-goal-1"]);

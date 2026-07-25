@@ -188,5 +188,9 @@ export function reportRecordToOrvekObject(
     evidenceCount: report.relatedReceiptIds.length,
     lastUpdated: report.generatedAt,
     canonicalReportId: report.id,
+    // Marks composition/report densographs so production hybrid can refuse
+    // reference authority without mistaking live ModelUpdate reports.
+    reportProvenance: "reference_sample",
+    canonicalSourceType: "CanonicalModelMovementReport",
   };
 }

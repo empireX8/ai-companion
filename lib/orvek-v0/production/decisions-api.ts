@@ -13,6 +13,7 @@ import type { OrvekDataApi, OrvekDecisionListGroup } from "../data-provider";
 import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import type { OrvekObject } from "../orvek-types";
+import { withResolvedCanonicalSourceType } from "../../orvek-intelligence-object-authority";
 import {
   buildLinkedClaimAliasObject,
   mapDecisionStatusToReferenceGroup,
@@ -25,7 +26,7 @@ function actionToObject(
 ): OrvekObject {
   const tags = groupHeading ? referenceTagsForDecisionGroup(groupHeading) : [toDecisionStatusLabel(action.status)];
 
-  return {
+  return withResolvedCanonicalSourceType({
     id: action.id,
     type: "decision",
     title: action.title,
@@ -49,7 +50,7 @@ function actionToObject(
     inspectorObjectType: "reference_decision",
     inspectorObjectId: action.id,
     lastUpdated: action.updatedAt,
-  };
+  });
 }
 
 function groupHeadingForAction(action: SurfacedActionView): ReturnType<typeof mapDecisionStatusToReferenceGroup> {

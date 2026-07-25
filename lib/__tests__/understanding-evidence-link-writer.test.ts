@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 
+import { EvidenceLinkPairValidationError } from "../orvek-intelligence-object-authority";
 import {
   UnderstandingEvidenceLinkDuplicateError,
   createUnderstandingEvidenceLinkForUser,
@@ -160,9 +161,7 @@ describe("understanding-evidence-link-writer", () => {
         },
         db,
       })
-    ).rejects.toMatchObject({
-      field: "sourceId",
-    });
+    ).rejects.toBeInstanceOf(EvidenceLinkPairValidationError);
 
     expect(db.understandingEvidenceLink.create).not.toHaveBeenCalled();
   });
@@ -183,9 +182,7 @@ describe("understanding-evidence-link-writer", () => {
         },
         db,
       })
-    ).rejects.toMatchObject({
-      field: "sourceId",
-    });
+    ).rejects.toBeInstanceOf(EvidenceLinkPairValidationError);
 
     expect(db.understandingEvidenceLink.create).not.toHaveBeenCalled();
   });
