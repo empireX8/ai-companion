@@ -34,6 +34,7 @@ import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import type { OrvekObject } from "../orvek-types";
 import { resolveModelUpdateDisplayTitle } from "../../model-update-identity";
+import { withResolvedCanonicalSourceType } from "../../orvek-intelligence-object-authority";
 import { withTodayAdapterHonesty } from "./today-adapter-honesty";
 
 function selectionToOrvekObject(
@@ -51,7 +52,7 @@ function selectionToOrvekObject(
           ? "map-object"
           : "map-object";
 
-  return {
+  return withResolvedCanonicalSourceType({
     id: objectId,
     type,
     title,
@@ -60,7 +61,7 @@ function selectionToOrvekObject(
     tags: selection.objectType === "model_update" ? ["Model update"] : undefined,
     inspectorObjectType: selection.objectType as InspectorSelectableObjectType,
     inspectorObjectId: selection.objectId,
-  };
+  });
 }
 
 function registerSelectableTarget(
@@ -218,7 +219,7 @@ export function buildTodayProductionDataApi(
       updateTypeLabel: update.updateTypeLabel,
       affectedObjectTypeLabel: update.affectedObjectTypeLabel,
     });
-    const base: OrvekObject = {
+    const base: OrvekObject = withResolvedCanonicalSourceType({
       id: update.id,
       type: "model-update",
       title,
@@ -231,7 +232,7 @@ export function buildTodayProductionDataApi(
       tags: ["Model update"],
       inspectorObjectType: "model_update",
       inspectorObjectId: update.id,
-    };
+    });
     objects[update.id] = enrichOrvekObjectWithMovementDepth(base, depth);
   }
 
@@ -241,7 +242,7 @@ export function buildTodayProductionDataApi(
       userFacingSummary: movement.evidence,
       existingTitle: movement.updated,
     });
-    const base: OrvekObject = {
+    const base: OrvekObject = withResolvedCanonicalSourceType({
       id: movement.id,
       type: "model-update",
       title,
@@ -256,7 +257,7 @@ export function buildTodayProductionDataApi(
       inspectorObjectId: movement.id,
       before: movement.previous?.trim() ? movement.previous : undefined,
       after: depth?.after?.trim() ? depth.after : undefined,
-    };
+    });
     objects[movement.id] = enrichOrvekObjectWithMovementDepth(base, depth);
   }
 

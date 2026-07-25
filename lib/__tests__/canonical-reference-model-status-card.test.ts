@@ -101,6 +101,13 @@ describe("canonical reference model-status card", () => {
         mapIsLoading: false,
         modelStatusCard: null,
       },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { allowCompositionWorkbenchAuthority: true },
     );
 
     expect(hybrid.modelStatusCard).toEqual(CANONICAL_REFERENCE_MODEL_STATUS_CARD);

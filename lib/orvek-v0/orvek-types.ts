@@ -118,6 +118,12 @@ export interface OrvekObject {
   inspectorObjectId?: string
 
   /**
+   * Canonical semantic source type for adapter provenance (DEL-005).
+   * Identifies the governing object family without creating a parallel truth store.
+   */
+  canonicalSourceType?: import("@/lib/orvek-intelligence-object-authority").CanonicalSourceTypeTag
+
+  /**
    * Accepted active ReferenceItems for Map profile sections
    * (e.g. Preferences / interests → KNOWN PREFERENCES).
    * Not ModelUpdates; not fabricated evidence links.

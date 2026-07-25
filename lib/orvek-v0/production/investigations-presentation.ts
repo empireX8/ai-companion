@@ -10,6 +10,7 @@ import { formatLinkedObjectType } from "../../public-intelligence-safe-slice";
 import type { OrvekDataApi } from "../data-provider";
 import { ORVEK_DISPLAY_CONTRACT_PRODUCTION } from "../display-contract";
 import type { OrvekObject } from "../orvek-types";
+import { withResolvedCanonicalSourceType } from "../../orvek-intelligence-object-authority";
 
 export const INVESTIGATIONS_TITLE_MAX_LENGTH = 120;
 export const INVESTIGATIONS_SUMMARY_MAX_LENGTH = 200;
@@ -530,7 +531,7 @@ export function exploreInvestigationItemToInvestigationObject(
       ? enrichment.evidenceCount
       : undefined;
 
-  return {
+  return withResolvedCanonicalSourceType({
     id: item.id,
     type: "investigation",
     title: item.title,
@@ -545,7 +546,7 @@ export function exploreInvestigationItemToInvestigationObject(
     relatedIds: enrichment.relatedIds,
     receiptIds: enrichment.receiptIds,
     evidenceCount,
-  };
+  });
 }
 
 export function normalizeInvestigationsProductionDataApi(api: OrvekDataApi): OrvekDataApi {

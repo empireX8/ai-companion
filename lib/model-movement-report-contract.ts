@@ -1,6 +1,7 @@
 import type { UnderstandingLinkTargetType } from "@prisma/client";
 
 import type { OrvekObject } from "./orvek-v0/orvek-types";
+import { withResolvedCanonicalSourceType } from "./orvek-intelligence-object-authority";
 import {
   assessMovementRationale,
   type MovementRationaleAssessment,
@@ -189,7 +190,7 @@ export function buildMovementReportOrvekObject(
     return null;
   }
 
-  return {
+  return withResolvedCanonicalSourceType({
     id: depth.id,
     type: "model-update",
     title: depth.movementSummary,
@@ -213,7 +214,7 @@ export function buildMovementReportOrvekObject(
     receiptIds: (depth.evidenceQuotes ?? []).map(
       (_, index) => `${depth.id}::cited-evidence::${index}`,
     ),
-  };
+  });
 }
 
 /** Synthetic receipt objects for live report overlay evidence citations. */

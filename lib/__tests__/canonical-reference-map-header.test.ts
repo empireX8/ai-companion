@@ -110,6 +110,13 @@ describe("canonical reference Map global model summary", () => {
       createMockOrvekDataApi(),
       todayApi,
       densographMapApi,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { allowCompositionWorkbenchAuthority: true },
     );
 
     expect(hybrid.mapHeader).toEqual(CANONICAL_REFERENCE_MAP_HEADER);

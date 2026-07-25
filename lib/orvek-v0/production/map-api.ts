@@ -27,6 +27,7 @@ import type { OrvekDataApi } from "../data-provider";
 import { withProductionContract } from "../display-contract";
 import { EMPTY_ORVEK_DATA_API } from "../empty-api";
 import type { OrvekObject } from "../orvek-types";
+import { withResolvedCanonicalSourceType } from "../../orvek-intelligence-object-authority";
 import {
   normalizeMapProductionDataApi,
   resolveMapMovementPair,
@@ -195,7 +196,7 @@ function railItemToOrvekObject(
   } else if (item.kind === "conclusion") {
     inspectorObjectType = "usermap_conclusion";
     if (listItem) {
-      return {
+      return withResolvedCanonicalSourceType({
         id: item.id,
         type,
         title: item.title,
@@ -215,11 +216,11 @@ function railItemToOrvekObject(
         userCorrectionLabel: listItem.lastUserCorrectionLabel ?? undefined,
         userCorrectionAt: listItem.lastUserCorrectionAt ?? undefined,
         correctionCount: listItem.correctionCount ?? 0,
-      };
+      });
     }
   }
 
-  return {
+  return withResolvedCanonicalSourceType({
     id: item.id,
     type,
     title: item.title,
@@ -237,7 +238,7 @@ function railItemToOrvekObject(
     tags: [item.statusLabel],
     inspectorObjectType,
     inspectorObjectId,
-  };
+  });
 }
 
 function buildSupportingEvidence(view: V0MapViewProps): string[] {
@@ -264,7 +265,7 @@ function buildDetailOrvekObject(view: V0MapViewProps, objectId: string): OrvekOb
   });
   const { receiptIds } = buildMapReceiptSatellites(view, objectId);
 
-  return {
+  return withResolvedCanonicalSourceType({
     id: objectId,
     type: "map-object",
     title: detail.title,
@@ -283,7 +284,7 @@ function buildDetailOrvekObject(view: V0MapViewProps, objectId: string): OrvekOb
     correctionCount: detail.correctionCount ?? 0,
     relatedIds,
     receiptIds: receiptIds.length > 0 ? receiptIds : undefined,
-  };
+  });
 }
 
 /** Project map evidence preview into typed receipt objects for Inspector LinkedRows. */
