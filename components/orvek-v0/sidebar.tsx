@@ -20,9 +20,17 @@ export function Sidebar() {
   const data = useOrvekData()
   const { page, setPage } = useWorkbench()
   const isProduction = isProductionDisplay(data)
+  const movementPlaceCount = data.modelStatusCard?.movementPlaceCount ?? 0
+  const movementStatusTitle =
+    movementPlaceCount > 0
+      ? `Model changed in ${movementPlaceCount} ${movementPlaceCount === 1 ? "place" : "places"}`
+      : "No model movement is ready for review"
 
   return (
-    <nav className="flex h-full w-[68px] shrink-0 flex-col items-center pb-4 pt-1">
+    <nav
+      className="flex h-full w-[68px] shrink-0 flex-col items-center pb-4 pt-1"
+      data-shell-slot="navigator"
+    >
       {/* nav — icon-only, soft */}
       <ul className="flex w-full flex-col items-center gap-1.5 px-3">
         {NAV.map((item) => {
@@ -42,6 +50,7 @@ export function Sidebar() {
                 aria-current={active ? "page" : undefined}
                 title={item.label}
                 data-testid={`nav-${item.id}`}
+                data-shell-item="navigator-link"
                 className={cn(
                   "o-calm group relative flex aspect-square w-full items-center justify-center rounded-[13px]",
                   active
@@ -67,10 +76,22 @@ export function Sidebar() {
       <div className="mt-auto">
         <div
           className="relative flex size-9 items-center justify-center rounded-full bg-action-muted/40 ring-1 ring-inset ring-action/25"
-          title="Model changed in 4 places"
+          title={movementStatusTitle}
+          data-shell-slot="navigator-model-pulse"
         >
-          <span className="o-breathe size-1.5 rounded-full bg-action" />
-          <span className="absolute inset-0 animate-ping rounded-full border border-action/20" />
+          <span
+            className={cn(
+              "size-1.5 rounded-full bg-action",
+              movementPlaceCount > 0 && "o-breathe",
+            )}
+            data-navigator-activity={movementPlaceCount > 0 ? "active" : "idle"}
+          />
+          <span
+            className={cn(
+              "absolute inset-0 rounded-full border border-action/20",
+              movementPlaceCount > 0 && "animate-ping",
+            )}
+          />
         </div>
       </div>
     </nav>

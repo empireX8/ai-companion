@@ -9,14 +9,17 @@ function readSource(relativePath: string): string {
 }
 
 describe("canonical Today empty action/card identity guard", () => {
-  it("always renders the report card and labels actions/rows (no omission of reference elements)", () => {
+  it("keeps permanent slots and disables actions without owned identities", () => {
     const today = readSource("components/orvek-v0-canonical/pages/today.tsx");
-    // Report card must remain in the tree — providers supply title/meta/id.
-    expect(today).not.toMatch(/today\.reportTitle\.trim\(\)\s*\?\s*\(/);
-    expect(today).toContain("aria-label={today.reportTitle}");
-    expect(today).toContain("aria-label={a.label}");
-    expect(today).toContain("aria-label={`${row.kicker}: ${row.title}`}");
-    expect(today).toContain("openReport(today.reportId)");
+    expect(today).not.toContain("if (!lead)");
+    expect(today).toContain('data-today-slot="lead-card"');
+    expect(today).toContain('data-today-slot="report-card"');
+    expect(today).toContain('data-today-item="now-row"');
+    expect(today).toContain('data-today-item="movement-card"');
+    expect(today).toContain('data-today-item="receipt-row"');
+    expect(today).toContain("disabled={!reportAvailable}");
+    expect(today).toContain("onClick={reportAvailable ? () => openReport(today.reportId) : undefined}");
+    expect(today).toContain("if (!getObject(id))");
   });
 
   it("live provider refuses heroSelectionId as blank report identity", () => {
