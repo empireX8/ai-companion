@@ -3,24 +3,29 @@
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { useCanonicalData } from "@/components/orvek-v0-canonical/canonical-data-context"
+import { minimumPermanentSlots } from "@/components/orvek-v0-canonical/permanent-presentation"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { Chip, SectionLabel } from "@/components/orvek-v0/primitives"
 import { ArrowRight, PanelRight, Send, Sparkles } from "lucide-react"
 
-type Tab = "free" | "investigations" | "questions" | "fieldwork"
+export type CanonicalExploreTab = "free" | "investigations" | "questions" | "fieldwork"
 
-const TABS: { id: Tab; label: string }[] = [
+const TABS: { id: CanonicalExploreTab; label: string }[] = [
   { id: "free", label: "Free Explore" },
   { id: "investigations", label: "Investigations" },
   { id: "questions", label: "Active Questions" },
   { id: "fieldwork", label: "Fieldwork Bridge" },
 ]
 
-export function ExplorePage() {
+export function ExplorePage({
+  initialTab = "free",
+}: {
+  initialTab?: CanonicalExploreTab
+} = {}) {
   const { select, setExploreActive } = useWorkbench()
-  const [tab, setTab] = useState<Tab>("free")
+  const [tab, setTab] = useState<CanonicalExploreTab>(initialTab)
 
   // Explore is "live": the inspector surfaces possible movement only while here.
   useEffect(() => {
@@ -29,7 +34,7 @@ export function ExplorePage() {
   }, [setExploreActive])
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col" data-shell-page="explore">
       <div className="px-6 pt-5 pb-4 lg:px-8">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Explore</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
@@ -37,7 +42,10 @@ export function ExplorePage() {
           the inspector.
         </p>
         {/* segmented control */}
-        <div className="o-sunken mt-3 inline-flex flex-wrap gap-0.5 rounded-[9px] p-1">
+        <div
+          className="o-sunken mt-3 inline-flex flex-wrap gap-0.5 rounded-[9px] p-1"
+          data-shell-slot="explore-tabs"
+        >
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -49,6 +57,7 @@ export function ExplorePage() {
                   ? "bg-card text-foreground shadow-[0_1px_2px_-1px_rgba(30,41,59,0.16)]"
                   : "text-muted-foreground hover:text-foreground",
               )}
+              data-shell-item="explore-tab"
             >
               {t.label}
             </button>
@@ -81,18 +90,29 @@ function FreeExplore() {
   const sendAvailable =
     data.freeExploreSendHandlerAvailable === true && Boolean(exploreHandlers?.onSend)
   const useFixtureConversation = referenceSurface && !hasLiveExploreChat && !sendAvailable
+  const isLoading = data.exploreIsLoading === true
+  const conversationSlots = minimumPermanentSlots(liveMessages, 2)
+  const groundingSlots = minimumPermanentSlots(grounding, 5)
+  const movementAvailable =
+    useFixtureConversation ||
+    Boolean(exploreHandlers?.onOpenInspector) ||
+    (data.exploreMovement?.length ?? 0) > 0
 
   const detectionCopy =
     data.exploreLiveDetectionCopy ??
     (referenceSurface
       ? "Orvek is reading the model · 1 receipt extracted · 1 question detected"
-      : null)
+      : isLoading
+        ? "Loading model activity…"
+        : "No model activity is ready for review.")
+  const detectionActive =
+    referenceSurface || Boolean(data.exploreLiveDetectionCopy) || isLoading
 
   const draft = data.explore?.composerDraft ?? ""
 
   return (
-    <div>
-      <div className="space-y-3">
+    <div data-shell-slot="explore-free">
+      <div className="space-y-3" data-shell-slot="explore-conversation">
         {useFixtureConversation ? (
           <>
             <Bubble role="user">
@@ -105,27 +125,46 @@ function FreeExplore() {
               <span className="font-medium">architecture prototype</span>, not a design prototype.
             </Bubble>
           </>
-        ) : liveMessages.length > 0 ? (
-          liveMessages.map((message) => (
-            <Bubble key={message.id} role={message.role}>
-              {message.content}
+        ) : (
+          conversationSlots.map((message, index) => (
+            <Bubble
+              key={message?.id ?? `empty-conversation-${index}`}
+              role={message?.role ?? (index === 0 ? "user" : "orvek")}
+            >
+              {message?.content ||
+                (isLoading
+                  ? "Loading conversation…"
+                  : index === 0
+                    ? "No conversation has started."
+                    : "No grounded response is available yet.")}
             </Bubble>
           ))
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {data.emptyCopyBySlot?.exploreFree ?? "Ask the model anything to begin."}
-          </p>
         )}
       </div>
 
       {/* grounded in */}
       <div className="mt-3">
         <SectionLabel>Grounded in</SectionLabel>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {grounding.map((c) => (
-            <button key={c.id} type="button" onClick={() => select(c.id)}>
-              <Chip tone="evidence" className="cursor-pointer hover:opacity-80">
-                {c.title}
+        <div
+          className="mt-2 flex flex-wrap gap-1.5"
+          data-shell-slot="explore-grounding"
+        >
+          {groundingSlots.map((item, index) => (
+            <button
+              key={item?.id ?? `empty-grounding-${index}`}
+              type="button"
+              onClick={item ? () => select(item.id) : undefined}
+              disabled={!item}
+              data-shell-item="explore-grounding-chip"
+              data-live-object-id={item?.id}
+              className="disabled:cursor-default disabled:opacity-70"
+            >
+              <Chip
+                tone="evidence"
+                className={item ? "cursor-pointer hover:opacity-80" : ""}
+              >
+                {item?.title ||
+                  (isLoading ? "Loading grounding…" : "No grounding item available")}
               </Chip>
             </button>
           ))}
@@ -133,15 +172,27 @@ function FreeExplore() {
       </div>
 
       {/* live detection line */}
-      {detectionCopy ? (
-        <div className="mt-3 flex items-center gap-2 text-[12px] text-muted-foreground">
-          <span className="relative flex size-2 items-center justify-center">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-action/40" />
-            <span className="o-breathe relative inline-flex size-1.5 rounded-full bg-action" />
-          </span>
-          {detectionCopy}
-        </div>
-      ) : null}
+      <div
+        className="mt-3 flex items-center gap-2 text-[12px] text-muted-foreground"
+        data-shell-slot="explore-detection"
+      >
+        <span className="relative flex size-2 items-center justify-center">
+          <span
+            className={cn(
+              "absolute inline-flex h-full w-full rounded-full bg-action/40",
+              detectionActive && "animate-ping",
+            )}
+          />
+          <span
+            className={cn(
+              "relative inline-flex size-1.5 rounded-full bg-action",
+              detectionActive && "o-breathe",
+            )}
+            data-explore-activity={detectionActive ? "active" : "idle"}
+          />
+        </span>
+        {detectionCopy}
+      </div>
 
       {/* end-of-turn movement note → inspector */}
       <button
@@ -150,7 +201,9 @@ function FreeExplore() {
           exploreHandlers?.onOpenInspector?.()
           setInspectorTab("movement")
         }}
-        className="o-calm mt-2.5 flex w-full items-center gap-2.5 rounded-2xl bg-action-muted/50 px-4 py-3 text-left ring-1 ring-inset ring-action/15 hover:bg-action-muted/70"
+        disabled={!movementAvailable}
+        data-shell-slot="explore-movement-note"
+        className="o-calm mt-2.5 flex w-full items-center gap-2.5 rounded-2xl bg-action-muted/50 px-4 py-3 text-left ring-1 ring-inset ring-action/15 hover:bg-action-muted/70 disabled:cursor-default disabled:opacity-70"
       >
         <Sparkles className="size-4 shrink-0 text-action-foreground" aria-hidden />
         <span className="min-w-0 flex-1 text-[13px] leading-relaxed text-foreground">
@@ -160,7 +213,11 @@ function FreeExplore() {
               confirm in the inspector.
             </>
           ) : (
-            <>Review possible model updates in the inspector.</>
+            <>
+              {isLoading
+                ? "Loading possible model updates…"
+                : "No model update is ready for review."}
+            </>
           )}
         </span>
         <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-action-foreground">
@@ -170,7 +227,10 @@ function FreeExplore() {
       </button>
 
       {/* composer */}
-      <div className="o-material mt-4 flex items-center gap-2 rounded-2xl p-2">
+      <div
+        className="o-material mt-4 flex items-center gap-2 rounded-2xl p-2"
+        data-shell-slot="explore-composer"
+      >
         {useFixtureConversation ? (
           <input
             placeholder="Ask the model anything…"
@@ -186,6 +246,7 @@ function FreeExplore() {
               exploreHandlers?.onComposerFocus?.()
               setInspectorTab("movement")
             }}
+            disabled={!exploreHandlers?.onDraftChange}
             className="flex-1 bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
         )}
@@ -198,7 +259,9 @@ function FreeExplore() {
             }
             setInspectorTab("movement")
           }}
-          className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98]"
+          disabled={!useFixtureConversation && !sendAvailable}
+          data-shell-item="explore-send-action"
+          className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98] disabled:cursor-default disabled:opacity-70"
         >
           <Send className="size-3.5" />
           Ask
@@ -223,7 +286,9 @@ function FreeExplore() {
               }
               setInspectorTab("movement")
             }}
-            className="o-calm rounded-full bg-secondary/60 px-2.5 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+            disabled={!useFixtureConversation && !exploreHandlers?.onQuickPrompt}
+            data-shell-item="explore-quick-prompt"
+            className="o-calm rounded-full bg-secondary/60 px-2.5 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground disabled:cursor-default disabled:opacity-70"
           >
             {q}
           </button>
@@ -236,7 +301,10 @@ function FreeExplore() {
 function Bubble({ role, children }: { role: "user" | "orvek"; children: React.ReactNode }) {
   const isUser = role === "user"
   return (
-    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+    <div
+      className={cn("flex", isUser ? "justify-end" : "justify-start")}
+      data-shell-item="explore-message"
+    >
       <div
         className={cn(
           "max-w-[85%] px-3.5 py-2.5 text-sm leading-relaxed",
@@ -259,41 +327,59 @@ function Bubble({ role, children }: { role: "user" | "orvek"; children: React.Re
 function Questions() {
   const { select, setInspectorTab } = useWorkbench()
   const { getObject, exploreQuestionIds } = useCanonicalData()
+  const data = useOrvekData()
   const ids = exploreQuestionIds
   const [activeId, setActiveId] = useState(ids[0] ?? "")
   const q = getObject(activeId)
+  const isLoading = data.activeQuestionsIsLoading === true || data.exploreIsLoading === true
+  const questionSlots = minimumPermanentSlots(ids, 4)
+  const supporting = minimumPermanentSlots(q?.supporting, 1)
+  const conflicting = minimumPermanentSlots(q?.conflicting, 1)
+  const related = minimumPermanentSlots(
+    (q?.relatedIds ?? [])
+      .map((id) => getObject(id))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    3,
+  )
 
-  if (ids.length === 0 || !q) {
-    return (
-      <div className="py-16 text-center">
-        <p className="text-sm font-medium text-foreground">No active questions yet</p>
-        <p className="mt-1.5 text-[13px] text-muted-foreground">
-          Questions appear here when Orvek has live open inquiries for this model.
-        </p>
-      </div>
-    )
-  }
+  useEffect(() => {
+    if (!ids.includes(activeId)) {
+      setActiveId(ids[0] ?? "")
+    }
+  }, [activeId, ids])
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[290px_1fr]">
+    <div
+      className="grid gap-5 lg:grid-cols-[290px_1fr]"
+      data-shell-slot="explore-questions"
+    >
       {/* inquiry list */}
       <div>
         <SectionLabel>Open questions</SectionLabel>
-        <div className="o-material mt-2 divide-y divide-border overflow-hidden rounded-[10px]">
-          {ids.map((id) => {
-            const o = getObject(id)
-            if (!o) return null
-            const active = activeId === id
+        <div
+          className="o-material mt-2 divide-y divide-border overflow-hidden rounded-[10px]"
+          data-shell-slot="question-list"
+        >
+          {questionSlots.map((id, index) => {
+            const item = id ? getObject(id) : undefined
+            const active = Boolean(item && activeId === item.id)
             return (
               <button
-                key={id}
+                key={item?.id ?? `empty-question-${index}`}
                 type="button"
-                onClick={() => {
-                  setActiveId(id)
-                  select(id)
-                }}
+                onClick={
+                  item
+                    ? () => {
+                        setActiveId(item.id)
+                        select(item.id)
+                      }
+                    : undefined
+                }
+                disabled={!item}
+                data-shell-item="question-row"
+                data-live-object-id={item?.id}
                 className={cn(
-                  "o-calm flex w-full items-start gap-2.5 px-3 py-2.5 text-left",
+                  "o-calm flex w-full items-start gap-2.5 px-3 py-2.5 text-left disabled:cursor-default disabled:opacity-70",
                   active ? "bg-accent/50" : "hover:bg-accent/30",
                 )}
               >
@@ -305,10 +391,17 @@ function Questions() {
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[13px] font-medium leading-snug text-foreground text-pretty">
-                    {o.title}
+                    {item?.title ||
+                      (isLoading
+                        ? "Loading active question…"
+                        : "No active question is available.")}
                   </span>
                   <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                    {o.evidenceCount} receipts · {o.status}
+                    {item
+                      ? `${item.evidenceCount ?? 0} receipts · ${item.status ?? "current"}`
+                      : isLoading
+                        ? "Loading status"
+                        : "0 receipts · unavailable"}
                   </span>
                 </span>
               </button>
@@ -318,65 +411,98 @@ function Questions() {
       </div>
 
       {/* selected question detail */}
-      <div className="min-w-0">
-        <Chip tone="action">Active question · {q.status}</Chip>
+      <div className="min-w-0" data-shell-slot="question-detail">
+        <Chip tone="action">
+          Active question · {q?.status || (isLoading ? "loading" : "unavailable")}
+        </Chip>
         <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
-          {q.title}
+          {q?.title ||
+            (isLoading ? "Loading current question…" : "No active question is available.")}
         </h2>
-        <InvBlock label="Why this is open">{q.whyItMatters}</InvBlock>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="o-material rounded-[10px] p-3.5">
+        <InvBlock label="Why this is open">
+          {q?.whyItMatters ||
+            (isLoading ? "Loading why this is open…" : "Not enough information yet.")}
+        </InvBlock>
+        <div
+          className="mt-4 grid gap-3 sm:grid-cols-2"
+          data-shell-slot="question-signal-pair"
+        >
+          <div
+            className="o-material rounded-[10px] p-3.5"
+            data-shell-item="question-signal-card"
+          >
             <SectionLabel className="text-primary">Would resolve toward yes if</SectionLabel>
             <ul className="mt-2 space-y-1.5">
-              {(q.supporting ?? []).map((s) => (
-                <li key={s} className="flex gap-2 text-[13px] text-foreground">
+              {supporting.map((item, index) => (
+                <li
+                  key={item ?? `empty-question-support-${index}`}
+                  className="flex gap-2 text-[13px] text-foreground"
+                >
                   <span className="mt-0.5 text-primary">+</span>
-                  {s}
+                  {item ||
+                    (isLoading
+                      ? "Loading supporting signal…"
+                      : "No supporting signals yet.")}
                 </li>
               ))}
-              {(q.supporting ?? []).length === 0 ? (
-                <li className="text-[13px] text-muted-foreground">No supporting signals yet.</li>
-              ) : null}
             </ul>
           </div>
-          <div className="o-material rounded-[10px] p-3.5">
+          <div
+            className="o-material rounded-[10px] p-3.5"
+            data-shell-item="question-signal-card"
+          >
             <SectionLabel className="text-destructive/80">Would resolve toward no if</SectionLabel>
             <ul className="mt-2 space-y-1.5">
-              {(q.conflicting ?? []).map((c) => (
-                <li key={c} className="flex gap-2 text-[13px] text-muted-foreground">
+              {conflicting.map((item, index) => (
+                <li
+                  key={item ?? `empty-question-conflict-${index}`}
+                  className="flex gap-2 text-[13px] text-muted-foreground"
+                >
                   <span className="mt-0.5 text-destructive">−</span>
-                  {c}
+                  {item ||
+                    (isLoading
+                      ? "Loading conflicting signal…"
+                      : "No conflicting signals yet.")}
                 </li>
               ))}
-              {(q.conflicting ?? []).length === 0 ? (
-                <li className="text-[13px] text-muted-foreground">No conflicting signals yet.</li>
-              ) : null}
             </ul>
           </div>
         </div>
-        {q.relatedIds && q.relatedIds.length > 0 && (
-          <InvBlock label="What this question touches">
-            <div className="flex flex-wrap gap-1.5">
-              {q.relatedIds.map((id) => {
-                const o = getObject(id)
-                if (!o) return null
-                return (
-                  <button key={id} type="button" onClick={() => select(id)}>
-                    <Chip className="cursor-pointer hover:opacity-80">{o.title}</Chip>
-                  </button>
-                )
-              })}
-            </div>
-          </InvBlock>
-        )}
+        <InvBlock label="What this question touches">
+          <div className="flex flex-wrap gap-1.5" data-shell-slot="question-related">
+            {related.map((item, index) => (
+              <button
+                key={item?.id ?? `empty-question-related-${index}`}
+                type="button"
+                onClick={item ? () => select(item.id) : undefined}
+                disabled={!item}
+                data-shell-item="question-related-chip"
+                data-live-object-id={item?.id}
+                className="disabled:cursor-default disabled:opacity-70"
+              >
+                <Chip className={item ? "cursor-pointer hover:opacity-80" : ""}>
+                  {item?.title ||
+                    (isLoading ? "Loading related item…" : "No related item available")}
+                </Chip>
+              </button>
+            ))}
+          </div>
+        </InvBlock>
         <div className="mt-4 flex flex-wrap gap-1.5">
           <button
             type="button"
-            onClick={() => {
-              select(activeId)
-              setInspectorTab("evidence")
-            }}
-            className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98]"
+            onClick={
+              q
+                ? () => {
+                    select(q.id)
+                    setInspectorTab("evidence")
+                  }
+                : undefined
+            }
+            disabled={!q}
+            data-shell-item="question-action"
+            data-live-object-id={q?.id}
+            className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:brightness-[1.05] active:scale-[0.98] disabled:cursor-default disabled:opacity-70"
           >
             See evidence
             <ArrowRight className="size-3.5" aria-hidden />
@@ -385,7 +511,9 @@ function Questions() {
             <button
               key={a}
               type="button"
-              className="o-calm rounded-[8px] bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60"
+              disabled
+              data-shell-item="question-action"
+              className="o-calm cursor-default rounded-[8px] bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground opacity-70"
             >
               {a}
             </button>
@@ -399,8 +527,19 @@ function Questions() {
 function Investigations() {
   const { select } = useWorkbench()
   const { getObject, exploreInvestigationIds } = useCanonicalData()
+  const data = useOrvekData()
   const [activeId, setActiveId] = useState(exploreInvestigationIds[0] ?? "")
   const inv = getObject(activeId)
+  const isLoading = data.investigationsIsLoading === true || data.exploreIsLoading === true
+  const threadSlots = minimumPermanentSlots(exploreInvestigationIds, 3)
+  const hypotheses = minimumPermanentSlots(inv?.hypotheses, 2)
+  const missingEvidence = minimumPermanentSlots(inv?.missingEvidence, 2)
+  const linkedObjects = minimumPermanentSlots(
+    (inv?.relatedIds ?? [])
+      .map((id) => getObject(id))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    3,
+  )
 
   useEffect(() => {
     if (!exploreInvestigationIds.includes(activeId)) {
@@ -408,46 +547,51 @@ function Investigations() {
     }
   }, [exploreInvestigationIds, activeId])
 
-  if (exploreInvestigationIds.length === 0 || !inv) {
-    return (
-      <div className="py-16 text-center">
-        <p className="text-sm font-medium text-foreground">No investigations yet</p>
-        <p className="mt-1.5 text-[13px] text-muted-foreground">
-          Investigation threads appear here when live evidence opens a sustained inquiry.
-        </p>
-      </div>
-    )
-  }
-
   return (
-    <div className="grid gap-5 lg:grid-cols-[230px_1fr]">
+    <div
+      className="grid gap-5 lg:grid-cols-[230px_1fr]"
+      data-shell-slot="explore-investigations"
+    >
       <div>
         <SectionLabel>Threads</SectionLabel>
-        <div className="mt-2 space-y-1.5">
-          {exploreInvestigationIds.map((id) => {
-            const o = getObject(id)
-            if (!o) return null
+        <div className="mt-2 space-y-1.5" data-shell-slot="investigation-list">
+          {threadSlots.map((id, index) => {
+            const item = id ? getObject(id) : undefined
             return (
               <button
-                key={id}
+                key={item?.id ?? `empty-investigation-${index}`}
                 type="button"
                 data-testid="investigation-row"
-                onClick={() => {
-                  setActiveId(id)
-                  select(id)
-                }}
+                onClick={
+                  item
+                    ? () => {
+                        setActiveId(item.id)
+                        select(item.id)
+                      }
+                    : undefined
+                }
+                disabled={!item}
+                data-shell-item="investigation-row"
+                data-live-object-id={item?.id}
                 className={cn(
-                  "o-calm w-full rounded-[10px] px-2.5 py-2 text-left text-[13px] leading-snug",
-                  activeId === id
+                  "o-calm w-full rounded-[10px] px-2.5 py-2 text-left text-[13px] leading-snug disabled:cursor-default disabled:opacity-70",
+                  item && activeId === item.id
                     ? "bg-card text-foreground shadow-[0_1px_3px_-1px_rgba(30,41,59,0.16)] ring-1 ring-inset ring-primary/20"
                     : "bg-secondary/50 text-foreground hover:bg-secondary",
                 )}
               >
-                {o.title}
+                {item?.title ||
+                  (isLoading
+                    ? "Loading investigation…"
+                    : "No investigation is available.")}
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  {o.evidenceCount != null
-                    ? `${o.evidenceCount} linked · ${o.status}`
-                    : o.status}
+                  {item
+                    ? item.evidenceCount != null
+                      ? `${item.evidenceCount} linked · ${item.status ?? "current"}`
+                      : item.status
+                    : isLoading
+                      ? "Loading status"
+                      : "0 linked · unavailable"}
                 </span>
               </button>
             )
@@ -455,56 +599,93 @@ function Investigations() {
         </div>
       </div>
 
-      <div className="min-w-0" data-testid="canonical-investigation-detail">
-        <Chip tone="evidence">Investigation · {inv.status}</Chip>
+      <div
+        className="min-w-0"
+        data-testid="canonical-investigation-detail"
+        data-shell-slot="investigation-detail"
+      >
+        <Chip tone="evidence">
+          Investigation · {inv?.status || (isLoading ? "loading" : "unavailable")}
+        </Chip>
         <h2 className="mt-2 text-lg font-semibold leading-snug text-foreground text-pretty">
-          {inv.title}
+          {inv?.title ||
+            (isLoading ? "Loading current investigation…" : "No investigation is available.")}
         </h2>
-        <InvBlock label="Why it matters">{inv.whyItMatters}</InvBlock>
-        {inv.hypotheses && (
-          <InvBlock label="Hypotheses">
-            <ul className="space-y-1">
-              {inv.hypotheses.map((h) => (
-                <li key={h} className="flex gap-1.5 text-[13px]">
-                  <span className="text-primary">·</span>
-                  {h}
-                </li>
-              ))}
-            </ul>
-          </InvBlock>
-        )}
-        {inv.missingEvidence && (
-          <InvBlock label="Missing evidence">
-            <ul className="space-y-1">
-              {inv.missingEvidence.map((m) => (
-                <li key={m} className="flex gap-1.5 text-[13px] text-muted-foreground">
-                  <span className="text-action-foreground">?</span>
-                  {m}
-                </li>
-              ))}
-            </ul>
-          </InvBlock>
-        )}
+        <InvBlock label="Why it matters">
+          {inv?.whyItMatters ||
+            (isLoading ? "Loading why this matters…" : "Not enough information yet.")}
+        </InvBlock>
+        <InvBlock label="Hypotheses">
+          <ul className="space-y-1" data-shell-slot="investigation-hypotheses">
+            {hypotheses.map((item, index) => (
+              <li
+                key={item ?? `empty-hypothesis-${index}`}
+                className="flex gap-1.5 text-[13px]"
+                data-shell-item="investigation-hypothesis"
+              >
+                <span className="text-primary">·</span>
+                {item ||
+                  (isLoading ? "Loading hypothesis…" : "No hypothesis is available.")}
+              </li>
+            ))}
+          </ul>
+        </InvBlock>
+        <InvBlock label="Missing evidence">
+          <ul className="space-y-1" data-shell-slot="investigation-missing-evidence">
+            {missingEvidence.map((item, index) => (
+              <li
+                key={item ?? `empty-missing-evidence-${index}`}
+                className="flex gap-1.5 text-[13px] text-muted-foreground"
+                data-shell-item="investigation-missing-row"
+              >
+                <span className="text-action-foreground">?</span>
+                {item ||
+                  (isLoading ? "Loading evidence gap…" : "No evidence gap is available.")}
+              </li>
+            ))}
+          </ul>
+        </InvBlock>
         <InvBlock label="Linked objects">
-          <div className="flex flex-wrap gap-1.5">
-            {(inv.relatedIds ?? []).map((id) => {
-              const o = getObject(id)
-              if (!o) return null
-              return (
-                <button key={id} type="button" onClick={() => select(id)}>
-                  <Chip className="cursor-pointer hover:opacity-80">{o.title}</Chip>
-                </button>
-              )
-            })}
+          <div
+            className="flex flex-wrap gap-1.5"
+            data-shell-slot="investigation-linked-objects"
+          >
+            {linkedObjects.map((item, index) => (
+              <button
+                key={item?.id ?? `empty-investigation-link-${index}`}
+                type="button"
+                onClick={item ? () => select(item.id) : undefined}
+                disabled={!item}
+                data-shell-item="investigation-linked-chip"
+                data-live-object-id={item?.id}
+                className="disabled:cursor-default disabled:opacity-70"
+              >
+                <Chip className={item ? "cursor-pointer hover:opacity-80" : ""}>
+                  {item?.title ||
+                    (isLoading ? "Loading linked item…" : "No linked item available")}
+                </Chip>
+              </button>
+            ))}
           </div>
         </InvBlock>
+        <div
+          className="mt-4 rounded-[12px] rounded-l-sm border-l-2 border-l-primary/50 bg-secondary/50 p-3 text-[13px] italic text-muted-foreground"
+          data-shell-slot="investigation-conversation-excerpt"
+        >
+          {inv?.sourceText ||
+            (isLoading
+              ? "Loading linked conversation context…"
+              : "No linked conversation excerpt is available.")}
+        </div>
         <div className="mt-4 flex flex-wrap gap-1.5">
           {["Add hypothesis", "Suggest fieldwork", "Possible report", "Ask in Explore"].map(
             (a) => (
               <button
                 key={a}
                 type="button"
-                className="o-calm rounded-[8px] bg-secondary/70 px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60"
+                disabled
+                data-shell-item="investigation-action"
+                className="o-calm cursor-default rounded-[8px] bg-secondary/70 px-2.5 py-1.5 text-xs font-medium text-foreground opacity-70"
               >
                 {a}
               </button>
@@ -527,73 +708,87 @@ function InvBlock({ label, children }: { label: string; children: React.ReactNod
 
 function FieldworkBridge({ onSelect }: { onSelect: (id: string) => void }) {
   const { getObject, exploreFieldworkIds } = useCanonicalData()
+  const data = useOrvekData()
   const ids = exploreFieldworkIds
   const [activeId, setActiveId] = useState(ids[0] ?? "")
   const fw = getObject(activeId)
-
-  if (ids.length === 0 || !fw) {
-    return (
-      <div className="py-16 text-center">
-        <p className="text-sm font-medium text-foreground">No fieldwork yet</p>
-        <p className="mt-1.5 text-[13px] text-muted-foreground">
-          Fieldwork bridges appear here when live experiments define what to observe next.
-        </p>
-      </div>
-    )
-  }
+  const isLoading = data.experimentIsLoading === true || data.exploreIsLoading === true
+  const linked = fw?.relatedIds?.[0] ? getObject(fw.relatedIds[0]) : undefined
 
   const fields = [
-    { label: "Expected signal", value: fw.expectedSignal },
-    { label: "What to observe", value: fw.whatToObserve },
-    { label: "What would confirm", value: fw.confirmIf },
-    { label: "What would weaken", value: fw.weakenIf },
-    { label: "Due / review window", value: fw.reviewWindow ?? fw.outcomeWindow },
-  ].filter((f): f is { label: string; value: string } => Boolean(f.value))
+    { label: "Expected signal", value: fw?.expectedSignal },
+    { label: "What to observe", value: fw?.whatToObserve },
+    { label: "What would confirm", value: fw?.confirmIf },
+    { label: "What would weaken", value: fw?.weakenIf },
+    { label: "Due / review window", value: fw?.reviewWindow ?? fw?.outcomeWindow },
+  ]
+
+  useEffect(() => {
+    if (!ids.includes(activeId)) {
+      setActiveId(ids[0] ?? "")
+    }
+  }, [activeId, ids])
 
   return (
-    <div>
+    <div data-shell-slot="explore-fieldwork">
       <Chip tone="action">Fieldwork Bridge</Chip>
-      <h2 className="mt-2 text-base font-semibold text-foreground">{fw.title}</h2>
-      {fields.length > 0 ? (
-        <dl className="o-material mt-4 divide-y divide-border overflow-hidden rounded-[10px]">
-          {fields.map((f) => (
-            <div key={f.label} className="grid gap-1 px-3.5 py-2.5 sm:grid-cols-[180px_1fr]">
-              <dt className="text-[13px] font-medium text-muted-foreground">{f.label}</dt>
-              <dd className="text-[13px] text-foreground">{f.value}</dd>
-            </div>
-          ))}
-        </dl>
-      ) : (
-        <p className="mt-4 text-[13px] text-muted-foreground">
-          {fw.summary || "Fieldwork details are not available yet."}
-        </p>
-      )}
+      <h2 className="mt-2 text-base font-semibold text-foreground">
+        {fw?.title ||
+          (isLoading ? "Loading current fieldwork…" : "No fieldwork is available.")}
+      </h2>
+      <dl
+        className="o-material mt-4 divide-y divide-border overflow-hidden rounded-[10px]"
+        data-shell-slot="fieldwork-fields"
+      >
+        {fields.map((field) => (
+          <div
+            key={field.label}
+            className="grid gap-1 px-3.5 py-2.5 sm:grid-cols-[180px_1fr]"
+            data-shell-item="fieldwork-field"
+          >
+            <dt className="text-[13px] font-medium text-muted-foreground">
+              {field.label}
+            </dt>
+            <dd className="text-[13px] text-foreground">
+              {field.value ||
+                (isLoading ? "Loading fieldwork detail…" : "Not enough information yet.")}
+            </dd>
+          </div>
+        ))}
+      </dl>
       <div className="mt-4 flex gap-1.5">
         <button
           type="button"
-          onClick={() => {
-            setActiveId(fw.id)
-            onSelect(fw.id)
-          }}
-          className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-action px-3 py-1.5 text-xs font-semibold text-action-foreground hover:brightness-[1.03] active:scale-[0.98]"
+          onClick={
+            fw
+              ? () => {
+                  setActiveId(fw.id)
+                  onSelect(fw.id)
+                }
+              : undefined
+          }
+          disabled={!fw}
+          data-shell-item="fieldwork-action"
+          data-live-object-id={fw?.id}
+          className="o-calm inline-flex items-center gap-1.5 rounded-[8px] bg-action px-3 py-1.5 text-xs font-semibold text-action-foreground hover:brightness-[1.03] active:scale-[0.98] disabled:cursor-default disabled:opacity-70"
         >
           Open fieldwork
           <ArrowRight className="size-3.5" aria-hidden />
         </button>
-        {(fw.relatedIds ?? []).slice(0, 1).map((id) => {
-          const linked = getObject(id)
-          if (!linked) return null
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onSelect(id)}
-              className="o-calm rounded-[8px] bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60"
-            >
-              Linked: {linked.title}
-            </button>
-          )
-        })}
+        <button
+          type="button"
+          onClick={linked ? () => onSelect(linked.id) : undefined}
+          disabled={!linked}
+          data-shell-item="fieldwork-action"
+          data-live-object-id={linked?.id}
+          className="o-calm rounded-[8px] bg-secondary/70 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent/60 disabled:cursor-default disabled:opacity-70"
+        >
+          {linked
+            ? `Linked: ${linked.title}`
+            : isLoading
+              ? "Loading linked item…"
+              : "No linked item available"}
+        </button>
       </div>
     </div>
   )

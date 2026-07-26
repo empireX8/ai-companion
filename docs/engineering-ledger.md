@@ -1863,3 +1863,75 @@ Optional future slices per `docs/phase2-final-acceptance-post-governance-contrac
   - full-reference seed left in place (not cleaned)
   - separate intelligence contradiction receipt unchanged
 - **Next step:** Commit this campaign; start automatic import materialisation as a separate campaign.
+
+---
+
+## TODAY-SHELL-LIVE-DATA-PRESENTATION-REGRESSION-REPAIR-001
+
+- **Status:** repair complete; uncommitted review patch prepared
+- **Date:** 2026-07-26
+- **Scope:** Restore the permanent approved Today centre in the active canonical production runtime without restoring reference/sample personal claims or changing live-data authority.
+- **Root cause:** DEL-003 correctly stopped persisted reference composition from supplying production Today content. The active canonical Today page already returned after the briefing header when `lead` was absent, and live-array lengths controlled the remaining central rows, so honest empty production data exposed a header-only centre.
+- **Files changed:**
+  - `components/orvek-v0-canonical/pages/today.tsx`
+  - `lib/__tests__/canonical-today-empty-action-guard.test.ts`
+  - `lib/__tests__/today-shell-live-data-presentation-regression.test.tsx`
+  - `docs/engineering-ledger.md`
+- **What changed:** The approved two-column hierarchy now uses fixed presentation slots for the lead card, five primary actions, four Now rows, three movement cards, side report, and three resurfaced receipts. Loading and unavailable states fill those same slots with truthful neutral copy; actions without genuine object backing remain visible and disabled.
+- **Verification passed:** focused Today repair suite (3 files, 12 tests); DEL-003/DEL-005 authority group (8 files, 71 tests); Phase 0/DEL-001B containment group (9 files, 73 tests); changed-file ESLint; trust-language audit; legacy-surface audit; `git diff --check`; manual local browser proof for loading, empty, live-shaped, and approved-reference states.
+- **Repository-wide verification:** 345 test files / 4,715 tests passed, including the new rendered-structure suite. Nine unrelated baseline files remained red (11 tests plus one suite-load failure). `npx tsc --noEmit` and `npm run build` remain blocked by pre-existing `OrvekObject.type` inference errors in untouched movement/investigation presentation files.
+- **What remains partial:** Repository-wide baseline failures are not repaired in this bounded Today slice. No schema, migration, provider, navigation, Explore, Decisions, activation, or deployed-data changes were made.
+- **Next exact step:** Review and apply the generated Desktop patch, then address the unrelated repository baselines as a separate bounded task before any commit.
+
+---
+
+## DESKTOP-PERMANENT-SHELL-CROSS-PAGE-NAVIGATOR-RESTORATION-001
+
+- **Status:** implementation and structural/browser verification complete; Kay side-by-side visual acceptance pending
+- **Date:** 2026-07-26
+- **Scope:** Extend the approved permanent-shell restoration from Today across active canonical Map, Decisions, Timeline, all four Explore tabs, and the shared Navigator without changing live-data authority, route destinations, Inspector, TopBar layout, or persistence.
+- **Root cause:** Several active canonical pages allowed empty live collections or a missing selection to remove entire rails, groups, detail workspaces, evidence/context blocks, or Explore subviews. The shared Navigator retained its five destinations, but its model pulse still made the frozen example claim that the model had changed in four places.
+- **Files changed:**
+  - `components/orvek-v0-canonical/permanent-presentation.ts`
+  - `components/orvek-v0-canonical/pages/map.tsx`
+  - `components/orvek-v0-canonical/pages/decisions.tsx`
+  - `components/orvek-v0-canonical/pages/timeline.tsx`
+  - `components/orvek-v0-canonical/pages/explore.tsx`
+  - `components/orvek-v0/sidebar.tsx`
+  - `lib/__tests__/desktop-permanent-shell-cross-page-regression.test.tsx`
+  - `lib/__tests__/explore-tab-visual-regression.test.ts`
+  - `docs/engineering-ledger.md`
+- **What changed:** A shared presentation-only minimum-slot helper preserves every genuine live row and fills only missing geometry with null-backed neutral slots. Map now retains eight groups, 30 rail rows, its evidence/detail/related/correction workspace; Decisions retains four groups, eight rail rows, five stages, options/context/receipts/outcome/actions; Timeline retains eight filters, four lanes, five groups, and 15 rows; Explore retains the full Free Explore, Active Questions, Investigations, and Fieldwork Bridge compositions. Unavailable controls remain visible and disabled. The Navigator keeps the approved five destinations and pulse position while deriving movement copy/animation from genuine status data or neutral unavailable copy.
+- **Verification passed:** changed-file ESLint; `git diff --check`; trust-language and legacy-surface audits; focused authority/page-family suite (28 files, 246 tests); rendered frozen-vs-production regression suite (4 tests) across reference, empty, loading, and live-shaped data; authenticated browser proof with 16 screenshots covering canonical-live and frozen-reference page/tab states and exact DOM signatures.
+- **Repository-wide verification:** 346 test files / 4,719 tests passed and seven tests skipped. The same nine unrelated baseline files remained red (11 tests plus one suite-load failure). `npx tsc --noEmit` and `npm run build` still stop on the pre-existing `OrvekObject.type` inference errors in untouched movement/investigation presentation files; the production build compiled before reaching that baseline type failure.
+- **What remains partial:** This record is structural and browser evidence, not Kay’s required visual-completion verdict. Repository-wide baseline failures remain outside this slice. No schema, migration, live provider/adapter authority, route map/destination, Inspector, TopBar layout, deployed data, commit, or push was changed.
+- **Next exact step:** Kay reviews the 16 canonical-live/reference captures side by side. If accepted, review/apply the cumulative Desktop patch and then handle unrelated repository baselines in a separate bounded task before commit.
+
+---
+
+## INSPECTOR-PERMANENT-SHELL-RESTORATION-001
+
+- **Status:** implementation and structural/browser verification complete; Kay side-by-side visual acceptance pending
+- **Date:** 2026-07-26
+- **Scope:** Restore the approved shared Inspector shell on Evidence / Context and Model Movement across the active canonical desktop pages while preserving the cumulative uncommitted Today, cross-page, and Navigator restoration.
+- **Root cause:** The shared Inspector used selection-, type-, and availability-dependent early returns that collapsed its identity, evidence/context, correction, before/after, and recent-movement geometry. Loading was also aggregated across unrelated page providers, while report-ID and reference-pulse fallbacks could make unavailable production states appear actionable.
+- **Files changed:**
+  - `components/orvek-v0-authority/evidence-panel.tsx`
+  - `lib/__tests__/inspector-permanent-shell-regression.test.tsx`
+  - `docs/engineering-ledger.md`
+- **What changed:** Evidence / Context now retains its identity, summary, why-it-matters, receipts, supporting/conflicting evidence, context, related objects, change conditions, Ask, and six correction slots through loading, empty, partial, complete, and reference states. Type-specific Decision, Fieldwork, Investigation, Report, Receipt, Model Update, and contradiction blocks remain present with neutral disabled fallbacks when genuine data is absent. Model Movement retains its identity, before/after, confidence, three recent-movement slots, and report action. Genuine selected IDs and durable correction actions still flow through; report actions require a genuine canonical report ID in production, and neutral slots emit no invented IDs or claims. Loading is scoped to the active route, and Explore movement/pulse activation remains gated by genuine reference movement rather than a live-chat or empty fallback.
+- **Verification passed:** changed-file ESLint; `git diff --check`; focused Inspector/Explore side-effect suite (3 files, 28 tests); rendered Inspector regression suite (9 tests), including the frozen-reference object graph and the missing-report-ID safety case; authenticated local browser proof at 1440×1200 with 15 screenshots spanning production loading, empty, partial, complete and reference object/type states. Browser assertions verified the permanent section hierarchy, neutral disabled controls without object IDs, genuine selected IDs, and Explore gating.
+- **Repository-wide verification:** 347 test files / 4,728 tests passed and seven tests skipped. The same nine unrelated baseline files remained red (11 tests plus one suite-load failure). `npx tsc --noEmit` and `npm run build` remain blocked by the pre-existing `OrvekObject.type` inference errors in untouched movement/investigation presentation files; the production build compiled before reaching that baseline type failure. Trust-language and legacy-surface audits pass.
+- **Browser evidence:** `/Users/user/Desktop/INSPECTOR-PERMANENT-SHELL-RESTORATION-001-screenshots` contains 15 deterministic captures; local ephemeral user/data fixtures were removed after capture.
+- **What remains partial:** This is structural and browser evidence, not Kay’s required visual-completion verdict. The unrelated repository baselines remain outside this bounded repair. No page-family layout, Navigator, TopBar, route destination, provider/adapter authority, schema, migration, persistence, deployed data, commit, or push was changed by this Inspector slice.
+- **Next exact step:** Kay reviews the 15 production/reference Inspector captures side by side, then reviews the cumulative Desktop patch before any commit.
+
+### Final presentation-only safety correction
+
+- **Status:** complete; uncommitted
+- **Scope:** Correct two Inspector presentation boundaries without changing APIs, persistence, schema, DEL-004 design, page layouts, or live-data authority.
+- **Decision outcome correction:** The Outcome section remains permanent for every selected decision, but production mounts `DurableDecisionOutcomeControls` only inside the exact pre-restoration boundary: at least one genuine outcome window/expected/actual field exists, the outcome is not recorded, and no actual outcome exists. A partial decision outside that boundary receives the same textarea/button positions with neutral disabled copy, no live object identity, and no durable writer mount.
+- **Common-slot correction:** Ask in Explore and Correct the model now always retain their common Inspector positions. Reports keep Ask visible but disabled without an object ID. Fieldwork, reports, timeline events, and other non-correctable objects keep all six correction choices visible, disabled, and identity-free. Existing supported Explore and durable/reference correction behaviour is unchanged.
+- **Files changed by this correction:** `components/orvek-v0-authority/evidence-panel.tsx`, `lib/__tests__/inspector-permanent-shell-regression.test.tsx`, `docs/engineering-ledger.md`.
+- **Verification:** rendered Inspector safety suite 12/12 passed; focused cumulative group 28 files / 227 tests passed; repository-wide run 347 files / 4,731 tests passed with seven skipped. The same nine inherited files remain red (11 tests plus one suite-load failure). Changed-file ESLint, `git diff --check`, trust-language, and legacy-surface audits pass. TypeScript and build still stop only on the two inherited `OrvekObject.type` inference errors; the build compiles before that baseline type failure.
+- **Browser evidence:** all 15 Inspector captures were regenerated at 1440×1200; browser assertions passed and ephemeral local fixtures were removed.

@@ -8,7 +8,7 @@ function readSource(relativePath: string): string {
 
 function explorePageTabStripBlock(source: string): string {
   return (
-    source.match(/export function ExplorePage\(\) \{([\s\S]*?)\n\}\n\nfunction FreeExplore/)?.[1] ??
+    source.match(/export function ExplorePage([\s\S]*?)\n\}\n\nfunction FreeExplore/)?.[1] ??
     ""
   );
 }
