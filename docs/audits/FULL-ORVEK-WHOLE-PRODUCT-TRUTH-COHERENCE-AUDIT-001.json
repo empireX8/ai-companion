@@ -1,0 +1,1796 @@
+{
+  "audit": {
+    "id": "FULL-ORVEK-WHOLE-PRODUCT-TRUTH-COHERENCE-AUDIT-001",
+    "repository": "/Users/user/ai-companion",
+    "branch": "staging",
+    "auditedBase": "b9631e6e5e361c4a41275c6f52b5c2c750509df7",
+    "auditDate": "2026-07-26",
+    "method": [
+      "read-only source inspection",
+      "read-only local PostgreSQL aggregate and integrity inspection",
+      "deterministic focused tests"
+    ],
+    "writes": {
+      "application": false,
+      "schema": false,
+      "database": false,
+      "flags": false,
+      "liveAi": false,
+      "auditArtifactsOnly": true
+    },
+    "browserJourney": {
+      "status": "NOT_EXECUTED_READ_ONLY_BOUNDARY",
+      "reason": "No local application server or supplied authenticated session was available, and the required journey includes writes prohibited by the audit brief."
+    },
+    "dataQualification": "The inspected local database contains development and test fixtures. Runtime observations prove behavior and integrity failures in this checkout; they are not deployment-wide claims or claims about a real person's model. User identifiers and private semantic text are omitted."
+  },
+  "verdicts": {
+    "canonicalModel": "CANONICAL_MODEL_FRAGMENTED",
+    "wholeProduct": "WHOLE_PRODUCT_INCOHERENT"
+  },
+  "controllingArchitectureDecision": {
+    "id": "CONCEPT_KEY_AUTHORITY_REGISTRY",
+    "authority": "Current model authority belongs to a semantic concept key and version, not directly to an object family.",
+    "currentRevisionInvariant": "Every concept has exactly one current revision.",
+    "specialisedObjectFamilies": [
+      "UserMapConclusion",
+      "PatternClaim",
+      "ContradictionNode",
+      "ReferenceItem",
+      "ProfileArtifact"
+    ],
+    "specialisedFamilyRule": "These families remain specialised evidence, interpretation, proposal, or process objects. None may independently own competing current truth.",
+    "atomicRevisionCommand": {
+      "preserveOldRevision": true,
+      "createNewCurrentRevision": true,
+      "evidenceRule": "Attach only resolved user-owned evidence.",
+      "recordInSameTransaction": [
+        "before",
+        "after",
+        "confidence",
+        "rationale",
+        "ModelUpdate"
+      ],
+      "failClosed": "Reject when ownership, evidence resolution, or transition proof fails."
+    },
+    "canonicalRevisionEnvelopeConsumers": [
+      "Today",
+      "Map",
+      "Timeline",
+      "Inspector",
+      "Reports",
+      "Explore",
+      "future AI"
+    ],
+    "decisionOutcomeRule": "Decision and Outcome remain unimplemented first-class objects and must not be aliased from SurfacedAction."
+  },
+  "executiveFinding": "Several useful intelligence object families exist, but no one authoritative, revisable current user model governs all projections and future AI. Independent surface adapters then create observable breaks in evidence counts, movement semantics, object identity, action intent, correction durability, route behavior, and AI consumption.",
+  "presentationAuthority": {
+    "accepted": true,
+    "statement": "The permanent desktop shell and Inspector geometry remain accepted. This audit evaluates architectural truth coherence and does not re-litigate visual restoration.",
+    "authorityDocument": "docs/CURRENT-DESKTOP-REFERENCE-AUTHORITY.md"
+  },
+  "controllingSources": [
+    "AGENTS.md",
+    "docs/CURRENT-DESKTOP-REFERENCE-AUTHORITY.md",
+    "docs/architecture/ORVEK-INTELLIGENCE-OBJECT-AUTHORITY-001.md",
+    "docs/architecture/ORVEK-INTELLIGENCE-OBJECT-AUTHORITY-001.json",
+    "lib/orvek-intelligence-object-authority.ts",
+    "lib/orvek-v0/production/workbench-authority.ts"
+  ],
+  "runtimeConfiguration": [
+    {
+      "key": "DATABASE_URL",
+      "state": "present_local_postgresql_companion",
+      "consequence": "Read-only aggregate and integrity queries were possible."
+    },
+    {
+      "key": "OPENAI_API_KEY",
+      "state": "present_value_not_inspected_or_printed",
+      "consequence": "No live AI call was made."
+    },
+    {
+      "key": "ORVEK_EXPLORE_MOVEMENT_SEMANTIC_ENABLED",
+      "state": "absent_default_off",
+      "consequence": "No enabled semantic-movement experiment was assumed."
+    },
+    {
+      "key": "RUN_PRODUCTION_CONTRADICTION_INGESTION",
+      "state": "absent_default_off",
+      "consequence": "No production contradiction ingestion was assumed."
+    },
+    {
+      "key": "ACTION_RANKING_LIVE_SIMULATION_ENABLED",
+      "state": "absent_default_off",
+      "consequence": "No live ranking simulation was assumed."
+    },
+    {
+      "key": "ORVEK_ALLOW_LOCAL_EVIDENCE_DEPTH_FIXTURE",
+      "state": "absent_default_off",
+      "consequence": "Fixture fallback was not accepted as live evidence."
+    },
+    {
+      "key": "local_app_server_ports_3000_3003",
+      "state": "not_running",
+      "consequence": "Browser and authenticated API journey was unavailable."
+    }
+  ],
+  "canonicalModelAnswers": {
+    "oneCanonicalCurrentModelImplemented": false,
+    "oneAuthorityForOverlappingConcepts": false,
+    "rawEvidenceExists": true,
+    "interpretationsExist": true,
+    "proposalsExist": true,
+    "historyExists": true,
+    "proposalPublicationAtomicallyRevisesCurrentTruth": false,
+    "beforeAfterProofRequiredForVisibleMovement": false,
+    "weakeningAndSupersessionUniform": false,
+    "allSurfacesConsumeOneProjection": false,
+    "futureAiConsumesDisplayedCurrentMap": false,
+    "explanation": "The declared authority names UserMapConclusion, ContradictionNode, and ReferenceItem as independent current-truth families. PatternClaim and ProfileArtifact overlap goals, identity, beliefs, habits, values, and patterns without a complete concept-key translation or precedence boundary."
+  },
+  "objectFamilies": [
+    {
+      "name": "ReferenceItem",
+      "role": "explicit/reference memory and interpretation",
+      "currentProposalHistory": "Active records may act as current memory; most inspected records are candidate.",
+      "evidence": "Source metadata and relevance retrieval, not a universal claim-evidence graph.",
+      "revision": "Supersession/status semantics exist; no inspected supersession chain.",
+      "consumers": [
+        "future AI",
+        "memory/context",
+        "action selection"
+      ]
+    },
+    {
+      "name": "ProfileArtifact",
+      "role": "legacy/dark-engine interpretation candidate",
+      "currentProposalHistory": "Candidate/translation input, not declared current authority.",
+      "evidence": "Artifact-level sources, not the shared projection contract.",
+      "revision": "Status can represent supersession; all inspected rows are candidate.",
+      "consumers": [
+        "dark-engine paths",
+        "translation paths"
+      ]
+    },
+    {
+      "name": "PatternClaim",
+      "role": "pattern intelligence",
+      "currentProposalHistory": "Candidate/active pattern state; not sole current model.",
+      "evidence": "PatternClaimEvidence and unified evidence links.",
+      "revision": "Pause, dismiss, and reevaluation fields exist; none exercised in inspected data.",
+      "consumers": [
+        "Today aggregates",
+        "Explore",
+        "actions",
+        "Inspector"
+      ],
+      "notConsumedBy": [
+        "Map Patterns rail",
+        "future AI"
+      ]
+    },
+    {
+      "name": "UserMapConclusion",
+      "role": "intended current interpretive conclusion",
+      "currentProposalHistory": "Emerging/supported/disputed; internal records can be proposed.",
+      "evidence": "UnifiedEvidenceLink; stored/displayed evidenceCount can disagree with resolvable sources.",
+      "revision": "Version, correction, and supersession fields exist, but movement publication does not mutate them.",
+      "consumers": [
+        "Map",
+        "Today movement context",
+        "Inspector",
+        "Explore grounding",
+        "report targeting"
+      ],
+      "notConsumedBy": [
+        "future AI"
+      ]
+    },
+    {
+      "name": "ContradictionNode",
+      "role": "structured conflict/tension interpretation",
+      "currentProposalHistory": "Eligibility/status determines surfacing.",
+      "evidence": "ContradictionEvidence and unified evidence links.",
+      "revision": "Status/lifecycle controls eligibility; no precedence boundary against disputed conclusions.",
+      "consumers": [
+        "Map when eligible",
+        "Today when eligible",
+        "future AI when open and eligible"
+      ]
+    },
+    {
+      "name": "Investigation",
+      "role": "open inquiry/process object, not user truth",
+      "currentProposalHistory": "Open/resolved process state.",
+      "evidence": "Links to source and target objects.",
+      "revision": "Can progress, resolve, and reopen; progress does not revise target truth.",
+      "consumers": [
+        "Today",
+        "Explore",
+        "Inspector"
+      ]
+    },
+    {
+      "name": "FieldworkAssignment",
+      "role": "observation/task object, not user truth",
+      "currentProposalHistory": "Assigned/active/completed process state.",
+      "evidence": "Links to investigation or surfaced action.",
+      "revision": "Durable check-ins and status changes; no automatic canonical conclusion revision.",
+      "consumers": [
+        "Today",
+        "Explore",
+        "Inspector"
+      ]
+    },
+    {
+      "name": "Decision",
+      "role": "not implemented as a first-class model",
+      "currentProposalHistory": "SurfacedAction is projected as type decision.",
+      "evidence": "Action linkage, not decision-option evidence.",
+      "revision": "No decision version or lifecycle contract.",
+      "consumers": [
+        "Decisions page projection",
+        "Inspector projection"
+      ]
+    },
+    {
+      "name": "Outcome",
+      "role": "not implemented as a first-class model",
+      "currentProposalHistory": "SurfacedAction.status and note stand in for outcome.",
+      "evidence": "An action note is not an outcome-to-model lineage contract.",
+      "revision": "Durable status/note write only; no canonical consequence.",
+      "consumers": [
+        "decision outcome controls"
+      ]
+    },
+    {
+      "name": "ModelUpdate",
+      "role": "movement/history ledger",
+      "currentProposalHistory": "Internal candidate then published visible history.",
+      "evidence": "Unified evidence links, affected target, optional snapshots.",
+      "revision": "Publication is effectively immutable but does not mutate or supersede the target.",
+      "consumers": [
+        "Today",
+        "Map movement preview",
+        "Timeline",
+        "Inspector",
+        "reports"
+      ],
+      "notConsumedBy": [
+        "future AI"
+      ]
+    }
+  ],
+  "requiredClassificationMatrix": [
+    {
+      "name": "ReferenceItem",
+      "rawEvidence": false,
+      "interpretation": true,
+      "currentModelState": "active_memory_only_not_whole_model",
+      "proposedChange": "candidate_can_supersede_active",
+      "auditHistory": false,
+      "supersede": "supported_by_supersedesId_path",
+      "weakenQualify": "status_or_replacement_only",
+      "contradict": "conflicting_memory_creates_candidate_without_universal_conflict_graph"
+    },
+    {
+      "name": "ProfileArtifact",
+      "rawEvidence": false,
+      "interpretation": true,
+      "currentModelState": false,
+      "proposedChange": "candidate_interpretation",
+      "auditHistory": false,
+      "supersede": "status_supports_in_principle",
+      "weakenQualify": "status_replacement_only",
+      "contradict": "no_shared_contract"
+    },
+    {
+      "name": "PatternClaim",
+      "rawEvidence": false,
+      "interpretation": true,
+      "currentModelState": "active_pattern_intelligence_not_canonical_truth",
+      "proposedChange": "candidate_before_activation",
+      "auditHistory": false,
+      "supersede": "no_canonical_version_chain",
+      "weakenQualify": "confidence_reevaluation_pause_dismiss_fields",
+      "contradict": "counterevidence_semantics_without_precedence_over_map"
+    },
+    {
+      "name": "UserMapConclusion",
+      "rawEvidence": false,
+      "interpretation": true,
+      "currentModelState": "intended_current_interpretive_conclusion",
+      "proposedChange": "internal_proposed_lifecycle",
+      "auditHistory": false,
+      "supersede": "fields_exist_but_publication_does_not_use_them",
+      "weakenQualify": "confidence_status_correction_fields_without_atomic_revision",
+      "contradict": "disputed_status_without_cross_family_resolution"
+    },
+    {
+      "name": "ContradictionNode",
+      "rawEvidence": false,
+      "interpretation": true,
+      "currentModelState": "only_when_eligible_and_open",
+      "proposedChange": "candidate_lifecycle",
+      "auditHistory": false,
+      "supersede": "resolve_replace_without_common_version_chain",
+      "weakenQualify": "strength_and_status",
+      "contradict": "object_represents_contradiction"
+    },
+    {
+      "name": "Investigation",
+      "rawEvidence": false,
+      "interpretation": "question_or_hypothesis_process_not_settled_truth",
+      "currentModelState": false,
+      "proposedChange": "proposes_inquiry_not_direct_model_change",
+      "auditHistory": "progress_history_only",
+      "supersede": false,
+      "weakenQualify": "resolve_or_reopen",
+      "contradict": "findings_can_conflict_but_do_not_revise_truth_atomically"
+    },
+    {
+      "name": "FieldworkAssignment",
+      "rawEvidence": false,
+      "interpretation": false,
+      "currentModelState": false,
+      "proposedChange": false,
+      "auditHistory": "checkin_and_process_history_only",
+      "supersede": false,
+      "weakenQualify": "status_and_checkin_only",
+      "contradict": "observation_can_challenge_claim_without_automatic_revision"
+    },
+    {
+      "name": "Decision",
+      "implemented": false,
+      "rawEvidence": false,
+      "interpretation": false,
+      "currentModelState": false,
+      "proposedChange": false,
+      "auditHistory": false,
+      "supersede": false,
+      "weakenQualify": false,
+      "contradict": false
+    },
+    {
+      "name": "Outcome",
+      "implemented": false,
+      "rawEvidence": false,
+      "interpretation": false,
+      "currentModelState": false,
+      "proposedChange": false,
+      "auditHistory": false,
+      "supersede": false,
+      "weakenQualify": false,
+      "contradict": false
+    },
+    {
+      "name": "ModelUpdate",
+      "rawEvidence": false,
+      "interpretation": "asserted_transition_not_current_interpretation",
+      "currentModelState": false,
+      "proposedChange": "internal_candidate_before_publication",
+      "auditHistory": true,
+      "supersede": "effectively_immutable_ledger_without_target_supersession",
+      "weakenQualify": false,
+      "contradict": "can_label_correction_or_contradiction_but_not_resolve_it"
+    }
+  ],
+  "conceptOwnership": [
+    {
+      "concept": "goals",
+      "representations": [
+        "active ReferenceItem",
+        "ProfileArtifact.GOAL",
+        "goal-area UserMapConclusion",
+        "action-ranking inputs"
+      ],
+      "result": "fragmented_no_explicit_translation_or_precedence"
+    },
+    {
+      "concept": "values_and_meaning",
+      "representations": [
+        "ProfileArtifact.VALUE",
+        "map meaning-system conclusion",
+        "reference memory"
+      ],
+      "result": "fragmented"
+    },
+    {
+      "concept": "identity_and_beliefs",
+      "representations": [
+        "ProfileArtifact.IDENTITY",
+        "ProfileArtifact.BELIEF",
+        "map operating-logic conclusion",
+        "reference memory"
+      ],
+      "result": "fragmented"
+    },
+    {
+      "concept": "behavioral_and_trigger_patterns",
+      "representations": [
+        "PatternClaim",
+        "UserMapConclusion shown in Map Patterns rail",
+        "ProfileArtifact.HABIT",
+        "ProfileArtifact.EMOTIONAL_PATTERN"
+      ],
+      "result": "fragmented_same_surface_label_different_families"
+    },
+    {
+      "concept": "contradictions",
+      "representations": [
+        "ContradictionNode",
+        "disputed UserMapConclusion",
+        "contradiction-drift pattern semantics"
+      ],
+      "result": "partially_assigned_no_cross_family_precedence"
+    },
+    {
+      "concept": "current_conclusion",
+      "representations": [
+        "UserMapConclusion",
+        "ReferenceItem",
+        "PatternClaim",
+        "ProfileArtifact"
+      ],
+      "result": "not_singularly_authoritative"
+    },
+    {
+      "concept": "decision",
+      "representations": [
+        "SurfacedAction presentation alias"
+      ],
+      "result": "canonical_object_not_implemented"
+    },
+    {
+      "concept": "outcome",
+      "representations": [
+        "SurfacedAction.status",
+        "SurfacedAction.note"
+      ],
+      "result": "canonical_object_not_implemented"
+    },
+    {
+      "concept": "uncertainty",
+      "representations": [
+        "UserMapConclusion status/confidence",
+        "ContradictionNode state",
+        "Investigation state"
+      ],
+      "result": "distributed_no_common_owner"
+    },
+    {
+      "concept": "open_questions",
+      "representations": [
+        "Investigation",
+        "active-question projection",
+        "Map question"
+      ],
+      "result": "process_ownership_exists_projection_identity_not_unified"
+    },
+    {
+      "concept": "movement",
+      "representations": [
+        "ModelUpdate ledger"
+      ],
+      "result": "ledger_authority_without_target_state_transition"
+    }
+  ],
+  "authorityDrift": [
+    {
+      "finding": "The runtime authority explicitly separates current truth, pattern intelligence, legacy input, history, and future Decision/Outcome, but still declares three independent current-truth families.",
+      "owners": [
+        "lib/orvek-intelligence-object-authority.ts",
+        "docs/architecture/ORVEK-INTELLIGENCE-OBJECT-AUTHORITY-001.md"
+      ]
+    },
+    {
+      "finding": "Production workbench authority treats CanonicalTodayComposition as dev/reference-only, while stale Prisma comments call it production-authoritative.",
+      "owners": [
+        "lib/orvek-v0/production/workbench-authority.ts",
+        "prisma/schema.prisma"
+      ]
+    }
+  ],
+  "lifecycleProof": {
+    "requiredStages": [
+      {
+        "stage": "new_user_evidence",
+        "result": "present",
+        "detail": "Source messages and import evidence exist."
+      },
+      {
+        "stage": "evidence_stored",
+        "result": "present",
+        "detail": "Messages, imports, evidence spans, and semantic links exist."
+      },
+      {
+        "stage": "interpretation_proposed",
+        "result": "partial",
+        "detail": "Candidate producers exist, but no surviving proposal links to the representative movement; ExploreMovementProposal count is 0."
+      },
+      {
+        "stage": "supporting_and_conflicting_evidence_identified",
+        "result": "fail",
+        "detail": "Representative movement has 0 update-specific links and no reconstructible conflicting set."
+      },
+      {
+        "stage": "semantic_review_referee",
+        "result": "fail",
+        "detail": "No reconstructible review decision."
+      },
+      {
+        "stage": "user_confirms_qualifies_or_rejects",
+        "result": "fail",
+        "detail": "No reconstructible user decision."
+      },
+      {
+        "stage": "exact_target_identified",
+        "result": "present",
+        "detail": "cmq6frqdx0000ql8h6nkavzue resolves as UserMapConclusion."
+      },
+      {
+        "stage": "current_target_mutated_or_superseded",
+        "result": "fail"
+      },
+      {
+        "stage": "model_update_records_transition",
+        "result": "fail",
+        "detail": "Record exists but required transition fields are absent."
+      },
+      {
+        "stage": "all_downstream_surfaces_consume_new_state",
+        "result": "fail",
+        "detail": "Today and Map count the ledger, Timeline excludes it, report rejects it, and future AI ignores it."
+      }
+    ],
+    "beforeAfterProof": {
+      "modelUpdateId": "cmq6h8ewn0000qlbwlg485jx1",
+      "targetObjectId": {
+        "present": true,
+        "value": "cmq6frqdx0000ql8h6nkavzue"
+      },
+      "targetObjectType": {
+        "present": true,
+        "value": "UserMapConclusion"
+      },
+      "previousVersion": {
+        "present": false
+      },
+      "newVersion": {
+        "present": false,
+        "targetRemainsVersion": 1
+      },
+      "supportingEvidenceIds": {
+        "updateSpecificCount": 0,
+        "affectedTargetLinkCount": 50
+      },
+      "conflictingEvidenceIds": {
+        "present": false
+      },
+      "reasonForChange": {
+        "present": false,
+        "detail": "not report-ready or reconstructible"
+      },
+      "confidenceBefore": {
+        "present": false
+      },
+      "confidenceAfter": {
+        "present": false
+      },
+      "reviewDecision": {
+        "present": false
+      },
+      "timestamp": {
+        "present": true,
+        "value": "2026-06-09T10:08:13.944Z"
+      },
+      "revisionOrSupersessionLink": {
+        "present": false
+      }
+    },
+    "revisionCapability": [
+      {
+        "operation": "create",
+        "canonicalTransition": "partial",
+        "finding": "Families and candidate writers can create records."
+      },
+      {
+        "operation": "strengthen",
+        "canonicalTransition": "partial",
+        "finding": "Family-specific confidence/status can rise without atomic target revision."
+      },
+      {
+        "operation": "qualify",
+        "canonicalTransition": "partial",
+        "finding": "Correction and status fields can record metadata."
+      },
+      {
+        "operation": "weaken",
+        "canonicalTransition": "not_proved",
+        "finding": "Fields and gates exist; complete current-target downgrade was not observed."
+      },
+      {
+        "operation": "contradict",
+        "canonicalTransition": "partial",
+        "finding": "Contradiction objects and disputed status exist without one precedence transaction."
+      },
+      {
+        "operation": "supersede",
+        "canonicalTransition": "not_proved_for_current_map",
+        "finding": "Fields exist; inspected conclusions have no chain and publication does not create one."
+      },
+      {
+        "operation": "retire",
+        "canonicalTransition": "family_specific_only"
+      },
+      {
+        "operation": "restore",
+        "canonicalTransition": "family_specific_only"
+      }
+    ],
+    "publicationPath": {
+      "owners": [
+        "lib/explore-movement-proposal.ts",
+        "lib/model-update-candidate-publish-helper.ts",
+        "lib/model-movement-snapshot.ts"
+      ],
+      "does": [
+        "locks and re-fetches the UserMapConclusion",
+        "verifies target summary equals proposal beforeSummary",
+        "creates or publishes ModelUpdate",
+        "creates evidence links",
+        "updates proposal or model-update publication state",
+        "materializes missing snapshots from current target when possible"
+      ],
+      "doesNot": [
+        "mutate UserMapConclusion semantic content",
+        "increment a canonical target version as the state transition",
+        "supersede the old current target",
+        "guarantee before, after, confidence delta, rationale, and update-specific evidence"
+      ],
+      "contractStatus": "Target mutation is explicitly deferred to DEL-007."
+    },
+    "futureAi": {
+      "owner": "app/api/message/route.ts",
+      "consumes": [
+        "session transcript/vector memory",
+        "active/relevant ReferenceItem",
+        "eligible ContradictionNode"
+      ],
+      "doesNotConsume": [
+        "UserMapConclusion",
+        "PatternClaim",
+        "ProfileArtifact",
+        "Investigation",
+        "FieldworkAssignment",
+        "ModelUpdate",
+        "unified canonical evidence lineage"
+      ],
+      "ordering": "Explore grounding and movement-proposal logic occurs after assistant generation and persistence.",
+      "supersededExclusion": "Active-status filtering protects ReferenceItem retrieval; ignored map/version families have no prompt exclusion proof.",
+      "rejectedExclusion": "Candidate map proposals are not direct prompt inputs, but no canonical revision/version filter exists.",
+      "contradictionsIncluded": "Eligible contradiction rows are included only after token overlap.",
+      "confidenceAndUncertainty": "Contradiction status and recommended rung are included; canonical conclusion confidence/uncertainty is absent.",
+      "evidenceLineageAvailable": false,
+      "evidenceVsInterpretation": "Transcript roles are labeled, but injected memories and tensions lack full evidence-versus-interpretation lineage.",
+      "changedStateAffectsNextResponse": false
+    }
+  },
+  "localRuntimeSnapshot": {
+    "inspectedAt": "2026-07-26T21:31:22.237Z",
+    "counts": {
+      "Session": 784,
+      "Session_APP": 144,
+      "Session_imported": 640,
+      "Message": 18656,
+      "EvidenceSpan": 5965,
+      "ReferenceItem": 29,
+      "ReferenceItem_active": 1,
+      "ReferenceItem_candidate": 28,
+      "ProfileArtifact": 203,
+      "ProfileArtifact_candidate": 203,
+      "PatternClaim": 30,
+      "PatternClaim_active": 30,
+      "ContradictionNode": 25,
+      "ContradictionNode_candidate": 25,
+      "UserMapConclusion": 59,
+      "UserMapConclusion_supported": 27,
+      "UserMapConclusion_emerging": 16,
+      "UserMapConclusion_disputed": 16,
+      "Investigation": 35,
+      "Investigation_open": 22,
+      "Investigation_resolved": 13,
+      "FieldworkAssignment": 9,
+      "SurfacedAction": 1208,
+      "ModelUpdate": 25,
+      "ExploreMovementProposal": 0,
+      "UnifiedEvidenceLink": 171,
+      "SurfacedEvidencePointer": 12,
+      "CanonicalTodayComposition": 2,
+      "CanonicalModelMovementReport": 2
+    },
+    "integrity": {
+      "danglingUnifiedEvidenceSourceRows": 14,
+      "crossOwnerUnifiedEvidenceRows": 6,
+      "surfacedEvidencePointersBackedByPatternClaim": 12,
+      "referenceSupersessionChains": 0,
+      "profileSupersededRows": 0,
+      "patternPauseDismissReevaluationRows": 0,
+      "mapConclusionSupersessionChains": 0,
+      "modelUpdateTargetsResolve": 25,
+      "modelUpdateTargetsSameOwner": 19,
+      "modelUpdatesWithBefore": 24,
+      "modelUpdatesWithAfter": 21,
+      "modelUpdatesWithConfidenceDelta": 0,
+      "modelUpdateAfterSummaryMatchesCurrentTarget": 3
+    }
+  },
+  "canonicalIntegrityRuleDisposition": [
+    {
+      "rule": "two_current_objects_independently_own_same_concept",
+      "result": "FAIL",
+      "detail": "Goals, identity/beliefs, patterns, and contradictions overlap."
+    },
+    {
+      "rule": "model_update_has_exact_target",
+      "result": "PASS_FOR_REPRESENTATIVE",
+      "detail": "The representative target resolves."
+    },
+    {
+      "rule": "model_update_changes_current_state",
+      "result": "FAIL"
+    },
+    {
+      "rule": "before_and_after_reconstructible",
+      "result": "FAIL_FOR_REPRESENTATIVE"
+    },
+    {
+      "rule": "evidence_belongs_to_same_user",
+      "result": "FAIL_IN_LOCAL_FIXTURE_DATA",
+      "detail": "6 cross-owner unified links."
+    },
+    {
+      "rule": "assistant_prose_not_treated_as_user_evidence",
+      "result": "PASS_IN_INSPECTED_MOVEMENT_PATH",
+      "detail": "Assistant messages use context; user messages may use supports."
+    },
+    {
+      "rule": "rejected_or_superseded_objects_excluded",
+      "result": "NOT_FULLY_TESTABLE",
+      "detail": "Inspected current families have no real supersession chain; active ReferenceItem filtering excludes inactive candidates."
+    },
+    {
+      "rule": "surfaces_do_not_present_obsolete_version",
+      "result": "FAIL",
+      "detail": "Today and Map show a 47-day-old ledger item without a resulting version while Timeline excludes it."
+    },
+    {
+      "rule": "future_ai_receives_updated_model",
+      "result": "FAIL"
+    },
+    {
+      "rule": "confidence_can_fall",
+      "result": "NOT_PROVED"
+    },
+    {
+      "rule": "aggregate_not_presented_as_canonical_object",
+      "result": "FAIL",
+      "detail": "Receipt and decision aliases are independently constructed."
+    },
+    {
+      "rule": "pages_do_not_reconstruct_meaning_independently",
+      "result": "FAIL"
+    }
+  ],
+  "representativeTrace": {
+    "cohort": "local_primary_cohort",
+    "userIdentifierOmitted": true,
+    "conclusion": {
+      "id": "cmq6frqdx0000ql8h6nkavzue",
+      "status": "emerging",
+      "confidence": "medium",
+      "storedEvidenceCount": 50,
+      "unifiedEvidenceLinks": 50,
+      "resolvableSourceObjects": 45,
+      "danglingSourceLinks": 5,
+      "supportLinks": 33,
+      "contextLinks": 17,
+      "contradictLinks": 0,
+      "version": 1,
+      "supersessionChain": false,
+      "correctionCount": 0,
+      "updatedAt": "2026-06-09T10:08:13.831Z",
+      "lastEvidenceAt": "2026-06-09T09:27:15.117Z"
+    },
+    "movement": {
+      "id": "cmq6h8ewn0000qlbwlg485jx1",
+      "targetId": "cmq6frqdx0000ql8h6nkavzue",
+      "type": "conclusion_added",
+      "createdAt": "2026-06-09T10:08:13.944Z",
+      "ageDaysAtAudit": 47,
+      "beforeSnapshot": false,
+      "afterSnapshot": false,
+      "confidenceDelta": false,
+      "updateSpecificEvidenceLinks": 0,
+      "affectedTargetEvidenceLinks": 50,
+      "todayBehavior": "Counted by all-time meaningful-visible query and can lead Today.",
+      "mapBehavior": "Included by movement preview reusing Today endpoint.",
+      "timelineBehavior": "Excluded by default 30-day window.",
+      "reportBehavior": "Disabled because before/after/rationale/evidence readiness fails.",
+      "aiBehavior": "Ignored by future AI."
+    },
+    "pattern": {
+      "id": "cmp2fyl6v00dkqlsycx1pq53l",
+      "type": "trigger_condition",
+      "confidence": "developing",
+      "relationEvidenceCount": 3,
+      "linkedSurfacedActions": 1,
+      "updatedAt": "2026-07-12T19:13:40.357Z"
+    },
+    "surfacedAction": {
+      "id": "cmr3jumbz0001qled5acd1kmc",
+      "linkedPatternId": "cmp2fyl6v00dkqlsycx1pq53l",
+      "lane": "stabilize",
+      "status": "not_started",
+      "outcomeNote": false,
+      "decisionObjectExists": false,
+      "outcomeObjectExists": false,
+      "updatedAt": "2026-07-02T13:37:53.039Z"
+    }
+  },
+  "todayHeadlineAndLeadTrace": {
+    "headlineCount": {
+      "value": 1,
+      "source": "lib/today-reentry.ts:buildTodayBriefingTitle counts snapshot.intelligenceUpdates.length",
+      "objects": [
+        "cmq6h8ewn0000qlbwlg485jx1"
+      ],
+      "allObjectsResolve": true,
+      "timeWindow": "all_time_not_today_window"
+    },
+    "leadIdentity": {
+      "transientHeroId": "hero-movement-cmq6h8ewn0000qlbwlg485jx1",
+      "inspectorSelectionId": "cmq6h8ewn0000qlbwlg485jx1",
+      "source": "pickTodayHeroItem -> heroFromMovement -> mapHero.inspectSelectId -> buildCanonicalLiveRuntimeData.today.leadId"
+    },
+    "title": {
+      "source": "resolveModelUpdateDisplayTitle from stored userFacingSummary, update-type label, and affected-object type label",
+      "privateTextOmitted": true
+    },
+    "narrative": {
+      "source": "ModelUpdate.userFacingSummary via hero.summary",
+      "usesTargetCurrentSummary": false
+    },
+    "whatChanged": "formatted conclusion_added label",
+    "evidence": {
+      "updateSpecificLinks": 0,
+      "affectedTargetLinks": 50,
+      "affectedTargetResolvableSources": 45,
+      "movementSpecificReceiptCountProved": false
+    },
+    "date": {
+      "source": "ModelUpdate.createdAt",
+      "value": "2026-06-09T10:08:13.944Z",
+      "ageDaysAtAudit": 47
+    },
+    "clickToInspector": {
+      "runtimeExecuted": false,
+      "sourceAndTests": "Raw ModelUpdate ID selects Movement tab and common Inspector shell.",
+      "destinationEmptyGeometry": false,
+      "substantiveMovementProofPresent": false
+    },
+    "firstDecisionFallback": {
+      "activeForRepresentative": false,
+      "defectPresentInSource": true,
+      "source": "components/orvek-v0-canonical/live-provider.ts:buildCanonicalLiveRuntimeData",
+      "behavior": "When no hero selection exists, leadId silently substitutes the first Decisions ID while narrative is derived separately."
+    }
+  },
+  "resurfacedReceiptTrace": {
+    "qualifyingPrimaryCohortPointers": 0,
+    "genuineRepresentativeAvailable": false,
+    "browserClickExecuted": false,
+    "requiredFieldsProvable": false,
+    "globalFixturePointers": 12,
+    "globalFixturePointerSourceObjectType": "pattern_claim",
+    "projectionPaths": [
+      "lib/live-evidence-depth-linkage.ts:projectSurfacedEvidencePointerToOrvekObject presents type receipt",
+      "lib/today-surface.ts:buildTodaySurfacingCards gives pattern and contradiction aggregates receipt hrefs",
+      "components/orvek-v0-canonical/live-provider.ts:buildCanonicalLiveRuntimeData accepts sourceText or merely title",
+      "lib/orvek-v0/production/map-api.ts:buildMapReceiptSatellites creates map-receipt aliases",
+      "lib/orvek-v0/production/decisions-presentation.ts:buildLinkedClaimAliasObject presents PatternClaim as receipt"
+    ],
+    "result": "NO_QUALIFYING_GENUINE_RECEIPT_AND_OBJECT_MEANING_INCOHERENT",
+    "fixtureSubstituted": false
+  },
+  "projectionArchitecture": {
+    "owner": "components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts",
+    "finding": "Today, Map inputs, actions, fieldwork, investigations, Timeline, and Explore are fetched independently and merged from independent adapters. This is a shared shell aggregator, not a shared canonical semantic projection.",
+    "surfaceIdentityAliases": {
+      "modelUpdateCanonical": "<ModelUpdate ID>",
+      "today": "hero-movement-<ModelUpdate ID>",
+      "map": "movement-<ModelUpdate ID>",
+      "timeline": "model-<ModelUpdate ID>",
+      "inspectorAndReport": "<ModelUpdate ID>"
+    }
+  },
+  "crossSurfaceMatrix": [
+    {
+      "object": "UserMapConclusion cmq6frqdx0000ql8h6nkavzue",
+      "today": "indirect through movement/hero",
+      "map": "current conclusion with raw and prefixed aliases",
+      "decisions": "not direct",
+      "timeline": "indirect through movement",
+      "explore": "available to post-response grounding",
+      "inspectorReports": "inspectable; correction changes metadata, not canonical content",
+      "futureAi": "ignored",
+      "coherent": false
+    },
+    {
+      "object": "PatternClaim cmp2fyl6v00dkqlsycx1pq53l",
+      "today": "pattern aggregate/card",
+      "map": "Map Patterns rail uses UserMapConclusion, not PatternClaim",
+      "decisions": "linked SurfacedAction becomes decision alias",
+      "timeline": "not canonical history",
+      "explore": "pattern context",
+      "inspectorReports": "actual pattern inspectable",
+      "futureAi": "ignored",
+      "coherent": false
+    },
+    {
+      "object": "ContradictionNode",
+      "today": "none eligible in primary cohort",
+      "map": "none eligible in primary cohort",
+      "decisions": "none",
+      "timeline": "none",
+      "explore": "none eligible in primary cohort",
+      "inspectorReports": "supported only when eligible and selected",
+      "futureAi": "only eligible open records consumed",
+      "coherent": false
+    },
+    {
+      "object": "ModelUpdate cmq6h8ewn0000qlbwlg485jx1",
+      "today": "counted and can lead without movement proof",
+      "map": "included through Today preview",
+      "decisions": "none",
+      "timeline": "excluded by 30-day default",
+      "explore": "not generation input",
+      "inspectorReports": "raw ID inspectable; report disabled",
+      "futureAi": "ignored",
+      "coherent": false
+    },
+    {
+      "object": "SurfacedAction cmr3jumbz0001qled5acd1kmc",
+      "today": "open-loop/action material",
+      "map": "no canonical decision state",
+      "decisions": "projected as decision",
+      "timeline": "no first-class decision history",
+      "explore": "navigation possible without object handoff",
+      "inspectorReports": "outcome disabled honestly until existing capability exists",
+      "futureAi": "not consumed as decision or outcome",
+      "coherent": false
+    },
+    {
+      "object": "Receipt",
+      "today": "no genuine qualifying primary-cohort pointer",
+      "map": "synthetic map-receipt identities from summaries",
+      "decisions": "none",
+      "timeline": "none",
+      "explore": "no shared receipt identity",
+      "inspectorReports": "receipt may be pointer/pattern projection",
+      "futureAi": "no first-class receipt consumption",
+      "coherent": false
+    }
+  ],
+  "requiredRepresentativeFieldLedger": [
+    {
+      "family": "Receipt",
+      "qualifyingRuntimeId": null,
+      "declaredType": null,
+      "presentedType": "receipt_for_fixture_pointer_or_aggregate_alias",
+      "titleSummary": "No one genuine receipt title/summary exists. Pointer title is derived; fallback title can come from a pattern or contradiction aggregate.",
+      "status": null,
+      "confidence": null,
+      "evidenceCount": 0,
+      "supportingEvidence": "unavailable",
+      "conflictingEvidence": "unavailable",
+      "lastUpdate": null,
+      "surfaces": {
+        "today": "no genuine primary representative",
+        "map": "synthetic map-receipt aliases",
+        "inspector": "source-level fixture pointer can construct content, but authenticated click not executed"
+      },
+      "actions": "no qualifying object to click",
+      "result": "UNAVAILABLE_FAIL_CLOSED"
+    },
+    {
+      "family": "UserMapConclusion",
+      "qualifyingRuntimeId": "cmq6frqdx0000ql8h6nkavzue",
+      "declaredType": "usermap_conclusion",
+      "presentedTypes": {
+        "map": "map-object",
+        "inspector": "usermap_conclusion"
+      },
+      "surfaceIds": {
+        "canonical": "cmq6frqdx0000ql8h6nkavzue",
+        "mapRail": "conclusion-cmq6frqdx0000ql8h6nkavzue",
+        "inspector": "cmq6frqdx0000ql8h6nkavzue"
+      },
+      "titleSummary": "Map list/detail use persisted title and summary. Today and Timeline show a separate ModelUpdate userFacingSummary rather than this conclusion as the same row. Private text omitted.",
+      "status": "emerging",
+      "confidence": "medium",
+      "evidenceCount": {
+        "displayed": 50,
+        "resolvable": 45
+      },
+      "supportingEvidence": {
+        "supports": 33,
+        "context": 17
+      },
+      "conflictingEvidence": 0,
+      "lastUpdate": "2026-06-09T10:08:13.831Z",
+      "actions": [
+        "Map and Inspector selection",
+        "Inspector correction metadata"
+      ],
+      "inspector": {
+        "sourceWired": true,
+        "browserClickExecuted": false,
+        "emptyScaffold": false,
+        "canonicalRevisionAction": false
+      }
+    },
+    {
+      "family": "PatternClaim",
+      "qualifyingRuntimeId": "cmp2fyl6v00dkqlsycx1pq53l",
+      "declaredType": "pattern_claim",
+      "presentedTypes": {
+        "todaySelection": "map-object",
+        "decisionsLinkedAlias": "receipt",
+        "mapPatternsRail": "not_this_family"
+      },
+      "titleSummary": "Persisted summary supplies Today selection and Decisions alias; Decisions normalization may alter presentation. Map uses UserMapConclusion under the Patterns label. Private text omitted.",
+      "status": "active",
+      "confidence": "developing",
+      "evidenceCount": 3,
+      "supportingEvidence": "3 PatternClaimEvidence/source-container rows",
+      "conflictingEvidence": 0,
+      "lastUpdate": "2026-07-12T19:13:40.357Z",
+      "actions": [
+        "Today selection",
+        "Decisions linked alias selection",
+        "Inspector evidence"
+      ],
+      "inspector": {
+        "bridgesToGenuineClaim": true,
+        "browserClickExecuted": false
+      },
+      "result": "SAME_ID_CHANGES_PRESENTED_TYPE_AND_MAP_LABEL_USES_DIFFERENT_FAMILY"
+    },
+    {
+      "family": "ContradictionNode",
+      "qualifyingRuntimeId": null,
+      "candidateRows": 25,
+      "eligibleOpenRows": 0,
+      "declaredType": "contradiction_node",
+      "titleSummary": "No honest visible primary-cohort title/summary exists to compare.",
+      "status": "candidate_only",
+      "confidenceDistribution": {
+        "medium": 22,
+        "low": 3
+      },
+      "evidenceCountGlobal": 28,
+      "supportingEvidence": "no qualifying visible primary set",
+      "conflictingEvidence": "no qualifying visible primary set",
+      "lastUpdate": null,
+      "actions": "not_applicable",
+      "inspector": "not_applicable",
+      "fixtureSubstituted": false
+    },
+    {
+      "family": "ModelUpdate",
+      "qualifyingRuntimeId": "cmq6h8ewn0000qlbwlg485jx1",
+      "declaredType": "model_update",
+      "surfaceIds": {
+        "canonical": "cmq6h8ewn0000qlbwlg485jx1",
+        "todayHero": "hero-movement-cmq6h8ewn0000qlbwlg485jx1",
+        "map": "movement-cmq6h8ewn0000qlbwlg485jx1",
+        "timeline": "model-cmq6h8ewn0000qlbwlg485jx1",
+        "inspectorReport": "cmq6h8ewn0000qlbwlg485jx1"
+      },
+      "titleSummary": "Stored userFacingSummary and surface-specific display helpers construct the title/narrative; no one shared projection. Private text omitted.",
+      "status": "user_visible_meaningful_conclusion_added",
+      "confidence": null,
+      "evidenceCount": {
+        "updateSpecific": 0,
+        "affectedTargetLinks": 50,
+        "affectedTargetResolvable": 45
+      },
+      "supportingEvidence": {
+        "affectedTargetSupports": 33,
+        "affectedTargetContext": 17
+      },
+      "conflictingEvidence": 0,
+      "lastUpdate": "2026-06-09T10:08:13.944Z",
+      "actions": [
+        "Today and Map See why",
+        "report disabled"
+      ],
+      "inspector": {
+        "rawIdResolves": true,
+        "browserClickExecuted": false,
+        "emptyGeometry": false,
+        "movementProofPresent": false
+      }
+    },
+    {
+      "family": "SurfacedAction",
+      "qualifyingRuntimeId": "cmr3jumbz0001qled5acd1kmc",
+      "declaredType": "SurfacedAction",
+      "presentedType": "decision",
+      "inspectorObjectType": "reference_decision",
+      "titleSummary": "Action template supplies title and whySuggested supplies summary/recommendation; these are not stored Decision options or choice. Private text omitted.",
+      "status": "not_started",
+      "confidence": null,
+      "evidenceCount": null,
+      "supportingEvidence": "receiptIds contains linked PatternClaim with 3 evidence rows",
+      "conflictingEvidence": "no decision-specific set",
+      "lastUpdate": "2026-07-02T13:37:53.039Z",
+      "actions": [
+        "Today action row",
+        "Decisions selection",
+        "Inspector disabled outcome",
+        "Talk through navigation without object handoff"
+      ],
+      "inspector": {
+        "fullShell": true,
+        "outcomeControlDisabled": true,
+        "writableControlMounted": false,
+        "browserClickExecuted": false
+      }
+    }
+  ],
+  "evidenceReconciliation": [
+    {
+      "subject": "UserMapConclusion cmq6frqdx0000ql8h6nkavzue",
+      "displayed": 50,
+      "resolvable": 45,
+      "difference": 5,
+      "result": "EVIDENCE_COUNT_MISMATCH"
+    },
+    {
+      "subject": "ModelUpdate cmq6h8ewn0000qlbwlg485jx1",
+      "displayed": "Your model moved in 1 place and fallback evidence line",
+      "resolvable": "0 update-specific evidence links and no before/after",
+      "result": "UNBACKED_MOVEMENT_CLAIM"
+    },
+    {
+      "subject": "global SurfacedEvidencePointer",
+      "displayed": 12,
+      "resolvable": "12 PatternClaim-backed local fixture projections",
+      "result": "NOT_A_GENUINE_RECEIPT_PATH"
+    },
+    {
+      "subject": "Map evidence satellites",
+      "displayed": "map-receipt-* identities",
+      "resolvable": "derived evidence summaries",
+      "result": "PROJECTION_ALIAS_NOT_CANONICAL_RECEIPT"
+    }
+  ],
+  "claimTraceability": [
+    {
+      "claim": "Your model moved in 1 place",
+      "trace": "ModelUpdate query to Today briefing title",
+      "result": "FAIL",
+      "reason": "Entry has no before, after, confidence delta, rationale, or update-specific evidence."
+    },
+    {
+      "claim": "Conclusion has 50 pieces of evidence",
+      "trace": "UserMapConclusion evidenceCount and unified links to Map/Inspector",
+      "result": "FAIL",
+      "reason": "Only 45 source objects resolve."
+    },
+    {
+      "claim": "Map Patterns represent patterns",
+      "trace": "Map rail classification to UserMapConclusion",
+      "result": "FAIL",
+      "reason": "The rail does not use PatternClaim and changes object-family meaning."
+    },
+    {
+      "claim": "A Decisions row is a decision",
+      "trace": "SurfacedAction to decisions adapter type decision",
+      "result": "FAIL",
+      "reason": "No Decision record, options, or selection exists."
+    },
+    {
+      "claim": "A recorded action result is an outcome",
+      "trace": "SurfacedAction status/note to outcome control",
+      "result": "PARTIAL",
+      "reason": "Durable action feedback exists, but no first-class Outcome or canonical model revision exists."
+    },
+    {
+      "claim": "A receipt is inspectable evidence",
+      "trace": "evidence pointer or pattern fallback to type receipt",
+      "result": "FAIL",
+      "reason": "The primary cohort has no genuine receipt pointer and no Receipt model exists."
+    },
+    {
+      "claim": "Correct the model changes the model",
+      "trace": "Map React state or Inspector correction metadata",
+      "result": "FAIL",
+      "reason": "Map correction is volatile; Inspector does not revise canonical content or version."
+    },
+    {
+      "claim": "Ask in Explore carries the selected object",
+      "trace": "Inspector button to setPage explore",
+      "result": "FAIL",
+      "reason": "Object identity and context are not handed off."
+    },
+    {
+      "claim": "Capture opens capture",
+      "trace": "TopBar to /journal-chat to root shell fallback",
+      "result": "FAIL",
+      "reason": "The route is swallowed and canonical Today remains visible."
+    }
+  ],
+  "actions": [
+    {
+      "action": "Navigator Today, Your Map, Decisions, Timeline, Explore",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "updateWorkbenchHistory and canonical RoutePageSync",
+      "runtimeProof": "not_a_write"
+    },
+    {
+      "action": "TopBar Search",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "opens command palette",
+      "runtimeProof": "result_navigation_not_browser_tested"
+    },
+    {
+      "action": "TopBar Capture to /journal-chat",
+      "classification": "DEAD",
+      "evidence": "OrvekWorkbenchShell swallows route into canonical fallback Today",
+      "runtimeProof": "source_and_test_proved_failure"
+    },
+    {
+      "action": "TopBar Import to /import",
+      "classification": "DEAD",
+      "evidence": "same non-allowlisted root fallback",
+      "runtimeProof": "source_proved_failure"
+    },
+    {
+      "action": "Today lead title, Now rows, movement rows",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "select and seeWhy open Inspector selection",
+      "runtimeProof": "not_executed_source_and_tests_only"
+    },
+    {
+      "action": "Today See why it moved",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "selects movement target and movement tab",
+      "runtimeProof": "not_executed_source_and_tests_only"
+    },
+    {
+      "action": "Current Open movement report",
+      "classification": "VISIBLE_BUT_DISABLED_HONESTLY",
+      "evidence": "report-readiness gate rejects representative movement",
+      "runtimeProof": "disabled_state_source_and_runtime_data_proved"
+    },
+    {
+      "action": "Today receipt rows",
+      "classification": "VISIBLE_BUT_DISABLED_HONESTLY",
+      "evidence": "empty slots disable when no qualifying object",
+      "runtimeProof": "no_genuine_primary_receipt_to_click"
+    },
+    {
+      "action": "Today Continue from what changed, Add what happened, Review outcome, Check in on fieldwork, Capture new signal",
+      "classification": "VISIBLE_BUT_MISLEADING",
+      "evidence": "distinct adapter intent discarded; each enabled button selects the same lead",
+      "runtimeProof": "source_proved_failure"
+    },
+    {
+      "action": "Today lead Add outcome",
+      "classification": "VISIBLE_BUT_MISLEADING",
+      "evidence": "selects current ModelUpdate lead and opens no writer",
+      "runtimeProof": "source_proved_failure"
+    },
+    {
+      "action": "Map rail, related rows, Full receipts and movement in inspector",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "local selection and Inspector select",
+      "runtimeProof": "not_executed_source_and_tests_only"
+    },
+    {
+      "action": "Map six Correct the model choices",
+      "classification": "VISIBLE_BUT_MISLEADING",
+      "evidence": "WorkbenchProvider applyCorrection changes only React corrections state",
+      "runtimeProof": "source_proves_no_record_and_refresh_loss"
+    },
+    {
+      "action": "Decisions Talk it through and Talk through in Explore",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "setPage explore",
+      "runtimeProof": "no_decision_or_draft_handoff_not_browser_tested"
+    },
+    {
+      "action": "Decisions Compare options and entry Add outcome",
+      "classification": "VISIBLE_BUT_DISABLED_HONESTLY",
+      "evidence": "explicit disabled controls",
+      "runtimeProof": "no_live_identity_or_write"
+    },
+    {
+      "action": "Decisions Review due decision",
+      "classificationByState": {
+        "dueObjectExists": "WORKING_NAVIGATION_ONLY",
+        "otherwise": "VISIBLE_BUT_DISABLED_HONESTLY"
+      },
+      "evidence": "opens surfaced-action projection only when due object exists",
+      "runtimeProof": "no_current_primary_due_row_not_executed"
+    },
+    {
+      "action": "Decisions rows, context, related receipts, What this reveals",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "selects object or Inspector tab",
+      "runtimeProof": "not_executed_aliases_documented"
+    },
+    {
+      "action": "Decisions detail Add outcome",
+      "classification": "VISIBLE_BUT_DISABLED_HONESTLY",
+      "evidence": "current representative is non-capable",
+      "runtimeProof": "no_current_write_capability"
+    },
+    {
+      "action": "Decisions Generate Decision Review",
+      "classification": "VISIBLE_BUT_DISABLED_HONESTLY",
+      "evidence": "no canonical report object passes availability",
+      "runtimeProof": "no_write"
+    },
+    {
+      "action": "Explore Free, Investigations, Active Questions, Fieldwork Bridge tabs",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "local tab state",
+      "runtimeProof": "not_a_write"
+    },
+    {
+      "action": "Explore grounding chips, movement note, question/investigation/fieldwork rows, related chips",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "selects object or Inspector tab when present",
+      "runtimeProof": "not_executed_source_and_tests_only"
+    },
+    {
+      "action": "Explore composer Ask",
+      "classification": "WORKING_AND_DURABLE",
+      "evidence": "useOrvekExploreChat sends to POST /api/message, which persists messages",
+      "runtimeProof": "NOT_EXECUTED_LIVE_AI_AND_DATA_WRITE_BOUNDARY"
+    },
+    {
+      "action": "Explore quick prompts",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "prefill or focus live composer through onQuickPrompt",
+      "runtimeProof": "client_interaction_not_browser_tested"
+    },
+    {
+      "action": "Explore Active Questions See evidence",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "selects question and Evidence tab",
+      "runtimeProof": "not_executed"
+    },
+    {
+      "action": "Explore Active Questions Explore this, Propose fieldwork, Mark resolved",
+      "classification": "VISIBLE_BUT_DISABLED_HONESTLY",
+      "evidence": "explicit disabled controls",
+      "runtimeProof": "no_live_identity_or_write"
+    },
+    {
+      "action": "Explore Investigations Add hypothesis, Suggest fieldwork, Possible report, Ask in Explore",
+      "classification": "VISIBLE_BUT_DISABLED_HONESTLY",
+      "evidence": "explicit disabled controls",
+      "runtimeProof": "no_live_identity_or_write"
+    },
+    {
+      "action": "Explore Fieldwork Open fieldwork and linked object",
+      "classificationByState": {
+        "objectExists": "WORKING_NAVIGATION_ONLY",
+        "otherwise": "VISIBLE_BUT_DISABLED_HONESTLY"
+      },
+      "evidence": "selects assignment or related object",
+      "runtimeProof": "not_executed"
+    },
+    {
+      "action": "Timeline filter and search",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "local presentation filtering",
+      "runtimeProof": "not_a_write"
+    },
+    {
+      "action": "Timeline event rows",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "selects event and opens Movement tab only with before/after",
+      "runtimeProof": "representative_absent_from_30_day_result_not_executed"
+    },
+    {
+      "action": "Inspector tabs, return, linked/supporting/conflicting/context/related/recent movement",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "select, pushSelection, goBack, and tab state",
+      "runtimeProof": "not_executed_structural_tests_only"
+    },
+    {
+      "action": "Inspector Ask in Explore",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "setPage explore",
+      "runtimeProof": "selected_object_not_handed_off"
+    },
+    {
+      "action": "Inspector six Correct the model choices for eligible object",
+      "classification": "VISIBLE_BUT_MISLEADING",
+      "evidence": "DurableCorrectionControls.handleApply to applyUserMapCorrection to conclusion PATCH",
+      "runtimeProof": "NOT_EXECUTED_SOURCE_AND_TESTS_PROVE_METADATA_ONLY_NOT_CANONICAL_REVISION"
+    },
+    {
+      "action": "Inspector disabled correction card for non-correctable types",
+      "classification": "VISIBLE_BUT_DISABLED_HONESTLY",
+      "evidence": "full identity-free choices remain disabled",
+      "runtimeProof": "no_write_possible_structural_tests_passed"
+    },
+    {
+      "action": "Inspector partial or non-capable decision outcome",
+      "classification": "VISIBLE_BUT_DISABLED_HONESTLY",
+      "evidence": "full geometry remains and DurableDecisionOutcomeControls is not mounted",
+      "runtimeProof": "no_write_possible_structural_tests_passed"
+    },
+    {
+      "action": "Inspector existing-capability decision outcome",
+      "classification": "WORKING_AND_DURABLE",
+      "evidence": "DurableDecisionOutcomeControls.handleSubmit to submitDecisionOutcome to action PATCH",
+      "qualification": "Persists SurfacedAction status/note, not canonical Outcome/model revision.",
+      "runtimeProof": "NOT_EXECUTED_READ_ONLY_BOUNDARY_SOURCE_AND_TESTS_ONLY"
+    },
+    {
+      "action": "Inspector fieldwork Save check-in",
+      "classification": "WORKING_AND_DURABLE",
+      "evidence": "DurableFieldworkCheckInControls.handleSubmit to submitFieldworkCheckIn",
+      "runtimeProof": "NOT_EXECUTED_READ_ONLY_BOUNDARY_SOURCE_AND_TESTS_ONLY"
+    },
+    {
+      "action": "Inspector, Today, and Decisions report open controls",
+      "classificationByState": {
+        "reportReady": "WORKING_NAVIGATION_ONLY",
+        "otherwise": "VISIBLE_BUT_DISABLED_HONESTLY"
+      },
+      "evidence": "openReport only when canonical report object resolves",
+      "runtimeProof": "representative_disabled_not_executed"
+    },
+    {
+      "action": "Report overlay Open in Inspector, related objects, Close report",
+      "classification": "WORKING_NAVIGATION_ONLY",
+      "evidence": "selects raw Inspector object or related object, or closes overlay",
+      "runtimeProof": "no_ready_representative_report_not_executed"
+    }
+  ],
+  "refresh": {
+    "durableRefreshSignalImplemented": true,
+    "canonicalModelRevisionImplemented": false,
+    "sourceAndTestBacked": true,
+    "actualWriteRefreshCycleExecuted": false,
+    "durablePaths": [
+      "eligible Inspector surfaced-action outcome feedback",
+      "eligible Inspector correction metadata",
+      "fieldwork check-in"
+    ],
+    "semanticLimitations": [
+      "Map correction is React state only.",
+      "Inspector correction is feedback metadata, not a canonical new version.",
+      "Action outcome persists to SurfacedAction, not Decision or Outcome.",
+      "Inspector selection is not a persistent canonical deep link."
+    ]
+  },
+  "defects": [
+    {
+      "id": "CM-001",
+      "severity": "critical",
+      "finding": "Multiple overlapping current-truth families lack a complete precedence and translation boundary.",
+      "owners": [
+        "lib/orvek-intelligence-object-authority.ts:CANONICAL_CURRENT_TRUTH_OBJECTS",
+        "lib/orvek-intelligence-object-authority.ts:canServeAsCanonicalCurrentTruth",
+        "docs/architecture/ORVEK-INTELLIGENCE-OBJECT-AUTHORITY-001.md:current-truth table"
+      ],
+      "trigger": "canonical_model_fragmented"
+    },
+    {
+      "id": "CM-002",
+      "severity": "critical",
+      "finding": "Movement publication does not mutate or supersede its target.",
+      "owners": [
+        "lib/explore-movement-proposal.ts:publishExploreMovementProposal",
+        "lib/model-update-candidate-publish-helper.ts:publishModelUpdateCandidate",
+        "lib/model-movement-snapshot.ts:materializePublishedModelUpdateSnapshots"
+      ],
+      "trigger": "claimed_change_is_not_current_state_revision"
+    },
+    {
+      "id": "CM-003",
+      "severity": "critical",
+      "finding": "Future AI ignores map conclusions, patterns, movement, investigations, and their unified evidence.",
+      "owners": [
+        "app/api/message/route.ts:POST",
+        "app/api/message/route.ts:buildTopContradictionsBlock",
+        "lib/reference-memory.ts:getRelevantReferenceMemory",
+        "lib/contradiction-surface.ts:getTop3WithOptionalSurfacing"
+      ],
+      "trigger": "displayed_current_truth_not_consumed"
+    },
+    {
+      "id": "CM-004",
+      "severity": "high",
+      "finding": "Weakening, correction, and supersession semantics are inconsistent and largely unexercised.",
+      "owners": [
+        "prisma/schema.prisma:UserMapConclusion",
+        "prisma/schema.prisma:PatternClaim",
+        "prisma/schema.prisma:ReferenceItem",
+        "app/api/user-map/conclusions/[id]/route.ts:PATCH",
+        "lib/durable-user-actions-contract.ts:applyUserMapCorrection"
+      ],
+      "trigger": "no_reliable_revision_lifecycle"
+    },
+    {
+      "id": "CM-005",
+      "severity": "high",
+      "finding": "Goals, identity, beliefs, patterns, and contradictions have overlapping owners.",
+      "owners": [
+        "lib/reference-memory.ts:getRelevantReferenceMemory",
+        "lib/profile-derivation.ts:processMessageForProfile",
+        "lib/today-surface.ts:buildTodaySurfacingCards",
+        "lib/orvek-adapters/map.ts:buildOntologyRailGroups",
+        "app/api/message/route.ts:POST"
+      ],
+      "trigger": "cross_surface_meaning_can_change"
+    },
+    {
+      "id": "WP-001",
+      "severity": "critical",
+      "finding": "Today counts and leads with an old ModelUpdate that has no inspectable movement proof.",
+      "owners": [
+        "lib/today-reentry.ts:pickTodayHeroItem",
+        "lib/today-reentry.ts:buildTodayBriefingTitle",
+        "lib/orvek-adapters/today.ts:mapTodayDataToV0Props",
+        "lib/orvek-v0/production/today-api.ts:buildTodayProductionDataApi"
+      ],
+      "trigger": "unbacked_user_facing_claim"
+    },
+    {
+      "id": "WP-002",
+      "severity": "critical",
+      "finding": "A visible conclusion says 50 evidence items while only 45 sources resolve.",
+      "owners": [
+        "app/api/user-map/conclusions/route.ts:GET",
+        "lib/public-intelligence-safe-slice.ts:toUserMapConclusionPublicApiListItem",
+        "lib/public-intelligence-safe-slice.ts:toUserMapConclusionPublicApiDetailItem",
+        "lib/orvek-v0/production/map-api.ts:railItemToOrvekObject"
+      ],
+      "trigger": "evidence_count_mismatch"
+    },
+    {
+      "id": "WP-003",
+      "severity": "critical",
+      "finding": "Today action labels lose their distinct handlers and destinations; all select one lead.",
+      "owners": [
+        "lib/orvek-adapters/today.ts:applyPrimaryActionRouting",
+        "lib/orvek-adapters/today.ts:mapTodayDataToV0Props",
+        "components/orvek-v0-canonical/live-provider.ts:buildCanonicalLiveRuntimeData",
+        "components/orvek-v0-canonical/pages/today.tsx:TodayPage"
+      ],
+      "trigger": "dead_or_misleading_action"
+    },
+    {
+      "id": "WP-004",
+      "severity": "critical",
+      "finding": "Map Correct the model confirms an in-memory-only change.",
+      "owners": [
+        "components/orvek-v0-canonical/pages/map.tsx:MapPage",
+        "components/orvek-v0/store.tsx:WorkbenchProvider.applyCorrection"
+      ],
+      "trigger": "correction_lost_on_refresh"
+    },
+    {
+      "id": "WP-005",
+      "severity": "high",
+      "finding": "Pattern pointers and aggregate cards are presented as receipts without a first-class receipt object.",
+      "owners": [
+        "lib/live-evidence-depth-linkage.ts:projectSurfacedEvidencePointerToOrvekObject",
+        "lib/today-surface.ts:buildTodaySurfacingCards",
+        "lib/orvek-v0/production/map-api.ts:buildMapReceiptSatellites",
+        "lib/orvek-v0/production/decisions-presentation.ts:buildLinkedClaimAliasObject"
+      ],
+      "trigger": "reference_or_fixture_fallback"
+    },
+    {
+      "id": "WP-006",
+      "severity": "high",
+      "finding": "Surfaced actions are presented as Decisions and Outcomes without those canonical objects.",
+      "owners": [
+        "lib/orvek-v0/production/decisions-api.ts:actionToObject",
+        "lib/orvek-v0/production/decisions-api.ts:buildDecisionsProductionDataApi",
+        "lib/durable-user-actions-contract.ts:submitDecisionOutcome",
+        "app/api/actions/[id]/route.ts:PATCH"
+      ],
+      "trigger": "cross_surface_meaning_change"
+    },
+    {
+      "id": "WP-007",
+      "severity": "high",
+      "finding": "When Today has narrative but no hero ID, the provider can silently substitute the first decision as lead.",
+      "owners": [
+        "components/orvek-v0-canonical/live-provider.ts:buildCanonicalLiveRuntimeData.leadId"
+      ],
+      "trigger": "undisclosed_fallback"
+    },
+    {
+      "id": "WP-008",
+      "severity": "critical",
+      "finding": "Non-allowlisted root routes, including Capture, silently render canonical Today fallback.",
+      "owners": [
+        "components/orvek-workbench/OrvekWorkbenchShell.tsx:isApprovedRouteChildPath",
+        "components/orvek-workbench/OrvekWorkbenchShell.tsx:OrvekWorkbenchShell",
+        "components/orvek-v0-canonical/workbench.tsx:resolveWorkbenchPageFromPathname",
+        "components/orvek-v0-canonical/workbench.tsx:RoutePageSync"
+      ],
+      "trigger": "page_fallback_and_dead_action"
+    },
+    {
+      "id": "WP-009",
+      "severity": "high",
+      "finding": "GET /api/actions can mutate surfaced actions.",
+      "owners": [
+        "app/api/actions/route.ts:GET",
+        "lib/actions-v1.ts:syncSurfacedActions"
+      ],
+      "trigger": "read_path_changes_state"
+    },
+    {
+      "id": "WP-010",
+      "severity": "high",
+      "finding": "Independent adapters create surface-specific IDs, labels, counts, and time windows.",
+      "owners": [
+        "components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts:useOrvekHybridWorkbenchDataApi",
+        "lib/orvek-adapters/today.ts:mapTodayDataToV0Props",
+        "lib/orvek-adapters/map.ts:mapMapDataToV0Props",
+        "lib/orvek-adapters/timeline.ts:mapTimelineDataToV0Props",
+        "lib/orvek-v0/production/hybrid-workbench-api.ts:buildHybridWorkbenchDataApi"
+      ],
+      "trigger": "semantic_drift"
+    },
+    {
+      "id": "WP-011",
+      "severity": "medium",
+      "finding": "Schema comments and local fixture composition conflict with production authority.",
+      "owners": [
+        "prisma/schema.prisma:CanonicalTodayComposition",
+        "lib/orvek-v0/production/workbench-authority.ts:allowsCompositionWorkbenchAuthority",
+        "lib/orvek-v0/production/workbench-authority.ts:isCompositionWorkbenchApi"
+      ],
+      "trigger": "authority_configuration_drift"
+    },
+    {
+      "id": "WP-012",
+      "severity": "medium",
+      "finding": "Explore navigation discards the selected object's identity and context.",
+      "owners": [
+        "components/orvek-v0-authority/evidence-panel.tsx:ObjectDetail",
+        "components/orvek-v0-canonical/pages/decisions.tsx:DecisionsPage"
+      ],
+      "trigger": "action_does_not_fulfill_implied_context"
+    }
+  ],
+  "rootCauses": [
+    "Authority was declared by object family rather than semantic concept and version.",
+    "Movement was implemented as a publication ledger before atomic model revision.",
+    "Each surface adapts backend families independently.",
+    "Presentation aliases filled missing domain objects: pattern aggregates became receipts and surfaced actions became decisions/outcomes.",
+    "Visible actions were wired after their destination and command metadata was discarded.",
+    "Fixture/reference fallbacks and route quarantine became runtime behavior.",
+    "Future AI uses a separate memory authority from the workbench's displayed current model."
+  ],
+  "salvageability": {
+    "salvageable": true,
+    "statement": "The permanent shell, Navigator, Inspector structure, adapters, evidence-link tables, durable feedback/check-in writers, safe Inspector capability gating, and report-readiness gates can be retained. The missing work is an integration and authority correction, not a visual rewrite.",
+    "retain": [
+      "stored evidence and explicit evidence links",
+      "bounded family lifecycle fields",
+      "durable action-feedback writer",
+      "durable fieldwork writer",
+      "safe Inspector capability gating",
+      "report-readiness rejection of unproved movement",
+      "permanent desktop shell geometry",
+      "authority module's role distinctions"
+    ],
+    "reconnect": [
+      "canonical revision command to evidence, review, current state, and history",
+      "shared projection to Today, Map, Decisions, Timeline, Explore, Inspector, Reports, and future AI",
+      "durable controls to canonical consequences",
+      "Today and Explore action context"
+    ],
+    "replaceOrRemove": [
+      "Receipt and Decision/Outcome presentation aliases",
+      "first-Decision Today lead fallback",
+      "route swallowing for intended child routes",
+      "in-memory Map correction confirmation",
+      "movement publication that does not change target",
+      "writes hidden in GET /api/actions"
+    ],
+    "firstRepair": "Implement CONCEPT_KEY_AUTHORITY_REGISTRY and its atomic revision transaction before page-specific presentation changes."
+  },
+  "smallestCorrectIntegrationSequence": [
+    {
+      "order": 1,
+      "name": "establish_concept_key_authority_registry",
+      "architectureDecision": "CONCEPT_KEY_AUTHORITY_REGISTRY",
+      "work": "Define one stable semantic concept key, one current revision pointer, explicit version history, and specialised family roles for every governed concept. Remove every path that lets UserMapConclusion, PatternClaim, ContradictionNode, ReferenceItem, or ProfileArtifact independently claim current authority."
+    },
+    {
+      "order": 2,
+      "name": "implement_atomic_revision",
+      "work": "Lock the current concept revision; validate the reviewer or user decision; preserve the old revision; create the new current revision; attach only resolved user-owned evidence; record before, after, confidence, rationale, and ModelUpdate in the same transaction; reject when ownership, evidence resolution, or transition proof fails."
+    },
+    {
+      "order": 3,
+      "name": "publish_canonical_revision_envelope",
+      "work": "Today, Map, Timeline, Inspector, Reports, Explore, and future AI must consume the same concept key, canonical revision ID, version, status, confidence, resolved evidence set, rationale, and capabilities. Count only resolvable evidence and inspectable movement."
+    },
+    {
+      "order": 4,
+      "name": "reconnect_capabilities_remove_domain_aliases",
+      "work": "Preserve Today commands and destinations; route Map correction through atomic revision; carry object context into Explore; allow intended Capture and child routes; and make action reads read-only. Decision and Outcome remain unimplemented first-class objects and must not be aliased from SurfacedAction; present those records truthfully as surfaced actions until the domain objects exist."
+    },
+    {
+      "order": 5,
+      "name": "repair_integrity_and_accept",
+      "work": "Quarantine dangling and cross-owner fixtures, rebuild counts from resolved evidence, backfill only provable movement, and run the authenticated acceptance journey."
+    }
+  ],
+  "requiredBrowserAcceptanceJourney": [
+    "Start with a test account containing one resolvable raw evidence item and no competing fixture records.",
+    "Capture or import the evidence and record its immutable source identity.",
+    "Generate a proposed interpretation; verify it is visibly proposed and absent from current-model and future-AI projections.",
+    "Accept and publish through the atomic revision command.",
+    "Verify one old/current/new version chain, one ModelUpdate, exact before/after/confidence/rationale, and only resolved evidence links.",
+    "Open Today, Map, Decisions, Timeline, Explore, Navigator, Inspector, and Reports.",
+    "Verify the same canonical ID/version, semantic title, evidence count, status, confidence, and movement meaning everywhere.",
+    "Verify an explicit consistent time-window policy and that unproved movement is not counted.",
+    "Follow Continue, Add what happened, Review outcome, Fieldwork check-in, Capture, Ask in Explore, Correct the model, and Open report; confirm each reaches the named capability with object context.",
+    "Refresh after every durable write and re-open through a canonical URL; confirm identical state and evidence.",
+    "Generate a new AI response and verify its grounding consumed the accepted canonical version, not the rejected proposal or superseded version.",
+    "Weaken or correct the conclusion and verify atomic revision, preserved history, future-AI update, and consistent projections.",
+    "Attempt a partial or non-capable Decision; verify full Inspector geometry is disabled and no write is possible.",
+    "Attempt unresolved, cross-owner, or missing evidence; verify publication, counting, and reporting fail closed."
+  ],
+  "validation": {
+    "focusedCommand": "npx vitest run lib/__tests__/inspector-permanent-shell-regression.test.tsx lib/__tests__/durable-user-actions-contract.test.ts lib/__tests__/today-production-api.test.ts lib/__tests__/orvek-workbench-shell-route-allowlist.test.tsx lib/__tests__/explore-movement-semantic-restoration.test.ts",
+    "testFilesPassed": 5,
+    "testsPassed": 51,
+    "durationSeconds": 3.56,
+    "qualification": "The tests support the documented implementation behavior, including permanent Inspector structure and current route fallback; they do not establish whole-product truth coherence.",
+    "artifactChecks": [
+      "jq parse and semantic consistency",
+      "git diff --check"
+    ]
+  },
+  "finalAnswers": {
+    "whatExactlyIsCurrentModel": "No singular model. Runtime declares a federation of current UserMapConclusion, eligible ContradictionNode, and active ReferenceItem, with overlapping PatternClaim and ProfileArtifact interpretations.",
+    "whereStored": "Across the corresponding PostgreSQL tables plus UnderstandingEvidenceLink; ModelUpdate is separate history, not current state.",
+    "whichObjectOwnsEachUnderstanding": "No complete ownership map. Goals, values, identity/beliefs, patterns, contradictions, uncertainty, and open questions overlap; Decision and Outcome are not first-class objects.",
+    "howEvidenceChangesIt": "Family-specific candidate, link, and publish paths create and annotate records; no one evidence-review atomic old/current/new revision exists.",
+    "oneGenuinelyImplementedCanonicalUserModel": false,
+    "modelUpdateActuallyMutatesCurrentModel": false,
+    "movementAtomicallyRevisesModelWithInspectableProof": false,
+    "allPagesConsumeSameState": false,
+    "surfacesPreserveOneIdentityCountMeaningAndTimePolicy": false,
+    "correctionsAndOutcomesNecessarilyChangeCanonicalTruthAndSurviveRefresh": false,
+    "futureAiConsumesChangedState": false,
+    "futureAiConsumesSameCurrentModelAsWorkbench": false,
+    "modelCanWeakenAndCorrectItself": "Partial family fields and controls exist; complete downward or superseding canonical revision was not proved.",
+    "permanentShellAndInspectorPresentationRejected": false,
+    "canonicalModelVerdict": "CANONICAL_MODEL_FRAGMENTED",
+    "wholeProductVerdict": "WHOLE_PRODUCT_INCOHERENT"
+  }
+}
