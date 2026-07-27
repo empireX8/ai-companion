@@ -1269,6 +1269,58 @@
     {
       "sourceType": "import_record",
       "targetType": "contradiction_node"
+    },
+    {
+      "sourceType": "pattern_claim",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "pattern_claim_evidence",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "contradiction_node",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "contradiction_evidence",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "profile_artifact",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "evidence_span",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "reference_item",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "surfaced_action",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "quick_check_in",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "journal_entry",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "session",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "message",
+      "targetType": "canonical_concept_revision"
+    },
+    {
+      "sourceType": "import_record",
+      "targetType": "canonical_concept_revision"
     }
   ],
   "deferredItems": [
