@@ -531,7 +531,7 @@ export function exploreInvestigationItemToInvestigationObject(
       ? enrichment.evidenceCount
       : undefined;
 
-  return withResolvedCanonicalSourceType({
+  return withResolvedCanonicalSourceType<OrvekObject>({
     id: item.id,
     type: "investigation",
     title: item.title,

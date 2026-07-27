@@ -190,7 +190,7 @@ export function buildMovementReportOrvekObject(
     return null;
   }
 
-  return withResolvedCanonicalSourceType({
+  return withResolvedCanonicalSourceType<OrvekObject>({
     id: depth.id,
     type: "model-update",
     title: depth.movementSummary,
