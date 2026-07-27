@@ -162,6 +162,7 @@ describe("Phase 1A enum contracts", () => {
         "surfaced_action",
         "pattern_claim",
         "contradiction_node",
+        "canonical_concept_revision",
       ])
     );
   });

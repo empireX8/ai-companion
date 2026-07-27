@@ -155,42 +155,45 @@ model ReferenceItem {
 }
 
 model ContradictionNode {
-  id              String                       @id @default(cuid())
-  userId          String
-  title           String
-  sideA           String
-  sideB           String
-  type            ContradictionType
-  confidence      ReferenceConfidence          @default(low)
-  status          ContradictionStatus          @default(open)
-  weight          Float                        @default(0)
-  snoozeCount     Int                          @default(0)
-  timesSurfaced   Int                          @default(0)
-  lastSurfacedAt  DateTime?
-  lastEvidenceAt  DateTime?
-  evidenceCount   Int                          @default(0)
-  recommendedRung ProbeRung?
-  escalationLevel Int                          @default(0)
-  avoidanceCount  Int                          @default(0)
-  lastEscalatedAt DateTime?
-  lastAvoidedAt   DateTime?
-  rung            ProbeRung?
-  snoozedUntil    DateTime?
-  createdAt       DateTime                     @default(now())
-  lastTouchedAt   DateTime                     @default(now())
-  sourceSessionId String?
-  sourceMessageId String?
-  sourceSession   Session?                     @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
-  sourceMessage   Message?                     @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  id                String                       @id @default(cuid())
+  userId            String
+  title             String
+  sideA             String
+  sideB             String
+  type              ContradictionType
+  confidence        ReferenceConfidence          @default(low)
+  status            ContradictionStatus          @default(open)
+  weight            Float                        @default(0)
+  snoozeCount       Int                          @default(0)
+  timesSurfaced     Int                          @default(0)
+  lastSurfacedAt    DateTime?
+  lastEvidenceAt    DateTime?
+  evidenceCount     Int                          @default(0)
+  recommendedRung   ProbeRung?
+  escalationLevel   Int                          @default(0)
+  avoidanceCount    Int                          @default(0)
+  lastEscalatedAt   DateTime?
+  lastAvoidedAt     DateTime?
+  rung              ProbeRung?
+  snoozedUntil      DateTime?
+  createdAt         DateTime                     @default(now())
+  lastTouchedAt     DateTime                     @default(now())
+  sourceSessionId   String?
+  sourceMessageId   String?
+  sourceSession     Session?                     @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
+  sourceMessage     Message?                     @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
   /// CEQR-005 repaired exact Side A EvidenceSpan lineage (nullable for legacy pre-repair cohort).
   sideASourceSpanId String?
   /// CEQR-005 repaired exact Side B EvidenceSpan lineage (nullable for legacy pre-repair cohort).
   sideBSourceSpanId String?
-  sideASourceSpan   EvidenceSpan?              @relation("ContradictionNodeSideASourceSpan", fields: [sideASourceSpanId], references: [id], onDelete: Restrict)
-  sideBSourceSpan   EvidenceSpan?              @relation("ContradictionNodeSideBSourceSpan", fields: [sideBSourceSpanId], references: [id], onDelete: Restrict)
-  evidence        ContradictionEvidence[]
-  referenceLinks  ContradictionReferenceLink[]
+  sideASourceSpan   EvidenceSpan?                @relation("ContradictionNodeSideASourceSpan", fields: [sideASourceSpanId], references: [id], onDelete: Restrict)
+  sideBSourceSpan   EvidenceSpan?                @relation("ContradictionNodeSideBSourceSpan", fields: [sideBSourceSpanId], references: [id], onDelete: Restrict)
+  evidence          ContradictionEvidence[]
+  referenceLinks    ContradictionReferenceLink[]
 
+  /// CEQR-007: exact ordered repaired dual-side identity.
+  /// PostgreSQL UNIQUE treats NULLs as distinct, so legacy both-null rows remain permitted.
+  @@unique([userId, sideASourceSpanId, sideBSourceSpanId], map: "ContradictionNode_user_sideA_sideB_span_uniq")
   @@index([userId, status, weight])
   @@index([userId, lastTouchedAt])
   @@index([userId, escalationLevel, weight])
@@ -198,9 +201,6 @@ model ContradictionNode {
   @@index([userId, createdAt])
   @@index([sideASourceSpanId])
   @@index([sideBSourceSpanId])
-  /// CEQR-007: exact ordered repaired dual-side identity.
-  /// PostgreSQL UNIQUE treats NULLs as distinct, so legacy both-null rows remain permitted.
-  @@unique([userId, sideASourceSpanId, sideBSourceSpanId], map: "ContradictionNode_user_sideA_sideB_span_uniq")
 }
 
 model ContradictionReferenceLink {
@@ -391,20 +391,20 @@ model DerivationRun {
 }
 
 model EvidenceSpan {
-  id                   String                        @id @default(uuid())
-  userId               String
-  messageId            String
-  message              Message                       @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  charStart            Int
-  charEnd              Int
-  contentHash          String
-  createdAt            DateTime                      @default(now())
-  artifactLinks        ArtifactEvidenceLink[]
-  profileArtifactLinks ProfileArtifactEvidenceLink[]
+  id                        String                        @id @default(uuid())
+  userId                    String
+  messageId                 String
+  message                   Message                       @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  charStart                 Int
+  charEnd                   Int
+  contentHash               String
+  createdAt                 DateTime                      @default(now())
+  artifactLinks             ArtifactEvidenceLink[]
+  profileArtifactLinks      ProfileArtifactEvidenceLink[]
   /// Reverse relation: ContradictionNodes that cite this span as exact Side A lineage (CEQR-005).
-  contradictionNodesAsSideA ContradictionNode[]      @relation("ContradictionNodeSideASourceSpan")
+  contradictionNodesAsSideA ContradictionNode[]           @relation("ContradictionNodeSideASourceSpan")
   /// Reverse relation: ContradictionNodes that cite this span as exact Side B lineage (CEQR-005).
-  contradictionNodesAsSideB ContradictionNode[]      @relation("ContradictionNodeSideBSourceSpan")
+  contradictionNodesAsSideB ContradictionNode[]           @relation("ContradictionNodeSideBSourceSpan")
 
   @@unique([messageId, charStart, charEnd, contentHash])
   @@index([userId, messageId])
@@ -857,6 +857,7 @@ enum UnderstandingLinkTargetType {
   surfaced_action
   pattern_claim
   contradiction_node
+  canonical_concept_revision
 }
 
 enum UnderstandingLinkSourceType {
@@ -890,7 +891,7 @@ enum UnderstandingLinkRole {
 }
 
 model UserMapConclusion {
-  id                       String                  @id @default(cuid())
+  id                       String                      @id @default(cuid())
   userId                   String
   area                     UserMapConclusionArea
   status                   UserMapConclusionStatus
@@ -900,25 +901,25 @@ model UserMapConclusion {
   summary                  String
   confidenceScore          Float
   confidenceLevel          UserMapConfidenceLevel
-  evidenceCount            Int                     @default(0)
-  sourceDiversity          Int                     @default(0)
-  timeSpreadDays           Int                     @default(0)
-  version                  Int                     @default(1)
+  evidenceCount            Int                         @default(0)
+  sourceDiversity          Int                         @default(0)
+  timeSpreadDays           Int                         @default(0)
+  version                  Int                         @default(1)
   supersededById           String?
   supersedesId             String?
   firstEvidenceAt          DateTime?
   lastEvidenceAt           DateTime?
   lastUserCorrectionAt     DateTime?
   lastUserCorrectionLabel  String?
-  correctionCount          Int                     @default(0)
+  correctionCount          Int                         @default(0)
   notes                    String?
-  createdAt                DateTime                @default(now())
-  updatedAt                DateTime                @updatedAt
-  supersededBy             UserMapConclusion?      @relation("UserMapConclusionSupersededBy", fields: [supersededById], references: [id], onDelete: SetNull)
-  supersedes               UserMapConclusion?      @relation("UserMapConclusionSupersedes", fields: [supersedesId], references: [id], onDelete: SetNull)
-  supersededByChildren     UserMapConclusion[]     @relation("UserMapConclusionSupersedes")
-  supersedesChildren       UserMapConclusion[]     @relation("UserMapConclusionSupersededBy")
-  resolvedByInvestigations Investigation[]         @relation("InvestigationResolvedIntoConclusion")
+  createdAt                DateTime                    @default(now())
+  updatedAt                DateTime                    @updatedAt
+  supersededBy             UserMapConclusion?          @relation("UserMapConclusionSupersededBy", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes               UserMapConclusion?          @relation("UserMapConclusionSupersedes", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededByChildren     UserMapConclusion[]         @relation("UserMapConclusionSupersedes")
+  supersedesChildren       UserMapConclusion[]         @relation("UserMapConclusionSupersededBy")
+  resolvedByInvestigations Investigation[]             @relation("InvestigationResolvedIntoConclusion")
 
   @@index([userId, area, status])
   @@index([userId, confidenceScore])
@@ -927,25 +928,25 @@ model UserMapConclusion {
 }
 
 model Investigation {
-  id                       String                     @id @default(cuid())
-  userId                   String
-  title                    String
-  organizingQuestion       String
-  status                   InvestigationStatus
-  visibility               InvestigationVisibility    @default(user_visible)
-  candidateLifecycleStatus CandidateLifecycleStatus?
-  seedType                 InvestigationSeedType
-  competingTheories        Json
-  evidenceNeeded           Json
-  resolutionSummary        String?
-  resolvedAt               DateTime?
+  id                              String                    @id @default(cuid())
+  userId                          String
+  title                           String
+  organizingQuestion              String
+  status                          InvestigationStatus
+  visibility                      InvestigationVisibility   @default(user_visible)
+  candidateLifecycleStatus        CandidateLifecycleStatus?
+  seedType                        InvestigationSeedType
+  competingTheories               Json
+  evidenceNeeded                  Json
+  resolutionSummary               String?
+  resolvedAt                      DateTime?
   resolvedIntoUserMapConclusionId String?
-  reopenedAt               DateTime?
-  reopenReason             String?
-  priority                 Int?
-  createdAt                DateTime                   @default(now())
-  updatedAt                DateTime                   @updatedAt
-  resolvedIntoUserMapConclusion UserMapConclusion?     @relation("InvestigationResolvedIntoConclusion", fields: [resolvedIntoUserMapConclusionId], references: [id], onDelete: SetNull)
+  reopenedAt                      DateTime?
+  reopenReason                    String?
+  priority                        Int?
+  createdAt                       DateTime                  @default(now())
+  updatedAt                       DateTime                  @updatedAt
+  resolvedIntoUserMapConclusion   UserMapConclusion?        @relation("InvestigationResolvedIntoConclusion", fields: [resolvedIntoUserMapConclusionId], references: [id], onDelete: SetNull)
 
   @@index([userId, status, updatedAt])
   @@index([userId, visibility, status, updatedAt])
@@ -969,10 +970,23 @@ model ModelUpdate {
   sourceRunId          String?
   internalNotes        String?
   createdAt            DateTime                    @default(now())
+  canonicalConceptId   String?
+  previousRevisionId   String?
+  resultingRevisionId  String?                     @unique
+  exploreProposalId    String?                     @unique
 
+  canonicalConcept  CanonicalConcept?         @relation("ModelUpdateCanonicalConcept", fields: [canonicalConceptId, userId], references: [id, userId], onDelete: Restrict)
+  previousRevision  CanonicalConceptRevision? @relation("ModelUpdatePreviousRevision", fields: [previousRevisionId, userId], references: [id, userId], onDelete: Restrict)
+  resultingRevision CanonicalConceptRevision? @relation("ModelUpdateResultingRevision", fields: [resultingRevisionId, userId], references: [id, userId], onDelete: Restrict)
+  exploreProposal   ExploreMovementProposal?  @relation("ModelUpdateExploreProposal", fields: [exploreProposalId, userId], references: [id, userId], onDelete: Restrict)
+
+  @@unique([resultingRevisionId, userId])
+  @@unique([exploreProposalId, userId])
   @@index([userId, visibility, createdAt])
   @@index([userId, updateType, createdAt])
   @@index([userId, affectedObjectType, affectedObjectId])
+  @@index([userId, canonicalConceptId, createdAt])
+  @@index([previousRevisionId])
 }
 
 /// Explore proposed model movement under review — NOT a ModelUpdate.
@@ -983,28 +997,182 @@ enum ExploreMovementProposalStatus {
   rejected
 }
 
-model ExploreMovementProposal {
-  id                 String                         @id @default(cuid())
-  userId             String
-  conversationId     String
-  assistantMessageId String
-  userMessageId      String
-  status             ExploreMovementProposalStatus  @default(proposed)
-  affectedObjectType UnderstandingLinkTargetType
-  affectedObjectId   String
-  beforeSummary      String
-  afterSummary       String
-  rationale          String
-  userFacingSummary  String
-  /// Owned grounding sources snapshotted at proposal creation (used to materialize evidence links on publish).
-  sourcesJson        Json
-  /// Set only after publication — distinct ModelUpdate.id (never equals this row's id by contract).
-  modelUpdateId      String?                        @unique
-  createdAt          DateTime                       @default(now())
-  updatedAt          DateTime                       @updatedAt
+enum ExploreMovementAuthorityMode {
+  legacy
+  canonical_v1
+}
 
+enum CanonicalConceptLifecycleStatus {
+  active
+}
+
+enum CanonicalConceptDomain {
+  operating_logic
+  state_ecology
+  tension_architecture
+  recovery_architecture
+  meaning_system
+  relational_field
+  developmental_vector
+  current_frontier
+  unknown
+}
+
+enum CanonicalConceptSourceType {
+  usermap_conclusion
+  pattern_claim
+  contradiction_node
+  reference_item
+  profile_artifact
+}
+
+enum CanonicalConceptBindingRole {
+  legacy_seed
+  related_interpretation
+}
+
+enum CanonicalRevisionStatus {
+  hypothesis
+  tentative
+  emerging
+  supported
+  disputed
+}
+
+enum CanonicalRevisionOperation {
+  registered
+  strengthen
+}
+
+enum CanonicalRevisionDecisionSource {
+  legacy_registration
+  explore_proposal
+}
+
+model CanonicalConcept {
+  id                String                          @id @default(cuid())
+  userId            String
+  registrationKey   String
+  domain            CanonicalConceptDomain          @default(unknown)
+  lifecycleStatus   CanonicalConceptLifecycleStatus @default(active)
+  currentRevisionId String?
+  createdAt         DateTime                        @default(now())
+  updatedAt         DateTime                        @updatedAt
+
+  currentRevision CanonicalConceptRevision? @relation("CanonicalConceptCurrentRevision", fields: [currentRevisionId, id], references: [id, conceptId], onDelete: Restrict)
+
+  revisions      CanonicalConceptRevision[]      @relation("CanonicalConceptRevisions")
+  sourceBindings CanonicalConceptSourceBinding[]
+  modelUpdates   ModelUpdate[]                   @relation("ModelUpdateCanonicalConcept")
+  proposals      ExploreMovementProposal[]       @relation("ExploreProposalCanonicalConcept")
+
+  @@unique([id, userId])
+  @@unique([userId, registrationKey])
+  @@unique([currentRevisionId, id])
+  @@index([userId, updatedAt])
+  @@index([userId, lifecycleStatus, updatedAt])
+}
+
+model CanonicalConceptRevision {
+  id                       String                          @id @default(cuid())
+  userId                   String
+  conceptId                String
+  version                  Int
+  title                    String
+  summary                  String
+  status                   CanonicalRevisionStatus
+  confidenceScore          Float
+  confidenceLevel          UserMapConfidenceLevel
+  evidenceCount            Int                             @default(0)
+  rationale                String?
+  operation                CanonicalRevisionOperation
+  decisionSource           CanonicalRevisionDecisionSource
+  acceptedAt               DateTime
+  registrationSnapshotHash String?
+  previousRevisionId       String?                         @unique
+  createdFromProposalId    String?                         @unique
+  createdAt                DateTime                        @default(now())
+
+  concept CanonicalConcept @relation("CanonicalConceptRevisions", fields: [conceptId, userId], references: [id, userId], onDelete: Restrict)
+
+  previousRevision CanonicalConceptRevision? @relation("CanonicalRevisionLineage", fields: [previousRevisionId, conceptId, userId], references: [id, conceptId, userId], onDelete: Restrict)
+  nextRevision     CanonicalConceptRevision? @relation("CanonicalRevisionLineage")
+
+  currentForConcept CanonicalConcept? @relation("CanonicalConceptCurrentRevision")
+
+  createdFromProposal ExploreMovementProposal? @relation("ExploreProposalProducedRevision", fields: [createdFromProposalId, userId], references: [id, userId], onDelete: Restrict)
+
+  resultingModelUpdate ModelUpdate?              @relation("ModelUpdateResultingRevision")
+  previousModelUpdates ModelUpdate[]             @relation("ModelUpdatePreviousRevision")
+  expectedByProposals  ExploreMovementProposal[] @relation("ExploreProposalExpectedRevision")
+
+  @@unique([id, conceptId])
+  @@unique([id, userId])
+  @@unique([id, conceptId, userId])
+  @@unique([conceptId, version])
+  @@unique([createdFromProposalId, userId])
+  @@unique([previousRevisionId, conceptId, userId])
+  @@index([userId, conceptId, version])
+  @@index([userId, createdAt])
+}
+
+model CanonicalConceptSourceBinding {
+  id          String                      @id @default(cuid())
+  userId      String
+  conceptId   String
+  sourceType  CanonicalConceptSourceType
+  sourceId    String
+  bindingRole CanonicalConceptBindingRole
+  createdAt   DateTime                    @default(now())
+
+  concept CanonicalConcept @relation(fields: [conceptId, userId], references: [id, userId], onDelete: Restrict)
+
+  @@unique([userId, sourceType, sourceId])
+  @@unique([conceptId, sourceType, sourceId])
+  @@index([conceptId])
+  @@index([userId, sourceType])
+}
+
+model ExploreMovementProposal {
+  id                         String                        @id @default(cuid())
+  userId                     String
+  conversationId             String
+  assistantMessageId         String
+  userMessageId              String
+  status                     ExploreMovementProposalStatus @default(proposed)
+  authorityMode              ExploreMovementAuthorityMode  @default(legacy)
+  affectedObjectType         UnderstandingLinkTargetType
+  affectedObjectId           String
+  beforeSummary              String
+  afterSummary               String
+  rationale                  String
+  userFacingSummary          String
+  /// Owned grounding sources snapshotted at proposal creation (used to materialize evidence links on publish).
+  sourcesJson                Json
+  /// Set only after publication — distinct ModelUpdate.id (never equals this row's id by contract).
+  modelUpdateId              String?                       @unique
+  expectedCurrentRevisionId  String?
+  expectedLegacySnapshotHash String?
+  canonicalConceptId         String?
+  revisionOperation          CanonicalRevisionOperation?
+  createdAt                  DateTime                      @default(now())
+  updatedAt                  DateTime                      @updatedAt
+
+  producedRevision CanonicalConceptRevision? @relation("ExploreProposalProducedRevision")
+
+  /// Singular: ModelUpdate.exploreProposalId is @unique.
+  modelUpdate ModelUpdate? @relation("ModelUpdateExploreProposal")
+
+  canonicalConcept CanonicalConcept? @relation("ExploreProposalCanonicalConcept", fields: [canonicalConceptId, userId], references: [id, userId], onDelete: Restrict)
+
+  expectedCurrentRevision CanonicalConceptRevision? @relation("ExploreProposalExpectedRevision", fields: [expectedCurrentRevisionId, canonicalConceptId, userId], references: [id, conceptId, userId], onDelete: Restrict)
+
+  @@unique([id, userId])
   @@index([userId, conversationId, status, createdAt])
   @@index([userId, status, createdAt])
+  @@index([canonicalConceptId, status])
+  @@index([expectedCurrentRevisionId])
+  @@index([authorityMode, status, createdAt])
 }
 
 model FieldworkAssignment {
