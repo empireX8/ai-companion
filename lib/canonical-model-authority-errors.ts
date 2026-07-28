@@ -11,7 +11,8 @@ export type CanonicalModelAuthorityErrorCode =
   | "UNSUPPORTED_EVIDENCE_PAIR"
   | "INVALID_UMC_STATUS_MAPPING"
   | "INVALID_UMC_FIELD"
-  | "NOT_QUALIFYING_CONCLUSION";
+  | "NOT_QUALIFYING_CONCLUSION"
+  | "INVALID_PROPOSAL_PROVENANCE";
 
 export class CanonicalModelAuthorityError extends Error {
   readonly code: CanonicalModelAuthorityErrorCode;

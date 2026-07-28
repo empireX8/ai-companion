@@ -384,6 +384,9 @@ export function normalizeExploreMovementAfterSummaryForIdentity(
 
 /**
  * Deterministic proposal ID from canonical semantic identity (no schema migration).
+ *
+ * Legacy IDs omit authorityMode so existing deterministic proposals remain stable.
+ * Canonical IDs include `canonical_v1` so publisher families never collide.
  */
 export function deriveExploreMovementProposalId(args: {
   userId: string;
@@ -392,6 +395,7 @@ export function deriveExploreMovementProposalId(args: {
   affectedObjectType: string;
   affectedObjectId: string;
   afterSummary: string;
+  authorityMode?: "legacy" | "canonical_v1";
 }): string {
   const canonical = [
     args.userId,
@@ -400,6 +404,7 @@ export function deriveExploreMovementProposalId(args: {
     args.affectedObjectType,
     args.affectedObjectId,
     normalizeExploreMovementAfterSummaryForIdentity(args.afterSummary),
+    ...(args.authorityMode === "canonical_v1" ? (["canonical_v1"] as const) : []),
   ].join("\u001f");
   const digest = createHash("sha256").update(canonical, "utf8").digest("hex");
   return `emp_${digest.slice(0, 40)}`;

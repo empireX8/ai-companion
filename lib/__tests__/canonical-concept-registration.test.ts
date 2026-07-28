@@ -129,20 +129,8 @@ describe.skipIf(!shouldAttemptRealDb)(
 
     afterAll(async () => {
       if (!prisma) return;
-      await prisma.$executeRawUnsafe(`
-        TRUNCATE TABLE
-          "UnderstandingEvidenceLink",
-          "ModelUpdate",
-          "CanonicalConceptSourceBinding",
-          "CanonicalConceptRevision",
-          "CanonicalConcept",
-          "ExploreMovementProposal",
-          "UserMapConclusion",
-          "JournalEntry",
-          "Session",
-          "Message"
-        CASCADE
-      `);
+      // Avoid shared-DB TRUNCATE while other canonical suites may still be running.
+      // Revision immutability also blocks row DELETE; suites use unique user IDs.
       await prisma.$disconnect();
     });
 

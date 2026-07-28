@@ -13,6 +13,8 @@
  */
 
 import {
+  CanonicalRevisionOperation,
+  ExploreMovementAuthorityMode,
   ExploreMovementProposalStatus,
   ModelUpdateType,
   ModelUpdateVisibility,
@@ -20,9 +22,26 @@ import {
   UnderstandingLinkSourceType,
   UnderstandingLinkTargetType,
   type PrismaClient,
+  type UserMapConclusionStatus,
+  type UserMapConfidenceLevel,
 } from "@prisma/client";
 
 import type { ExploreGroundingSource } from "./explore-grounding-contract";
+import {
+  isCanonicalModelAuthorityEnabledForUser,
+} from "./canonical-model-authority-flag";
+import {
+  CanonicalModelAuthorityError,
+} from "./canonical-model-authority-errors";
+import {
+  resolveOrRegisterCanonicalConceptFromUserMapConclusion,
+  type CanonicalAuthorityTransactionClient,
+} from "./canonical-concept-registration";
+import {
+  prepareCanonicalProposalEvidence,
+  type CanonicalRevisionEvidenceDb,
+} from "./canonical-revision-evidence";
+import { deriveCanonicalUmcSnapshotHash } from "./canonical-umc-snapshot-hash";
 import {
   EXPLORE_MOVEMENT_BLOCKED_UNSAFE_FIXED_SEMANTICS,
   matchesUnsafeFixedExploreMovementSignature,
@@ -257,6 +276,7 @@ async function verifyProvenanceSourceOwnershipAndType(args: {
 /**
  * Confirm a deterministic-ID occupant is a coherent semantic reuse candidate.
  * Invalid / unversioned / identity-mismatched rows fail closed.
+ * Publisher-family authority shape must match the requested mode.
  */
 function isReusableSemanticExploreMovementProposal(args: {
   row: {
@@ -270,6 +290,11 @@ function isReusableSemanticExploreMovementProposal(args: {
     userFacingSummary: string;
     sourcesJson: unknown;
     status: ExploreMovementProposalStatus;
+    authorityMode?: ExploreMovementAuthorityMode | null;
+    canonicalConceptId?: string | null;
+    expectedCurrentRevisionId?: string | null;
+    expectedLegacySnapshotHash?: string | null;
+    revisionOperation?: CanonicalRevisionOperation | null;
   };
   expected: {
     conversationId: string;
@@ -277,8 +302,38 @@ function isReusableSemanticExploreMovementProposal(args: {
     userMessageId: string;
     affectedObjectId: string;
     afterSummary: string;
+    authorityMode: ExploreMovementAuthorityMode;
   };
 }): boolean {
+  const rowMode =
+    args.row.authorityMode ?? ExploreMovementAuthorityMode.legacy;
+  if (rowMode !== args.expected.authorityMode) return false;
+
+  if (rowMode === ExploreMovementAuthorityMode.canonical_v1) {
+    if (
+      typeof args.row.canonicalConceptId !== "string" ||
+      args.row.canonicalConceptId.length === 0
+    ) {
+      return false;
+    }
+    if (
+      typeof args.row.expectedCurrentRevisionId !== "string" ||
+      args.row.expectedCurrentRevisionId.length === 0
+    ) {
+      return false;
+    }
+    if (args.row.expectedLegacySnapshotHash != null) return false;
+    if (args.row.revisionOperation !== CanonicalRevisionOperation.strengthen) {
+      return false;
+    }
+  } else {
+    if (args.row.canonicalConceptId != null) return false;
+    if (args.row.expectedCurrentRevisionId != null) return false;
+    if (args.row.revisionOperation != null) return false;
+    // Legacy rows must keep snapshot expectation null (schema authority check).
+    if (args.row.expectedLegacySnapshotHash != null) return false;
+  }
+
   const parsed = parseExploreMovementProposalProvenance(args.row.sourcesJson);
   if (!parsed.ok) return false;
 
@@ -674,6 +729,377 @@ export async function evaluateExploreMovementPublicationProvenance(args: {
   return { ok: true, provenance, sources };
 }
 
+async function requireCanonicalProposalProvenance(args: {
+  provenance: ExploreMovementProposalProvenance | undefined;
+  affectedObjectId: string;
+  afterSummary: string;
+  rationale: string;
+  userFacingSummary: string;
+}): Promise<ExploreMovementProposalProvenance> {
+  if (!args.provenance) {
+    throw new CanonicalModelAuthorityError(
+      "INVALID_PROPOSAL_PROVENANCE",
+      "Canonical Explore proposal creation requires versioned provenance",
+    );
+  }
+
+  const parsed = parseExploreMovementProposalProvenance(args.provenance);
+  if (!parsed.ok) {
+    throw new CanonicalModelAuthorityError(
+      "INVALID_PROPOSAL_PROVENANCE",
+      parsed.legacyArray
+        ? "Canonical Explore proposal creation rejects legacy array-only sources"
+        : `Canonical Explore proposal provenance invalid: ${parsed.errors.join(" | ")}`,
+    );
+  }
+
+  const decision = parsed.provenance.semanticDecision;
+  if (decision.outcome !== "PROPOSE_CONCLUSION_STRENGTHENING") {
+    throw new CanonicalModelAuthorityError(
+      "INVALID_PROPOSAL_PROVENANCE",
+      "Canonical Explore provenance must propose conclusion strengthening",
+    );
+  }
+  if (decision.targetObjectId !== args.affectedObjectId) {
+    throw new CanonicalModelAuthorityError(
+      "INVALID_PROPOSAL_PROVENANCE",
+      "Canonical Explore provenance targetObjectId must match affectedObjectId",
+    );
+  }
+  if (decision.afterSummary !== args.afterSummary) {
+    throw new CanonicalModelAuthorityError(
+      "INVALID_PROPOSAL_PROVENANCE",
+      "Canonical Explore provenance afterSummary must match proposal afterSummary",
+    );
+  }
+  if (decision.rationale !== args.rationale) {
+    throw new CanonicalModelAuthorityError(
+      "INVALID_PROPOSAL_PROVENANCE",
+      "Canonical Explore provenance rationale must match proposal rationale",
+    );
+  }
+  if (decision.userFacingSummary !== args.userFacingSummary) {
+    throw new CanonicalModelAuthorityError(
+      "INVALID_PROPOSAL_PROVENANCE",
+      "Canonical Explore provenance userFacingSummary must match proposal userFacingSummary",
+    );
+  }
+
+  return parsed.provenance;
+}
+
+async function resolveOwnedQualifyingUserMapConclusionForCanonicalProposal(args: {
+  userId: string;
+  affectedObjectId: string;
+  db: PrismaClient;
+}): Promise<{
+  id: string;
+  title: string;
+  summary: string;
+  status: UserMapConclusionStatus;
+  confidenceScore: number;
+  confidenceLevel: UserMapConfidenceLevel;
+  updatedAt: Date;
+}> {
+  const owned = await args.db.userMapConclusion.findFirst({
+    where: { id: args.affectedObjectId, userId: args.userId },
+    select: {
+      id: true,
+      userId: true,
+      title: true,
+      summary: true,
+      status: true,
+      visibility: true,
+      supersededById: true,
+      candidateLifecycleStatus: true,
+      confidenceScore: true,
+      confidenceLevel: true,
+      updatedAt: true,
+    },
+  });
+
+  if (!owned) {
+    const any = await args.db.userMapConclusion.findFirst({
+      where: { id: args.affectedObjectId },
+      select: { id: true, userId: true },
+    });
+    if (!any) {
+      throw new CanonicalModelAuthorityError(
+        "NOT_FOUND",
+        `UserMapConclusion not found: ${args.affectedObjectId}`,
+      );
+    }
+    throw new CanonicalModelAuthorityError(
+      "WRONG_OWNER",
+      `UserMapConclusion ownership mismatch: ${args.affectedObjectId}`,
+    );
+  }
+
+  if (
+    !isQualifyingExploreUserMapConclusion({
+      visibility: owned.visibility,
+      status: owned.status,
+      supersededById: owned.supersededById,
+      candidateLifecycleStatus: owned.candidateLifecycleStatus,
+      summary: owned.summary,
+    })
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "NOT_QUALIFYING_CONCLUSION",
+      `UserMapConclusion is not qualifying for canonical proposal: ${owned.id}`,
+    );
+  }
+
+  return {
+    id: owned.id,
+    title: owned.title,
+    summary: owned.summary,
+    status: owned.status,
+    confidenceScore: Number(owned.confidenceScore),
+    confidenceLevel: owned.confidenceLevel,
+    updatedAt: owned.updatedAt,
+  };
+}
+
+async function createLegacyExploreMovementProposal(args: {
+  userId: string;
+  db: PrismaClient;
+  conversationId: string;
+  assistantMessageId: string;
+  userMessageId: string;
+  affectedObjectType: UnderstandingLinkTargetType;
+  affectedObjectId: string;
+  beforeSummary: string;
+  afterSummary: string;
+  rationale: string;
+  userFacingSummary: string;
+  sources?: ExploreGroundingSource[];
+  provenance?: ExploreMovementProposalProvenance;
+  id?: string;
+}): Promise<ExploreProposalRecord> {
+  const sourcesJson =
+    args.provenance ??
+    args.sources ??
+    ([] as ExploreGroundingSource[]);
+
+  const data = {
+    ...(args.id ? { id: args.id } : {}),
+    userId: args.userId,
+    conversationId: args.conversationId,
+    assistantMessageId: args.assistantMessageId,
+    userMessageId: args.userMessageId,
+    status: ExploreMovementProposalStatus.proposed,
+    authorityMode: ExploreMovementAuthorityMode.legacy,
+    affectedObjectType: args.affectedObjectType,
+    affectedObjectId: args.affectedObjectId,
+    beforeSummary: args.beforeSummary,
+    afterSummary: args.afterSummary,
+    rationale: args.rationale,
+    userFacingSummary: args.userFacingSummary,
+    sourcesJson,
+    modelUpdateId: null,
+    expectedCurrentRevisionId: null,
+    expectedLegacySnapshotHash: null,
+    canonicalConceptId: null,
+    revisionOperation: null,
+  };
+
+  // Deterministic-ID P2002 must propagate — race recovery lives only in
+  // createOrReuseSemanticExploreMovementProposal.
+  const created = await args.db.exploreMovementProposal.create({ data });
+  return toProposalRecord(created);
+}
+
+async function createCanonicalExploreMovementProposal(args: {
+  userId: string;
+  db: PrismaClient;
+  conversationId: string;
+  assistantMessageId: string;
+  userMessageId: string;
+  affectedObjectType: UnderstandingLinkTargetType;
+  affectedObjectId: string;
+  beforeSummary: string;
+  afterSummary: string;
+  rationale: string;
+  userFacingSummary: string;
+  sources?: ExploreGroundingSource[];
+  provenance?: ExploreMovementProposalProvenance;
+  id?: string;
+}): Promise<ExploreProposalRecord> {
+  if (
+    args.affectedObjectType !== UnderstandingLinkTargetType.usermap_conclusion
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "NOT_QUALIFYING_CONCLUSION",
+      "Canonical Explore proposals require a usermap_conclusion target",
+    );
+  }
+
+  // Canonical path never accepts array-only sources as a provenance fallback.
+  const provenance = await requireCanonicalProposalProvenance({
+    provenance: args.provenance,
+    affectedObjectId: args.affectedObjectId,
+    afterSummary: args.afterSummary,
+    rationale: args.rationale,
+    userFacingSummary: args.userFacingSummary,
+  });
+  const groundingSources = provenance.sources as ExploreGroundingSource[];
+
+  const umc = await resolveOwnedQualifyingUserMapConclusionForCanonicalProposal({
+    userId: args.userId,
+    affectedObjectId: args.affectedObjectId,
+    db: args.db,
+  });
+
+  if (args.beforeSummary !== umc.summary) {
+    throw new CanonicalModelAuthorityError(
+      "STALE_CURRENT_REVISION",
+      "Canonical Explore beforeSummary does not match live UserMapConclusion.summary",
+    );
+  }
+
+  const expectedLegacySnapshotHash = deriveCanonicalUmcSnapshotHash({
+    id: umc.id,
+    title: umc.title,
+    summary: umc.summary,
+    status: umc.status,
+    confidenceScore: umc.confidenceScore,
+    confidenceLevel: umc.confidenceLevel,
+    updatedAt: umc.updatedAt,
+  });
+
+  const created = await args.db.$transaction(async (tx) => {
+    // Lock order for Phase 3A/3B: UserMapConclusion → CanonicalConcept.
+    // Registration locks the owned UMC first.
+    const registration =
+      await resolveOrRegisterCanonicalConceptFromUserMapConclusion({
+        userId: args.userId,
+        userMapConclusionId: umc.id,
+        expectedLegacySnapshotHash,
+        tx: tx as unknown as CanonicalAuthorityTransactionClient,
+      });
+
+    // Lock the concept before freezing its current revision expectation.
+    const lockedConceptRows = (await tx.$queryRaw`
+      SELECT id
+      FROM "CanonicalConcept"
+      WHERE id = ${registration.conceptId}
+        AND "userId" = ${args.userId}
+      FOR UPDATE
+    `) as Array<{ id: string }>;
+    if (!lockedConceptRows[0]) {
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_LEGACY_REGISTRATION",
+        "Registered canonical concept missing under FOR UPDATE",
+      );
+    }
+
+    const concept = await tx.canonicalConcept.findFirst({
+      where: { id: registration.conceptId, userId: args.userId },
+    });
+    if (!concept || concept.userId !== args.userId) {
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_LEGACY_REGISTRATION",
+        "Registered canonical concept missing or ownership mismatch",
+      );
+    }
+    if (!concept.currentRevisionId) {
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_LEGACY_REGISTRATION",
+        "Registered canonical concept has no currentRevisionId",
+      );
+    }
+
+    const currentRevision = await tx.canonicalConceptRevision.findFirst({
+      where: {
+        id: concept.currentRevisionId,
+        conceptId: concept.id,
+        userId: args.userId,
+      },
+    });
+    if (!currentRevision) {
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_LEGACY_REGISTRATION",
+        "Registered canonical current revision missing",
+      );
+    }
+
+    if (currentRevision.id !== registration.currentRevisionId) {
+      throw new CanonicalModelAuthorityError(
+        "STALE_CURRENT_REVISION",
+        "Canonical concept current revision drifted after registration",
+      );
+    }
+
+    if (currentRevision.version !== 1 || registration.revisionVersion !== 1) {
+      throw new CanonicalModelAuthorityError(
+        "STALE_CURRENT_REVISION",
+        "Canonical Explore proposal creation requires current revision version 1",
+      );
+    }
+
+    // Validation/preparation only — do not persist UnderstandingEvidenceLink rows.
+    await prepareCanonicalProposalEvidence({
+      userId: args.userId,
+      conversationId: args.conversationId,
+      assistantMessageId: args.assistantMessageId,
+      userMessageId: args.userMessageId,
+      sources: groundingSources,
+      db: tx as unknown as CanonicalRevisionEvidenceDb,
+    });
+
+    return tx.exploreMovementProposal.create({
+      data: {
+        ...(args.id ? { id: args.id } : {}),
+        userId: args.userId,
+        conversationId: args.conversationId,
+        assistantMessageId: args.assistantMessageId,
+        userMessageId: args.userMessageId,
+        status: ExploreMovementProposalStatus.proposed,
+        authorityMode: ExploreMovementAuthorityMode.canonical_v1,
+        affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
+        affectedObjectId: args.affectedObjectId,
+        beforeSummary: args.beforeSummary,
+        afterSummary: args.afterSummary,
+        rationale: args.rationale,
+        userFacingSummary: args.userFacingSummary,
+        sourcesJson: provenance,
+        modelUpdateId: null,
+        canonicalConceptId: concept.id,
+        expectedCurrentRevisionId: currentRevision.id,
+        expectedLegacySnapshotHash: null,
+        revisionOperation: CanonicalRevisionOperation.strengthen,
+      },
+    });
+  });
+
+  return toProposalRecord(created);
+}
+
+async function createExploreMovementProposalForAuthorityMode(args: {
+  userId: string;
+  db: PrismaClient;
+  conversationId: string;
+  assistantMessageId: string;
+  userMessageId: string;
+  affectedObjectType: UnderstandingLinkTargetType;
+  affectedObjectId: string;
+  beforeSummary: string;
+  afterSummary: string;
+  rationale: string;
+  userFacingSummary: string;
+  sources?: ExploreGroundingSource[];
+  provenance?: ExploreMovementProposalProvenance;
+  id?: string;
+  authorityMode: ExploreMovementAuthorityMode;
+}): Promise<ExploreProposalRecord> {
+  if (args.authorityMode === ExploreMovementAuthorityMode.canonical_v1) {
+    // Never fall back to legacy creation on canonical failure.
+    return createCanonicalExploreMovementProposal(args);
+  }
+  return createLegacyExploreMovementProposal(args);
+}
+
 export async function createExploreMovementProposal(args: {
   userId: string;
   db: PrismaClient;
@@ -693,37 +1119,20 @@ export async function createExploreMovementProposal(args: {
   /** Optional deterministic ID for concurrency-safe semantic proposals. */
   id?: string;
 }): Promise<ExploreProposalRecord> {
-  const sourcesJson =
-    args.provenance ??
-    args.sources ??
-    ([] as ExploreGroundingSource[]);
+  const authorityMode = isCanonicalModelAuthorityEnabledForUser(args.userId)
+    ? ExploreMovementAuthorityMode.canonical_v1
+    : ExploreMovementAuthorityMode.legacy;
 
-  const data = {
-    ...(args.id ? { id: args.id } : {}),
-    userId: args.userId,
-    conversationId: args.conversationId,
-    assistantMessageId: args.assistantMessageId,
-    userMessageId: args.userMessageId,
-    status: ExploreMovementProposalStatus.proposed,
-    affectedObjectType: args.affectedObjectType,
-    affectedObjectId: args.affectedObjectId,
-    beforeSummary: args.beforeSummary,
-    afterSummary: args.afterSummary,
-    rationale: args.rationale,
-    userFacingSummary: args.userFacingSummary,
-    sourcesJson,
-    modelUpdateId: null,
-  };
-
-  // Deterministic-ID P2002 must propagate — race recovery lives only in
-  // createOrReuseSemanticExploreMovementProposal.
-  const created = await args.db.exploreMovementProposal.create({ data });
-  return toProposalRecord(created);
+  return createExploreMovementProposalForAuthorityMode({
+    ...args,
+    authorityMode,
+  });
 }
 
 /**
  * Create-or-reuse a semantic ExploreMovementProposal using a deterministic ID.
  * Unversioned legacy rows are never trusted as the valid semantic duplicate.
+ * Legacy and canonical_v1 publisher families never satisfy each other's dedupe.
  */
 export async function createOrReuseSemanticExploreMovementProposal(args: {
   userId: string;
@@ -742,6 +1151,11 @@ export async function createOrReuseSemanticExploreMovementProposal(args: {
   created: boolean;
   reusedStatus: "proposed" | "published" | "rejected" | null;
 }> {
+  // Resolve once for ID, reuse validation, creation path, and persistence.
+  const authorityMode = isCanonicalModelAuthorityEnabledForUser(args.userId)
+    ? ExploreMovementAuthorityMode.canonical_v1
+    : ExploreMovementAuthorityMode.legacy;
+
   const proposalId = deriveExploreMovementProposalId({
     userId: args.userId,
     conversationId: args.conversationId,
@@ -749,6 +1163,7 @@ export async function createOrReuseSemanticExploreMovementProposal(args: {
     affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
     affectedObjectId: args.affectedObjectId,
     afterSummary: args.afterSummary,
+    authorityMode,
   });
 
   const reuseExpected = {
@@ -757,6 +1172,7 @@ export async function createOrReuseSemanticExploreMovementProposal(args: {
     userMessageId: args.userMessageId,
     affectedObjectId: args.affectedObjectId,
     afterSummary: args.afterSummary,
+    authorityMode,
   };
 
   const existing = await args.db.exploreMovementProposal.findFirst({
@@ -797,14 +1213,18 @@ export async function createOrReuseSemanticExploreMovementProposal(args: {
   }
 
   try {
-    const created = await createExploreMovementProposal({
+    const created = await createExploreMovementProposalForAuthorityMode({
       ...args,
       id: proposalId,
       affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
       provenance: args.provenance,
+      authorityMode,
     });
     return { record: created, created: true, reusedStatus: null };
   } catch (error) {
+    // Only unique-conflict race recovery. Canonical typed failures never fall
+    // back to legacy creation, and P2002 recovery stays within the same
+    // authorityMode identity (proposalId already encodes the publisher family).
     if (!isPrismaUniqueConflict(error)) throw error;
 
     const raced = await args.db.exploreMovementProposal.findFirst({
