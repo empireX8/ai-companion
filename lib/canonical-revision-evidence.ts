@@ -21,6 +21,7 @@ import {
 } from "./orvek-intelligence-object-authority";
 import {
   verifyUnderstandingEvidenceLinkSourceOwnership,
+  createUnderstandingEvidenceLinkForUser,
   type UnderstandingEvidenceLinkWriterDb,
 } from "./understanding-evidence-link-writer";
 
@@ -397,4 +398,32 @@ export async function prepareCanonicalProposalEvidence(args: {
   }
 
   return finalise(prepared);
+}
+
+/**
+ * Persist an already-prepared canonical revision evidence set.
+ * Intended for use inside an interactive transaction after revision insert.
+ */
+export async function insertPreparedCanonicalRevisionEvidence(args: {
+  userId: string;
+  revisionId: string;
+  evidence: PreparedCanonicalRevisionEvidence;
+  db: UnderstandingEvidenceLinkWriterDb;
+}): Promise<void> {
+  for (const link of args.evidence.links) {
+    await createUnderstandingEvidenceLinkForUser({
+      userId: args.userId,
+      db: args.db,
+      input: {
+        targetType: UnderstandingLinkTargetType.canonical_concept_revision,
+        targetId: args.revisionId,
+        sourceType: link.sourceType,
+        sourceId: link.sourceId,
+        role: link.role,
+        summary: link.summary,
+        snippet: link.snippet,
+        quote: link.quote,
+      },
+    });
+  }
 }

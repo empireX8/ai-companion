@@ -13,6 +13,7 @@
  */
 
 import {
+  CanonicalRevisionDecisionSource,
   CanonicalRevisionOperation,
   ExploreMovementAuthorityMode,
   ExploreMovementProposalStatus,
@@ -32,6 +33,7 @@ import {
 } from "./canonical-model-authority-flag";
 import {
   CanonicalModelAuthorityError,
+  isCanonicalModelAuthorityError,
 } from "./canonical-model-authority-errors";
 import {
   resolveOrRegisterCanonicalConceptFromUserMapConclusion,
@@ -39,6 +41,7 @@ import {
 } from "./canonical-concept-registration";
 import {
   prepareCanonicalProposalEvidence,
+  insertPreparedCanonicalRevisionEvidence,
   type CanonicalRevisionEvidenceDb,
 } from "./canonical-revision-evidence";
 import { deriveCanonicalUmcSnapshotHash } from "./canonical-umc-snapshot-hash";
@@ -730,25 +733,27 @@ export async function evaluateExploreMovementPublicationProvenance(args: {
 }
 
 async function requireCanonicalProposalProvenance(args: {
-  provenance: ExploreMovementProposalProvenance | undefined;
+  provenance?: ExploreMovementProposalProvenance;
+  sourcesJson?: unknown;
   affectedObjectId: string;
   afterSummary: string;
   rationale: string;
   userFacingSummary: string;
 }): Promise<ExploreMovementProposalProvenance> {
-  if (!args.provenance) {
+  const raw = args.provenance ?? args.sourcesJson;
+  if (raw === undefined || raw === null) {
     throw new CanonicalModelAuthorityError(
       "INVALID_PROPOSAL_PROVENANCE",
-      "Canonical Explore proposal creation requires versioned provenance",
+      "Canonical Explore proposal requires versioned provenance",
     );
   }
 
-  const parsed = parseExploreMovementProposalProvenance(args.provenance);
+  const parsed = parseExploreMovementProposalProvenance(raw);
   if (!parsed.ok) {
     throw new CanonicalModelAuthorityError(
       "INVALID_PROPOSAL_PROVENANCE",
       parsed.legacyArray
-        ? "Canonical Explore proposal creation rejects legacy array-only sources"
+        ? "Canonical Explore proposal rejects legacy array-only sources"
         : `Canonical Explore proposal provenance invalid: ${parsed.errors.join(" | ")}`,
     );
   }
@@ -1301,11 +1306,814 @@ export async function rejectExploreMovementProposal(args: {
   return { proposalId: existing.id, status: "rejected" };
 }
 
-export async function publishExploreMovementProposal(args: {
+class ExploreMovementPublicationRejectedError extends Error {
+  constructor() {
+    super("explore_movement_publication_rejected");
+    this.name = "ExploreMovementPublicationRejectedError";
+  }
+}
+
+type ExploreMovementProposalRow = {
+  id: string;
+  userId: string;
+  conversationId: string;
+  assistantMessageId: string;
+  userMessageId: string;
+  status: ExploreMovementProposalStatus;
+  authorityMode: ExploreMovementAuthorityMode;
+  affectedObjectType: UnderstandingLinkTargetType;
+  affectedObjectId: string;
+  beforeSummary: string;
+  afterSummary: string;
+  rationale: string;
+  userFacingSummary: string;
+  sourcesJson: unknown;
+  modelUpdateId: string | null;
+  expectedCurrentRevisionId: string | null;
+  expectedLegacySnapshotHash: string | null;
+  canonicalConceptId: string | null;
+  revisionOperation: CanonicalRevisionOperation | null;
+};
+
+function assertCanonicalProposalAuthorityShape(
+  proposal: ExploreMovementProposalRow,
+): void {
+  if (proposal.authorityMode !== ExploreMovementAuthorityMode.canonical_v1) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical publisher requires authorityMode=canonical_v1",
+    );
+  }
+  if (
+    typeof proposal.canonicalConceptId !== "string" ||
+    proposal.canonicalConceptId.length === 0
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical proposal missing canonicalConceptId",
+    );
+  }
+  if (
+    typeof proposal.expectedCurrentRevisionId !== "string" ||
+    proposal.expectedCurrentRevisionId.length === 0
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical proposal missing expectedCurrentRevisionId",
+    );
+  }
+  if (proposal.expectedLegacySnapshotHash != null) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical proposal must not carry expectedLegacySnapshotHash",
+    );
+  }
+  if (proposal.revisionOperation !== CanonicalRevisionOperation.strengthen) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical proposal revisionOperation must be strengthen",
+    );
+  }
+  if (
+    proposal.affectedObjectType !==
+    UnderstandingLinkTargetType.usermap_conclusion
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical proposal affectedObjectType must be usermap_conclusion",
+    );
+  }
+}
+
+function assertExactCanonicalResultingRevision(args: {
+  resultingRevision: {
+    id: string;
+    summary: string;
+    rationale: string | null;
+    registrationSnapshotHash: string | null;
+    title: string;
+    status: string;
+    confidenceScore: number;
+    confidenceLevel: string;
+    previousRevisionId: string | null;
+    version: number;
+    operation: CanonicalRevisionOperation;
+    decisionSource: CanonicalRevisionDecisionSource;
+  };
+  previousRevision: {
+    id: string;
+    title: string;
+    status: string;
+    confidenceScore: number;
+    confidenceLevel: string;
+    summary: string;
+  };
+  proposal: ExploreMovementProposalRow;
+}): void {
+  if (args.resultingRevision.summary !== args.proposal.afterSummary) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical resulting revision summary must equal proposal.afterSummary",
+    );
+  }
+  if (args.resultingRevision.rationale !== args.proposal.rationale) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical resulting revision rationale must equal proposal.rationale",
+    );
+  }
+  if (args.resultingRevision.registrationSnapshotHash != null) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical resulting revision registrationSnapshotHash must be null",
+    );
+  }
+  if (args.resultingRevision.title !== args.previousRevision.title) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical resulting revision title must match previous revision",
+    );
+  }
+  if (args.resultingRevision.status !== args.previousRevision.status) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical resulting revision status must match previous revision",
+    );
+  }
+  if (
+    args.resultingRevision.confidenceScore !==
+    args.previousRevision.confidenceScore
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical resulting revision confidenceScore must match previous revision",
+    );
+  }
+  if (
+    args.resultingRevision.confidenceLevel !==
+    args.previousRevision.confidenceLevel
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical resulting revision confidenceLevel must match previous revision",
+    );
+  }
+  if (args.resultingRevision.previousRevisionId !== args.previousRevision.id) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical resulting revision previousRevisionId mismatch",
+    );
+  }
+  if (args.resultingRevision.version !== 2) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical resulting revision must be version 2",
+    );
+  }
+  if (args.resultingRevision.operation !== CanonicalRevisionOperation.strengthen) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical resulting revision operation must be strengthen",
+    );
+  }
+  if (
+    args.resultingRevision.decisionSource !==
+    CanonicalRevisionDecisionSource.explore_proposal
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical resulting revision decisionSource must be explore_proposal",
+    );
+  }
+}
+
+/**
+ * Exact identity validator for the canonical ModelUpdate produced by a proposal.
+ * Used after insertion, on idempotent published returns, and after claim-race recovery.
+ */
+function assertExactCanonicalModelUpdateIdentity(args: {
+  modelUpdate: {
+    id: string;
+    userId: string;
+    updateType: string;
+    visibility: string;
+    isMeaningful: boolean;
+    affectedObjectType: string;
+    affectedObjectId: string;
+    beforeSummary: string | null;
+    afterSummary: string | null;
+    userFacingSummary: string;
+    internalNotes: string | null;
+    confidenceDelta: number | null;
+    canonicalConceptId: string | null;
+    previousRevisionId: string | null;
+    resultingRevisionId: string | null;
+    exploreProposalId: string | null;
+  };
+  proposal: ExploreMovementProposalRow;
+  previousRevision: { id: string; summary: string };
+  resultingRevision: { id: string; summary: string };
+}): void {
+  const expectedId = deriveExploreMovementModelUpdateId(args.proposal.id);
+  const expectedNotes = buildExploreMovementModelUpdateLineageNotes({
+    proposalId: args.proposal.id,
+    conversationId: args.proposal.conversationId,
+    assistantMessageId: args.proposal.assistantMessageId,
+    userMessageId: args.proposal.userMessageId,
+    rationale: args.proposal.rationale,
+  });
+
+  if (args.modelUpdate.id !== expectedId) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate id must be deriveExploreMovementModelUpdateId(proposal.id)",
+    );
+  }
+  if (args.modelUpdate.userId !== args.proposal.userId) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate userId mismatch",
+    );
+  }
+  if (args.modelUpdate.updateType !== ModelUpdateType.conclusion_strengthened) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate updateType must be conclusion_strengthened",
+    );
+  }
+  if (args.modelUpdate.visibility !== ModelUpdateVisibility.user_visible) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate visibility must be user_visible",
+    );
+  }
+  if (args.modelUpdate.isMeaningful !== true) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate isMeaningful must be true",
+    );
+  }
+  if (
+    args.modelUpdate.affectedObjectType !==
+    UnderstandingLinkTargetType.canonical_concept_revision
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate affectedObjectType must be canonical_concept_revision",
+    );
+  }
+  if (args.modelUpdate.affectedObjectId !== args.resultingRevision.id) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate affectedObjectId must equal resultingRevision.id",
+    );
+  }
+  if (args.modelUpdate.beforeSummary !== args.previousRevision.summary) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate beforeSummary must equal previousRevision.summary",
+    );
+  }
+  if (args.modelUpdate.afterSummary !== args.resultingRevision.summary) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate afterSummary must equal resultingRevision.summary",
+    );
+  }
+  if (args.modelUpdate.userFacingSummary !== args.proposal.userFacingSummary) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate userFacingSummary must equal proposal.userFacingSummary",
+    );
+  }
+  if (args.modelUpdate.internalNotes !== expectedNotes) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate internalNotes must match exact lineage notes",
+    );
+  }
+  if (args.modelUpdate.confidenceDelta != null) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate confidenceDelta must be null",
+    );
+  }
+  if (args.modelUpdate.canonicalConceptId !== args.proposal.canonicalConceptId) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate canonicalConceptId mismatch",
+    );
+  }
+  if (
+    args.modelUpdate.previousRevisionId !==
+    args.proposal.expectedCurrentRevisionId
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate previousRevisionId mismatch",
+    );
+  }
+  if (args.modelUpdate.resultingRevisionId !== args.resultingRevision.id) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate resultingRevisionId mismatch",
+    );
+  }
+  if (args.modelUpdate.exploreProposalId !== args.proposal.id) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical ModelUpdate exploreProposalId mismatch",
+    );
+  }
+
+  // Published / idempotent paths must have the proposal link set.
+  if (args.proposal.status === ExploreMovementProposalStatus.published) {
+    if (args.proposal.modelUpdateId !== args.modelUpdate.id) {
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_CANONICAL_PUBLICATION",
+        "Published proposal.modelUpdateId must equal ModelUpdate.id",
+      );
+    }
+  } else if (
+    args.proposal.modelUpdateId != null &&
+    args.proposal.modelUpdateId !== args.modelUpdate.id
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "proposal.modelUpdateId must equal ModelUpdate.id when set",
+    );
+  }
+}
+
+async function assertCoherentCanonicalPublication(args: {
+  userId: string;
+  proposal: ExploreMovementProposalRow;
+  db: PrismaClient;
+}): Promise<{ modelUpdateId: string }> {
+  assertCanonicalProposalAuthorityShape(args.proposal);
+
+  if (
+    args.proposal.status !== ExploreMovementProposalStatus.published ||
+    typeof args.proposal.modelUpdateId !== "string" ||
+    args.proposal.modelUpdateId.length === 0
+  ) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Published canonical proposal missing modelUpdateId",
+    );
+  }
+
+  const produced = await args.db.canonicalConceptRevision.findMany({
+    where: {
+      createdFromProposalId: args.proposal.id,
+      userId: args.userId,
+      conceptId: args.proposal.canonicalConceptId!,
+    },
+  });
+  if (produced.length !== 1) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Published canonical proposal must produce exactly one revision",
+    );
+  }
+  const revision = produced[0]!;
+
+  const previousRevision = await args.db.canonicalConceptRevision.findFirst({
+    where: {
+      id: args.proposal.expectedCurrentRevisionId!,
+      conceptId: args.proposal.canonicalConceptId!,
+      userId: args.userId,
+    },
+  });
+  if (!previousRevision) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Published canonical previous revision missing",
+    );
+  }
+
+  assertExactCanonicalResultingRevision({
+    resultingRevision: revision,
+    previousRevision,
+    proposal: args.proposal,
+  });
+
+  const concept = await args.db.canonicalConcept.findFirst({
+    where: {
+      id: args.proposal.canonicalConceptId!,
+      userId: args.userId,
+    },
+  });
+  if (!concept || concept.currentRevisionId !== revision.id) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Published canonical concept pointer does not match produced revision",
+    );
+  }
+
+  const supportsCount = await args.db.understandingEvidenceLink.count({
+    where: {
+      userId: args.userId,
+      targetType: UnderstandingLinkTargetType.canonical_concept_revision,
+      targetId: revision.id,
+      role: UnderstandingLinkRole.supports,
+    },
+  });
+  if (revision.evidenceCount !== supportsCount) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Published canonical revision evidenceCount does not match supports links",
+    );
+  }
+
+  const modelUpdate = await args.db.modelUpdate.findFirst({
+    where: {
+      id: args.proposal.modelUpdateId,
+      userId: args.userId,
+    },
+  });
+  if (!modelUpdate) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Published canonical ModelUpdate missing",
+    );
+  }
+
+  assertExactCanonicalModelUpdateIdentity({
+    modelUpdate,
+    proposal: args.proposal,
+    previousRevision,
+    resultingRevision: revision,
+  });
+
+  return { modelUpdateId: modelUpdate.id };
+}
+
+async function publishCanonicalExploreMovementProposal(args: {
   userId: string;
   proposalId: string;
   db: PrismaClient;
-  /** Route session ID — must match proposal.conversationId. */
+  conversationId?: string;
+}): Promise<
+  | { modelUpdateId: string; status: "published"; idempotent: boolean }
+  | "not_found"
+  | "rejected"
+> {
+  const existing = await args.db.exploreMovementProposal.findFirst({
+    where: { id: args.proposalId, userId: args.userId },
+  });
+  if (!existing) return "not_found";
+
+  if (existing.authorityMode !== ExploreMovementAuthorityMode.canonical_v1) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PUBLICATION",
+      "Canonical publisher invoked for non-canonical proposal",
+    );
+  }
+
+  if (existing.status === ExploreMovementProposalStatus.rejected) {
+    return "rejected";
+  }
+
+  if (existing.status === ExploreMovementProposalStatus.published) {
+    const coherent = await assertCoherentCanonicalPublication({
+      userId: args.userId,
+      proposal: existing as ExploreMovementProposalRow,
+      db: args.db,
+    });
+    return {
+      modelUpdateId: coherent.modelUpdateId,
+      status: "published",
+      idempotent: true,
+    };
+  }
+
+  const modelUpdateId = deriveExploreMovementModelUpdateId(existing.id);
+
+  try {
+    return await args.db.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT id
+        FROM "ExploreMovementProposal"
+        WHERE id = ${existing.id}
+          AND "userId" = ${args.userId}
+        FOR UPDATE
+      `;
+
+      const proposal = (await tx.exploreMovementProposal.findFirst({
+        where: { id: existing.id, userId: args.userId },
+      })) as ExploreMovementProposalRow | null;
+      if (!proposal) {
+        throw new ExploreMovementPublicationClaimLostError();
+      }
+      if (proposal.authorityMode !== ExploreMovementAuthorityMode.canonical_v1) {
+        throw new CanonicalModelAuthorityError(
+          "BROKEN_CANONICAL_PUBLICATION",
+          "Locked proposal authorityMode is not canonical_v1",
+        );
+      }
+      if (proposal.status === ExploreMovementProposalStatus.rejected) {
+        throw new ExploreMovementPublicationRejectedError();
+      }
+      if (proposal.status === ExploreMovementProposalStatus.published) {
+        const coherent = await assertCoherentCanonicalPublication({
+          userId: args.userId,
+          proposal,
+          db: tx as unknown as PrismaClient,
+        });
+        return {
+          modelUpdateId: coherent.modelUpdateId,
+          status: "published" as const,
+          idempotent: true,
+        };
+      }
+      if (proposal.status !== ExploreMovementProposalStatus.proposed) {
+        throw new ExploreMovementPublicationClaimLostError();
+      }
+      if (proposal.modelUpdateId != null) {
+        throw new CanonicalModelAuthorityError(
+          "BROKEN_CANONICAL_PUBLICATION",
+          "Proposed canonical proposal unexpectedly has modelUpdateId",
+        );
+      }
+
+      assertCanonicalProposalAuthorityShape(proposal);
+
+      const provenance = await requireCanonicalProposalProvenance({
+        sourcesJson: proposal.sourcesJson,
+        affectedObjectId: proposal.affectedObjectId,
+        afterSummary: proposal.afterSummary,
+        rationale: proposal.rationale,
+        userFacingSummary: proposal.userFacingSummary,
+      });
+      const groundingSources = provenance.sources as ExploreGroundingSource[];
+
+      await tx.$queryRaw`
+        SELECT id
+        FROM "CanonicalConcept"
+        WHERE id = ${proposal.canonicalConceptId!}
+          AND "userId" = ${args.userId}
+        FOR UPDATE
+      `;
+
+      const concept = await tx.canonicalConcept.findFirst({
+        where: {
+          id: proposal.canonicalConceptId!,
+          userId: args.userId,
+        },
+      });
+      if (!concept) {
+        throw new CanonicalModelAuthorityError(
+          "BROKEN_LEGACY_REGISTRATION",
+          "Canonical concept missing under publication lock",
+        );
+      }
+
+      const expectedRevision = await tx.canonicalConceptRevision.findFirst({
+        where: {
+          id: proposal.expectedCurrentRevisionId!,
+          conceptId: concept.id,
+          userId: args.userId,
+        },
+      });
+      if (!expectedRevision) {
+        throw new CanonicalModelAuthorityError(
+          "BROKEN_LEGACY_REGISTRATION",
+          "Expected canonical revision missing under publication lock",
+        );
+      }
+
+      if (concept.currentRevisionId !== proposal.expectedCurrentRevisionId) {
+        throw new CanonicalModelAuthorityError(
+          "STALE_CURRENT_REVISION",
+          "Canonical concept pointer does not match proposal expectation",
+        );
+      }
+      if (expectedRevision.version !== 1) {
+        throw new CanonicalModelAuthorityError(
+          "STALE_CURRENT_REVISION",
+          "Canonical publication requires expected revision version 1",
+        );
+      }
+      if (
+        expectedRevision.operation !== CanonicalRevisionOperation.registered ||
+        expectedRevision.decisionSource !==
+          CanonicalRevisionDecisionSource.legacy_registration
+      ) {
+        throw new CanonicalModelAuthorityError(
+          "BROKEN_LEGACY_REGISTRATION",
+          "Expected revision is not a registration revision",
+        );
+      }
+
+      const evidence = await prepareCanonicalProposalEvidence({
+        userId: args.userId,
+        conversationId: proposal.conversationId,
+        assistantMessageId: proposal.assistantMessageId,
+        userMessageId: proposal.userMessageId,
+        sources: groundingSources,
+        db: tx as unknown as CanonicalRevisionEvidenceDb,
+      });
+
+      const acceptedAt = new Date();
+      const revision2 = await tx.canonicalConceptRevision.create({
+        data: {
+          userId: args.userId,
+          conceptId: concept.id,
+          version: expectedRevision.version + 1,
+          title: expectedRevision.title,
+          summary: proposal.afterSummary,
+          status: expectedRevision.status,
+          confidenceScore: expectedRevision.confidenceScore,
+          confidenceLevel: expectedRevision.confidenceLevel,
+          evidenceCount: evidence.supportingLinkCount,
+          rationale: proposal.rationale,
+          operation: CanonicalRevisionOperation.strengthen,
+          decisionSource: CanonicalRevisionDecisionSource.explore_proposal,
+          acceptedAt,
+          registrationSnapshotHash: null,
+          previousRevisionId: proposal.expectedCurrentRevisionId!,
+          createdFromProposalId: proposal.id,
+        },
+      });
+
+      await insertPreparedCanonicalRevisionEvidence({
+        userId: args.userId,
+        revisionId: revision2.id,
+        evidence,
+        db: tx as never,
+      });
+
+      const supportsCount = await tx.understandingEvidenceLink.count({
+        where: {
+          userId: args.userId,
+          targetType: UnderstandingLinkTargetType.canonical_concept_revision,
+          targetId: revision2.id,
+          role: UnderstandingLinkRole.supports,
+        },
+      });
+      if (supportsCount !== evidence.supportingLinkCount) {
+        throw new CanonicalModelAuthorityError(
+          "BROKEN_CANONICAL_PUBLICATION",
+          "Materialised supports count does not match prepared evidenceCount",
+        );
+      }
+
+      const pointerMove = await tx.canonicalConcept.updateMany({
+        where: {
+          id: concept.id,
+          userId: args.userId,
+          currentRevisionId: proposal.expectedCurrentRevisionId!,
+        },
+        data: { currentRevisionId: revision2.id },
+      });
+      if (pointerMove.count !== 1) {
+        throw new CanonicalModelAuthorityError(
+          "STALE_CURRENT_REVISION",
+          "Canonical concept pointer CAS failed",
+        );
+      }
+
+      const expectedInternalNotes = buildExploreMovementModelUpdateLineageNotes({
+        proposalId: proposal.id,
+        conversationId: proposal.conversationId,
+        assistantMessageId: proposal.assistantMessageId,
+        userMessageId: proposal.userMessageId,
+        rationale: proposal.rationale,
+      });
+
+      let createdUpdate;
+      try {
+        const insert = await tx.modelUpdate.createMany({
+          data: [
+            {
+              id: modelUpdateId,
+              userId: args.userId,
+              updateType: ModelUpdateType.conclusion_strengthened,
+              visibility: ModelUpdateVisibility.user_visible,
+              isMeaningful: true,
+              affectedObjectType:
+                UnderstandingLinkTargetType.canonical_concept_revision,
+              affectedObjectId: revision2.id,
+              userFacingSummary: proposal.userFacingSummary,
+              beforeSummary: expectedRevision.summary,
+              afterSummary: revision2.summary,
+              internalNotes: expectedInternalNotes,
+              confidenceDelta: null,
+              canonicalConceptId: concept.id,
+              previousRevisionId: expectedRevision.id,
+              resultingRevisionId: revision2.id,
+              exploreProposalId: proposal.id,
+            },
+          ],
+        });
+        if (insert.count !== 1) {
+          throw new CanonicalModelAuthorityError(
+            "BROKEN_CANONICAL_PUBLICATION",
+            "Canonical ModelUpdate insert must create exactly one row",
+          );
+        }
+        createdUpdate = await tx.modelUpdate.findFirst({
+          where: { id: modelUpdateId, userId: args.userId },
+        });
+      } catch (error) {
+        if (isCanonicalModelAuthorityError(error)) throw error;
+        // Proposal is locked while proposed — uniqueness collision is not a
+        // legitimate concurrent publish and must not reuse a pre-existing row.
+        if (isPrismaUniqueConflict(error)) {
+          throw new CanonicalModelAuthorityError(
+            "BROKEN_CANONICAL_PUBLICATION",
+            "Unexpected ModelUpdate uniqueness collision while proposal is proposed",
+          );
+        }
+        throw error;
+      }
+
+      if (!createdUpdate) {
+        throw new CanonicalModelAuthorityError(
+          "BROKEN_CANONICAL_PUBLICATION",
+          "Canonical ModelUpdate missing after insert",
+        );
+      }
+
+      assertExactCanonicalResultingRevision({
+        resultingRevision: revision2,
+        previousRevision: expectedRevision,
+        proposal,
+      });
+      assertExactCanonicalModelUpdateIdentity({
+        modelUpdate: createdUpdate,
+        proposal,
+        previousRevision: expectedRevision,
+        resultingRevision: revision2,
+      });
+
+      const claim = await tx.exploreMovementProposal.updateMany({
+        where: {
+          id: proposal.id,
+          userId: args.userId,
+          status: ExploreMovementProposalStatus.proposed,
+          modelUpdateId: null,
+          authorityMode: ExploreMovementAuthorityMode.canonical_v1,
+          canonicalConceptId: proposal.canonicalConceptId,
+          expectedCurrentRevisionId: proposal.expectedCurrentRevisionId,
+          revisionOperation: CanonicalRevisionOperation.strengthen,
+        },
+        data: {
+          status: ExploreMovementProposalStatus.published,
+          modelUpdateId,
+        },
+      });
+      if (claim.count !== 1) {
+        throw new ExploreMovementPublicationClaimLostError();
+      }
+
+      return {
+        modelUpdateId,
+        status: "published" as const,
+        idempotent: false,
+      };
+    });
+  } catch (error) {
+    if (error instanceof ExploreMovementPublicationRejectedError) {
+      return "rejected";
+    }
+    if (error instanceof ExploreMovementPublicationClaimLostError) {
+      const reread = await args.db.exploreMovementProposal.findFirst({
+        where: { id: args.proposalId, userId: args.userId },
+      });
+      if (!reread) return "not_found";
+      if (reread.status === ExploreMovementProposalStatus.rejected) {
+        return "rejected";
+      }
+      if (reread.status === ExploreMovementProposalStatus.published) {
+        const coherent = await assertCoherentCanonicalPublication({
+          userId: args.userId,
+          proposal: reread as ExploreMovementProposalRow,
+          db: args.db,
+        });
+        return {
+          modelUpdateId: coherent.modelUpdateId,
+          status: "published",
+          idempotent: true,
+        };
+      }
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_CANONICAL_PUBLICATION",
+        "Canonical publication claim lost without coherent terminal state",
+      );
+    }
+    if (isCanonicalModelAuthorityError(error)) {
+      throw error;
+    }
+    throw error;
+  }
+}
+
+async function publishLegacyExploreMovementProposal(args: {
+  userId: string;
+  proposalId: string;
+  db: PrismaClient;
   conversationId?: string;
 }): Promise<
   | { modelUpdateId: string; status: "published"; idempotent: boolean }
@@ -1320,6 +2128,11 @@ export async function publishExploreMovementProposal(args: {
   });
 
   if (!existing) return "not_found";
+
+  if (existing.authorityMode !== ExploreMovementAuthorityMode.legacy &&
+      existing.authorityMode != null) {
+    throw new Error("explore_movement_legacy_publisher_mode_mismatch");
+  }
 
   // Route session match before rejected / already-published short-circuits.
   // Omitting conversationId preserves trusted internal (non-route) callers.
@@ -1389,6 +2202,12 @@ export async function publishExploreMovementProposal(args: {
       });
       if (!lockedProposal) {
         throw new ExploreMovementPublicationClaimLostError();
+      }
+      if (
+        lockedProposal.authorityMode != null &&
+        lockedProposal.authorityMode !== ExploreMovementAuthorityMode.legacy
+      ) {
+        throw new Error("explore_movement_legacy_publisher_mode_mismatch");
       }
       if (lockedProposal.status !== ExploreMovementProposalStatus.proposed) {
         throw new ExploreMovementPublicationClaimLostError();
@@ -1544,6 +2363,7 @@ export async function publishExploreMovementProposal(args: {
           userId: args.userId,
           status: ExploreMovementProposalStatus.proposed,
           modelUpdateId: null,
+          authorityMode: ExploreMovementAuthorityMode.legacy,
         },
         data: {
           status: ExploreMovementProposalStatus.published,
@@ -1601,6 +2421,54 @@ export async function publishExploreMovementProposal(args: {
     }
     throw error;
   }
+}
+
+export async function publishExploreMovementProposal(args: {
+  userId: string;
+  proposalId: string;
+  db: PrismaClient;
+  /** Route session ID — must match proposal.conversationId. */
+  conversationId?: string;
+}): Promise<
+  | { modelUpdateId: string; status: "published"; idempotent: boolean }
+  | "not_found"
+  | "rejected"
+  | "missing_evidence"
+  | ExploreMovementBlockedUnsafeFixedSemantics
+  | ExploreMovementBlockedUnverifiedSemanticProvenance
+> {
+  const existing = await args.db.exploreMovementProposal.findFirst({
+    where: { id: args.proposalId, userId: args.userId },
+    select: {
+      id: true,
+      authorityMode: true,
+      status: true,
+      conversationId: true,
+    },
+  });
+
+  if (!existing) return "not_found";
+
+  if (
+    args.conversationId != null &&
+    args.conversationId !== existing.conversationId
+  ) {
+    return EXPLORE_MOVEMENT_BLOCKED_UNVERIFIED_SEMANTIC_PROVENANCE;
+  }
+
+  if (existing.status === ExploreMovementProposalStatus.rejected) {
+    return "rejected";
+  }
+
+  // Dispatch from stored authorityMode — never the live feature flag.
+  // Absent/null authorityMode is treated as legacy (schema default + fake DBs).
+  const storedMode =
+    existing.authorityMode ?? ExploreMovementAuthorityMode.legacy;
+  if (storedMode === ExploreMovementAuthorityMode.canonical_v1) {
+    return publishCanonicalExploreMovementProposal(args);
+  }
+
+  return publishLegacyExploreMovementProposal(args);
 }
 
 export async function findOpenExploreProposalForSession(args: {
