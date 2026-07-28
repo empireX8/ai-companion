@@ -13,7 +13,8 @@ export type CanonicalModelAuthorityErrorCode =
   | "INVALID_UMC_FIELD"
   | "NOT_QUALIFYING_CONCLUSION"
   | "INVALID_PROPOSAL_PROVENANCE"
-  | "BROKEN_CANONICAL_PUBLICATION";
+  | "BROKEN_CANONICAL_PUBLICATION"
+  | "BROKEN_CANONICAL_PROJECTION";
 
 export class CanonicalModelAuthorityError extends Error {
   readonly code: CanonicalModelAuthorityErrorCode;
