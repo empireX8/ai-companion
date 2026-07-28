@@ -4,6 +4,7 @@ import type { OrvekObject } from "./orvek-v0/orvek-types";
 
 export const INSPECTOR_SELECTABLE_OBJECT_TYPES = [
   "usermap_conclusion",
+  "canonical_concept",
   "model_update",
   "pattern_claim",
   "contradiction_node",

@@ -377,6 +377,141 @@ describe("orvek adapters", () => {
     expect(view.showSecondaryPanels).toBe(true);
   });
 
+  it("map adapter preserves unavailable canonical metrics and unique evidence keys", () => {
+    const acceptedAt = "2026-07-28T12:00:00.000Z";
+    const view = mapMapDataToV0Props({
+      items: [
+        {
+          id: "concept_1",
+          title: "Canonical concept",
+          area: "operating_logic",
+          status: "supported",
+          confidenceLevel: "medium",
+          evidenceCount: 2,
+          summary: "REVISION TWO",
+          updatedAt: acceptedAt,
+          authorityType: "canonical_concept_revision",
+          conceptId: "concept_1",
+          currentRevisionId: "rev2",
+          version: 2,
+          domain: "operating_logic",
+          confidenceScore: 0.55,
+        },
+      ],
+      isLoading: false,
+      loadError: null,
+      selectedId: "concept_1",
+      detail: {
+        id: "concept_1",
+        title: "Canonical concept",
+        area: "operating_logic",
+        status: "supported",
+        confidenceLevel: "medium",
+        evidenceCount: 2,
+        sourceDiversity: null,
+        timeSpreadDays: null,
+        summary: "REVISION TWO",
+        updatedAt: acceptedAt,
+        createdAt: acceptedAt,
+      },
+      isDetailLoading: false,
+      evidence: [
+        {
+          id: "ev_link_a",
+          sourceTypeLabel: "journal entry",
+          evidenceSummaryLabel: "Linked evidence",
+          sourceObjectHref: null,
+          createdAt: null,
+          hasEvidence: true as const,
+        },
+        {
+          id: "ev_link_b",
+          sourceTypeLabel: "pattern claim",
+          evidenceSummaryLabel: "Linked evidence",
+          sourceObjectHref: null,
+          createdAt: null,
+          hasEvidence: true as const,
+        },
+      ],
+      openQuestionsCount: 0,
+      mindContext: {
+        isLoading: false,
+        items: [],
+        summaryCounts: { memories: 0, patterns: 0 },
+      },
+      movementPreview: { isLoading: false, items: [] },
+      openQuestionsPreview: { isLoading: false, items: [] },
+    });
+
+    expect(view.detail?.sourceDiversity).toBeNull();
+    expect(view.detail?.timeSpreadDays).toBeNull();
+    expect(view.evidence.preview.map((row) => row.key)).toEqual([
+      "ev_link_a",
+      "ev_link_b",
+    ]);
+    expect(view.evidence.preview.map((row) => row.key)).not.toEqual([
+      `-${acceptedAt}`,
+      `-${acceptedAt}`,
+    ]);
+    expect(JSON.stringify(view.evidence.preview)).not.toContain(acceptedAt);
+  });
+
+  it("map adapter keeps legacy conclusion metrics as calculated numbers", () => {
+    const view = mapMapDataToV0Props({
+      items: [
+        {
+          id: "umc-legacy",
+          title: "Legacy conclusion",
+          area: "operating_logic",
+          status: "supported",
+          confidenceLevel: "medium",
+          evidenceCount: 3,
+          summary: "Legacy summary",
+          updatedAt: "2026-06-24T10:00:00.000Z",
+        },
+      ],
+      isLoading: false,
+      loadError: null,
+      selectedId: "umc-legacy",
+      detail: {
+        id: "umc-legacy",
+        title: "Legacy conclusion",
+        area: "operating_logic",
+        status: "supported",
+        confidenceLevel: "medium",
+        evidenceCount: 3,
+        sourceDiversity: 2,
+        timeSpreadDays: 14,
+        summary: "Legacy summary",
+        updatedAt: "2026-06-24T10:00:00.000Z",
+        createdAt: "2026-06-20T10:00:00.000Z",
+      },
+      isDetailLoading: false,
+      evidence: [
+        {
+          id: "legacy_ev_1",
+          sourceTypeLabel: "journal entry",
+          evidenceSummaryLabel: "Support",
+          sourceObjectHref: "/library/journal-1",
+          createdAt: "2026-06-18T09:00:00.000Z",
+          hasEvidence: true as const,
+        },
+      ],
+      openQuestionsCount: 0,
+      mindContext: {
+        isLoading: false,
+        items: [],
+        summaryCounts: { memories: 0, patterns: 0 },
+      },
+      movementPreview: { isLoading: false, items: [] },
+      openQuestionsPreview: { isLoading: false, items: [] },
+    });
+
+    expect(view.detail?.sourceDiversity).toBe(2);
+    expect(view.detail?.timeSpreadDays).toBe(14);
+    expect(view.evidence.preview[0]?.key).toBe("legacy_ev_1");
+  });
+
   it("mapDecisionsDataToV0Props preserves fieldwork and explore handoff links", () => {
     const action: SurfacedActionView = {
       id: "a-field",

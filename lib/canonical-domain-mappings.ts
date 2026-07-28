@@ -66,6 +66,45 @@ export function mapUserMapAreaToCanonicalDomain(
   return CanonicalConceptDomain.unknown;
 }
 
+/**
+ * Exact reverse map for V1 legacy-seed product surfaces.
+ * `unknown` fails closed — a registered UMC seed must always have a mapped domain.
+ */
+export function mapCanonicalDomainToUserMapArea(
+  domain: CanonicalConceptDomain,
+): UserMapConclusionArea {
+  switch (domain) {
+    case CanonicalConceptDomain.operating_logic:
+      return UserMapConclusionArea.operating_logic;
+    case CanonicalConceptDomain.state_ecology:
+      return UserMapConclusionArea.state_ecology;
+    case CanonicalConceptDomain.tension_architecture:
+      return UserMapConclusionArea.tension_architecture;
+    case CanonicalConceptDomain.recovery_architecture:
+      return UserMapConclusionArea.recovery_architecture;
+    case CanonicalConceptDomain.meaning_system:
+      return UserMapConclusionArea.meaning_system;
+    case CanonicalConceptDomain.relational_field:
+      return UserMapConclusionArea.relational_field;
+    case CanonicalConceptDomain.developmental_vector:
+      return UserMapConclusionArea.developmental_vector;
+    case CanonicalConceptDomain.current_frontier:
+      return UserMapConclusionArea.current_frontier;
+    case CanonicalConceptDomain.unknown:
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_CANONICAL_PROJECTION",
+        "Canonical domain unknown cannot map to a UserMapConclusion area for V1 product integration",
+      );
+    default: {
+      const _exhaustive: never = domain;
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_CANONICAL_PROJECTION",
+        `Unsupported canonical domain for product area mapping: ${String(_exhaustive)}`,
+      );
+    }
+  }
+}
+
 export function requireUserMapConclusionStatus(
   raw: unknown,
 ): UserMapConclusionStatus {

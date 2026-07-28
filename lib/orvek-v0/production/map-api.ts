@@ -194,7 +194,10 @@ function railItemToOrvekObject(
       : undefined;
     whatWouldChange = ["Capture correction in Capture Life Data"];
   } else if (item.kind === "conclusion") {
-    inspectorObjectType = "usermap_conclusion";
+    inspectorObjectType =
+      listItem?.authorityType === "canonical_concept_revision"
+        ? "canonical_concept"
+        : "usermap_conclusion";
     if (listItem) {
       return withResolvedCanonicalSourceType({
         id: item.id,

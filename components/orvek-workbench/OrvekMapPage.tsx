@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { MapPage } from "@/components/orvek-v0/pages/map";
 import { OrvekV0PageShell } from "@/components/orvek-v0/production/OrvekV0PageShell";
+import { fetchCanonicalProductConcept } from "@/lib/canonical-model-client";
+import { mapCanonicalProductConceptToMapDetail } from "@/lib/canonical-map-detail";
+import type { CurrentUnderstandingSurfaceListItem } from "@/lib/current-understanding-product-projection";
 import {
   fetchInspectorEvidenceLinks,
   fetchInspectorUserMapDetail,
@@ -22,7 +25,6 @@ import {
 import { resolveMapWorkbenchSelectedId } from "@/lib/orvek-v0/production/map-selection";
 import type {
   UserMapConclusionPublicApiDetailItem,
-  UserMapConclusionPublicApiListItem,
 } from "@/lib/public-intelligence-safe-slice";
 import {
   fetchMapMovementPreview,
@@ -38,7 +40,7 @@ export function OrvekMapPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [items, setItems] = useState<UserMapConclusionPublicApiListItem[]>([]);
+  const [items, setItems] = useState<CurrentUnderstandingSurfaceListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -78,10 +80,14 @@ export function OrvekMapPage() {
       try {
         const nextItems = await fetchYourMapConclusions();
         if (!cancelled) setItems(nextItems);
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setItems([]);
-          setLoadError("Could not load your map.");
+          setLoadError(
+            error instanceof Error && error.message === "canonical_model_unavailable"
+              ? "Canonical model unavailable."
+              : "Could not load your map.",
+          );
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -182,6 +188,23 @@ export function OrvekMapPage() {
     let cancelled = false;
     setIsDetailLoading(true);
     void (async () => {
+      const selected = items.find((item) => item.id === selectedId);
+      if (selected?.authorityType === "canonical_concept_revision") {
+        const concept = await fetchCanonicalProductConcept(selectedId);
+        if (cancelled) return;
+        if (!concept || concept === "unavailable") {
+          setDetail(null);
+          setEvidence([]);
+          setIsDetailLoading(false);
+          return;
+        }
+        const mapped = mapCanonicalProductConceptToMapDetail({ concept });
+        setDetail(mapped.detail);
+        setEvidence(mapped.evidence);
+        setIsDetailLoading(false);
+        return;
+      }
+
       const [nextDetail, nextEvidence] = await Promise.all([
         fetchInspectorUserMapDetail(selectedId),
         fetchInspectorEvidenceLinks(INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT(selectedId)),
@@ -195,7 +218,7 @@ export function OrvekMapPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedId]);
+  }, [selectedId, items]);
 
   const dataApi = useMemo(
     () =>

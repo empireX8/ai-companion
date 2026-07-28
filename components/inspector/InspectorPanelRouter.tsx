@@ -10,6 +10,7 @@ import { ImportInspectorPanel } from "./panels/ImportInspectorPanel";
 import { DefaultInspectorPanel } from "./panels/DefaultInspectorPanel";
 import { ModelMovementInspectorPanel } from "./panels/ModelMovementInspectorPanel";
 import { SelectedObjectEvidencePanel } from "./panels/SelectedObjectEvidencePanel";
+import { CanonicalConceptInspectorPanel } from "./panels/CanonicalConceptInspectorPanel";
 
 const DOMAIN_PANELS = {
   chat: ChatInspectorPanel,
@@ -31,6 +32,10 @@ export function InspectorPanelRouter() {
 
   if (tab === "movement") {
     return <ModelMovementInspectorPanel />;
+  }
+
+  if (selection?.selectedObjectType === "canonical_concept") {
+    return <CanonicalConceptInspectorPanel />;
   }
 
   if (selection) {

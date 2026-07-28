@@ -718,53 +718,66 @@ export async function readCanonicalConceptProjection(args: {
   );
 }
 
+/**
+ * Transaction-scoped model projection. Caller must open REPEATABLE READ.
+ * Used by product/movement readers that need a single coherent snapshot.
+ */
+export async function readCanonicalModelProjectionInTransaction(args: {
+  userId: string;
+  tx: ProjectionTx;
+}): Promise<CanonicalModelProjectionV1> {
+  const concepts = (await args.tx.canonicalConcept.findMany({
+    where: {
+      userId: args.userId,
+      lifecycleStatus: CanonicalConceptLifecycleStatus.active,
+    },
+  })) as ConceptRow[];
+
+  const projected: CanonicalConceptProjectionV1[] = [];
+  for (const concept of concepts) {
+    const one = await readCanonicalConceptProjectionInTransaction({
+      userId: args.userId,
+      conceptId: concept.id,
+      tx: args.tx,
+    });
+    if (one === "not_found") {
+      broken("Owned active concept disappeared during model projection");
+    }
+    projected.push(one);
+  }
+
+  projected.sort((a, b) => {
+    if (a.currentRevision.acceptedAt !== b.currentRevision.acceptedAt) {
+      return a.currentRevision.acceptedAt < b.currentRevision.acceptedAt ? 1 : -1;
+    }
+    if (a.concept.id !== b.concept.id) {
+      return a.concept.id < b.concept.id ? -1 : 1;
+    }
+    return 0;
+  });
+
+  return {
+    projectionVersion: CANONICAL_MODEL_PROJECTION_VERSION,
+    userId: args.userId,
+    concepts: projected,
+  };
+}
+
 export async function readCanonicalModelProjection(args: {
   userId: string;
   db: PrismaClient;
 }): Promise<CanonicalModelProjectionV1> {
   return args.db.$transaction(
-    async (tx) => {
-      const concepts = (await tx.canonicalConcept.findMany({
-        where: {
-          userId: args.userId,
-          lifecycleStatus: CanonicalConceptLifecycleStatus.active,
-        },
-      })) as ConceptRow[];
-
-      const projected: CanonicalConceptProjectionV1[] = [];
-      for (const concept of concepts) {
-        const one = await readCanonicalConceptProjectionInTransaction({
-          userId: args.userId,
-          conceptId: concept.id,
-          tx: tx as unknown as ProjectionTx,
-        });
-        if (one === "not_found") {
-          broken("Owned active concept disappeared during model projection");
-        }
-        projected.push(one);
-      }
-
-      projected.sort((a, b) => {
-        if (a.currentRevision.acceptedAt !== b.currentRevision.acceptedAt) {
-          return a.currentRevision.acceptedAt < b.currentRevision.acceptedAt
-            ? 1
-            : -1;
-        }
-        if (a.concept.id !== b.concept.id) {
-          return a.concept.id < b.concept.id ? -1 : 1;
-        }
-        return 0;
-      });
-
-      return {
-        projectionVersion: CANONICAL_MODEL_PROJECTION_VERSION,
+    async (tx) =>
+      readCanonicalModelProjectionInTransaction({
         userId: args.userId,
-        concepts: projected,
-      };
-    },
+        tx: tx as unknown as ProjectionTx,
+      }),
     {
       isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
       timeout: 60_000,
     },
   );
 }
+
+export type { ProjectionTx };

@@ -27,10 +27,14 @@ export const INSPECTOR_INVESTIGATION_ENDPOINT = (id: string) =>
   `/api/inspector/investigations/${encodeURIComponent(id)}`;
 
 export type InspectorEvidenceLinkItem = {
+  /** Stable evidence-link id when available (canonical public evidence uses this). */
+  id?: string;
   sourceTypeLabel: string;
   evidenceSummaryLabel: string;
-  sourceObjectHref: string;
-  createdAt: string;
+  /** Verified public href only — never an empty string fake destination. */
+  sourceObjectHref: string | null;
+  /** Null when source timing is unknown — never fabricate acceptance time. */
+  createdAt: string | null;
   hasEvidence: true;
   sourceType?: string;
   sourceId?: string;

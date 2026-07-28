@@ -30,8 +30,8 @@ export type InspectorEvidenceCardView = {
   summary: string | null;
   sourceKind: string;
   linkRoleLabel: string | null;
-  createdAt: string;
-  href: string;
+  createdAt: string | null;
+  href: string | null;
   sourceType: string | null;
   sourceId: string | null;
 };
@@ -120,8 +120,11 @@ export function sanitizeInspectorDisplayText(
 }
 
 export function parseInspectorEvidenceSourceFromHref(
-  href: string
+  href: string | null | undefined
 ): { sourceType: string; sourceId: string } | null {
+  if (!href) {
+    return null;
+  }
   for (const [sourceType, prefix] of Object.entries(PUBLIC_OBJECT_LINK_HREF_PREFIXES)) {
     if (!href.startsWith(`${prefix}/`)) {
       continue;
@@ -138,7 +141,16 @@ export function parseInspectorEvidenceSourceFromHref(
   return null;
 }
 
+function evidenceCreatedAtMs(value: string | null | undefined): number {
+  if (!value) return Number.NEGATIVE_INFINITY;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : Number.NEGATIVE_INFINITY;
+}
+
 export function inspectorEvidenceDedupeKey(item: InspectorEvidenceLinkItem): string {
+  if (item.id?.trim()) {
+    return `evidence-link:${item.id.trim()}`;
+  }
   if (item.sourceType && item.sourceId) {
     return `${item.sourceType}:${item.sourceId}`;
   }
@@ -148,7 +160,7 @@ export function inspectorEvidenceDedupeKey(item: InspectorEvidenceLinkItem): str
     return `${parsed.sourceType}:${parsed.sourceId}`;
   }
 
-  return `${item.sourceObjectHref}:${item.createdAt}`;
+  return `${item.sourceObjectHref}:${item.createdAt ?? "unknown"}`;
 }
 
 export function dedupeInspectorEvidenceLinks(
@@ -164,15 +176,16 @@ export function dedupeInspectorEvidenceLinks(
       continue;
     }
 
-    const existingTime = new Date(existing.createdAt).getTime();
-    const nextTime = new Date(item.createdAt).getTime();
+    const existingTime = evidenceCreatedAtMs(existing.createdAt);
+    const nextTime = evidenceCreatedAtMs(item.createdAt);
     if (nextTime >= existingTime) {
       byKey.set(key, item);
     }
   }
 
   return [...byKey.values()].sort(
-    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    (left, right) =>
+      evidenceCreatedAtMs(right.createdAt) - evidenceCreatedAtMs(left.createdAt),
   );
 }
 

@@ -40,6 +40,7 @@ describe("orvek ux integration — inspector safety", () => {
   it("limits inspector object types to published-safe selectors", () => {
     expect(INSPECTOR_SELECTABLE_OBJECT_TYPES).toEqual([
       "usermap_conclusion",
+      "canonical_concept",
       "model_update",
       "pattern_claim",
       "contradiction_node",

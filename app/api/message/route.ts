@@ -24,6 +24,10 @@ import {
   BASE_SYSTEM_PROMPT,
   FAST_PATH_SYSTEM_PROMPT,
 } from "@/lib/assistant/system-prompt";
+import { buildCanonicalModelPromptBlock } from "@/lib/canonical-model-ai-context";
+import { isCanonicalModelAuthorityError } from "@/lib/canonical-model-authority-errors";
+import { readCanonicalModelProjection } from "@/lib/canonical-model-projection";
+import { toCanonicalProductAuthoritySnapshotV1 } from "@/lib/canonical-model-product-projection";
 import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
 import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
 import { triggerNativeDerivationIfDue } from "@/lib/native-derivation-trigger";
@@ -546,6 +550,43 @@ export async function POST(req: Request) {
     }
 
     console.debug(tag, "reference_and_contradictions_start", Date.now() - tServer);
+
+    let canonicalPromptBlock = "";
+    try {
+      const canonicalProjection = await readCanonicalModelProjection({
+        userId,
+        db: prismadb,
+      });
+      const productConcepts = canonicalProjection.concepts.map((concept) =>
+        toCanonicalProductAuthoritySnapshotV1(concept),
+      );
+      canonicalPromptBlock = buildCanonicalModelPromptBlock({
+        projection: canonicalProjection,
+      });
+      console.debug(tag, "[CHAT_CONTEXT] canonical", {
+        conceptsLoaded: productConcepts.length,
+        currentRevisionsInjected: productConcepts.length,
+        blockChars: canonicalPromptBlock.length,
+      });
+    } catch (error) {
+      if (
+        isCanonicalModelAuthorityError(error) &&
+        error.code === "BROKEN_CANONICAL_PROJECTION"
+      ) {
+        console.error(tag, "[CHAT_CONTEXT] canonical_broken", {
+          code: error.code,
+        });
+        return NextResponse.json(
+          {
+            error: "Canonical model unavailable",
+            code: "canonical_model_unavailable",
+          },
+          { status: 500 },
+        );
+      }
+      throw error;
+    }
+
     const [refMemResult, topContradictions] = await Promise.all([
       getRelevantReferenceMemory(userId, normalizedContent, maxMemories),
       getTop3WithOptionalSurfacing({
@@ -608,6 +649,7 @@ export async function POST(req: Request) {
     const systemPrompt = [
       baseSystem,
       governancePrompt,
+      canonicalPromptBlock,
       refMemResult.text ? `Long-term memory:\n${refMemResult.text}` : "",
       topContradictionsBlock,
       retrievedUserMemory ? `Relevant memory:\n${retrievedUserMemory}` : "",

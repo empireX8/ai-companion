@@ -4,12 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import {
-  fetchInspectorEvidenceLinks,
   fetchInspectorInvestigationDetail,
-  fetchInspectorUserMapDetail,
-  INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT,
   type InspectorEvidenceLinkItem,
 } from "@/lib/inspector-object-api";
+import { loadMapDetailForSelectedConclusion } from "@/lib/canonical-map-detail";
 import {
   buildMindContextDisplayItems,
   fetchMindContextSnapshot,
@@ -68,7 +66,7 @@ import {
 } from "@/lib/canonical-today-composition-client";
 import type { CanonicalWorkbenchBundle } from "@/lib/canonical-today-composition";
 import type { UserMapConclusionPublicApiDetailItem } from "@/lib/public-intelligence-safe-slice";
-import type { UserMapConclusionPublicApiListItem } from "@/lib/public-intelligence-safe-slice";
+import type { CurrentUnderstandingSurfaceListItem } from "@/lib/current-understanding-product-projection";
 import {
   buildTimelineModelLayersRequestUrl,
   type TimelineModelLayerItem,
@@ -159,7 +157,7 @@ async function waitForExploreSessionReady(maxAttempts = 6): Promise<boolean> {
 async function fetchMapConclusionsWithRetry(
   maxAttempts = 6,
   delayMs = 500,
-): Promise<UserMapConclusionPublicApiListItem[]> {
+): Promise<CurrentUnderstandingSurfaceListItem[]> {
   let lastError: unknown = new Error("Could not load map conclusions.");
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -207,7 +205,7 @@ export function useOrvekHybridWorkbenchDataApi() {
   const [canonicalWorkbench, setCanonicalWorkbench] =
     useState<CanonicalWorkbenchBundle | null>(null);
 
-  const [mapItems, setMapItems] = useState<UserMapConclusionPublicApiListItem[]>([]);
+  const [mapItems, setMapItems] = useState<CurrentUnderstandingSurfaceListItem[]>([]);
   const [openContradictions, setOpenContradictions] = useState<MapOpenContradictionItem[]>(
     [],
   );
@@ -742,17 +740,15 @@ export function useOrvekHybridWorkbenchDataApi() {
 
     void (async () => {
       try {
-        const [nextDetail, nextEvidence] = await Promise.all([
-          fetchInspectorUserMapDetail(normalizedSelectedId),
-          fetchInspectorEvidenceLinks(
-            INSPECTOR_USER_MAP_EVIDENCE_ENDPOINT(normalizedSelectedId)
-          ),
-        ]);
+        const loaded = await loadMapDetailForSelectedConclusion({
+          selectedId: normalizedSelectedId,
+          items: mapItems,
+        });
         if (!cancelled) {
-          setMapDetail(nextDetail);
-          setMapEvidence(nextEvidence);
+          setMapDetail(loaded.detail);
+          setMapEvidence(loaded.evidence);
         }
-      } catch (error) {
+      } catch {
         if (!cancelled) {
           setMapDetail(null);
           setMapEvidence([]);

@@ -176,9 +176,15 @@ function SupportingConflictingGrid({
             {evidence.preview.map((link) => (
               <li key={link.key} className="flex gap-2 text-[13px] text-foreground">
                 <span className="mt-0.5 text-primary">+</span>
-                <Link href={link.href} className="hover:underline">
-                  {link.evidenceSummaryLabel} · {link.sourceTypeLabel}
-                </Link>
+                {link.href ? (
+                  <Link href={link.href} className="hover:underline">
+                    {link.evidenceSummaryLabel} · {link.sourceTypeLabel}
+                  </Link>
+                ) : (
+                  <span>
+                    {link.evidenceSummaryLabel} · {link.sourceTypeLabel}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -497,7 +503,9 @@ export function V0MapView({
                         Source diversity
                       </dt>
                       <dd className="mt-0.5 text-[13px] font-medium text-foreground">
-                        {detail.sourceDiversity}
+                        {detail.sourceDiversity == null
+                          ? "Unavailable"
+                          : detail.sourceDiversity}
                       </dd>
                     </div>
                     <div className="o-material rounded-[9px] px-3 py-2">
@@ -505,7 +513,9 @@ export function V0MapView({
                         Time spread
                       </dt>
                       <dd className="mt-0.5 text-[13px] font-medium text-foreground">
-                        {detail.timeSpreadDays} days
+                        {detail.timeSpreadDays == null
+                          ? "Unavailable"
+                          : `${detail.timeSpreadDays} days`}
                       </dd>
                     </div>
                   </dl>

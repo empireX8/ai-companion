@@ -1,5 +1,7 @@
 import type { UserMapConclusionStatus } from "@prisma/client";
 
+import { fetchCurrentUnderstandingSurfaceListItems } from "./canonical-model-client";
+import type { CurrentUnderstandingSurfaceListItem } from "./current-understanding-product-projection";
 import type { InspectorEvidenceLinkItem } from "./inspector-object-api";
 import {
   formatUserMapArea,
@@ -42,7 +44,7 @@ export type YourMapRailGroup = {
   key: YourMapRailGroupKey;
   label: string;
   deferred?: boolean;
-  items: UserMapConclusionPublicApiListItem[];
+  items: CurrentUnderstandingSurfaceListItem[];
 };
 
 const STATUS_TO_RAIL_GROUP: Record<UserMapConclusionStatus, YourMapRailGroupKey> = {
@@ -74,9 +76,9 @@ const RAIL_GROUP_ORDER: YourMapRailGroupKey[] = [
 ];
 
 export function groupUserMapConclusionsByStatus(
-  items: UserMapConclusionPublicApiListItem[]
+  items: CurrentUnderstandingSurfaceListItem[]
 ): YourMapRailGroup[] {
-  const buckets = new Map<YourMapRailGroupKey, UserMapConclusionPublicApiListItem[]>();
+  const buckets = new Map<YourMapRailGroupKey, CurrentUnderstandingSurfaceListItem[]>();
 
   for (const item of items) {
     const groupKey = STATUS_TO_RAIL_GROUP[item.status];
@@ -103,7 +105,7 @@ export function groupUserMapConclusionsByStatus(
 }
 
 export function pickInitialYourMapSelectionId(
-  items: UserMapConclusionPublicApiListItem[],
+  items: CurrentUnderstandingSurfaceListItem[],
   preferredId: string | null | undefined
 ): string | null {
   const normalizedPreferred = preferredId?.trim();
@@ -118,28 +120,16 @@ export function pickInitialYourMapSelectionId(
 }
 
 export async function fetchYourMapConclusions(): Promise<
-  UserMapConclusionPublicApiListItem[]
+  CurrentUnderstandingSurfaceListItem[]
 > {
-  const response = await fetch(YOUR_MAP_CONCLUSIONS_ENDPOINT, {
-    method: "GET",
-    cache: "no-store",
-  });
-
-  let payload: { items?: UserMapConclusionPublicApiListItem[] } | null = null;
-
-  try {
-    payload = (await response.json()) as {
-      items?: UserMapConclusionPublicApiListItem[];
-    };
-  } catch {
-    payload = null;
+  const result = await fetchCurrentUnderstandingSurfaceListItems();
+  if (!result.ok) {
+    if (result.code === "canonical_model_unavailable") {
+      throw new Error("canonical_model_unavailable");
+    }
+    throw new Error(`Failed to load current understanding (${result.status})`);
   }
-
-  if (!response.ok) {
-    throw new Error(`Failed to load map conclusions (${response.status})`);
-  }
-
-  return Array.isArray(payload?.items) ? payload.items : [];
+  return result.items;
 }
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
@@ -148,15 +138,16 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
 });
 
-export function formatYourMapDateTime(value: string): string {
+export function formatYourMapDateTime(value: string | null | undefined): string {
+  if (!value) return "Unavailable";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return value;
+    return "Unavailable";
   }
   return DATE_FORMATTER.format(date);
 }
 
-export function toYourMapListRowMeta(item: UserMapConclusionPublicApiListItem): string {
+export function toYourMapListRowMeta(item: CurrentUnderstandingSurfaceListItem): string {
   return `${formatUserMapArea(item.area)} · ${formatUserMapStatus(item.status)} · ${formatUserMapConfidenceLevel(item.confidenceLevel)}`;
 }
 
