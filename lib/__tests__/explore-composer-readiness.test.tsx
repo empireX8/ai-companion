@@ -96,6 +96,11 @@ vi.mock("@/components/orvek-v0/primitives", () => ({
     React.createElement("div", null, children),
 }));
 
+vi.mock("@/components/explore/ExploreMovementProposalCard", () => ({
+  ExploreMovementProposalCard: () =>
+    React.createElement("div", { "data-testid": "explore-proposal-card" }),
+}));
+
 vi.mock("@/lib/canonical-correction-handoff", () => ({
   formatCanonicalCorrectionContextCopy: () => "",
 }));

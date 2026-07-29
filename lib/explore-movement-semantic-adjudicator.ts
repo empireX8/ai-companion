@@ -764,8 +764,8 @@ export async function adjudicateExploreMovement(args: {
       validatedSemanticResult: decision,
       evidenceSummary,
       confidence: decision.confidence,
-      alternativeInterpretation: decision.alternativeInterpretation,
-      qualificationContext: decision.qualificationContext,
+      alternativeInterpretation: decision.alternativeInterpretation ?? "",
+      qualificationContext: decision.qualificationContext ?? "",
       validationWarnings: gate.warnings,
     },
   });

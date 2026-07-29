@@ -28,7 +28,7 @@ import {
   getObject,
   getObjects,
 } from "../orvek-v0-reference-frozen/reference-data"
-import { CANONICAL_REFERENCE_MODEL_STATUS_CARD } from "@/lib/canonical-reference-model-status-card"
+import { CANONICAL_REFERENCE_MODEL_STATUS_CARD } from "../../lib/canonical-reference-model-status-card"
 import type { OrvekDataApi } from "@/lib/orvek-v0/data-provider"
 
 import type { CanonicalRuntimeData } from "./canonical-contract"

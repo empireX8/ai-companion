@@ -73,10 +73,18 @@ describe("SurfacedEvidencePointer schema model contracts", () => {
   it("pins required indexes and one-pointer-per-source uniqueness", () => {
     const pointer = modelBlock("SurfacedEvidencePointer");
 
-    expect(pointer).toContain("@@unique([userId, sourceObjectType, sourceObjectId])");
-    expect(pointer).toContain("@@index([userId, status, surfacedAt])");
-    expect(pointer).toContain("@@index([userId, publicEligible, status])");
-    expect(pointer).toContain("@@index([userId, sourceObjectType, sourceObjectId])");
+    expect(pointer).toContain(
+      '@@unique([userId, sourceObjectType, sourceObjectId], map: "sep_user_src_uniq")',
+    );
+    expect(pointer).toContain(
+      '@@index([userId, status, surfacedAt], map: "sep_user_status_surfaced_idx")',
+    );
+    expect(pointer).toContain(
+      '@@index([userId, publicEligible, status], map: "sep_user_pub_elig_status_idx")',
+    );
+    expect(pointer).toContain(
+      '@@index([userId, sourceObjectType, sourceObjectId], map: "sep_user_src_idx")',
+    );
   });
 
   it("reuses UnderstandingLinkSourceType for durable source identity", () => {
@@ -109,15 +117,10 @@ describe("SurfacedEvidencePointer migration SQL contracts", () => {
   });
 
   it("pins Today read and source lookup indexes in migration SQL", () => {
-    expect(migrationSql).toContain(
-      "SurfacedEvidencePointer_userId_status_surfacedAt_idx",
-    );
-    expect(migrationSql).toContain(
-      "SurfacedEvidencePointer_userId_sourceObjectType_sourceObjectId_key",
-    );
-    expect(migrationSql).toContain(
-      "SurfacedEvidencePointer_userId_publicEligible_status_idx",
-    );
+    expect(migrationSql).toContain("sep_user_status_surfaced_idx");
+    expect(migrationSql).toContain("sep_user_src_uniq");
+    expect(migrationSql).toContain("sep_user_pub_elig_status_idx");
+    expect(migrationSql).toContain("sep_user_src_idx");
   });
 });
 

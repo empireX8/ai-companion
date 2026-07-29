@@ -1935,3 +1935,54 @@ Optional future slices per `docs/phase2-final-acceptance-post-governance-contrac
 - **Files changed by this correction:** `components/orvek-v0-authority/evidence-panel.tsx`, `lib/__tests__/inspector-permanent-shell-regression.test.tsx`, `docs/engineering-ledger.md`.
 - **Verification:** rendered Inspector safety suite 12/12 passed; focused cumulative group 28 files / 227 tests passed; repository-wide run 347 files / 4,731 tests passed with seven skipped. The same nine inherited files remain red (11 tests plus one suite-load failure). Changed-file ESLint, `git diff --check`, trust-language, and legacy-surface audits pass. TypeScript and build still stop only on the two inherited `OrvekObject.type` inference errors; the build compiles before that baseline type failure.
 - **Browser evidence:** all 15 Inspector captures were regenerated at 1440×1200; browser assertions passed and ephemeral local fixtures were removed.
+
+---
+
+## ISSUE-187-LIVE-CANONICAL-EXPLORE-PROPOSAL
+
+- **Status:** implementation and verification complete; draft PR opening pending
+- **Date:** 2026-07-29
+- **Scope:** Restore the live canonical Explore proposal path on the production `/api/message` route for eligible `explore_chat` sessions, preserve gate-off legacy behaviour, keep assistant copy truthful before publication, and add an authenticated browser regression with no seeded proposal and no special request headers.
+- **Root cause:** The persisted assistant reply path on `/api/message` did not run the real Explore semantic adjudication/referee pipeline, so live Explore corrections could sound accepted while never creating the canonical proposal that Explore needs to review and publish. The live semantic provider also returned omitted qualification fields that the strict proposal contract treated as malformed output, forcing real proposals into `insufficient_evidence`.
+- **Files changed:**
+  - `app/api/message/route.ts`
+  - `components/explore/ExploreMovementProposalCard.tsx`
+  - `components/orvek-v0-canonical/fixture-provider.ts`
+  - `components/orvek-v0-canonical/pages/explore.tsx`
+  - `lib/assistant/system-prompt.ts`
+  - `lib/explore-grounding-orchestrator.ts`
+  - `lib/explore-movement-live-provider-adapters.ts`
+  - `lib/explore-movement-semantic-adjudicator.ts`
+  - `lib/explore-movement-semantic-contract.ts`
+  - `lib/__tests__/helpers/explore-movement-semantic-test-helpers.ts`
+  - `lib/__tests__/helpers/live-tea-explore-proposal-fixture.ts`
+  - `lib/__tests__/live-canonical-explore-proposal-browser-source.test.ts`
+  - `lib/__tests__/live-canonical-explore-proposal-orchestration.test.ts`
+  - `lib/__tests__/live-canonical-explore-proposal-wiring.test.ts`
+  - `lib/__tests__/native-memory-reference-route.test.ts`
+  - `lib/__tests__/phase3-what-changed-page.test.ts`
+  - `lib/__tests__/inspector-permanent-shell-regression.test.tsx`
+  - `lib/__tests__/surfaced-evidence-pointer-schema.test.ts`
+  - `lib/__tests__/evidence-pointer-surfacing-rationale-schema.test.ts`
+  - `lib/__tests__/explore-movement-fixed-semantics-containment-source.test.ts`
+  - `lib/__tests__/explore-session-bootstrap-integration.test.ts`
+  - `lib/__tests__/explore-composer-readiness.test.tsx`
+  - `lib/__tests__/active-questions-hybrid-fetch.test.ts`
+  - `lib/__tests__/investigations-hybrid-fetch.test.ts`
+  - `lib/__tests__/free-explore-chat-hybrid-fetch.test.ts`
+  - `lib/__tests__/experiment-hybrid-fetch.test.ts`
+  - `lib/__tests__/model-movement-fixture-cleanup.test.ts`
+  - `lib/__tests__/durable-actions-runtime-fixture.test.ts`
+  - `lib/__tests__/explore-grounding-movement-assault.test.ts`
+  - `lib/__tests__/desktop-permanent-shell-cross-page-regression.test.tsx`
+  - `lib/__tests__/explore-conversation-review.test.ts`
+  - `lib/__tests__/desktop-old-route-shell-quarantine.test.ts`
+  - `lib/__tests__/explore-movement-semantic-restoration-source.test.ts`
+  - `lib/__tests__/explore-movement-semantic-restoration.test.ts`
+  - `playwright.config.ts`
+  - `scripts/live-canonical-explore-proposal.playwright.ts`
+  - `docs/engineering-ledger.md`
+- **What changed:** Production `/api/message` now persists the assistant reply and then runs the real Explore grounding/orchestration flow for eligible `explore_chat` sessions. When the canonical authority flag and exact user allowlist are active, the live path creates or reuses the canonical `ExploreMovementProposal` record instead of pretending the understanding already changed. Explore continues to render the proposal review card with before/after, rationale, evidence, and Publish action. Assistant system guidance now forbids telling the user their understanding was already updated before publication. The semantic contract now tolerates omitted `alternativeInterpretation` and `qualificationContext` fields from the live provider, allowing the real adjudication/referee path to produce publishable proposals instead of malformed-output failures. Gate-off behaviour remains unchanged.
+- **Verification passed:** `bash scripts/verify-mindlab.sh` completed cleanly on 2026-07-29, including `git diff --check`, `npx tsc --noEmit`, `npx vitest run`, `npm run build`, `bash scripts/check-trust-language.sh`, and `bash scripts/check-legacy-surfaces.sh`. Final repository-wide result: 380 test files passed, 3 skipped; 4,902 tests passed, 139 skipped. The authenticated browser regression also passed with no seeded proposal and no special request headers: `PHASE6_MANAGE_SERVER=1 PHASE6_SKIP_BUILD=1 DESKTOP_PARITY_BASE_URL=http://localhost:3100 CANONICAL_AUTHORITY_DB_TEST_URL='postgresql://user@127.0.0.1:5432/companion_canonical_authority_test' DATABASE_URL='postgresql://user@127.0.0.1:5432/companion_canonical_authority_test' npx playwright test scripts/live-canonical-explore-proposal.playwright.ts` → `1 passed (49.7s)`.
+- **What remains partial:** The live proposal path is intentionally limited to eligible `explore_chat` sessions and the canonical allowlisted lane. Legacy gate-off behaviour is preserved. The fix is not merged.
+- **Next exact step:** Push `hotfix/live-canonical-explore-proposal`, open the draft PR into `staging`, review it, and merge only after approval.

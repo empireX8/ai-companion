@@ -24,7 +24,7 @@ import {
 } from "./explore-grounding-retrieval";
 import {
   createExploreMovementLiveAdapters,
-  isExploreMovementSemanticEnabled,
+  isExploreMovementSemanticEnabledForUser,
   resolveExploreMovementProviderConfig,
   type ExploreMovementCallBudget,
 } from "./explore-movement-live-provider-adapters";
@@ -156,7 +156,8 @@ async function trySemanticMovementProposal(args: {
   proposalCreated: boolean;
 }> {
   const enabled =
-    args.semantic?.semanticEnabled ?? isExploreMovementSemanticEnabled();
+    args.semantic?.semanticEnabled ??
+    isExploreMovementSemanticEnabledForUser(args.userId);
 
   if (!enabled) {
     return {
@@ -208,9 +209,12 @@ async function trySemanticMovementProposal(args: {
       };
     }
 
-    const config = resolveExploreMovementProviderConfig();
+    const config = resolveExploreMovementProviderConfig(process.env, {
+      forceEnabled: true,
+    });
     if (!config.ok) {
       // Chat and grounding still succeed; movement fails closed.
+      console.log("[EXPLORE_MOVEMENT_PROVIDER_CONFIG]", config.errorCode, config.message);
       return {
         movementProposal: insufficientMovement(),
         proposalCreated: false,
@@ -334,7 +338,8 @@ async function trySemanticMovementProposal(args: {
       userFacingSummary: adjudication.decision.userFacingSummary,
       provenance,
     });
-  } catch {
+  } catch (error) {
+    console.log("[EXPLORE_MOVEMENT_PROPOSAL_CREATE_ERROR]", error);
     return {
       movementProposal: insufficientMovement(),
       proposalCreated: false,
@@ -391,8 +396,9 @@ export async function orchestrateExploreReplyGrounding(args: {
   userMessageContent: string;
   assistantReplyContent: string;
   /**
-   * Retained for caller compatibility. Semantic proposal creation is gated by
-   * ORVEK_EXPLORE_MOVEMENT_SEMANTIC_ENABLED (default off) plus injected deps.
+   * Retained for caller compatibility. Semantic proposal creation runs when
+   * ORVEK_EXPLORE_MOVEMENT_SEMANTIC_ENABLED is on, or when Canonical Model
+   * Authority V1 is enabled for the user (exact allowlist hit).
    */
   createProposalWhenSufficient?: boolean;
   /** Injected semantic adjudicator/referee for tests. */

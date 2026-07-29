@@ -96,6 +96,43 @@ vi.mock("@/components/orvek-v0/MapPageHeaderStats", async () => {
   };
 });
 
+vi.mock("@/components/orvek-v0/durable-user-action-controls", async () => {
+  const { createElement } = await import("react");
+  return {
+    supportsCanonicalProposeCorrection: (object: OrvekObject) =>
+      object.inspectorObjectType === "canonical_concept",
+    CanonicalProposeCorrectionControls: ({ object }: { object: OrvekObject }) =>
+      createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "canonical-propose-correction-button",
+          "data-shell-item": "map-correction-action",
+          "data-live-object-id": object.id,
+        },
+        "Propose correction",
+      ),
+    supportsDurableCorrection: () => true,
+    DurableCorrectionControls: ({ object }: { object: OrvekObject }) =>
+      createElement(
+        "section",
+        { "data-testid": "durable-corrections" },
+        Array.from({ length: 6 }, (_, index) =>
+          createElement(
+            "button",
+            {
+              key: index,
+              type: "button",
+              "data-shell-item": "map-correction-action",
+              "data-live-object-id": object.id,
+            },
+            `Correction ${index + 1}`,
+          ),
+        ),
+      ),
+  };
+});
+
 vi.mock("@/lib/map-profile-facts", () => ({
   profileSectionMappingForObject: () => null,
 }));
@@ -196,6 +233,15 @@ const EXPECTED = {
     links: 5,
     pulses: 1,
   },
+};
+
+const EXPECTED_CANONICAL_MAP = {
+  ...EXPECTED.map,
+  corrections: 0,
+};
+
+const EXPECTED_CANONICAL_LIVE_MAP = {
+  ...EXPECTED.map,
 };
 
 const REFERENCE_PERSONAL_CLAIMS = [
@@ -604,7 +650,7 @@ describe("desktop permanent shell cross-page and navigator regression", () => {
     };
     const html = Object.values(pages).join("");
 
-    expect(canonicalMapSignature(pages.map)).toEqual(EXPECTED.map);
+    expect(canonicalMapSignature(pages.map)).toEqual(EXPECTED_CANONICAL_MAP);
     expect(canonicalDecisionsSignature(pages.decisions)).toEqual(EXPECTED.decisions);
     expect(canonicalTimelineSignature(pages.timeline)).toEqual(EXPECTED.timeline);
     expect(canonicalExploreFreeSignature(pages.free)).toEqual(EXPECTED.exploreFree);
@@ -656,7 +702,7 @@ describe("desktop permanent shell cross-page and navigator regression", () => {
       fieldwork: renderCanonical(runtime, "explore-fieldwork"),
     };
 
-    expect(canonicalMapSignature(pages.map)).toEqual(EXPECTED.map);
+    expect(canonicalMapSignature(pages.map)).toEqual(EXPECTED_CANONICAL_MAP);
     expect(canonicalDecisionsSignature(pages.decisions)).toEqual(EXPECTED.decisions);
     expect(canonicalTimelineSignature(pages.timeline)).toEqual(EXPECTED.timeline);
     expect(canonicalExploreFreeSignature(pages.free)).toEqual(EXPECTED.exploreFree);
@@ -685,7 +731,7 @@ describe("desktop permanent shell cross-page and navigator regression", () => {
     };
     const html = Object.values(pages).join("");
 
-    expect(canonicalMapSignature(pages.map)).toEqual(EXPECTED.map);
+    expect(canonicalMapSignature(pages.map)).toEqual(EXPECTED_CANONICAL_LIVE_MAP);
     expect(canonicalDecisionsSignature(pages.decisions)).toEqual(EXPECTED.decisions);
     expect(canonicalTimelineSignature(pages.timeline)).toEqual(EXPECTED.timeline);
     expect(canonicalExploreFreeSignature(pages.free)).toEqual(EXPECTED.exploreFree);

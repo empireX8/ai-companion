@@ -22,6 +22,7 @@ import { getRelevantReferenceMemory } from "@/lib/reference-memory";
 import { SessionMemoryManager } from "@/lib/session-memory";
 import {
   BASE_SYSTEM_PROMPT,
+  EXPLORE_CHAT_SYSTEM_PROMPT_ADDENDUM,
   FAST_PATH_SYSTEM_PROMPT,
 } from "@/lib/assistant/system-prompt";
 import { buildCanonicalModelPromptBlock } from "@/lib/canonical-model-ai-context";
@@ -669,7 +670,10 @@ export async function POST(req: Request) {
       .join("\n");
 
     const effectiveSessionTranscript = sessionTranscript || fallbackTranscript;
-    const baseSystem = BASE_SYSTEM_PROMPT;
+    const baseSystem =
+      session.surfaceType === "explore_chat"
+        ? `${BASE_SYSTEM_PROMPT}\n\n${EXPLORE_CHAT_SYSTEM_PROMPT_ADDENDUM}`
+        : BASE_SYSTEM_PROMPT;
     const governancePrompt = "";
     const retrievedUserMemory = [userRelevant, userTranscript].filter(Boolean).join("\n");
     const sessionMemoryBlock = [sessionRelevant, effectiveSessionTranscript]

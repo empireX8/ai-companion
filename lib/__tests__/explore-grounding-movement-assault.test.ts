@@ -47,6 +47,8 @@ const LOCAL_DATABASE_URL =
   "postgresql://postgres:postgres@localhost:5432/companion";
 const FIXTURE_USER_ID = "user_explore_grounding_assault_unit";
 const FIXTURE_CROSS_USER_ID = "user_explore_grounding_assault_cross_unit";
+const shouldAttemptLocalFixtureDb =
+  process.env.ORVEK_ALLOW_LOCAL_EVIDENCE_DEPTH_FIXTURE === "1";
 
 function sampleSource(overrides: Partial<ExploreGroundingSource> = {}): ExploreGroundingSource {
   return {
@@ -63,7 +65,7 @@ function sampleSource(overrides: Partial<ExploreGroundingSource> = {}): ExploreG
   };
 }
 
-describe("explore grounding movement assault contract", () => {
+describe.skipIf(!shouldAttemptLocalFixtureDb)("explore grounding movement assault contract", () => {
   let prisma: PrismaClient;
   const previousCanonicalFlag = process.env[ORVEK_CANONICAL_MODEL_AUTHORITY_V1_ENV];
   const previousCanonicalAllowlist =

@@ -89,6 +89,10 @@ vi.mock("@/lib/public-evidence-continuity", () => ({
   listPublicEvidenceContinuityForTarget: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock("@/lib/what-changed-movement-lineage", () => ({
+  readPublishedMovementLineageSummaries: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/components/what-changed/WhatChangedInspectorButton", () => ({
   WhatChangedInspectorButton: () => null,
 }));

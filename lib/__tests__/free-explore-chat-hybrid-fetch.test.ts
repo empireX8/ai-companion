@@ -109,7 +109,7 @@ describe("bounded free explore chat hybrid fetch bridge", () => {
     const hookSource = readSource("components/orvek-workbench/useOrvekHybridWorkbenchDataApi.ts");
 
     expect(hookSource).toMatch(
-      /buildHybridWorkbenchDataApi\(\s*baseApi,\s*todayApi,\s*mapApi,\s*timelineApi,\s*decisionsApi,\s*experimentApi,\s*activeQuestionsApi,\s*investigationsApi,\s*freeExploreChatApi,\s*\)/,
+      /buildHybridWorkbenchDataApi\(\s*baseApi,\s*todayApi,\s*mapApi,\s*timelineApi,\s*decisionsApi,\s*experimentApi,\s*activeQuestionsApi,\s*investigationsApi,\s*freeExploreChatApi,\s*\{\s*allowCompositionWorkbenchAuthority:\s*allowCompositionAuthority,\s*\},\s*\)/,
     );
   });
 

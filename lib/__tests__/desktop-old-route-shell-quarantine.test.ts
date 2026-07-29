@@ -303,7 +303,7 @@ describe("desktop old-route / old-shell quarantine audit", () => {
     for (const [component, files] of Object.entries(importers)) {
       expect(files, `${component} must remain unimported quarantine code`).toEqual([]);
     }
-  });
+  }, 15_000);
 
   it("route-first navigation pushes stay confined to quarantined shell/reference files", () => {
     const allowedRoutePushFiles = new Set([

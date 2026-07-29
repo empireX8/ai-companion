@@ -84,8 +84,10 @@ const proposeConclusionStrengtheningSchema = z
     confidence: confidenceSchema,
     alternativeInterpretation: nonBlankBounded(
       EXPLORE_MOVEMENT_MAX_RATIONALE_CHARS
-    ),
-    qualificationContext: nonBlankBounded(EXPLORE_MOVEMENT_MAX_RATIONALE_CHARS),
+    ).optional(),
+    qualificationContext: nonBlankBounded(
+      EXPLORE_MOVEMENT_MAX_RATIONALE_CHARS
+    ).optional(),
     evidenceSourceIds: z.array(z.string().trim().min(1)).min(1),
   })
   .strict();
@@ -249,7 +251,7 @@ export function normalizeExploreMovementProviderObject(
   }
 
   if (outcome === "PROPOSE_CONCLUSION_STRENGTHENING") {
-    return {
+    const next: Record<string, unknown> = {
       outcome,
       proposedObjectType: record.proposedObjectType,
       targetObjectId: record.targetObjectId,
@@ -257,10 +259,21 @@ export function normalizeExploreMovementProviderObject(
       rationale: record.rationale,
       userFacingSummary: record.userFacingSummary,
       confidence: record.confidence,
-      alternativeInterpretation: record.alternativeInterpretation,
-      qualificationContext: record.qualificationContext,
       evidenceSourceIds: record.evidenceSourceIds,
     };
+    if (
+      typeof record.alternativeInterpretation === "string" &&
+      record.alternativeInterpretation.trim().length > 0
+    ) {
+      next.alternativeInterpretation = record.alternativeInterpretation;
+    }
+    if (
+      typeof record.qualificationContext === "string" &&
+      record.qualificationContext.trim().length > 0
+    ) {
+      next.qualificationContext = record.qualificationContext;
+    }
+    return next;
   }
 
   if (outcome === "ROUTE_TO_DIFFERENT_OBJECT_TYPE") {

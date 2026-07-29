@@ -160,6 +160,29 @@ describe("explore movement semantic contract", () => {
     });
     expect(parsed.ok).toBe(true);
   });
+
+  it("accepts OpenAI-strict nullable optional proposal context fields", () => {
+    const parsed = parseExploreMovementSemanticDecision({
+      decision: {
+        outcome: "PROPOSE_CONCLUSION_STRENGTHENING",
+        proposedObjectType: "UserMapConclusion",
+        targetObjectId: UMC_ID,
+        afterSummary: validProposeDecision().afterSummary,
+        rationale: validProposeDecision().rationale,
+        userFacingSummary: validProposeDecision().userFacingSummary,
+        confidence: 0.7,
+        alternativeInterpretation: null,
+        qualificationContext: null,
+        evidenceSourceIds: ["journal-verified-semantic"],
+        routedObjectType: null,
+      },
+    });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok && parsed.decision.outcome === "PROPOSE_CONCLUSION_STRENGTHENING") {
+      expect(parsed.decision.alternativeInterpretation).toBeUndefined();
+      expect(parsed.decision.qualificationContext).toBeUndefined();
+    }
+  });
 });
 
 describe("explore movement provider gate and budget", () => {

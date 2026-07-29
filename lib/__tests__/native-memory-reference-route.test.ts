@@ -21,6 +21,17 @@ const appendToTranscriptMock = vi.fn();
 const upsertVectorMock = vi.fn();
 const readTranscriptMock = vi.fn();
 const queryRelevantMock = vi.fn();
+const buildCanonicalModelPromptBlockMock = vi.fn();
+const readCanonicalModelProjectionMock = vi.fn();
+const toCanonicalProductAuthoritySnapshotV1Mock = vi.fn();
+const isCanonicalModelAuthorityErrorMock = vi.fn();
+const extractCanonicalAiCaptureNonceMock = vi.fn();
+const recordCanonicalAiRequestCaptureMock = vi.fn();
+const phase6DeterministicReplyAllowedMock = vi.fn();
+const buildPhase6DeterministicReplyMock = vi.fn();
+const maybeRunPhase6EligibleCreationAttemptMock = vi.fn();
+const orchestrateExploreReplyGroundingMock = vi.fn();
+const persistExploreGroundingPayloadMock = vi.fn();
 
 type SessionRow = {
   id: string;
@@ -307,6 +318,8 @@ vi.mock("@/lib/session-memory", () => ({
 
 vi.mock("@/lib/assistant/system-prompt", () => ({
   BASE_SYSTEM_PROMPT: "BASE",
+  EXPLORE_CHAT_SYSTEM_PROMPT_ADDENDUM:
+    "Never claim the understanding was updated before publication.",
   FAST_PATH_SYSTEM_PROMPT: "FAST",
 }));
 
@@ -348,17 +361,44 @@ vi.mock("@/lib/profile-derivation", () => ({
   processMessageForProfile: processMessageForProfileMock,
 }));
 
+vi.mock("@/lib/canonical-model-ai-context", () => ({
+  buildCanonicalModelPromptBlock: buildCanonicalModelPromptBlockMock,
+}));
+
+vi.mock("@/lib/canonical-model-product-projection", () => ({
+  toCanonicalProductAuthoritySnapshotV1: toCanonicalProductAuthoritySnapshotV1Mock,
+}));
+
+vi.mock("@/lib/canonical-model-projection", () => ({
+  readCanonicalModelProjection: readCanonicalModelProjectionMock,
+}));
+
+vi.mock("@/lib/canonical-model-authority-errors", () => ({
+  isCanonicalModelAuthorityError: isCanonicalModelAuthorityErrorMock,
+}));
+
+vi.mock("@/lib/canonical-ai-request-capture", () => ({
+  extractCanonicalAiCaptureNonce: extractCanonicalAiCaptureNonceMock,
+  recordCanonicalAiRequestCapture: recordCanonicalAiRequestCaptureMock,
+}));
+
+vi.mock("@/lib/canonical-phase6-deterministic-reply", () => ({
+  phase6DeterministicReplyAllowed: phase6DeterministicReplyAllowedMock,
+  buildPhase6DeterministicReply: buildPhase6DeterministicReplyMock,
+}));
+
+vi.mock("@/lib/canonical-phase6-creation-attempt", () => ({
+  maybeRunPhase6EligibleCreationAttempt: maybeRunPhase6EligibleCreationAttemptMock,
+}));
+
 vi.mock("@/lib/explore-assault-test-provider", () => ({
   exploreAssaultDeterministicReplyAllowed: () => false,
   buildExploreAssaultDeterministicReply: () => "",
 }));
 
 vi.mock("@/lib/explore-grounding-orchestrator", () => ({
-  orchestrateExploreReplyGrounding: vi.fn(async () => ({
-    payload: null,
-    proposalCreated: false,
-  })),
-  persistExploreGroundingPayload: vi.fn(async () => undefined),
+  orchestrateExploreReplyGrounding: orchestrateExploreReplyGroundingMock,
+  persistExploreGroundingPayload: persistExploreGroundingPayloadMock,
 }));
 
 const flushAsyncWork = async () => {
@@ -390,6 +430,40 @@ describe("native chat memory/reference capture", () => {
     createPrismaContradictionProductionAdapterMock.mockReturnValue({
       kind: "fake-production-db-adapter",
     });
+    buildCanonicalModelPromptBlockMock.mockReturnValue("");
+    readCanonicalModelProjectionMock.mockResolvedValue({
+      projectionVersion: "canonical_model_projection:v1",
+      userId: "u1",
+      concepts: [],
+    });
+    toCanonicalProductAuthoritySnapshotV1Mock.mockImplementation((concept) => concept);
+    isCanonicalModelAuthorityErrorMock.mockReturnValue(false);
+    extractCanonicalAiCaptureNonceMock.mockReturnValue(null);
+    recordCanonicalAiRequestCaptureMock.mockImplementation(() => undefined);
+    phase6DeterministicReplyAllowedMock.mockReturnValue(false);
+    buildPhase6DeterministicReplyMock.mockReturnValue("");
+    maybeRunPhase6EligibleCreationAttemptMock.mockResolvedValue(undefined);
+    orchestrateExploreReplyGroundingMock.mockResolvedValue({
+      payload: {
+        version: "explore-grounding-v1",
+        status: "grounded",
+        conversationId: "sess1",
+        assistantMessageId: "assistant-placeholder",
+        userMessageId: "user-placeholder",
+        sources: [],
+        claims: [],
+        movementProposal: {
+          status: "none",
+          proposalId: null,
+          modelUpdateId: null,
+          beforeSummary: null,
+          afterSummary: null,
+          rationale: null,
+        },
+      },
+      proposalCreated: false,
+    });
+    persistExploreGroundingPayloadMock.mockResolvedValue(undefined);
     getTop3WithOptionalSurfacingMock.mockResolvedValue({ items: [] });
     getRelevantReferenceMemoryMock.mockResolvedValue({
       text: "",
@@ -645,6 +719,131 @@ describe("native chat memory/reference capture", () => {
         reqId: "native-memory-explore-trigger-1",
       })
     );
+  });
+
+  it("runs explore grounding orchestration after persisting an explore_chat assistant reply", async () => {
+    sessions = [{ id: "sess1", userId: "u1", origin: "APP", surfaceType: "explore_chat" }];
+    const groundedPayload = {
+      version: "explore-grounding-v1",
+      status: "grounded",
+      conversationId: "sess1",
+      assistantMessageId: "msg_2",
+      userMessageId: "msg_1",
+      sources: [
+        {
+          sourceId: "journal_tea",
+          sourceType: "journal_entry",
+          sourceFamily: "journal_entry",
+          userId: "u1",
+          title: "Tea preference note",
+          extract: "I like tea again now.",
+          retrievalReason: "Owned journal evidence directly supports the correction.",
+          claimSupport: "verifies",
+          epistemicStatus: "VERIFIED",
+        },
+      ],
+      claims: [
+        {
+          text: "I like tea again now.",
+          epistemicStatus: "VERIFIED",
+          sourceIds: ["journal_tea"],
+        },
+      ],
+      movementProposal: {
+        status: "proposed",
+        proposalId: "proposal_tea",
+        modelUpdateId: null,
+        beforeSummary: "I don't like tea anymore",
+        afterSummary: "I like tea again now.",
+        rationale: "Recent owned evidence supports the correction.",
+      },
+    };
+    orchestrateExploreReplyGroundingMock.mockResolvedValueOnce({
+      payload: groundedPayload,
+      proposalCreated: true,
+    });
+    streamTextMock.mockImplementation((args: { onFinish?: (result: { text: string }) => unknown }) => {
+      void args.onFinish?.({
+        text: "Thanks for the correction. A proposed model update may appear in Explore for review.",
+      });
+      return {
+        toTextStreamResponse: () => new Response("ok"),
+      };
+    });
+
+    const route = await import("../../app/api/message/route");
+    const response = await route.POST(
+      new Request("http://localhost/api/message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-request-id": "native-memory-live-explore-proposal-1",
+        },
+        body: JSON.stringify({
+          sessionId: "sess1",
+          content: "Correction: I like tea again now. Please update your understanding of me.",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await flushAsyncWork();
+
+    expect(messages.map((message) => message.role)).toEqual(["user", "assistant"]);
+    expect(messages[1]?.content).toBe(
+      "Thanks for the correction. A proposed model update may appear in Explore for review.",
+    );
+    expect(orchestrateExploreReplyGroundingMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u1",
+        conversationId: "sess1",
+        assistantMessageId: "msg_2",
+        userMessageId: "msg_1",
+        userMessageContent:
+          "Correction: I like tea again now. Please update your understanding of me.",
+        assistantReplyContent:
+          "Thanks for the correction. A proposed model update may appear in Explore for review.",
+        createProposalWhenSufficient: true,
+      })
+    );
+    expect(persistExploreGroundingPayloadMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u1",
+        messageId: "msg_2",
+        payload: groundedPayload,
+      })
+    );
+  });
+
+  it("preserves non-explore sessions by skipping explore grounding orchestration", async () => {
+    sessions = [{ id: "sess1", userId: "u1", origin: "APP", surfaceType: "journal_chat" }];
+    streamTextMock.mockImplementation((args: { onFinish?: (result: { text: string }) => unknown }) => {
+      void args.onFinish?.({ text: "Assistant reply body." });
+      return {
+        toTextStreamResponse: () => new Response("ok"),
+      };
+    });
+
+    const route = await import("../../app/api/message/route");
+    const response = await route.POST(
+      new Request("http://localhost/api/message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-request-id": "native-memory-live-explore-proposal-legacy-1",
+        },
+        body: JSON.stringify({
+          sessionId: "sess1",
+          content: "I am trying to understand this correction path.",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await flushAsyncWork();
+
+    expect(orchestrateExploreReplyGroundingMock).not.toHaveBeenCalled();
+    expect(persistExploreGroundingPayloadMock).not.toHaveBeenCalled();
   });
 
   it("does not run APP candidate bridge for unsupported APP surface types", async () => {
