@@ -22,7 +22,10 @@ describe("your-map workbench", () => {
     expect(quarantinedMapPageSource).toContain("OrvekV0PageShell");
     expect(quarantinedMapPageSource).not.toContain("useOrvekHybridWorkbenchDataApi");
     expect(hybridHookSource).toContain("buildMapProductionDataApi");
-    expect(hybridHookSource).toContain("fetchInspectorUserMapDetail");
+    // Legacy UMC detail fetch remains on quarantined OrvekMapPage / canonical-map-detail;
+    // live hybrid root uses canonical-aware map production APIs.
+    expect(quarantinedMapPageSource).toContain("fetchInspectorUserMapDetail");
+    expect(hybridHookSource).toContain("loadMapDetailForSelectedConclusion");
     expect(hybridHookSource).toContain("fetchMindContextSnapshot");
     expect(adapterSource).toContain("buildOntologyRailGroups");
     expect(adapterSource).toContain("V0_MAP_ONTOLOGY_RAIL_LABELS");
@@ -109,7 +112,11 @@ describe("your-map workbench", () => {
     const selectionSource = readSource("lib/inspector-selection.ts");
     const mindContextSource = readSource("components/your-map/YourMapMindContextPanel.tsx");
 
-    expect(mapApiSource).toContain('inspectorObjectType: "usermap_conclusion"');
+    expect(mapApiSource).toContain(
+      'inspectorObjectType: isCanonical ? "canonical_concept" : "usermap_conclusion"',
+    );
+    expect(mapApiSource).toContain('"usermap_conclusion"');
+    expect(mapApiSource).toContain('"canonical_concept"');
     expect(selectionSource).toContain('return "usermap_conclusion"');
     expect(workbenchSource).toContain("OrvekV0PageShell");
     expect(mindContextSource).toContain('objectType: "pattern_claim"');

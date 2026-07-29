@@ -1,3 +1,7 @@
+import {
+  CANONICAL_CORRECTION_HANDOFF_HINT,
+  CANONICAL_CORRECTION_PROPOSE_LABEL,
+} from "../canonical-correction-handoff";
 import type { CurrentUnderstandingSurfaceListItem } from "../current-understanding-product-projection";
 import type { InspectorEvidenceLinkItem } from "../inspector-object-api";
 import {
@@ -151,6 +155,9 @@ export type V0MapDetailSlot = {
   lastUserCorrectionLabel?: string | null;
   lastUserCorrectionAt?: string | null;
   correctionCount?: number;
+  authorityType?: UserMapConclusionPublicApiDetailItem["authorityType"];
+  currentRevisionId?: string;
+  version?: number;
 };
 
 export type V0MapMovementRow = {
@@ -209,8 +216,11 @@ export type V0MapViewProps = {
   };
   relatedItems: V0MapRelatedItem[];
   relatedEmptyCopy: string;
+  correctionMode: "canonical_propose" | "legacy_deferred";
   correctionChipLabels: readonly string[];
   correctionDeferredCopy: string;
+  canonicalCorrectionConceptId: string | null;
+  canonicalCorrectionHint: string | null;
 };
 
 export type MapMapDataInput = {
@@ -501,6 +511,9 @@ function mapDetailSlot(
     lastUserCorrectionLabel: detail.lastUserCorrectionLabel ?? null,
     lastUserCorrectionAt: detail.lastUserCorrectionAt ?? null,
     correctionCount: detail.correctionCount ?? 0,
+    authorityType: detail.authorityType,
+    currentRevisionId: detail.currentRevisionId,
+    version: detail.version,
   };
 }
 
@@ -513,10 +526,13 @@ export function mapMapDataToV0Props(input: MapMapDataInput): V0MapViewProps {
   const { preview, hasMore } = summarizeCentreEvidence(evidence);
   const ontologyItemCount = ontologyGroups.reduce(
     (count, group) => count + group.items.length,
-    0
+    0,
   );
   const hasItems = ontologyItemCount > 0;
   const showMainContent = !input.isLoading && !input.loadError && hasItems;
+  const isCanonicalDetail =
+    detail?.authorityType === "canonical_concept_revision" ||
+    selectedListItem?.authorityType === "canonical_concept_revision";
 
   return {
     isLoading: input.isLoading,
@@ -581,7 +597,18 @@ export function mapMapDataToV0Props(input: MapMapDataInput): V0MapViewProps {
     },
     relatedItems: buildRelatedItems(input),
     relatedEmptyCopy: V0_MAP_RELATED_EMPTY_COPY,
-    correctionChipLabels: V0_MAP_CORRECTION_CHIP_LABELS,
-    correctionDeferredCopy: YOUR_MAP_CORRECTION_DEFERRED_COPY,
+    correctionMode: isCanonicalDetail ? "canonical_propose" : "legacy_deferred",
+    correctionChipLabels: isCanonicalDetail
+      ? [CANONICAL_CORRECTION_PROPOSE_LABEL]
+      : V0_MAP_CORRECTION_CHIP_LABELS,
+    correctionDeferredCopy: isCanonicalDetail
+      ? CANONICAL_CORRECTION_HANDOFF_HINT
+      : YOUR_MAP_CORRECTION_DEFERRED_COPY,
+    canonicalCorrectionConceptId: isCanonicalDetail
+      ? detail?.id ?? selectedListItemId
+      : null,
+    canonicalCorrectionHint: isCanonicalDetail
+      ? CANONICAL_CORRECTION_HANDOFF_HINT
+      : null,
   };
 }

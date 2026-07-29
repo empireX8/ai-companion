@@ -51,6 +51,13 @@ describe("OrvekWorkbenchShell route allowlist", () => {
     expect(html).not.toContain("canonical-live-runtime-entry");
   });
 
+  it("renders the real What Changed report route child", async () => {
+    const html = await renderAt("/what-changed");
+
+    expect(html).toContain("route-child");
+    expect(html).not.toContain("canonical-live-runtime-entry");
+  });
+
   it.each([
     "/contradictions",
     "/contradictions/contr-1",

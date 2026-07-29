@@ -19,7 +19,7 @@ import {
 
 vi.mock("server-only", () => ({}));
 
-let testPrismaRef: { current: PrismaClient | null } = { current: null };
+const testPrismaRef: { current: PrismaClient | null } = { current: null };
 
 vi.mock("@/lib/prismadb", () => ({
   get default() {

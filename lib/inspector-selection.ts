@@ -245,7 +245,9 @@ export function shouldClearInspectorSelectionOnNavigation(input: {
   }
 
   const currentSurface = resolveInspectorSourceSurfaceFromPathname(input.pathname);
-  if (currentSurface !== "unknown" && currentSurface === input.selection.sourceSurface) {
+  // Keep selection when still on the owning surface — including dedicated report
+  // routes that resolve to "unknown" (e.g. /what-changed).
+  if (currentSurface === input.selection.sourceSurface) {
     return false;
   }
 

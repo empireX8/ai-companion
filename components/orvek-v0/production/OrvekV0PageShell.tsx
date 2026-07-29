@@ -2,6 +2,7 @@
 
 import { type ReactNode } from "react";
 
+import { WorkbenchProvider } from "@/components/orvek-v0/store";
 import { OrvekDataProvider, type OrvekDataApi } from "@/lib/orvek-v0/data-provider";
 import { OrvekPageHandlersProvider, type OrvekPageHandlers } from "@/lib/orvek-v0/page-handlers";
 
@@ -16,11 +17,15 @@ export function OrvekV0PageShell({
   handlers?: OrvekPageHandlers;
   children: ReactNode;
 }) {
+  // Use the root layout InspectorProvider so dedicated report routes (What Changed)
+  // share selection state with WorkbenchInspector mounted beside the page.
   return (
-    <OrvekDataProvider value={data}>
-      <ProductionInspectorBridge>
-        <OrvekPageHandlersProvider value={handlers}>{children}</OrvekPageHandlersProvider>
-      </ProductionInspectorBridge>
-    </OrvekDataProvider>
+    <WorkbenchProvider>
+      <OrvekDataProvider value={data}>
+        <ProductionInspectorBridge>
+          <OrvekPageHandlersProvider value={handlers}>{children}</OrvekPageHandlersProvider>
+        </ProductionInspectorBridge>
+      </OrvekDataProvider>
+    </WorkbenchProvider>
   );
 }
