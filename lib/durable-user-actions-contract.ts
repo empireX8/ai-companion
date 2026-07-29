@@ -68,6 +68,11 @@ export function isDurableWriteError(
 export function resolveCorrectionWriteTarget(
   object: OrvekObject
 ): CorrectionWriteTarget | null {
+  // Canonical concepts must never use the legacy UMC PATCH path.
+  if (object.inspectorObjectType === "canonical_concept") {
+    return null;
+  }
+
   if (object.inspectorObjectType === "usermap_conclusion" && object.inspectorObjectId) {
     return {
       kind: "usermap_conclusion",

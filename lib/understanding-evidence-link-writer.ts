@@ -60,6 +60,7 @@ export type UnderstandingEvidenceLinkWriterDb = Pick<
   message: EntityLookupModel;
   importUploadSession: EntityLookupModel;
   importUploadChunk: EntityLookupModel;
+  canonicalConceptRevision: EntityLookupModel;
 };
 
 export class UnderstandingEvidenceLinkValidationError extends Error {
@@ -133,6 +134,13 @@ export async function verifyUnderstandingEvidenceLinkTargetOwnership(args: {
     }
     case "contradiction_node": {
       const row = await db.contradictionNode.findFirst({
+        where: { id: args.targetId, userId: args.userId },
+        select: { id: true },
+      });
+      return Boolean(row);
+    }
+    case "canonical_concept_revision": {
+      const row = await db.canonicalConceptRevision.findFirst({
         where: { id: args.targetId, userId: args.userId },
         select: { id: true },
       });

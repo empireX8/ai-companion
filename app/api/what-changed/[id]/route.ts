@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
-import { buildWhatChangedInspectorDetail } from "@/lib/what-changed-reality-report";
+import { isCanonicalModelAuthorityError } from "../../../../lib/canonical-model-authority-errors";
+import { buildWhatChangedInspectorDetail } from "../../../../lib/what-changed-reality-report";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,16 @@ export async function GET(
 
     return NextResponse.json(detail);
   } catch (error) {
+    if (
+      isCanonicalModelAuthorityError(error) &&
+      error.code === "BROKEN_CANONICAL_PROJECTION"
+    ) {
+      console.error("[WHAT_CHANGED_DETAIL_GET]", { code: error.code });
+      return NextResponse.json(
+        { error: "Canonical model unavailable", code: "canonical_model_unavailable" },
+        { status: 500 },
+      );
+    }
     console.error("[WHAT_CHANGED_DETAIL_GET_ERROR]", error);
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }

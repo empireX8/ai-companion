@@ -22,6 +22,7 @@ import {
 } from "@/lib/orvek-v0/data-provider";
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types";
 import { ContradictionDualSourceView } from "@/components/contradiction/ContradictionDualSourceView";
+import { CanonicalConceptInspectorPanel } from "./CanonicalConceptInspectorPanel";
 import {
   fetchInspectorContradiction,
   fetchInspectorEvidenceLinks,
@@ -73,7 +74,10 @@ const TODAY_HANDOFF_KEY = "mindlabs:today-capture-handoff";
 const MODEL_GOAL_CORRECTION_DEFERRED_COPY =
   "To correct this model goal, capture contradicting evidence in Capture Life Data. Correction controls are deferred here.";
 
-function formatDateTime(value: string): string {
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return "Unavailable";
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value;
@@ -2038,6 +2042,9 @@ export function SelectedObjectEvidencePanel({
   switch (selection.selectedObjectType) {
     case "usermap_conclusion":
       panel = <UserMapEvidencePanel selection={selection} sourceObject={sourceObject} />;
+      break;
+    case "canonical_concept":
+      panel = <CanonicalConceptInspectorPanel />;
       break;
     case "pattern_claim":
       panel = <PatternEvidencePanel selection={selection} sourceObject={sourceObject} />;

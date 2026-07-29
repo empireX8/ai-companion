@@ -14,6 +14,9 @@ const CANONICAL_WORKBENCH_ROUTE_PREFIXES = [
 
 const APPROVED_ROUTE_CHILD_PATHS = ["/contradictions/candidates"] as const;
 
+/** Dedicated report surfaces that must render their route children, not the SPA shell. */
+const DEDICATED_REPORT_ROUTE_PREFIXES = ["/what-changed"] as const;
+
 function isCanonicalWorkbenchRoute(pathname: string): boolean {
   if (pathname === "/") {
     return true;
@@ -28,6 +31,12 @@ function isApprovedRouteChildPath(pathname: string): boolean {
   return APPROVED_ROUTE_CHILD_PATHS.some((path) => pathname === path);
 }
 
+function isDedicatedReportRoute(pathname: string): boolean {
+  return DEDICATED_REPORT_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 /**
  * Production desktop root.
  * Mounts the shared canonical + live runtime entry (same path as
@@ -36,6 +45,11 @@ function isApprovedRouteChildPath(pathname: string): boolean {
  */
 export function OrvekWorkbenchShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+
+  if (isDedicatedReportRoute(pathname)) {
+    return <>{children}</>;
+  }
+
   const renderCanonicalWorkbench =
     isCanonicalWorkbenchRoute(pathname) || !isApprovedRouteChildPath(pathname);
 

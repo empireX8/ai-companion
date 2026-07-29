@@ -1,8 +1,9 @@
 import type { SurfacedActionView } from "./actions-api";
 import type { ActiveQuestionItem } from "./active-questions";
+import { CURRENT_UNDERSTANDING_ENDPOINT, fetchCurrentUnderstandingSurfaceListItems } from "./canonical-model-client";
+import type { CurrentUnderstandingSurfaceListItem } from "./current-understanding-product-projection";
 import type { InspectorSelectableObjectType } from "./inspector-selection";
 import { parseSelectableObjectFromHref } from "./inspector-selection";
-import type { UserMapConclusionPublicApiListItem } from "./public-intelligence-safe-slice";
 import {
   TODAY_INTELLIGENCE_EMPTY_COPY,
   TODAY_INTELLIGENCE_LOADING_COPY,
@@ -20,7 +21,6 @@ import { TIMELINE_SEMANTIC_ENDPOINTS } from "./timeline-semantic-layers";
 import { buildTimelineModelLayersRequestUrl } from "./timeline-model-layers";
 import type { TimelineModelLayerItem } from "./timeline-model-layers";
 import type { WatchForItem } from "./watch-for";
-import { YOUR_MAP_CONCLUSIONS_ENDPOINT } from "./your-map-surface";
 import { ORVEK_COPY, PRODUCT_NAME } from "./trust-language";
 import { resolveModelUpdateDisplayTitle } from "./model-update-identity";
 
@@ -40,6 +40,8 @@ export type TodaySectionId = (typeof TODAY_SECTION_ORDER)[number];
 export const TODAY_PRIMARY_SECTION_LABEL = "State";
 export const TODAY_PRIMARY_EMPTY_COPY =
   `No current state surfaced yet. When ${PRODUCT_NAME} surfaces a meaningful shift, it will appear here first.`;
+export const TODAY_CURRENT_UNDERSTANDING_UNAVAILABLE_COPY =
+  "Current understanding is temporarily unavailable. Canonical model could not be loaded.";
 export const TODAY_ATTENTION_SECTION_LABEL = "Next observation / test";
 export const TODAY_ATTENTION_EMPTY_COPY =
   "No next observation or test surfaced yet. Recent shifts and tensions will appear here when supported.";
@@ -60,7 +62,7 @@ export const TODAY_REENTRY_ENDPOINTS = {
   contradiction: "/api/contradiction?top=3&mode=read_only",
   patterns: "/api/patterns",
   intelligenceUpdates: TODAY_INTELLIGENCE_UPDATES_ENDPOINT,
-  userMapConclusions: YOUR_MAP_CONCLUSIONS_ENDPOINT,
+  currentUnderstanding: CURRENT_UNDERSTANDING_ENDPOINT,
   timelineModelLayers: buildTimelineModelLayersRequestUrl("7d"),
 } as const;
 
@@ -107,7 +109,8 @@ export type TodayAttentionRow = {
 export type TodayReentrySnapshot = {
   surfacingCards: TodaySurfacingCard[];
   intelligenceUpdates: TodayIntelligenceUpdateItem[];
-  userMapConclusions: UserMapConclusionPublicApiListItem[];
+  userMapConclusions: CurrentUnderstandingSurfaceListItem[];
+  currentUnderstandingUnavailable?: boolean;
   watchForItems: WatchForItem[];
   investigations: ActiveQuestionItem[];
   actions: SurfacedActionView[];
@@ -143,17 +146,6 @@ function movementSelection(item: TodayIntelligenceUpdateItem): TodaySelectableTa
   };
 }
 
-function mapConclusionSelection(
-  item: UserMapConclusionPublicApiListItem
-): TodaySelectableTarget {
-  return {
-    objectType: "usermap_conclusion",
-    objectId: item.id,
-    title: item.title,
-    tab: "evidence",
-  };
-}
-
 function heroFromMovement(item: TodayIntelligenceUpdateItem): TodayHeroItem {
   return {
     id: `hero-movement-${item.id}`,
@@ -177,21 +169,47 @@ function heroFromMovement(item: TodayIntelligenceUpdateItem): TodayHeroItem {
   };
 }
 
-function heroFromMapConclusion(item: UserMapConclusionPublicApiListItem): TodayHeroItem {
+function mapConclusionSelection(
+  item: CurrentUnderstandingSurfaceListItem
+): TodaySelectableTarget {
+  if (item.authorityType === "canonical_concept_revision") {
+    return {
+      objectType: "canonical_concept",
+      objectId: item.conceptId ?? item.id,
+      title: item.title,
+      tab: "evidence",
+    };
+  }
+  return {
+    objectType: "usermap_conclusion",
+    objectId: item.id,
+    title: item.title,
+    tab: "evidence",
+  };
+}
+
+function heroFromMapConclusion(item: CurrentUnderstandingSurfaceListItem): TodayHeroItem {
+  const isCanonical = item.authorityType === "canonical_concept_revision";
   return {
     id: `hero-map-${item.id}`,
     laneLabel: "Your Map",
-    typeLabel: "Map conclusion",
+    typeLabel: isCanonical ? "Canonical understanding" : "Map conclusion",
     title: item.title,
     summary: item.summary,
     meta: `${item.evidenceCount} linked evidence source${item.evidenceCount === 1 ? "" : "s"}`,
-    whyItMatters: "A supported conclusion on your current understanding map.",
+    whyItMatters: isCanonical
+      ? "An accepted current concept revision on your model."
+      : "A supported conclusion on your current understanding map.",
     occurredAt: item.updatedAt,
-    href: `/your-map/${item.id}`,
+    href: isCanonical
+      ? `/your-map?selected=${encodeURIComponent(item.id)}`
+      : `/your-map/${item.id}`,
     selection: mapConclusionSelection(item),
     movement: null,
-    affectedObjectHref: `/your-map/${item.id}`,
-    affectedObjectType: "usermap_conclusion",
+    affectedObjectHref: isCanonical
+      ? `/your-map?selected=${encodeURIComponent(item.id)}`
+      : `/your-map/${item.id}`,
+    affectedObjectType: isCanonical ? "canonical_concept" : "usermap_conclusion",
     affectedObjectId: item.id,
   };
 }
@@ -283,9 +301,20 @@ function heroFromInvestigation(item: ActiveQuestionItem): TodayHeroItem {
 }
 
 export function pickTodayHeroItem(snapshot: TodayReentrySnapshot): TodayHeroItem | null {
+  if (snapshot.currentUnderstandingUnavailable) {
+    return null;
+  }
+
   const movement = snapshot.intelligenceUpdates[0];
   if (movement) {
     return heroFromMovement(movement);
+  }
+
+  const canonical = snapshot.userMapConclusions.find(
+    (item) => item.authorityType === "canonical_concept_revision",
+  );
+  if (canonical) {
+    return heroFromMapConclusion(canonical);
   }
 
   const conclusion = snapshot.userMapConclusions[0];
@@ -599,7 +628,7 @@ export async function fetchTodayReentrySnapshot(): Promise<TodayReentrySnapshot>
     contradictionResult,
     patternsResult,
     intelligenceResult,
-    userMapResult,
+    currentUnderstandingResult,
     watchForResult,
     investigationsResult,
     actionsResult,
@@ -612,10 +641,7 @@ export async function fetchTodayReentrySnapshot(): Promise<TodayReentrySnapshot>
       method: "GET",
       cache: "no-store",
     }),
-    fetch(TODAY_REENTRY_ENDPOINTS.userMapConclusions, {
-      method: "GET",
-      cache: "no-store",
-    }),
+    fetchCurrentUnderstandingSurfaceListItems(),
     fetch(TODAY_REENTRY_ENDPOINTS.watchFor, { method: "GET", cache: "no-store" }),
     fetch(TODAY_REENTRY_ENDPOINTS.activeQuestions, {
       method: "GET",
@@ -668,16 +694,22 @@ export async function fetchTodayReentrySnapshot(): Promise<TodayReentrySnapshot>
     }
   }
 
-  let userMapConclusions: UserMapConclusionPublicApiListItem[] = [];
-  if (userMapResult.status === "fulfilled" && userMapResult.value.ok) {
-    try {
-      const payload = (await userMapResult.value.json()) as {
-        items?: UserMapConclusionPublicApiListItem[];
-      };
-      userMapConclusions = Array.isArray(payload.items) ? payload.items : [];
-    } catch {
+  let userMapConclusions: CurrentUnderstandingSurfaceListItem[] = [];
+  let currentUnderstandingUnavailable = false;
+  if (currentUnderstandingResult.status === "fulfilled") {
+    const result = currentUnderstandingResult.value;
+    if (result.ok) {
+      userMapConclusions = result.items;
+    } else {
+      currentUnderstandingUnavailable = true;
       userMapConclusions = [];
+      // Fail closed: do not fall back to legacy-only conclusions.
+      intelligenceUpdates = [];
     }
+  } else {
+    currentUnderstandingUnavailable = true;
+    userMapConclusions = [];
+    intelligenceUpdates = [];
   }
 
   let watchForItems: WatchForItem[] = [];
@@ -716,7 +748,11 @@ export async function fetchTodayReentrySnapshot(): Promise<TodayReentrySnapshot>
   }
 
   let timelineMovements: TimelineModelLayerItem[] = [];
-  if (timelineResult.status === "fulfilled" && timelineResult.value.ok) {
+  if (
+    !currentUnderstandingUnavailable &&
+    timelineResult.status === "fulfilled" &&
+    timelineResult.value.ok
+  ) {
     try {
       const payload = (await timelineResult.value.json()) as {
         items?: TimelineModelLayerItem[];
@@ -735,6 +771,7 @@ export async function fetchTodayReentrySnapshot(): Promise<TodayReentrySnapshot>
     }),
     intelligenceUpdates,
     userMapConclusions,
+    currentUnderstandingUnavailable,
     watchForItems,
     investigations,
     actions,

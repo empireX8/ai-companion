@@ -98,7 +98,7 @@ describe("inspector surface wiring", () => {
     expect(frozenWorkbench).not.toContain("ProductionInspectorBridge");
   });
 
-  it("wires Your Map workbench list selection to usermap_conclusion inspector context", () => {
+  it("wires Your Map workbench list selection to usermap_conclusion or canonical_concept inspector context", () => {
     const pageSource = readSource("app/(root)/(routes)/your-map/page.tsx");
     const workbenchSource = readSource("components/orvek-workbench/OrvekMapPage.tsx");
     const viewSource = readSource("components/orvek-v0/pages/map.tsx");
@@ -106,7 +106,10 @@ describe("inspector surface wiring", () => {
     const mapApiSource = readSource("lib/orvek-v0/production/map-api.ts");
 
     expect(pageSource).toContain("OrvekMapPage");
-    expect(mapApiSource).toContain('inspectorObjectType: "usermap_conclusion"');
+    expect(mapApiSource).toContain(
+      'inspectorObjectType: isCanonical ? "canonical_concept" : "usermap_conclusion"',
+    );
+    expect(mapApiSource).toContain('"usermap_conclusion"');
     expect(workbenchSource).toContain("OrvekV0PageShell");
     expect(viewSource).toContain('data-testid="orvek-v0-map-page"');
     expect(panelSource).toContain('data-testid="inspector-map-conclusion-panel"');

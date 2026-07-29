@@ -16,6 +16,66 @@ import {
 import type { OrvekObject } from "@/lib/orvek-v0/orvek-types";
 import { useDurableActionsRefresh } from "@/lib/orvek-v0/durable-actions-context";
 import { SectionLabel } from "@/components/orvek-v0/primitives";
+import {
+  CANONICAL_CORRECTION_HANDOFF_HINT,
+  CANONICAL_CORRECTION_PROPOSE_LABEL,
+  tryBuildCanonicalCorrectionHandoffFromOrvekObject,
+} from "@/lib/canonical-correction-handoff";
+import { useWorkbench } from "@/components/orvek-v0/store";
+
+export function supportsCanonicalProposeCorrection(object: OrvekObject): boolean {
+  return object.inspectorObjectType === "canonical_concept";
+}
+
+export function CanonicalProposeCorrectionControls({
+  object,
+  className,
+}: {
+  object: OrvekObject;
+  className?: string;
+}) {
+  const { setPage, setCanonicalCorrectionHandoff } = useWorkbench();
+  const handoff = tryBuildCanonicalCorrectionHandoffFromOrvekObject(object);
+
+  if (!supportsCanonicalProposeCorrection(object)) {
+    return null;
+  }
+
+  return (
+    <section
+      className={cn("mx-4 mt-5 rounded-2xl bg-secondary/40 px-4 py-3.5", className)}
+      data-testid="canonical-propose-correction"
+      data-shell-slot="inspector-corrections"
+    >
+      <SectionLabel>Correct the model</SectionLabel>
+      <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+        {CANONICAL_CORRECTION_HANDOFF_HINT}
+      </p>
+      {handoff ? (
+        <button
+          type="button"
+          data-testid="canonical-propose-correction-button"
+          onClick={() => {
+            // In-memory workbench payload is the sole SPA handoff (no authority write, no storage mirror).
+            setCanonicalCorrectionHandoff(handoff);
+            setPage("explore");
+          }}
+          className="o-calm mt-2 rounded-full bg-evidence-muted px-2.5 py-1 text-xs font-medium text-primary hover:brightness-[0.97]"
+        >
+          {CANONICAL_CORRECTION_PROPOSE_LABEL}
+        </button>
+      ) : (
+        <p
+          className="mt-2 text-[12px] leading-relaxed text-muted-foreground"
+          data-testid="canonical-propose-correction-unavailable"
+        >
+          Canonical correction is unavailable until revision identity is loaded. Opening Explore
+          alone does not change your model.
+        </p>
+      )}
+    </section>
+  );
+}
 
 export function DurableCorrectionControls({
   object,

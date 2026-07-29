@@ -26,6 +26,8 @@ export type V0WhatChangedMovementCard = {
   title: string;
   recordedAt: string;
   summary: string;
+  before?: string | null;
+  after?: string | null;
   affectedObjectType: WhatChangedListItem["affectedObjectType"];
   affectedObjectId: string | null;
   affectedObjectHref: string | null;
@@ -65,6 +67,8 @@ export function mapWhatChangedDataToV0Props(input: {
   primary: WhatChangedListItem | null;
   earlier: WhatChangedListItem[];
   evidenceItems: PublicEvidenceContinuityItem[];
+  primaryBefore?: string | null;
+  primaryAfter?: string | null;
 }): V0WhatChangedViewProps {
   const mapItem = (item: WhatChangedListItem): V0WhatChangedMovementCard => ({
     id: item.id,
@@ -75,6 +79,14 @@ export function mapWhatChangedDataToV0Props(input: {
     affectedObjectId: item.affectedObjectId,
     affectedObjectHref: item.affectedObjectHref,
   });
+
+  const primary = input.primary
+    ? {
+        ...mapItem(input.primary),
+        before: input.primaryBefore ?? null,
+        after: input.primaryAfter ?? null,
+      }
+    : null;
 
   return {
     pageTitle: WHAT_CHANGED_PAGE_TITLE,
@@ -93,7 +105,7 @@ export function mapWhatChangedDataToV0Props(input: {
     reentryLabel: WHAT_CHANGED_REENTRY_LABEL,
     reentryIntro: WHAT_CHANGED_REENTRY_INTRO,
     reentryLinks: WHAT_CHANGED_REENTRY_LINKS,
-    primary: input.primary ? mapItem(input.primary) : null,
+    primary,
     earlier: input.earlier.map(mapItem),
     evidenceItems: input.evidenceItems.map((evidence) => ({
       id: evidence.id,

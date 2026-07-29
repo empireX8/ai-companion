@@ -232,7 +232,11 @@ function WhatChangedBody({
                   <p className="mb-3 text-[12px] text-muted-foreground">
                     {view.primarySectionIntro}
                   </p>
-                  <section className="o-float overflow-hidden rounded-2xl">
+                  <section
+                    className="o-float overflow-hidden rounded-2xl"
+                    data-testid="what-changed-primary-movement"
+                    data-model-update-id={view.primary.id}
+                  >
                     <div className="bg-action-muted/40 px-5 py-3 ring-1 ring-inset ring-action/15">
                       <span className="text-[11px] font-semibold uppercase tracking-wide text-action-foreground">
                         {view.primary.title}
@@ -284,6 +288,10 @@ function WhatChangedBody({
                         <div className="mt-2 text-xs text-muted-foreground">
                           Recorded {view.primary.recordedAt}
                         </div>
+                        <BeforeAfter
+                          before={view.primary.before}
+                          after={view.primary.after}
+                        />
                       </section>
                       <section>
                         <SectionLabel>{view.whyLabel}</SectionLabel>

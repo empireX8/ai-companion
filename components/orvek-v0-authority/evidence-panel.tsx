@@ -7,9 +7,11 @@ import { useOrvekData, useOrvekObjectGraph } from "@/lib/orvek-v0/data-provider"
 import { isProductionDisplay } from "@/lib/orvek-v0/display-contract"
 import { minimumPermanentSlots } from "@/components/orvek-v0-canonical/permanent-presentation"
 import {
+  CanonicalProposeCorrectionControls,
   DurableCorrectionControls,
   DurableDecisionOutcomeControls,
   DurableFieldworkCheckInControls,
+  supportsCanonicalProposeCorrection,
   supportsDurableCorrection,
 } from "@/components/orvek-v0/durable-user-action-controls"
 import { ContradictionDualSourceView } from "@/components/contradiction/ContradictionDualSourceView"
@@ -853,6 +855,12 @@ function InspectorEvidenceSections({
       isProduction &&
       supportsDurableCorrection(obj),
   )
+  const canonicalProposeEnabled = Boolean(
+    obj &&
+      correctionsEnabled &&
+      isProduction &&
+      supportsCanonicalProposeCorrection(obj),
+  )
 
   return (
     <>
@@ -990,6 +998,8 @@ function InspectorEvidenceSections({
         <div data-shell-slot="inspector-corrections">
           <DurableCorrectionControls object={obj} />
         </div>
+      ) : canonicalProposeEnabled && obj ? (
+        <CanonicalProposeCorrectionControls object={obj} />
       ) : (
         <CorrectionCard
           obj={obj}

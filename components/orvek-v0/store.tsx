@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from "react"
 
+import type { CanonicalCorrectionHandoffV1 } from "@/lib/canonical-correction-handoff"
+
 export type OrvekPage = "today" | "map" | "decisions" | "timeline" | "explore"
 export type OrvekOverlay = "capture" | "import" | "search" | null
 export type InspectorTab = "evidence" | "movement"
@@ -45,6 +47,12 @@ interface WorkbenchValue {
   /** true while an Explore conversation is producing possible movement */
   exploreActive: boolean
   setExploreActive: (v: boolean) => void
+  /**
+   * In-memory canonical correction handoff for Explore context.
+   * Never mutates authority; cleared on dismiss.
+   */
+  canonicalCorrectionHandoff: CanonicalCorrectionHandoffV1 | null
+  setCanonicalCorrectionHandoff: (handoff: CanonicalCorrectionHandoffV1 | null) => void
   canGoBack: boolean
   backTarget: WorkbenchHistoryEntry | null
   goBack: () => void
@@ -68,6 +76,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [corrections, setCorrections] = useState<Record<string, string>>({})
   const [extractions, setExtractions] = useState<Record<string, string>>({})
   const [exploreActive, setExploreActive] = useState(false)
+  const [canonicalCorrectionHandoff, setCanonicalCorrectionHandoffState] =
+    useState<CanonicalCorrectionHandoffV1 | null>(null)
   const [history, setHistory] = useState<WorkbenchHistoryEntry[]>([])
   const [pendingInspectorScrollTop, setPendingInspectorScrollTop] = useState<number | null>(
     null,
@@ -135,6 +145,12 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const setExtraction = useCallback((id: string, value: string) => {
     setExtractions((prev) => ({ ...prev, [id]: value }))
   }, [])
+  const setCanonicalCorrectionHandoff = useCallback(
+    (handoff: CanonicalCorrectionHandoffV1 | null) => {
+      setCanonicalCorrectionHandoffState(handoff)
+    },
+    [],
+  )
   const goBack = useCallback(() => {
     setHistory((prev) => {
       const nextEntry = prev[prev.length - 1] ?? null
@@ -170,6 +186,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       setExtraction,
       exploreActive,
       setExploreActive,
+      canonicalCorrectionHandoff,
+      setCanonicalCorrectionHandoff,
       canGoBack: history.length > 0,
       backTarget: history[history.length - 1] ?? null,
       goBack,
@@ -194,6 +212,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       extractions,
       setExtraction,
       exploreActive,
+      canonicalCorrectionHandoff,
+      setCanonicalCorrectionHandoff,
       history,
       goBack,
       captureInspectorScrollTop,

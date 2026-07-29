@@ -9,6 +9,8 @@ export type BuildWhatChangedProductionInput = {
   primary: WhatChangedListItem | null;
   earlier: WhatChangedListItem[];
   evidenceItems: PublicEvidenceContinuityItem[];
+  primaryBefore?: string | null;
+  primaryAfter?: string | null;
 };
 
 export function buildWhatChangedProductionDataApi(

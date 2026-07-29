@@ -272,6 +272,7 @@ type ProposalRow = {
   assistantMessageId: string;
   userMessageId: string;
   status: ExploreMovementProposalStatus;
+  authorityMode?: "legacy" | "canonical_v1" | null;
   affectedObjectType: UnderstandingLinkTargetType;
   affectedObjectId: string;
   beforeSummary: string;
@@ -280,6 +281,10 @@ type ProposalRow = {
   userFacingSummary: string;
   sourcesJson: unknown;
   modelUpdateId: string | null;
+  expectedCurrentRevisionId?: string | null;
+  expectedLegacySnapshotHash?: string | null;
+  canonicalConceptId?: string | null;
+  revisionOperation?: string | null;
 };
 
 type ModelUpdateRow = {

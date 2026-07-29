@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { isProductionDisplay } from "@/lib/orvek-v0/display-contract"
 import {
+  CanonicalProposeCorrectionControls,
   DurableCorrectionControls,
+  supportsCanonicalProposeCorrection,
   supportsDurableCorrection,
 } from "@/components/orvek-v0/durable-user-action-controls"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
@@ -564,9 +566,23 @@ export function MapPage() {
               Full receipts & movement in inspector
             </button>
 
-            {/* corrections */}
+            {/* corrections — production: durable UMC, canonical propose handoff, or honest unavailable.
+                Never claim in-memory chip success as model mutation in production. */}
             {isProduction && obj && supportsDurableCorrection(obj) ? (
               <DurableCorrectionControls object={obj} className="mx-0 mt-6" />
+            ) : isProduction && obj && supportsCanonicalProposeCorrection(obj) ? (
+              <CanonicalProposeCorrectionControls object={obj} className="mx-0 mt-6" />
+            ) : isProduction ? (
+              <div
+                className="mt-6 rounded-2xl bg-secondary/40 px-4 py-4"
+                data-testid="orvek-map-correction-unavailable"
+              >
+                <SectionLabel>Correct the model</SectionLabel>
+                <p className="mt-2 text-[12px] text-muted-foreground">
+                  Model correction is not available for this object. Local chips do not change your
+                  model.
+                </p>
+              </div>
             ) : (
             <div className="mt-6 rounded-2xl bg-secondary/40 px-4 py-4">
               <SectionLabel>Correct the model</SectionLabel>

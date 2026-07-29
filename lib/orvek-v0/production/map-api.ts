@@ -194,7 +194,10 @@ function railItemToOrvekObject(
       : undefined;
     whatWouldChange = ["Capture correction in Capture Life Data"];
   } else if (item.kind === "conclusion") {
-    inspectorObjectType = "usermap_conclusion";
+    inspectorObjectType =
+      listItem?.authorityType === "canonical_concept_revision"
+        ? "canonical_concept"
+        : "usermap_conclusion";
     if (listItem) {
       return withResolvedCanonicalSourceType({
         id: item.id,
@@ -216,6 +219,14 @@ function railItemToOrvekObject(
         userCorrectionLabel: listItem.lastUserCorrectionLabel ?? undefined,
         userCorrectionAt: listItem.lastUserCorrectionAt ?? undefined,
         correctionCount: listItem.correctionCount ?? 0,
+        ...(listItem.authorityType === "canonical_concept_revision" &&
+        listItem.currentRevisionId &&
+        typeof listItem.version === "number"
+          ? {
+              currentRevisionId: listItem.currentRevisionId,
+              canonicalVersion: listItem.version,
+            }
+          : {}),
       });
     }
   }
@@ -264,6 +275,9 @@ function buildDetailOrvekObject(view: V0MapViewProps, objectId: string): OrvekOb
     after: detail.afterSummary,
   });
   const { receiptIds } = buildMapReceiptSatellites(view, objectId);
+  const isCanonical =
+    detail.authorityType === "canonical_concept_revision" ||
+    Boolean(detail.currentRevisionId);
 
   return withResolvedCanonicalSourceType({
     id: objectId,
@@ -277,11 +291,19 @@ function buildDetailOrvekObject(view: V0MapViewProps, objectId: string): OrvekOb
     confidence: detail.confidenceLabel,
     lastUpdated: detail.updatedAt,
     evidenceCount: detail.evidenceCount,
-    inspectorObjectType: "usermap_conclusion",
+    inspectorObjectType: isCanonical ? "canonical_concept" : "usermap_conclusion",
     inspectorObjectId: detail.id,
     userCorrectionLabel: detail.lastUserCorrectionLabel ?? undefined,
     userCorrectionAt: detail.lastUserCorrectionAt ?? undefined,
     correctionCount: detail.correctionCount ?? 0,
+    ...(isCanonical &&
+    detail.currentRevisionId &&
+    typeof detail.version === "number"
+      ? {
+          currentRevisionId: detail.currentRevisionId,
+          canonicalVersion: detail.version,
+        }
+      : {}),
     relatedIds,
     receiptIds: receiptIds.length > 0 ? receiptIds : undefined,
   });

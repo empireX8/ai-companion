@@ -24,6 +24,19 @@ import {
   BASE_SYSTEM_PROMPT,
   FAST_PATH_SYSTEM_PROMPT,
 } from "@/lib/assistant/system-prompt";
+import { buildCanonicalModelPromptBlock } from "@/lib/canonical-model-ai-context";
+import {
+  extractCanonicalAiCaptureNonce,
+  recordCanonicalAiRequestCapture,
+} from "@/lib/canonical-ai-request-capture";
+import {
+  buildPhase6DeterministicReply,
+  phase6DeterministicReplyAllowed,
+} from "@/lib/canonical-phase6-deterministic-reply";
+import { maybeRunPhase6EligibleCreationAttempt } from "@/lib/canonical-phase6-creation-attempt";
+import { toCanonicalProductAuthoritySnapshotV1 } from "@/lib/canonical-model-product-projection";
+import { isCanonicalModelAuthorityError } from "@/lib/canonical-model-authority-errors";
+import { readCanonicalModelProjection } from "@/lib/canonical-model-projection";
 import { ensureWeeklyAuditForCurrentWeek } from "@/lib/weekly-audit";
 import { patternBatchOrchestrator } from "@/lib/pattern-batch-orchestrator";
 import { triggerNativeDerivationIfDue } from "@/lib/native-derivation-trigger";
@@ -146,6 +159,8 @@ export async function POST(req: Request) {
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
+
+    const captureNonce = extractCanonicalAiCaptureNonce(req);
 
     const body = await req.json();
     const { sessionId, content, model: requestedModel, debugFastPath, responseMode: requestedResponseMode } = body ?? {};
@@ -443,11 +458,17 @@ export async function POST(req: Request) {
     const maxTensions  = responseMode === "deep" ? MAX_INJECTED_TENSIONS_DEEP      : MAX_INJECTED_TENSIONS_STANDARD;
 
     console.debug(tag, "memory_reads_start", Date.now() - tServer);
+    const phase6Deterministic = phase6DeterministicReplyAllowed(process.env);
     const [sessionTranscript, userTranscript, sessionRelevant, userRelevant] = await Promise.all([
       memory.readTranscript(memoryKey, transcriptLimitSession),
       memory.readTranscript(memoryKey, transcriptLimitUser, "user"),
-      memory.queryRelevant(memoryKey, normalizedContent, vectorTopK, "session"),
-      memory.queryRelevant(memoryKey, normalizedContent, vectorTopK, "user"),
+      // Phase 6 local proof must not call paid embedding providers.
+      phase6Deterministic
+        ? Promise.resolve("")
+        : memory.queryRelevant(memoryKey, normalizedContent, vectorTopK, "session"),
+      phase6Deterministic
+        ? Promise.resolve("")
+        : memory.queryRelevant(memoryKey, normalizedContent, vectorTopK, "user"),
     ]);
     console.debug(tag, "memory_reads_done", Date.now() - tServer);
     const memoryStatement = extractMemoryStatement(normalizedContent);
@@ -546,6 +567,55 @@ export async function POST(req: Request) {
     }
 
     console.debug(tag, "reference_and_contradictions_start", Date.now() - tServer);
+
+    let canonicalPromptBlock = "";
+    try {
+      const canonicalProjection = await readCanonicalModelProjection({
+        userId,
+        db: prismadb,
+      });
+      const productConcepts = canonicalProjection.concepts.map((concept) =>
+        toCanonicalProductAuthoritySnapshotV1(concept),
+      );
+      canonicalPromptBlock = buildCanonicalModelPromptBlock({
+        projection: canonicalProjection,
+      });
+      recordCanonicalAiRequestCapture({
+        conceptIds: productConcepts.map((concept) => concept.conceptId),
+        currentRevisionIds: productConcepts.map(
+          (concept) => concept.currentRevisionId,
+        ),
+        versions: productConcepts.map((concept) => concept.version),
+        summaries: productConcepts.map((concept) => concept.summary),
+        blockChars: canonicalPromptBlock.length,
+        assembledBeforeReferenceMemory: true,
+        correlationId: captureNonce,
+      });
+      console.debug(tag, "[CHAT_CONTEXT] canonical", {
+        conceptsLoaded: productConcepts.length,
+        currentRevisionsInjected: productConcepts.length,
+        blockChars: canonicalPromptBlock.length,
+        captureCorrelated: Boolean(captureNonce),
+      });
+    } catch (error) {
+      if (
+        isCanonicalModelAuthorityError(error) &&
+        error.code === "BROKEN_CANONICAL_PROJECTION"
+      ) {
+        console.error(tag, "[CHAT_CONTEXT] canonical_broken", {
+          code: error.code,
+        });
+        return NextResponse.json(
+          {
+            error: "Canonical model unavailable",
+            code: "canonical_model_unavailable",
+          },
+          { status: 500 },
+        );
+      }
+      throw error;
+    }
+
     const [refMemResult, topContradictions] = await Promise.all([
       getRelevantReferenceMemory(userId, normalizedContent, maxMemories),
       getTop3WithOptionalSurfacing({
@@ -608,6 +678,7 @@ export async function POST(req: Request) {
     const systemPrompt = [
       baseSystem,
       governancePrompt,
+      canonicalPromptBlock,
       refMemResult.text ? `Long-term memory:\n${refMemResult.text}` : "",
       topContradictionsBlock,
       retrievedUserMemory ? `Relevant memory:\n${retrievedUserMemory}` : "",
@@ -624,6 +695,48 @@ export async function POST(req: Request) {
       `hasSessionTranscript=${!!sessionTranscript}`,
       `hasUserMemory=${!!userRelevant}`
     );
+
+    // Phase 6: after full non-fast-path assembly, optionally skip paid providers.
+    if (phase6Deterministic) {
+      const deterministicText = buildPhase6DeterministicReply(normalizedContent);
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode(deterministicText));
+          controller.close();
+        },
+      });
+      await persistAssistantReply(deterministicText, userMessage.id);
+      const assistantRow = await prismadb.message.findFirst({
+        where: {
+          userId,
+          sessionId: session.id,
+          role: "assistant",
+        },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
+      if (assistantRow) {
+        await maybeRunPhase6EligibleCreationAttempt({
+          req,
+          userId,
+          db: prismadb,
+          conversationId: session.id,
+          userMessageId: userMessage.id,
+          assistantMessageId: assistantRow.id,
+        });
+      }
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Orvek-Explore-Provider": "phase6-deterministic-local",
+          ...(captureNonce
+            ? { "X-Orvek-Canonical-Ai-Capture-Nonce": captureNonce }
+            : {}),
+        },
+      });
+    }
+
     console.debug(tag, `model_call_start mode=${responseMode}`, Date.now() - tServer);
     let firstChunkLogged = false;
     const result = streamText({

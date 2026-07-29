@@ -119,4 +119,18 @@ describe("durable user actions contract", () => {
       })
     );
   });
+
+  it("returns null for canonical_concept inspector objects", () => {
+    const object: OrvekObject = {
+      id: "concept_abc",
+      type: "map-object",
+      title: "Canonical",
+      summary: "REVISION TWO",
+      inspectorObjectType: "canonical_concept",
+      inspectorObjectId: "concept_abc",
+      currentRevisionId: "rev_2",
+      canonicalVersion: 2,
+    };
+    expect(resolveCorrectionWriteTarget(object)).toBeNull();
+  });
 });

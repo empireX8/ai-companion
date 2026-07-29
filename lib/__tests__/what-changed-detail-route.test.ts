@@ -15,6 +15,10 @@ vi.mock("@/lib/what-changed-reality-report", () => ({
   buildWhatChangedInspectorDetail: buildDetailMock,
 }));
 
+vi.mock("../what-changed-reality-report", () => ({
+  buildWhatChangedInspectorDetail: buildDetailMock,
+}));
+
 function makeReport() {
   return {
     contractVersion: "orvek-reality-tracking-output-v0.9",

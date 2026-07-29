@@ -42,6 +42,7 @@ export type V0MapViewHandlers = {
   onOpenInspector: () => void;
   onMovementRow: (id: string) => void;
   onOpenQuestionRow: (id: string) => void;
+  onProposeCanonicalCorrection?: (conceptId: string) => void;
 };
 
 function DetailSkeleton() {
@@ -117,13 +118,46 @@ function PreviewSectionShell({
 }
 
 function CorrectionChipRow({
+  mode,
   labels,
   deferredCopy,
+  conceptId,
+  onProposeCanonicalCorrection,
 }: {
+  mode: "canonical_propose" | "legacy_deferred";
   labels: readonly string[];
   deferredCopy: string;
+  conceptId: string | null;
+  onProposeCanonicalCorrection?: (conceptId: string) => void;
 }) {
   const [activeHint, setActiveHint] = useState<string | null>(null);
+
+  if (mode === "canonical_propose") {
+    return (
+      <div
+        className="mt-6 rounded-2xl bg-secondary/40 px-4 py-4"
+        data-testid="orvek-map-canonical-correction"
+      >
+        <SectionLabel>Correct the model</SectionLabel>
+        <p className="mt-2 text-[12px] text-muted-foreground">{deferredCopy}</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            data-testid="orvek-map-propose-canonical-correction"
+            disabled={!conceptId || !onProposeCanonicalCorrection}
+            onClick={() => {
+              if (conceptId && onProposeCanonicalCorrection) {
+                onProposeCanonicalCorrection(conceptId);
+              }
+            }}
+            className="o-calm rounded-full bg-evidence-muted px-2.5 py-1 text-xs font-medium text-primary hover:brightness-[0.97] disabled:opacity-60"
+          >
+            {labels[0] ?? "Propose a correction"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-6 rounded-2xl bg-secondary/40 px-4 py-4" data-testid="orvek-map-correction-chips">
@@ -176,9 +210,15 @@ function SupportingConflictingGrid({
             {evidence.preview.map((link) => (
               <li key={link.key} className="flex gap-2 text-[13px] text-foreground">
                 <span className="mt-0.5 text-primary">+</span>
-                <Link href={link.href} className="hover:underline">
-                  {link.evidenceSummaryLabel} · {link.sourceTypeLabel}
-                </Link>
+                {link.href ? (
+                  <Link href={link.href} className="hover:underline">
+                    {link.evidenceSummaryLabel} · {link.sourceTypeLabel}
+                  </Link>
+                ) : (
+                  <span>
+                    {link.evidenceSummaryLabel} · {link.sourceTypeLabel}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -323,9 +363,11 @@ export function V0MapView({
     relatedEmptyCopy,
     correctionChipLabels,
     correctionDeferredCopy,
+    correctionMode,
+    canonicalCorrectionConceptId,
   } = data;
 
-  const { onSelectRailItem, onOpenInspector } = handlers;
+  const { onSelectRailItem, onOpenInspector, onProposeCanonicalCorrection } = handlers;
   const hasOntologyItems = ontologyGroups.some((group) => group.items.length > 0);
 
   return (
@@ -497,7 +539,9 @@ export function V0MapView({
                         Source diversity
                       </dt>
                       <dd className="mt-0.5 text-[13px] font-medium text-foreground">
-                        {detail.sourceDiversity}
+                        {detail.sourceDiversity == null
+                          ? "Unavailable"
+                          : detail.sourceDiversity}
                       </dd>
                     </div>
                     <div className="o-material rounded-[9px] px-3 py-2">
@@ -505,7 +549,9 @@ export function V0MapView({
                         Time spread
                       </dt>
                       <dd className="mt-0.5 text-[13px] font-medium text-foreground">
-                        {detail.timeSpreadDays} days
+                        {detail.timeSpreadDays == null
+                          ? "Unavailable"
+                          : `${detail.timeSpreadDays} days`}
                       </dd>
                     </div>
                   </dl>
@@ -576,7 +622,13 @@ export function V0MapView({
                   Full receipts & movement in inspector
                 </button>
 
-                <CorrectionChipRow labels={correctionChipLabels} deferredCopy={correctionDeferredCopy} />
+                  <CorrectionChipRow
+                    mode={correctionMode}
+                    labels={correctionChipLabels}
+                    deferredCopy={correctionDeferredCopy}
+                    conceptId={canonicalCorrectionConceptId}
+                    onProposeCanonicalCorrection={onProposeCanonicalCorrection}
+                  />
 
                 {showSecondaryPanels ? (
                   <SecondaryPreviewPanels data={data} handlers={handlers} />

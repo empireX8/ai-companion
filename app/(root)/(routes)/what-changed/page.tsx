@@ -7,6 +7,7 @@ import prismadb from "@/lib/prismadb";
 import { listPublicEvidenceContinuityForTarget } from "@/lib/public-evidence-continuity";
 import { toWhatChangedListItem } from "@/lib/public-intelligence-safe-slice";
 import { applyVerifiedAffectedObjectHrefs } from "@/lib/public-linked-object-continuity";
+import { readPublishedMovementLineageSummaries } from "@/lib/what-changed-movement-lineage";
 import { splitWhatChangedMovements } from "../../../../lib/what-changed-surface";
 
 export const dynamic = "force-dynamic";
@@ -51,12 +52,20 @@ export default async function WhatChangedPage() {
         targetId: primary.id,
       })
     : [];
+  const primaryLineage = primary
+    ? await readPublishedMovementLineageSummaries({
+        userId,
+        modelUpdateId: primary.id,
+      })
+    : null;
 
   return (
     <OrvekWhatChangedView
       primary={primary}
       earlier={earlier}
       evidenceItems={primaryEvidence}
+      primaryBefore={primaryLineage?.before ?? null}
+      primaryAfter={primaryLineage?.after ?? null}
     />
   );
 }

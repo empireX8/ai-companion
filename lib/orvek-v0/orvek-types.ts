@@ -118,6 +118,13 @@ export interface OrvekObject {
   inspectorObjectId?: string
 
   /**
+   * Canonical authority identity for correction handoff only.
+   * Present when inspectorObjectType is canonical_concept.
+   */
+  currentRevisionId?: string
+  canonicalVersion?: number
+
+  /**
    * Canonical semantic source type for adapter provenance (DEL-005).
    * Identifies the governing object family without creating a parallel truth store.
    */

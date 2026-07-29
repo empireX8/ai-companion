@@ -170,13 +170,19 @@ export function YourMapDetailPane({ selectedId }: { selectedId: string | null })
         ) : (
           <div className="space-y-2">
             {preview.map((link) => (
-              <article key={`${link.sourceObjectHref}-${link.createdAt}`} className="ml-material rounded-xl p-4 text-[13px]">
+              <article key={link.id ?? `${link.sourceObjectHref ?? "evidence"}-${link.createdAt ?? "unknown"}`} className="ml-material rounded-xl p-4 text-[13px]">
                 <div className="label-meta text-cyan/70">{link.evidenceSummaryLabel}</div>
-                <Link href={link.sourceObjectHref} className="text-cyan hover:underline">
-                  {link.sourceTypeLabel}
-                </Link>
+                {link.sourceObjectHref ? (
+                  <Link href={link.sourceObjectHref} className="text-cyan hover:underline">
+                    {link.sourceTypeLabel}
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground">{link.sourceTypeLabel}</span>
+                )}
                 <div className="label-meta mt-1 text-meta">
-                  Linked {formatYourMapDateTime(link.createdAt)}
+                  {link.createdAt
+                    ? `Linked ${formatYourMapDateTime(link.createdAt)}`
+                    : "Linked timing unavailable"}
                 </div>
               </article>
             ))}

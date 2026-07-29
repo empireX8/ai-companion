@@ -16,6 +16,7 @@ import {
   buildTodayReceiptCards,
   pickTodayHeroItem,
   TODAY_ATTENTION_EMPTY_COPY,
+  TODAY_CURRENT_UNDERSTANDING_UNAVAILABLE_COPY,
   TODAY_PRIMARY_EMPTY_COPY,
   type TodayAttentionRow,
   type TodayHeroItem,
@@ -303,6 +304,7 @@ export type MapTodayDataInput = {
 
 export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProps {
   const { snapshot, isLoading, briefingDate, movementDepthById = {} } = input;
+  const understandingUnavailable = Boolean(snapshot.currentUnderstandingUnavailable);
   const hero = pickTodayHeroItem(snapshot);
   const attentionRows = buildTodayAttentionRows(snapshot, hero);
   const fieldworkRows = buildTodayFieldworkRows(snapshot, hero);
@@ -323,11 +325,7 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
         previous: depth?.before ?? null,
         updated: afterRecorded
           ? depth!.after!.trim()
-          : resolveModelUpdateDisplayTitle({
-              userFacingSummary: m.userFacingSummary,
-              updateTypeLabel: m.updateTypeLabel,
-              affectedObjectTypeLabel: m.affectedObjectTypeLabel,
-            }),
+          : TODAY_RESULT_STATE_UNAVAILABLE_COPY,
         // Explanation line = recorded movement rationale when present (not the summary title).
         evidence:
           rationale ??
@@ -341,7 +339,7 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
   );
 
   let report: V0TodayReportSlot | null = null;
-  if (snapshot.intelligenceUpdates.length > 0) {
+  if (!understandingUnavailable && snapshot.intelligenceUpdates.length > 0) {
     const latest = snapshot.intelligenceUpdates[0]!;
     const latestDepth = movementDepthById[latest.id];
     const canonical = resolveCanonicalMovementReportFromDepth(latestDepth);
@@ -384,17 +382,29 @@ export function mapTodayDataToV0Props(input: MapTodayDataInput): V0TodayViewProp
 
   return normalizeV0TodayViewProps({
     briefingDate,
-    briefingTitle: isLoading ? TODAY_INTELLIGENCE_LOADING_COPY : buildTodayBriefingTitle(snapshot),
-    briefingMeta: buildTodayBriefingMeta(snapshot, isLoading),
+    briefingTitle: isLoading
+      ? TODAY_INTELLIGENCE_LOADING_COPY
+      : understandingUnavailable
+        ? TODAY_CURRENT_UNDERSTANDING_UNAVAILABLE_COPY
+        : buildTodayBriefingTitle(snapshot),
+    briefingMeta: understandingUnavailable
+      ? TODAY_CURRENT_UNDERSTANDING_UNAVAILABLE_COPY
+      : buildTodayBriefingMeta(snapshot, isLoading),
     isLoading,
     loadingCopy: TODAY_INTELLIGENCE_LOADING_COPY,
-    heroEmptyCopy: TODAY_PRIMARY_EMPTY_COPY,
+    heroEmptyCopy: understandingUnavailable
+      ? TODAY_CURRENT_UNDERSTANDING_UNAVAILABLE_COPY
+      : TODAY_PRIMARY_EMPTY_COPY,
     hero: hero ? mapHero(hero) : null,
     primaryActions,
     nowRows,
-    nowEmptyCopy: TODAY_ATTENTION_EMPTY_COPY,
+    nowEmptyCopy: understandingUnavailable
+      ? TODAY_CURRENT_UNDERSTANDING_UNAVAILABLE_COPY
+      : TODAY_ATTENTION_EMPTY_COPY,
     movements,
-    movementEmptyCopy: "No delta log is available in this window.",
+    movementEmptyCopy: understandingUnavailable
+      ? TODAY_CURRENT_UNDERSTANDING_UNAVAILABLE_COPY
+      : "No delta log is available in this window.",
     report,
     receipts,
     checkIns: CHECK_INS,

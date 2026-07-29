@@ -170,5 +170,25 @@ describe("inspector-selection helpers", () => {
         selection: mapSelection,
       })
     ).toBe(true);
+
+    const whatChangedSelection = buildInspectorSelection({
+      objectType: "model_update",
+      objectId: "mu-wc",
+      sourceSurface: "unknown",
+    });
+
+    expect(
+      shouldClearInspectorSelectionOnNavigation({
+        pathname: "/what-changed",
+        selection: whatChangedSelection,
+      })
+    ).toBe(false);
+
+    expect(
+      shouldClearInspectorSelectionOnNavigation({
+        pathname: "/",
+        selection: whatChangedSelection,
+      })
+    ).toBe(true);
   });
 });

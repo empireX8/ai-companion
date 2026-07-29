@@ -37,8 +37,14 @@ import {
   collectOwnedExploreGroundingCandidates,
   selectExploreGroundingSources,
 } from "../explore-grounding-retrieval";
+import {
+  ORVEK_CANONICAL_MODEL_AUTHORITY_V1_ENV,
+  ORVEK_CANONICAL_MODEL_AUTHORITY_V1_USER_IDS_ENV,
+} from "../canonical-model-authority-flag";
 
-const LOCAL_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/companion";
+const LOCAL_DATABASE_URL =
+  process.env.DATABASE_URL ??
+  "postgresql://postgres:postgres@localhost:5432/companion";
 const FIXTURE_USER_ID = "user_explore_grounding_assault_unit";
 const FIXTURE_CROSS_USER_ID = "user_explore_grounding_assault_cross_unit";
 
@@ -59,10 +65,16 @@ function sampleSource(overrides: Partial<ExploreGroundingSource> = {}): ExploreG
 
 describe("explore grounding movement assault contract", () => {
   let prisma: PrismaClient;
+  const previousCanonicalFlag = process.env[ORVEK_CANONICAL_MODEL_AUTHORITY_V1_ENV];
+  const previousCanonicalAllowlist =
+    process.env[ORVEK_CANONICAL_MODEL_AUTHORITY_V1_USER_IDS_ENV];
 
   beforeAll(async () => {
     process.env.DATABASE_URL = LOCAL_DATABASE_URL;
     process.env.ORVEK_ALLOW_LOCAL_EVIDENCE_DEPTH_FIXTURE = "1";
+    // Isolate from external canonical gate env — assault exercises legacy path only.
+    delete process.env[ORVEK_CANONICAL_MODEL_AUTHORITY_V1_ENV];
+    delete process.env[ORVEK_CANONICAL_MODEL_AUTHORITY_V1_USER_IDS_ENV];
 
     if (!exploreAssaultFixtureAllowed(process.env)) {
       throw new Error("Explore assault fixture safety gate refused local DB setup");
@@ -87,6 +99,18 @@ describe("explore grounding movement assault contract", () => {
         db: prisma,
       });
       await prisma.$disconnect();
+    }
+
+    if (previousCanonicalFlag === undefined) {
+      delete process.env[ORVEK_CANONICAL_MODEL_AUTHORITY_V1_ENV];
+    } else {
+      process.env[ORVEK_CANONICAL_MODEL_AUTHORITY_V1_ENV] = previousCanonicalFlag;
+    }
+    if (previousCanonicalAllowlist === undefined) {
+      delete process.env[ORVEK_CANONICAL_MODEL_AUTHORITY_V1_USER_IDS_ENV];
+    } else {
+      process.env[ORVEK_CANONICAL_MODEL_AUTHORITY_V1_USER_IDS_ENV] =
+        previousCanonicalAllowlist;
     }
   });
 

@@ -309,7 +309,9 @@ describe("today-reentry data safety", () => {
     expect(TODAY_REENTRY_ENDPOINTS.intelligenceUpdates).toBe(
       "/api/today/intelligence-updates"
     );
-    expect(TODAY_REENTRY_ENDPOINTS.userMapConclusions).toContain("/api/user-map/conclusions");
+    expect(TODAY_REENTRY_ENDPOINTS.currentUnderstanding).toContain(
+      "/api/current-understanding",
+    );
     expect(TODAY_REENTRY_ENDPOINTS.watchFor).toBe("/api/watch-for");
     expect(TODAY_REENTRY_ENDPOINTS.actions).toBe("/api/actions");
     expect(TODAY_REENTRY_ENDPOINTS.activeQuestions).toBe("/api/active-questions");

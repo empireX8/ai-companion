@@ -5,11 +5,11 @@ import {
   resolveMapContradictionSelectionId,
   type MapOpenContradictionItem,
 } from "../../map-open-contradictions";
-import type { UserMapConclusionPublicApiListItem } from "../../public-intelligence-safe-slice";
+import type { CurrentUnderstandingSurfaceListItem } from "../../current-understanding-product-projection";
 import { pickInitialYourMapSelectionId } from "../../your-map-surface";
 
 export type MapWorkbenchSelectionInput = {
-  items: UserMapConclusionPublicApiListItem[];
+  items: CurrentUnderstandingSurfaceListItem[];
   preferredSelectionId: string | null;
   mindContextItems: MindContextDisplayItem[];
   openContradictions?: MapOpenContradictionItem[];
@@ -90,7 +90,7 @@ export function resolveMapWorkbenchSelectedId(
 }
 
 function resolveGoalSelectionId(
-  items: UserMapConclusionPublicApiListItem[],
+  items: CurrentUnderstandingSurfaceListItem[],
   selectionId: string | null | undefined
 ): string | null {
   const normalized = selectionId?.trim();

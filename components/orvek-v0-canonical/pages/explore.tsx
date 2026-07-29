@@ -6,6 +6,9 @@ import { useCanonicalData } from "@/components/orvek-v0-canonical/canonical-data
 import { minimumPermanentSlots } from "@/components/orvek-v0-canonical/permanent-presentation"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
+import {
+  formatCanonicalCorrectionContextCopy,
+} from "@/lib/canonical-correction-handoff"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { Chip, SectionLabel } from "@/components/orvek-v0/primitives"
 import { ArrowRight, PanelRight, Send, Sparkles } from "lucide-react"
@@ -24,7 +27,12 @@ export function ExplorePage({
 }: {
   initialTab?: CanonicalExploreTab
 } = {}) {
-  const { select, setExploreActive } = useWorkbench()
+  const {
+    select,
+    setExploreActive,
+    canonicalCorrectionHandoff,
+    setCanonicalCorrectionHandoff,
+  } = useWorkbench()
   const [tab, setTab] = useState<CanonicalExploreTab>(initialTab)
 
   // Explore is "live": the inspector surfaces possible movement only while here.
@@ -41,6 +49,36 @@ export function ExplorePage({
           Ask, investigate, and turn conversation into model movement. Possible updates appear in
           the inspector.
         </p>
+        {canonicalCorrectionHandoff ? (
+          <div
+            className="mt-4 rounded-2xl bg-secondary/40 px-4 py-3.5"
+            data-testid="explore-canonical-correction-context"
+            data-concept-id={canonicalCorrectionHandoff.conceptId}
+            data-current-revision-id={canonicalCorrectionHandoff.currentRevisionId}
+            data-version={String(canonicalCorrectionHandoff.version)}
+          >
+            <SectionLabel>Correction context</SectionLabel>
+            <p className="mt-2 whitespace-pre-line text-[12px] leading-relaxed text-muted-foreground">
+              {formatCanonicalCorrectionContextCopy(canonicalCorrectionHandoff)
+                .split("\n")
+                .slice(1)
+                .join("\n")}
+            </p>
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              No proposal has been created yet. Describe what is wrong or missing below.
+            </p>
+            <button
+              type="button"
+              className="mt-2 text-[12px] font-medium text-primary hover:underline"
+              data-testid="explore-canonical-correction-dismiss"
+              onClick={() => {
+                setCanonicalCorrectionHandoff(null)
+              }}
+            >
+              Dismiss correction context
+            </button>
+          </div>
+        ) : null}
         {/* segmented control */}
         <div
           className="o-sunken mt-3 inline-flex flex-wrap gap-0.5 rounded-[9px] p-1"

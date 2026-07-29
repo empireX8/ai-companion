@@ -2,15 +2,23 @@ import "server-only";
 
 import {
   ContradictionStatus,
+  ExploreMovementAuthorityMode,
+  ExploreMovementProposalStatus,
   ModelUpdateVisibility,
   PatternClaimStatus,
+  UnderstandingLinkTargetType,
   UserMapConclusionVisibility,
   type UnderstandingLinkRole,
   type UnderstandingLinkSourceType,
-  type UnderstandingLinkTargetType,
 } from "@prisma/client";
 
 import prismadb from "./prismadb";
+import { CanonicalModelAuthorityError } from "./canonical-model-authority-errors";
+import { deriveExploreMovementModelUpdateId } from "./explore-movement-proposal-provenance";
+import {
+  findCanonicalProposalsByDeterministicModelUpdateId,
+  requireSingleDeterministicCanonicalProposal,
+} from "./canonical-what-changed-identity";
 
 import {
   REALITY_TRACKING_OUTPUT_CONTRACT_VERSION,
@@ -50,6 +58,10 @@ type ModelUpdateDetailRow = {
   afterSummary: string | null;
   confidenceDelta: number | null;
   internalNotes: string | null;
+  canonicalConceptId?: string | null;
+  previousRevisionId?: string | null;
+  resultingRevisionId?: string | null;
+  exploreProposalId?: string | null;
 };
 
 type UnderstandingEvidenceLinkRow = {
@@ -286,6 +298,16 @@ type WhatChangedRealityReportDb = {
   modelUpdate: {
     findFirst: (args: unknown) => Promise<ModelUpdateDetailRow | null>;
     findMany: (args: unknown) => Promise<RecentMovementRow[]>;
+  };
+  exploreMovementProposal?: {
+    findFirst: (args: unknown) => Promise<{
+      id: string;
+      userId: string;
+      status: ExploreMovementProposalStatus;
+      authorityMode: ExploreMovementAuthorityMode;
+      modelUpdateId: string | null;
+      canonicalConceptId: string | null;
+    } | null>;
   };
   understandingEvidenceLink: {
     findMany: (args: unknown) => Promise<UnderstandingEvidenceLinkRow[]>;
@@ -1445,6 +1467,7 @@ export async function buildWhatChangedInspectorDetail(args: {
   db?: WhatChangedRealityReportDb;
 }): Promise<{ item: WhatChangedListItem; report: RealityTrackingModelMovementReport } | null> {
   const db = args.db ?? (prismadb as unknown as WhatChangedRealityReportDb);
+  const authorityDb = (args.db ?? prismadb) as unknown as typeof prismadb;
 
   const row = await db.modelUpdate.findFirst({
     where: {
@@ -1464,11 +1487,142 @@ export async function buildWhatChangedInspectorDetail(args: {
       afterSummary: true,
       confidenceDelta: true,
       internalNotes: true,
+      canonicalConceptId: true,
+      previousRevisionId: true,
+      resultingRevisionId: true,
+      exploreProposalId: true,
     },
   });
 
   if (!row) {
     return null;
+  }
+
+  let beforeSummary = row.beforeSummary;
+  let afterSummary = row.afterSummary;
+
+  const deterministicMatches =
+    await findCanonicalProposalsByDeterministicModelUpdateId({
+      userId: args.userId,
+      modelUpdateId: row.id,
+      db: authorityDb,
+    });
+  const deterministicOwner =
+    requireSingleDeterministicCanonicalProposal(deterministicMatches);
+
+  const proposalLookup =
+    deterministicOwner ??
+    (await authorityDb.exploreMovementProposal.findFirst({
+      where: {
+        userId: args.userId,
+        OR: [
+          { modelUpdateId: row.id },
+          ...(row.exploreProposalId ? [{ id: row.exploreProposalId }] : []),
+        ],
+      },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        authorityMode: true,
+        modelUpdateId: true,
+        canonicalConceptId: true,
+      },
+    }));
+
+  const proposalIsCanonicalV1 =
+    proposalLookup?.authorityMode === ExploreMovementAuthorityMode.canonical_v1;
+  const deterministicMatchesRow =
+    Boolean(deterministicOwner) ||
+    (proposalLookup != null &&
+      deriveExploreMovementModelUpdateId(proposalLookup.id) === row.id);
+
+  const isCanonicalReceipt =
+    Boolean(row.canonicalConceptId) ||
+    Boolean(row.previousRevisionId) ||
+    Boolean(row.resultingRevisionId) ||
+    Boolean(row.exploreProposalId) ||
+    row.affectedObjectType ===
+      UnderstandingLinkTargetType.canonical_concept_revision ||
+    Boolean(proposalIsCanonicalV1 && proposalLookup?.modelUpdateId === row.id) ||
+    Boolean(deterministicMatchesRow);
+
+  if (isCanonicalReceipt) {
+    const { readCanonicalProductConceptForUser } = await import(
+      "./current-understanding-product-projection"
+    );
+
+    if (
+      !row.canonicalConceptId ||
+      !row.previousRevisionId ||
+      !row.resultingRevisionId ||
+      !row.exploreProposalId ||
+      row.affectedObjectType !==
+        UnderstandingLinkTargetType.canonical_concept_revision
+    ) {
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_CANONICAL_PROJECTION",
+        "Canonical What Changed receipt has incomplete lineage identity",
+      );
+    }
+
+    if (
+      !proposalLookup ||
+      proposalLookup.userId !== args.userId ||
+      proposalLookup.authorityMode !== ExploreMovementAuthorityMode.canonical_v1 ||
+      proposalLookup.status !== ExploreMovementProposalStatus.published ||
+      proposalLookup.canonicalConceptId !== row.canonicalConceptId ||
+      deriveExploreMovementModelUpdateId(proposalLookup.id) !== row.id ||
+      proposalLookup.id !== row.exploreProposalId
+    ) {
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_CANONICAL_PROJECTION",
+        "Canonical What Changed proposal identity mismatch",
+      );
+    }
+
+    // Prefer deterministic ownership over mutable proposal.modelUpdateId pointer.
+    if (
+      proposalLookup.modelUpdateId !== row.id &&
+      !deterministicOwner
+    ) {
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_CANONICAL_PROJECTION",
+        "Canonical What Changed proposal modelUpdateId mismatch without deterministic ownership",
+      );
+    }
+
+    const concept = await readCanonicalProductConceptForUser({
+      userId: args.userId,
+      conceptId: row.canonicalConceptId,
+      db: authorityDb,
+    });
+    if (concept === "not_found") {
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_CANONICAL_PROJECTION",
+        "Canonical What Changed target concept not found",
+      );
+    }
+    const movement = concept.movementHistory.find(
+      (entry) => entry.modelUpdateId === row.id,
+    );
+    if (
+      !movement ||
+      movement.exploreProposalId !== row.exploreProposalId ||
+      movement.previousRevisionId !== row.previousRevisionId ||
+      movement.resultingRevisionId !== row.resultingRevisionId ||
+      movement.beforeSummary !== row.beforeSummary ||
+      movement.afterSummary !== row.afterSummary ||
+      concept.conceptId !== row.canonicalConceptId ||
+      row.affectedObjectId !== movement.resultingRevisionId
+    ) {
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_CANONICAL_PROJECTION",
+        "Canonical What Changed movement does not match projection",
+      );
+    }
+    beforeSummary = movement.beforeSummary;
+    afterSummary = movement.afterSummary;
   }
 
   const baseItem = toWhatChangedListItem(row as never);
@@ -1855,8 +2009,8 @@ export async function buildWhatChangedInspectorDetail(args: {
       affectedObjectTypeLabel: formatLinkedObjectType(row.affectedObjectType),
       userFacingSummary: row.userFacingSummary,
       createdAt: row.createdAt.toISOString(),
-      before: row.beforeSummary,
-      after: row.afterSummary,
+      before: beforeSummary,
+      after: afterSummary,
       confidenceShift: row.confidenceDelta,
       movementRationale: decodeMovementRationaleFromInternalNotes(row.internalNotes),
     },

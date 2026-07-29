@@ -133,7 +133,13 @@ export function formatFieldworkStatus(status: FieldworkStatus): string {
   return toTitleCase(status);
 }
 
+export const CANONICAL_MOVEMENT_AFFECTED_OBJECT_TYPE_LABEL =
+  "Canonical model revision" as const;
+
 export function formatLinkedObjectType(type: UnderstandingLinkTargetType): string {
+  if (type === UnderstandingLinkTargetType.canonical_concept_revision) {
+    return CANONICAL_MOVEMENT_AFFECTED_OBJECT_TYPE_LABEL;
+  }
   return formatPublicObjectLinkTypeLabel(type);
 }
 
@@ -370,12 +376,20 @@ export type UserMapConclusionPublicApiListItem = {
 };
 
 export type UserMapConclusionPublicApiDetailItem = UserMapConclusionPublicApiListItem & {
-  sourceDiversity: number;
-  timeSpreadDays: number;
+  /** Null when diversity was not calculated from authoritative data. */
+  sourceDiversity: number | null;
+  /** Null when time spread was not calculated from authoritative data. */
+  timeSpreadDays: number | null;
   createdAt: string;
   lastUserCorrectionLabel?: string | null;
   lastUserCorrectionAt?: string | null;
   correctionCount?: number;
+  /** Present for canonical Map detail projections. */
+  currentRevisionId?: string;
+  version?: number;
+  authorityType?:
+    | "canonical_concept_revision"
+    | "legacy_unregistered_usermap_conclusion";
 };
 
 export type WhatChangedListItem = {

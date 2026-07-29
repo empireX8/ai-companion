@@ -1,4 +1,8 @@
-import type { UserMapConclusionPublicApiListItem } from "../public-intelligence-safe-slice";
+import {
+  CANONICAL_CORRECTION_HANDOFF_HINT,
+  CANONICAL_CORRECTION_PROPOSE_LABEL,
+} from "../canonical-correction-handoff";
+import type { CurrentUnderstandingSurfaceListItem } from "../current-understanding-product-projection";
 import type { InspectorEvidenceLinkItem } from "../inspector-object-api";
 import {
   formatMapContradictionStatusLabel,
@@ -120,7 +124,7 @@ export type V0MapHeaderStats = {
 
 export type V0MapEvidenceLink = {
   key: string;
-  href: string;
+  href: string | null;
   evidenceSummaryLabel: string;
   sourceTypeLabel: string;
 };
@@ -139,8 +143,8 @@ export type V0MapDetailSlot = {
   title: string;
   summary: string | null;
   evidenceCount: number;
-  sourceDiversity: number;
-  timeSpreadDays: number;
+  sourceDiversity: number | null;
+  timeSpreadDays: number | null;
   status: UserMapConclusionPublicApiDetailItem["status"];
   confidenceLabel: string;
   statusLabel: string;
@@ -151,6 +155,9 @@ export type V0MapDetailSlot = {
   lastUserCorrectionLabel?: string | null;
   lastUserCorrectionAt?: string | null;
   correctionCount?: number;
+  authorityType?: UserMapConclusionPublicApiDetailItem["authorityType"];
+  currentRevisionId?: string;
+  version?: number;
 };
 
 export type V0MapMovementRow = {
@@ -209,12 +216,15 @@ export type V0MapViewProps = {
   };
   relatedItems: V0MapRelatedItem[];
   relatedEmptyCopy: string;
+  correctionMode: "canonical_propose" | "legacy_deferred";
   correctionChipLabels: readonly string[];
   correctionDeferredCopy: string;
+  canonicalCorrectionConceptId: string | null;
+  canonicalCorrectionHint: string | null;
 };
 
 export type MapMapDataInput = {
-  items: UserMapConclusionPublicApiListItem[];
+  items: CurrentUnderstandingSurfaceListItem[];
   /** Open ContradictionNodes for Active conflicts — distinct from disputed UserMapConclusions. */
   openContradictions?: MapOpenContradictionItem[];
   isLoading: boolean;
@@ -240,7 +250,7 @@ export type MapMapDataInput = {
 };
 
 function resolveConclusionOntology(
-  item: UserMapConclusionPublicApiListItem
+  item: CurrentUnderstandingSurfaceListItem
 ): V0MapOntologyRailKey {
   if (item.status === "disputed") {
     return "conflicts";
@@ -269,14 +279,14 @@ function resolveConclusionOntology(
 }
 
 export function isModelGoalConclusion(
-  item: UserMapConclusionPublicApiListItem
+  item: CurrentUnderstandingSurfaceListItem
 ): boolean {
   return resolveConclusionOntology(item) === "goals";
 }
 
 function resolveSelectedConclusionId(
   selectedId: string | null | undefined,
-  items: UserMapConclusionPublicApiListItem[]
+  items: CurrentUnderstandingSurfaceListItem[]
 ): string | null {
   const normalized = selectedId?.trim();
   if (!normalized) {
@@ -304,7 +314,7 @@ function resolveSelectedConclusionId(
   return null;
 }
 
-function isRecentlyMoved(item: UserMapConclusionPublicApiListItem): boolean {
+function isRecentlyMoved(item: CurrentUnderstandingSurfaceListItem): boolean {
   return (
     item.status === "emerging" || item.status === "superseded" || item.status === "disputed"
   );
@@ -396,7 +406,7 @@ function buildOntologyRailGroups(input: MapMapDataInput): V0MapOntologyRailGroup
   }));
 }
 
-function buildHeaderStats(items: UserMapConclusionPublicApiListItem[]): V0MapHeaderStats {
+function buildHeaderStats(items: CurrentUnderstandingSurfaceListItem[]): V0MapHeaderStats {
   const totalReceipts = items.reduce((sum, item) => sum + item.evidenceCount, 0);
   const evolvingCount = items.filter(
     (item) =>
@@ -471,7 +481,7 @@ function buildRelatedItems(input: MapMapDataInput): V0MapRelatedItem[] {
 
 function mapDetailSlot(
   detail: UserMapConclusionPublicApiDetailItem,
-  selectedListItem: UserMapConclusionPublicApiListItem | undefined
+  selectedListItem: CurrentUnderstandingSurfaceListItem | undefined
 ): V0MapDetailSlot {
   const afterSummary = detail.summary?.trim() || null;
   const beforeCandidate =
@@ -501,6 +511,9 @@ function mapDetailSlot(
     lastUserCorrectionLabel: detail.lastUserCorrectionLabel ?? null,
     lastUserCorrectionAt: detail.lastUserCorrectionAt ?? null,
     correctionCount: detail.correctionCount ?? 0,
+    authorityType: detail.authorityType,
+    currentRevisionId: detail.currentRevisionId,
+    version: detail.version,
   };
 }
 
@@ -513,10 +526,13 @@ export function mapMapDataToV0Props(input: MapMapDataInput): V0MapViewProps {
   const { preview, hasMore } = summarizeCentreEvidence(evidence);
   const ontologyItemCount = ontologyGroups.reduce(
     (count, group) => count + group.items.length,
-    0
+    0,
   );
   const hasItems = ontologyItemCount > 0;
   const showMainContent = !input.isLoading && !input.loadError && hasItems;
+  const isCanonicalDetail =
+    detail?.authorityType === "canonical_concept_revision" ||
+    selectedListItem?.authorityType === "canonical_concept_revision";
 
   return {
     isLoading: input.isLoading,
@@ -532,9 +548,11 @@ export function mapMapDataToV0Props(input: MapMapDataInput): V0MapViewProps {
       "Select an object from the model workspace to inspect current understanding and evidence.",
     detailUnavailableCopy: "This conclusion is not available through the public projection.",
     evidence: {
-      preview: preview.map((link) => ({
-        key: `${link.sourceObjectHref}-${link.createdAt}`,
-        href: link.sourceObjectHref,
+      preview: preview.map((link, index) => ({
+        key:
+          link.id?.trim() ||
+          `${link.sourceObjectHref ?? "evidence"}-${link.createdAt ?? "unknown"}-${index}`,
+        href: link.sourceObjectHref?.trim() ? link.sourceObjectHref : null,
         evidenceSummaryLabel: link.evidenceSummaryLabel,
         sourceTypeLabel: link.sourceTypeLabel,
       })),
@@ -579,7 +597,18 @@ export function mapMapDataToV0Props(input: MapMapDataInput): V0MapViewProps {
     },
     relatedItems: buildRelatedItems(input),
     relatedEmptyCopy: V0_MAP_RELATED_EMPTY_COPY,
-    correctionChipLabels: V0_MAP_CORRECTION_CHIP_LABELS,
-    correctionDeferredCopy: YOUR_MAP_CORRECTION_DEFERRED_COPY,
+    correctionMode: isCanonicalDetail ? "canonical_propose" : "legacy_deferred",
+    correctionChipLabels: isCanonicalDetail
+      ? [CANONICAL_CORRECTION_PROPOSE_LABEL]
+      : V0_MAP_CORRECTION_CHIP_LABELS,
+    correctionDeferredCopy: isCanonicalDetail
+      ? CANONICAL_CORRECTION_HANDOFF_HINT
+      : YOUR_MAP_CORRECTION_DEFERRED_COPY,
+    canonicalCorrectionConceptId: isCanonicalDetail
+      ? detail?.id ?? selectedListItemId
+      : null,
+    canonicalCorrectionHint: isCanonicalDetail
+      ? CANONICAL_CORRECTION_HANDOFF_HINT
+      : null,
   };
 }

@@ -4,6 +4,7 @@ import type { OrvekObject } from "./orvek-v0/orvek-types";
 
 export const INSPECTOR_SELECTABLE_OBJECT_TYPES = [
   "usermap_conclusion",
+  "canonical_concept",
   "model_update",
   "pattern_claim",
   "contradiction_node",
@@ -244,7 +245,9 @@ export function shouldClearInspectorSelectionOnNavigation(input: {
   }
 
   const currentSurface = resolveInspectorSourceSurfaceFromPathname(input.pathname);
-  if (currentSurface !== "unknown" && currentSurface === input.selection.sourceSurface) {
+  // Keep selection when still on the owning surface — including dedicated report
+  // routes that resolve to "unknown" (e.g. /what-changed).
+  if (currentSurface === input.selection.sourceSurface) {
     return false;
   }
 

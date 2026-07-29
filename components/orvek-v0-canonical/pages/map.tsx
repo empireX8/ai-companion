@@ -4,9 +4,16 @@ import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { useCanonicalData } from "@/components/orvek-v0-canonical/canonical-data-context"
 import { minimumPermanentSlots } from "@/components/orvek-v0-canonical/permanent-presentation"
+import {
+  CanonicalProposeCorrectionControls,
+  DurableCorrectionControls,
+  supportsCanonicalProposeCorrection,
+  supportsDurableCorrection,
+} from "@/components/orvek-v0/durable-user-action-controls"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { MapPageHeaderStats } from "@/components/orvek-v0/MapPageHeaderStats"
 import { SectionLabel, TYPE_META } from "@/components/orvek-v0/primitives"
+import { isProductionDisplay } from "@/lib/orvek-v0/display-contract"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { profileSectionMappingForObject } from "@/lib/map-profile-facts"
 import {
@@ -51,6 +58,7 @@ export function MapPage() {
   const { getObject, getObjects, mapCategories, mapDefaultSelectedId } = useCanonicalData()
   const data = useOrvekData()
   const { mapHeader } = data
+  const isProduction = isProductionDisplay(data)
   const [localId, setLocalId] = useState(mapDefaultSelectedId)
 
   const obj = getObject(localId)
@@ -419,7 +427,25 @@ export function MapPage() {
               Full receipts & movement in inspector
             </button>
 
-            {/* corrections */}
+            {/* corrections — production: durable UMC, canonical propose handoff, or honest unavailable.
+                Never claim in-memory chip success as model mutation in production. */}
+            {isProduction && obj && supportsDurableCorrection(obj) ? (
+              <DurableCorrectionControls object={obj} className="mx-0 mt-6" />
+            ) : isProduction && obj && supportsCanonicalProposeCorrection(obj) ? (
+              <CanonicalProposeCorrectionControls object={obj} className="mx-0 mt-6" />
+            ) : isProduction ? (
+              <div
+                className="mt-6 rounded-2xl bg-secondary/40 px-4 py-4"
+                data-testid="orvek-map-correction-unavailable"
+                data-shell-slot="map-corrections"
+              >
+                <SectionLabel>Correct the model</SectionLabel>
+                <p className="mt-2 text-[12px] text-muted-foreground">
+                  Model correction is not available for this object. Local chips do not change your
+                  model.
+                </p>
+              </div>
+            ) : (
             <div
               className="mt-6 rounded-2xl bg-secondary/40 px-4 py-4"
               data-shell-slot="map-corrections"
@@ -453,6 +479,7 @@ export function MapPage() {
                 ))}
               </div>
             </div>
+            )}
           </div>
         </div>
       </div>

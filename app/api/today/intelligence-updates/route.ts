@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { ModelUpdateVisibility } from "@prisma/client";
 
-import prismadb from "@/lib/prismadb";
-import {
-  TODAY_INTELLIGENCE_UPDATES_LIMIT,
-  toTodayIntelligenceUpdateItem,
-} from "../../../../lib/today-intelligence-updates";
+import { isCanonicalModelAuthorityError } from "../../../../lib/canonical-model-authority-errors";
+import { readCanonicalAndLegacyMovementList } from "../../../../lib/canonical-movement-list-merge";
+import prismadb from "../../../../lib/prismadb";
+import { TODAY_INTELLIGENCE_UPDATES_LIMIT } from "../../../../lib/today-intelligence-updates";
 import { applyVerifiedAffectedObjectHrefs } from "../../../../lib/public-linked-object-continuity";
 
 export const dynamic = "force-dynamic";
@@ -18,27 +16,12 @@ export async function GET() {
   }
 
   try {
-    const rows = await prismadb.modelUpdate.findMany({
-      where: {
-        userId,
-        visibility: ModelUpdateVisibility.user_visible,
-        isMeaningful: true,
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: TODAY_INTELLIGENCE_UPDATES_LIMIT,
-      select: {
-        id: true,
-        updateType: true,
-        affectedObjectType: true,
-        affectedObjectId: true,
-        userFacingSummary: true,
-        createdAt: true,
-      },
+    const { items } = await readCanonicalAndLegacyMovementList({
+      userId,
+      db: prismadb,
+      limit: TODAY_INTELLIGENCE_UPDATES_LIMIT,
     });
 
-    const items = rows
-      .map((row) => toTodayIntelligenceUpdateItem(row))
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
     const verifiedItems = await applyVerifiedAffectedObjectHrefs({
       userId,
       items,
@@ -46,6 +29,16 @@ export async function GET() {
 
     return NextResponse.json({ items: verifiedItems });
   } catch (error) {
+    if (
+      isCanonicalModelAuthorityError(error) &&
+      error.code === "BROKEN_CANONICAL_PROJECTION"
+    ) {
+      console.error("[TODAY_INTELLIGENCE_UPDATES_GET]", { code: error.code });
+      return NextResponse.json(
+        { error: "Canonical model unavailable", code: "canonical_model_unavailable" },
+        { status: 500 },
+      );
+    }
     console.error("[TODAY_INTELLIGENCE_UPDATES_GET_ERROR]", error);
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
