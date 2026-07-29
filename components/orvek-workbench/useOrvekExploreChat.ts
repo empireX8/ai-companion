@@ -6,30 +6,21 @@ import {
   buildAppSessionCreateRequestInit,
   buildAppSessionListUrl,
 } from "@/lib/chat-surface-routing";
+import {
+  bootstrapExploreChatSession,
+  type OrvekExploreMessage,
+  type OrvekExploreSession,
+} from "@/lib/explore-chat-bootstrap";
 import { isExploreGroundingPayload } from "@/lib/explore-grounding-contract";
 import {
   refreshExploreSessionMovement,
   setExploreSessionBridgeSessionId,
 } from "@/lib/explore-session-bridge";
 
-export type OrvekExploreMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  createdAt: string;
-  grounding?: import("@/lib/explore-grounding-contract").ExploreGroundingPayload | null;
-};
-
-export type OrvekExploreSession = {
-  id: string;
-  label: string | null;
-  preview: string | null;
-  startedAt: string;
-  endedAt: string | null;
-};
+export type { OrvekExploreMessage, OrvekExploreSession };
 
 const EXPLORE_SURFACE_TYPE = "explore_chat" as const;
-const EXPLORE_CHAT_STORAGE_KEY = "mindlabs:explore:session-id";
+export const EXPLORE_CHAT_STORAGE_KEY = "mindlabs:explore:session-id";
 const MAX_EXPLORE_CHAT_BOOT_ATTEMPTS = 12;
 const EXPLORE_CHAT_BOOT_RETRY_MS = 500;
 
@@ -206,44 +197,25 @@ export function useOrvekExploreChat(options?: {
     setErrorMessage(null);
 
     try {
-      const sessionList = await loadSessions();
-      if (runId !== bootRunIdRef.current) {
-        return false;
-      }
-
       const storedSessionId =
         typeof window !== "undefined"
           ? window.localStorage.getItem(EXPLORE_CHAT_STORAGE_KEY)
           : null;
 
-      let nextSessionId =
-        storedSessionId && sessionList.some((session) => session.id === storedSessionId)
-          ? storedSessionId
-          : sessionList[0]?.id ?? null;
-
-      let nextSessions = sessionList;
-
-      if (!nextSessionId) {
-        nextSessionId = await createSession();
-        if (runId !== bootRunIdRef.current) {
-          return false;
-        }
-        nextSessions = await loadSessions();
-      }
-
-      if (!nextSessionId) {
-        throw new Error("Could not initialize chat.");
-      }
-
-      const nextMessages = await loadMessages(nextSessionId);
+      const bootstrapped = await bootstrapExploreChatSession({
+        loadSessions,
+        createSession,
+        loadMessages,
+        storedSessionId,
+      });
       if (runId !== bootRunIdRef.current) {
         return false;
       }
 
-      setSessions(nextSessions);
-      setSelectedSessionId(nextSessionId);
-      persistSessionSelection(nextSessionId);
-      setMessages(nextMessages);
+      setSessions(bootstrapped.sessions);
+      setSelectedSessionId(bootstrapped.sessionId);
+      persistSessionSelection(bootstrapped.sessionId);
+      setMessages(bootstrapped.messages);
       bootAttemptRef.current = 0;
       return true;
     } catch (error) {

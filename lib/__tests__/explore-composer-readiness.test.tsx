@@ -203,4 +203,32 @@ describe("explore composer readiness (production canonical path)", () => {
     html = renderToStaticMarkup(React.createElement(ExplorePage));
     expect(hasDisabledAttr(askButton(html))).toBe(false);
   });
+
+  it("surfaces bootstrap errors in the canonical Explore UI", async () => {
+    const { ExplorePage } = await import(
+      "../../components/orvek-v0-canonical/pages/explore"
+    );
+
+    renderState.exploreHandlers = {
+      onDraftChange: () => {},
+      onSend: undefined,
+      onQuickPrompt: () => {},
+      onComposerFocus: () => {},
+      onOpenInspector: undefined,
+    };
+    renderState.api.freeExploreSendHandlerAvailable = false;
+    renderState.api.explore.errorMessage =
+      "Could not load sessions. The server may be unavailable.";
+
+    const html = renderToStaticMarkup(React.createElement(ExplorePage));
+    expect(html).toContain('data-testid="explore-bootstrap-error"');
+    expect(html).toContain("Could not load sessions. The server may be unavailable.");
+    expect(hasDisabledAttr(
+      html.match(/<button\b[^>]*data-shell-item="explore-send-action"[^>]*>/)?.[0] ?? "",
+    )).toBe(true);
+  });
 });
+
+function hasDisabledAttr(tag: string) {
+  return /\sdisabled(?:=""|(?=\s|>))/.test(tag);
+}
