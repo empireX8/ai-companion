@@ -24,13 +24,13 @@ export function CanonicalLiveRuntimeEntry({
   const { dataApi, handlers, durableActionsRevision, refreshAfterDurableWrite } =
     useOrvekHybridWorkbenchDataApi()
 
-  const canonicalData = useMemo(
-    () => ({
-      ...buildCanonicalLiveRuntimeData(dataApi),
+  const canonicalData = useMemo(() => {
+    const live = buildCanonicalLiveRuntimeData(dataApi)
+    return {
+      ...live,
       syncRoutesFromPathname,
-    }),
-    [dataApi, syncRoutesFromPathname],
-  )
+    }
+  }, [dataApi, syncRoutesFromPathname])
 
   const body = (
     <DurableActionsRefreshProvider
