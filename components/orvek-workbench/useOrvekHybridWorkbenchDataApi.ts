@@ -973,21 +973,26 @@ export function useOrvekHybridWorkbenchDataApi() {
       },
     };
 
-    if (!exploreChatSendReady) {
-      return { map: mapHandlers };
-    }
-
+    // Draft must stay interactive while the live session boots. Only send/quick-send
+    // require exploreChatSendReady — omitting onDraftChange makes the canonical
+    // Explore composer `disabled` and appears dead in production.
     return {
       map: mapHandlers,
       explore: {
         onDraftChange: setExploreChatDraft,
-        onSend: () => {
-          void sendMessage();
-        },
-        onQuickPrompt: (prompt: string) => {
-          void sendMessage(prompt);
-        },
         onComposerFocus: () => {},
+        onQuickPrompt: exploreChatSendReady
+          ? (prompt: string) => {
+              void sendMessage(prompt);
+            }
+          : setExploreChatDraft,
+        ...(exploreChatSendReady
+          ? {
+              onSend: () => {
+                void sendMessage();
+              },
+            }
+          : {}),
       },
     };
   }, [

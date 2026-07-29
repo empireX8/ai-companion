@@ -1,17 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { usePathname } from "next/navigation"
+import { useMemo } from "react"
 
 import { CanonicalWorkbench } from "@/components/orvek-v0-canonical/workbench"
 import { buildCanonicalLiveRuntimeData } from "@/components/orvek-v0-canonical/live-provider"
 import { useOrvekHybridWorkbenchDataApi } from "@/components/orvek-workbench/useOrvekHybridWorkbenchDataApi"
 import { DurableActionsRefreshProvider } from "@/lib/orvek-v0/durable-actions-context"
 import { OrvekPageHandlersProvider } from "@/lib/orvek-v0/page-handlers"
-
-function isExplorePath(pathname: string): boolean {
-  return pathname === "/explore" || pathname.startsWith("/explore/")
-}
 
 /**
  * Shared production + live-candidate runtime entry.
@@ -26,67 +21,16 @@ export function CanonicalLiveRuntimeEntry({
   syncRoutesFromPathname?: boolean
   testId?: string
 }) {
-  const pathname = usePathname()
   const { dataApi, handlers, durableActionsRevision, refreshAfterDurableWrite } =
     useOrvekHybridWorkbenchDataApi()
-  const [pendingExploreDraft, setPendingExploreDraft] = useState("")
-  const liveExploreDraftHandler = handlers.explore?.onDraftChange
-  const usePendingExploreDraft = isExplorePath(pathname) && !liveExploreDraftHandler
 
-  useEffect(() => {
-    if (!pendingExploreDraft || !liveExploreDraftHandler) {
-      return
-    }
-
-    liveExploreDraftHandler(pendingExploreDraft)
-    setPendingExploreDraft("")
-  }, [liveExploreDraftHandler, pendingExploreDraft])
-
-  const canonicalData = useMemo(() => {
-    const live = buildCanonicalLiveRuntimeData(dataApi)
-    const liveExplore = live.orvekDataApi.explore
-
-    if (!usePendingExploreDraft || !liveExplore) {
-      return {
-        ...live,
-        syncRoutesFromPathname,
-      }
-    }
-
-    const readinessCopy =
-      dataApi.explore?.errorMessage ??
-      (dataApi.explore?.isBooting
-        ? "Starting conversation…"
-        : "Conversation is not ready. Reload the page.")
-
-    return {
-      ...live,
+  const canonicalData = useMemo(
+    () => ({
+      ...buildCanonicalLiveRuntimeData(dataApi),
       syncRoutesFromPathname,
-      orvekDataApi: {
-        ...live.orvekDataApi,
-        explore: {
-          ...liveExplore,
-          composerDraft: pendingExploreDraft,
-        },
-        exploreLiveDetectionCopy: readinessCopy,
-      },
-    }
-  }, [dataApi, pendingExploreDraft, syncRoutesFromPathname, usePendingExploreDraft])
-
-  const pageHandlers = useMemo(() => {
-    if (!usePendingExploreDraft) {
-      return handlers
-    }
-
-    return {
-      ...handlers,
-      explore: {
-        onDraftChange: setPendingExploreDraft,
-        onQuickPrompt: setPendingExploreDraft,
-        onComposerFocus: () => {},
-      },
-    }
-  }, [handlers, usePendingExploreDraft])
+    }),
+    [dataApi, syncRoutesFromPathname],
+  )
 
   const body = (
     <DurableActionsRefreshProvider
@@ -95,7 +39,7 @@ export function CanonicalLiveRuntimeEntry({
         refreshAfterDurableWrite,
       }}
     >
-      <OrvekPageHandlersProvider value={pageHandlers}>
+      <OrvekPageHandlersProvider value={handlers}>
         <CanonicalWorkbench data={canonicalData} enableProductionBridge />
       </OrvekPageHandlersProvider>
     </DurableActionsRefreshProvider>
