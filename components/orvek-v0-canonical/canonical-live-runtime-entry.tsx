@@ -61,11 +61,14 @@ export function CanonicalLiveRuntimeEntry({
     return {
       ...live,
       syncRoutesFromPathname,
-      explore: {
-        ...(live.explore ?? {}),
-        composerDraft: pendingExploreDraft,
+      orvekDataApi: {
+        ...live.orvekDataApi,
+        explore: {
+          ...(live.orvekDataApi.explore ?? {}),
+          composerDraft: pendingExploreDraft,
+        },
+        exploreLiveDetectionCopy: readinessCopy,
       },
-      exploreLiveDetectionCopy: readinessCopy,
     }
   }, [dataApi, pendingExploreDraft, syncRoutesFromPathname, usePendingExploreDraft])
 
