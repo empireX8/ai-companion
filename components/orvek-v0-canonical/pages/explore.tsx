@@ -129,6 +129,10 @@ function FreeExplore() {
     data.freeExploreSendHandlerAvailable === true && Boolean(exploreHandlers?.onSend)
   const useFixtureConversation = referenceSurface && !hasLiveExploreChat && !sendAvailable
   const isLoading = data.exploreIsLoading === true
+  const bootstrapError =
+    typeof data.explore?.errorMessage === "string" && data.explore.errorMessage.trim()
+      ? data.explore.errorMessage.trim()
+      : null
   const conversationSlots = minimumPermanentSlots(liveMessages, 2)
   const groundingSlots = minimumPermanentSlots(grounding, 5)
   const movementAvailable =
@@ -179,6 +183,15 @@ function FreeExplore() {
           ))
         )}
       </div>
+      {!useFixtureConversation && bootstrapError ? (
+        <p
+          className="mt-2 text-[12px] text-destructive"
+          data-shell-slot="explore-bootstrap-error"
+          data-testid="explore-bootstrap-error"
+        >
+          {bootstrapError}
+        </p>
+      ) : null}
 
       {/* grounded in */}
       <div className="mt-3">
@@ -268,6 +281,11 @@ function FreeExplore() {
       <div
         className="o-material mt-4 flex items-center gap-2 rounded-2xl p-2"
         data-shell-slot="explore-composer"
+        data-free-explore-send-handler={sendAvailable ? "true" : "false"}
+        data-has-live-explore-chat={hasLiveExploreChat ? "true" : "false"}
+        data-explore-booting={isLoading ? "true" : "false"}
+        data-has-send-handler={exploreHandlers?.onSend ? "true" : "false"}
+        data-explore-error={bootstrapError ?? ""}
       >
         {useFixtureConversation ? (
           <input
