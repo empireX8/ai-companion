@@ -44,8 +44,9 @@ export function CanonicalLiveRuntimeEntry({
 
   const canonicalData = useMemo(() => {
     const live = buildCanonicalLiveRuntimeData(dataApi)
+    const liveExplore = live.orvekDataApi.explore
 
-    if (!usePendingExploreDraft) {
+    if (!usePendingExploreDraft || !liveExplore) {
       return {
         ...live,
         syncRoutesFromPathname,
@@ -64,7 +65,7 @@ export function CanonicalLiveRuntimeEntry({
       orvekDataApi: {
         ...live.orvekDataApi,
         explore: {
-          ...(live.orvekDataApi.explore ?? {}),
+          ...liveExplore,
           composerDraft: pendingExploreDraft,
         },
         exploreLiveDetectionCopy: readinessCopy,
