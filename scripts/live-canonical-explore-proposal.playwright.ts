@@ -535,6 +535,13 @@ test.describe("live canonical Explore proposal browser regression", () => {
     expect(
       await prisma.exploreMovementProposal.count({ where: { userId: auth.userId } }),
     ).toBe(0);
+    expect(
+      await prisma.referenceItem.count({
+        where: { userId: auth.userId, statement: LIVE_TEA_UMC_SUMMARY },
+      }),
+    ).toBe(1);
+    expect(await prisma.userMapConclusion.count({ where: { userId: auth.userId } })).toBe(0);
+    expect(await prisma.canonicalConcept.count({ where: { userId: auth.userId } })).toBe(0);
     expect(await prisma.modelUpdate.count({ where: { userId: auth.userId } })).toBe(0);
 
     const { context, page } = await openAuthenticatedPage(browser, auth, "/your-map");
@@ -581,6 +588,25 @@ test.describe("live canonical Explore proposal browser regression", () => {
               where: { userId: auth.userId },
             }),
           { timeout: 300_000, intervals: [2_000, 3_000, 5_000] },
+        )
+        .toBe(1);
+
+      await expect
+        .poll(
+          async () =>
+            prisma.userMapConclusion.count({
+              where: { userId: auth.userId, summary: LIVE_TEA_UMC_SUMMARY },
+            }),
+          { timeout: 120_000, intervals: [1_000, 2_000, 3_000] },
+        )
+        .toBe(1);
+      await expect
+        .poll(
+          async () =>
+            prisma.canonicalConcept.count({
+              where: { userId: auth.userId },
+            }),
+          { timeout: 120_000, intervals: [1_000, 2_000, 3_000] },
         )
         .toBe(1);
 
@@ -678,6 +704,30 @@ test.describe("live canonical Explore proposal browser regression", () => {
       expect(conceptBody.currentRevisionId).toBe(resultingRevisionId);
       expect(conceptBody.version).toBe(2);
       expect(conceptBody.summary).toBe(expectedSummary);
+
+      const whatChangedDetailApi = await page.request.get(
+        `${ORIGIN}/api/what-changed/${encodeURIComponent(modelUpdateId)}`,
+        {
+          headers: {
+            Cookie: cookieHeader(auth),
+          },
+        },
+      );
+      if (!whatChangedDetailApi.ok()) {
+        throw new Error(
+          `What Changed detail failed status=${whatChangedDetailApi.status()} body=${(
+            await whatChangedDetailApi.text()
+          ).slice(0, 800)}`,
+        );
+      }
+      const whatChangedDetailBody = (await whatChangedDetailApi.json()) as {
+        item?: { id?: string; userFacingSummary?: string };
+        report?: { modelMovement?: { before?: string | null; after?: string | null } };
+      };
+      expect(whatChangedDetailBody.item?.id).toBe(modelUpdateId);
+      expect(whatChangedDetailBody.item?.userFacingSummary).toBe(modelUpdate.userFacingSummary);
+      expect(whatChangedDetailBody.report?.modelMovement?.before).toBe(LIVE_TEA_UMC_SUMMARY);
+      expect(whatChangedDetailBody.report?.modelMovement?.after).toBe(expectedSummary);
 
       await page
         .getByTestId("nav-timeline")

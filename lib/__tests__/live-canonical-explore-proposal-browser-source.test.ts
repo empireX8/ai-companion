@@ -14,8 +14,14 @@ describe("live canonical Explore proposal browser regression source guard", () =
 
   it("uses the baseline tea seed without seeding proposal rows or special message headers", () => {
     const script = read("scripts/live-canonical-explore-proposal.playwright.ts");
+    const fixture = read("lib/__tests__/helpers/live-tea-explore-proposal-fixture.ts");
     expect(script).toContain("seedLiveTeaMapUnderstanding");
     expect(script).toContain("LIVE_TEA_CORRECTION_MESSAGE");
+    expect(script).toContain("referenceItem.count");
+    expect(script).toContain("userMapConclusion.count");
+    expect(script).toContain("canonicalConcept.count");
+    expect(fixture).toContain("referenceItem.create");
+    expect(fixture).not.toContain("userMapConclusion.create");
     expect(script).toContain('data-free-explore-send-handler');
     expect(script).not.toContain("seedPhase6CanonicalProposal");
     expect(script).not.toContain("ORVEK_CANONICAL_AI_CAPTURE_NONCE_HEADER");

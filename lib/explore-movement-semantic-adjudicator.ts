@@ -7,12 +7,23 @@
 
 import {
   CandidateLifecycleStatus,
+  ReferenceConfidence,
+  ReferenceStatus,
+  ReferenceType,
+  UnderstandingLinkRole,
+  UnderstandingLinkSourceType,
+  UnderstandingLinkTargetType,
+  UserMapConclusionArea,
   UserMapConclusionStatus,
   UserMapConclusionVisibility,
+  UserMapConfidenceLevel,
+  type Prisma,
   type PrismaClient,
 } from "@prisma/client";
+import { createHash } from "node:crypto";
 
 import type { ExploreGroundingSource } from "./explore-grounding-contract";
+import { isCanonicalModelAuthorityEnabledForUser } from "./canonical-model-authority-flag";
 import {
   EXPLORE_MOVEMENT_ADJUDICATOR_PROMPT_VERSION,
   type ExploreMovementCallBudget,
@@ -39,6 +50,7 @@ import {
   type ObjectivityReferee,
   type ObjectivityRefereeResult,
 } from "./orvek-intelligence-kernel/objectivity-referee";
+import { isQualityMindContextStatement } from "./mind-context-surface";
 
 export type ExploreQualifyingUserMapConclusion = {
   id: string;
@@ -182,6 +194,33 @@ const DISQUALIFYING_LIFECYCLES: ReadonlySet<CandidateLifecycleStatus> = new Set(
 ]);
 
 const MAX_QUALIFYING_TARGETS = 6;
+const MAX_LEGACY_REFERENCE_MATERIALIZED_TARGETS = 1;
+const LEGACY_REFERENCE_UMC_ID_PREFIX = "legacy_ref_umc_";
+
+type LegacyReferenceCandidateRow = {
+  id: string;
+  userId: string;
+  type: ReferenceType;
+  confidence: ReferenceConfidence;
+  status: ReferenceStatus;
+  statement: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type QualifyingUserMapConclusionRow = ExploreQualifyingUserMapConclusion & {
+  supersededById: string | null;
+  candidateLifecycleStatus: CandidateLifecycleStatus | null;
+};
+
+function isPrismaUniqueConflict(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P2002"
+  );
+}
 
 function normalizeComparableText(value: string): string {
   return value.toLowerCase().replace(/\s+/g, " ").trim();
@@ -202,6 +241,386 @@ function sharesSubjectTokens(before: string, after: string): boolean {
   // Require at least two shared content tokens, or one if either side is short.
   const minHits = Math.min(2, beforeTokens.size, afterTokens.length);
   return hits >= minHits;
+}
+
+function normalizeLegacyReferenceTitle(statement: string): string {
+  const title = statement.replace(/\s+/g, " ").trim();
+  if (title.length <= 120) return title;
+  return title.slice(0, 117).trimEnd() + "...";
+}
+
+function mapLegacyReferenceTypeToUserMapArea(
+  type: ReferenceType,
+): UserMapConclusionArea {
+  switch (type) {
+    case ReferenceType.goal:
+      return UserMapConclusionArea.developmental_vector;
+    case ReferenceType.pattern:
+      return UserMapConclusionArea.operating_logic;
+    case ReferenceType.hypothesis:
+    case ReferenceType.assumption:
+      return UserMapConclusionArea.meaning_system;
+    case ReferenceType.preference:
+    case ReferenceType.constraint:
+    case ReferenceType.rule:
+    case ReferenceType.source:
+      return UserMapConclusionArea.operating_logic;
+    default:
+      return UserMapConclusionArea.operating_logic;
+  }
+}
+
+function mapLegacyReferenceConfidence(args: {
+  confidence: ReferenceConfidence;
+}): { confidenceScore: number; confidenceLevel: UserMapConfidenceLevel } {
+  switch (args.confidence) {
+    case ReferenceConfidence.high:
+      return {
+        confidenceScore: 0.72,
+        confidenceLevel: UserMapConfidenceLevel.high,
+      };
+    case ReferenceConfidence.medium:
+      return {
+        confidenceScore: 0.6,
+        confidenceLevel: UserMapConfidenceLevel.medium,
+      };
+    case ReferenceConfidence.low:
+      return {
+        confidenceScore: 0.45,
+        confidenceLevel: UserMapConfidenceLevel.low,
+      };
+    default:
+      return {
+        confidenceScore: 0.45,
+        confidenceLevel: UserMapConfidenceLevel.low,
+      };
+  }
+}
+
+export function deriveLegacyReferenceUserMapConclusionId(args: {
+  userId: string;
+  referenceItemId: string;
+}): string {
+  const digest = createHash("sha256")
+    .update(`${args.userId}\0${args.referenceItemId}`)
+    .digest("hex")
+    .slice(0, 24);
+  return `${LEGACY_REFERENCE_UMC_ID_PREFIX}${digest}`;
+}
+
+function toQualifyingConclusion(
+  row: QualifyingUserMapConclusionRow,
+): ExploreQualifyingUserMapConclusion {
+  return {
+    id: row.id,
+    title: row.title,
+    summary: row.summary,
+    status: row.status,
+    visibility: row.visibility,
+    evidenceCount: row.evidenceCount,
+  };
+}
+
+function scoreQualifyingConclusion(args: {
+  row: Pick<ExploreQualifyingUserMapConclusion, "id" | "title" | "summary">;
+  queryTokens: string[];
+  linkedIds: Set<string>;
+}): number {
+  const tokens = tokenizeForExploreGrounding(`${args.row.title} ${args.row.summary}`);
+  const tokenSet = new Set(tokens);
+  let overlap = 0;
+  for (const token of args.queryTokens) {
+    if (tokenSet.has(token)) overlap += 1;
+  }
+  const linkedBoost = args.linkedIds.has(args.row.id) ? 3 : 0;
+  return overlap + linkedBoost;
+}
+
+function scoreLegacyReference(args: {
+  row: LegacyReferenceCandidateRow;
+  queryTokens: string[];
+  selectedReferenceIds: Set<string>;
+}): number {
+  const tokens = tokenizeForExploreGrounding(args.row.statement);
+  const tokenSet = new Set(tokens);
+  let overlap = 0;
+  for (const token of args.queryTokens) {
+    if (tokenSet.has(token)) overlap += 1;
+  }
+  const selectedBoost = args.selectedReferenceIds.has(args.row.id) ? 4 : 0;
+  return overlap + selectedBoost;
+}
+
+async function fetchQualifyingConclusionRowsByIds(args: {
+  userId: string;
+  db: PrismaClient | Prisma.TransactionClient;
+  ids: string[];
+}): Promise<QualifyingUserMapConclusionRow[]> {
+  const uniqueIds = [...new Set(args.ids.filter((id) => id.trim().length > 0))];
+  if (uniqueIds.length === 0) return [];
+
+  const rows = await args.db.userMapConclusion.findMany({
+    where: {
+      id: { in: uniqueIds },
+      userId: args.userId,
+    },
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      status: true,
+      visibility: true,
+      evidenceCount: true,
+      supersededById: true,
+      candidateLifecycleStatus: true,
+    },
+  });
+
+  return rows.filter((row) =>
+    isQualifyingExploreUserMapConclusion({
+      visibility: row.visibility,
+      status: row.status,
+      supersededById: row.supersededById,
+      candidateLifecycleStatus: row.candidateLifecycleStatus,
+      summary: row.summary,
+    })
+  );
+}
+
+async function ensureLegacyReferenceMaterializedConclusion(args: {
+  userId: string;
+  db: PrismaClient;
+  reference: LegacyReferenceCandidateRow;
+}): Promise<ExploreQualifyingUserMapConclusion | null> {
+  const materializedId = deriveLegacyReferenceUserMapConclusionId({
+    userId: args.userId,
+    referenceItemId: args.reference.id,
+  });
+  const summary = args.reference.statement.trim();
+  if (!summary || !isQualityMindContextStatement(summary)) return null;
+
+  const confidence = mapLegacyReferenceConfidence({
+    confidence: args.reference.confidence,
+  });
+
+  const row = await args.db.$transaction(async (tx) => {
+    const existing = await tx.userMapConclusion.findFirst({
+      where: {
+        id: materializedId,
+        userId: args.userId,
+      },
+      select: {
+        id: true,
+        title: true,
+        summary: true,
+        status: true,
+        visibility: true,
+        evidenceCount: true,
+        supersededById: true,
+        candidateLifecycleStatus: true,
+      },
+    });
+
+    let conclusion = existing;
+    if (!conclusion) {
+      try {
+        conclusion = await tx.userMapConclusion.create({
+          data: {
+            id: materializedId,
+            userId: args.userId,
+            area: mapLegacyReferenceTypeToUserMapArea(args.reference.type),
+            status: UserMapConclusionStatus.emerging,
+            visibility: UserMapConclusionVisibility.user_visible,
+            title: normalizeLegacyReferenceTitle(summary),
+            summary,
+            confidenceScore: confidence.confidenceScore,
+            confidenceLevel: confidence.confidenceLevel,
+            evidenceCount: 1,
+            sourceDiversity: 1,
+            timeSpreadDays: 0,
+            firstEvidenceAt: args.reference.createdAt,
+            lastEvidenceAt: args.reference.updatedAt,
+            notes: `materializedFrom=reference_item:${args.reference.id};reason=explore_legacy_map_understanding`,
+          },
+          select: {
+            id: true,
+            title: true,
+            summary: true,
+            status: true,
+            visibility: true,
+            evidenceCount: true,
+            supersededById: true,
+            candidateLifecycleStatus: true,
+          },
+        });
+      } catch (error) {
+        if (!isPrismaUniqueConflict(error)) throw error;
+        conclusion = await tx.userMapConclusion.findFirst({
+          where: {
+            id: materializedId,
+            userId: args.userId,
+          },
+          select: {
+            id: true,
+            title: true,
+            summary: true,
+            status: true,
+            visibility: true,
+            evidenceCount: true,
+            supersededById: true,
+            candidateLifecycleStatus: true,
+          },
+        });
+      }
+    }
+
+    if (!conclusion) return null;
+
+    await tx.understandingEvidenceLink.upsert({
+      where: {
+        userId_targetType_targetId_sourceType_sourceId_role: {
+          userId: args.userId,
+          targetType: UnderstandingLinkTargetType.usermap_conclusion,
+          targetId: conclusion.id,
+          sourceType: UnderstandingLinkSourceType.reference_item,
+          sourceId: args.reference.id,
+          role: UnderstandingLinkRole.supports,
+        },
+      },
+      create: {
+        userId: args.userId,
+        targetType: UnderstandingLinkTargetType.usermap_conclusion,
+        targetId: conclusion.id,
+        sourceType: UnderstandingLinkSourceType.reference_item,
+        sourceId: args.reference.id,
+        role: UnderstandingLinkRole.supports,
+        summary: "Legacy Map memory materialized for canonical Explore review.",
+        snippet: summary.slice(0, 240),
+        quote: summary.slice(0, 240),
+      },
+      update: {
+        summary: "Legacy Map memory materialized for canonical Explore review.",
+        snippet: summary.slice(0, 240),
+        quote: summary.slice(0, 240),
+      },
+    });
+
+    return conclusion;
+  });
+
+  if (
+    !row ||
+    !isQualifyingExploreUserMapConclusion({
+      visibility: row.visibility,
+      status: row.status,
+      supersededById: row.supersededById,
+      candidateLifecycleStatus: row.candidateLifecycleStatus,
+      summary: row.summary,
+    })
+  ) {
+    return null;
+  }
+
+  return toQualifyingConclusion(row);
+}
+
+async function resolveLegacyReferenceMapUnderstandingTargets(args: {
+  userId: string;
+  db: PrismaClient;
+  queryTokens: string[];
+  ownedSources: ExploreGroundingSource[];
+  limit: number;
+}): Promise<ExploreQualifyingUserMapConclusion[]> {
+  if (!isCanonicalModelAuthorityEnabledForUser(args.userId)) {
+    return [];
+  }
+
+  const selectedReferenceIds = new Set(
+    args.ownedSources
+      .filter((source) => source.sourceType === "reference_item")
+      .map((source) => source.sourceId)
+      .filter((id) => id.trim().length > 0),
+  );
+  if (selectedReferenceIds.size === 0) return [];
+
+  const linkedRows = await args.db.understandingEvidenceLink.findMany({
+    where: {
+      userId: args.userId,
+      sourceType: UnderstandingLinkSourceType.reference_item,
+      sourceId: { in: [...selectedReferenceIds] },
+      targetType: UnderstandingLinkTargetType.usermap_conclusion,
+    },
+    select: {
+      sourceId: true,
+      targetId: true,
+    },
+  });
+
+  const linkedTargets = await fetchQualifyingConclusionRowsByIds({
+    userId: args.userId,
+    db: args.db,
+    ids: linkedRows.map((row) => row.targetId),
+  });
+  if (linkedTargets.length > 0) {
+    return linkedTargets
+      .map((row) => ({
+        row,
+        score: scoreQualifyingConclusion({
+          row,
+          queryTokens: args.queryTokens,
+          linkedIds: new Set(linkedTargets.map((target) => target.id)),
+        }),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, args.limit)
+      .map(({ row }) => toQualifyingConclusion(row));
+  }
+
+  const references = (await args.db.referenceItem.findMany({
+    where: {
+      userId: args.userId,
+      id: { in: [...selectedReferenceIds] },
+      status: ReferenceStatus.active,
+    },
+    select: {
+      id: true,
+      userId: true,
+      type: true,
+      confidence: true,
+      status: true,
+      statement: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  })) as LegacyReferenceCandidateRow[];
+
+  const ranked = references
+    .filter((row) => row.userId === args.userId)
+    .filter((row) => row.status === ReferenceStatus.active)
+    .filter((row) => isQualityMindContextStatement(row.statement))
+    .map((row) => ({
+      row,
+      score: scoreLegacyReference({
+        row,
+        queryTokens: args.queryTokens,
+        selectedReferenceIds,
+      }),
+    }))
+    .filter((entry) => entry.score > 0 || selectedReferenceIds.has(entry.row.id))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, Math.min(args.limit, MAX_LEGACY_REFERENCE_MATERIALIZED_TARGETS));
+
+  const materialized: ExploreQualifyingUserMapConclusion[] = [];
+  for (const { row } of ranked) {
+    const target = await ensureLegacyReferenceMaterializedConclusion({
+      userId: args.userId,
+      db: args.db,
+      reference: row,
+    });
+    if (target) materialized.push(target);
+  }
+
+  return materialized;
 }
 
 function afterSummaryEstablishedByConversationAndEvidence(args: {
@@ -253,9 +672,9 @@ export async function resolveQualifyingExploreUserMapConclusions(args: {
   const limit = args.limit ?? MAX_QUALIFYING_TARGETS;
   const queryTokens = tokenizeForExploreGrounding(args.queryText);
 
-  const sourceLinkedIds = args.ownedSources
+  const sourceLinkedIds = new Set(args.ownedSources
     .filter((source) => source.sourceType === "usermap_conclusion")
-    .map((source) => source.sourceId);
+    .map((source) => source.sourceId));
 
   const rows = await args.db.userMapConclusion.findMany({
     where: {
@@ -297,23 +716,23 @@ export async function resolveQualifyingExploreUserMapConclusions(args: {
       })
     )
     .map((row) => {
-      const tokens = tokenizeForExploreGrounding(`${row.title} ${row.summary}`);
-      const tokenSet = new Set(tokens);
-      let overlap = 0;
-      for (const token of queryTokens) {
-        if (tokenSet.has(token)) overlap += 1;
-      }
-      const linkedBoost = sourceLinkedIds.includes(row.id) ? 3 : 0;
-      return { row, score: overlap + linkedBoost };
+      return {
+        row,
+        score: scoreQualifyingConclusion({
+          row,
+          queryTokens,
+          linkedIds: sourceLinkedIds,
+        }),
+      };
     })
-    .filter((entry) => entry.score > 0 || sourceLinkedIds.includes(entry.row.id))
+    .filter((entry) => entry.score > 0 || sourceLinkedIds.has(entry.row.id))
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
   // If lexical overlap found nothing but owned UMC sources exist, include those.
-  if (scored.length === 0 && sourceLinkedIds.length > 0) {
+  if (scored.length === 0 && sourceLinkedIds.size > 0) {
     return rows
-      .filter((row) => sourceLinkedIds.includes(row.id))
+      .filter((row) => sourceLinkedIds.has(row.id))
       .filter((row) =>
         isQualifyingExploreUserMapConclusion({
           visibility: row.visibility,
@@ -334,14 +753,24 @@ export async function resolveQualifyingExploreUserMapConclusions(args: {
       }));
   }
 
-  return scored.map(({ row }) => ({
-    id: row.id,
-    title: row.title,
-    summary: row.summary,
-    status: row.status,
-    visibility: row.visibility,
-    evidenceCount: row.evidenceCount,
-  }));
+  if (scored.length > 0) {
+    return scored.map(({ row }) => ({
+      id: row.id,
+      title: row.title,
+      summary: row.summary,
+      status: row.status,
+      visibility: row.visibility,
+      evidenceCount: row.evidenceCount,
+    }));
+  }
+
+  return resolveLegacyReferenceMapUnderstandingTargets({
+    userId: args.userId,
+    db: args.db,
+    queryTokens,
+    ownedSources: args.ownedSources,
+    limit,
+  });
 }
 
 export async function verifyExploreMovementSessionOwnership(args: {

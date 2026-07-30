@@ -5,16 +5,15 @@
 
 import {
   PrismaClient,
+  ReferenceConfidence,
+  ReferenceStatus,
+  ReferenceType,
   SessionSurfaceType,
-  UserMapConclusionArea,
-  UserMapConclusionStatus,
-  UserMapConclusionVisibility,
-  UserMapConfidenceLevel,
 } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 
-export const LIVE_TEA_UMC_TITLE = "Tea preference";
 export const LIVE_TEA_UMC_SUMMARY = "I don't like tea anymore";
+export const LIVE_TEA_UMC_TITLE = LIVE_TEA_UMC_SUMMARY;
 export const LIVE_TEA_CORRECTION_MESSAGE =
   "Correction: I like tea again now. Please update your understanding of me.";
 export const LIVE_TEA_JOURNAL_TITLE = "Tea preference note";
@@ -26,28 +25,24 @@ function id(prefix: string): string {
 }
 
 /**
- * Existing map conclusion + journal evidence only. Asserts zero proposals exist
- * for the user after seed.
+ * Existing Map-visible legacy memory + journal evidence only. Asserts zero
+ * UMC/canonical/proposal rows exist for the user after seed.
  */
 export async function seedLiveTeaMapUnderstanding(args: {
   userId: string;
   db: PrismaClient;
 }): Promise<{
-  umcId: string;
+  referenceItemId: string;
   journalId: string;
   conversationId: string;
 }> {
-  const umc = await args.db.userMapConclusion.create({
+  const reference = await args.db.referenceItem.create({
     data: {
       userId: args.userId,
-      area: UserMapConclusionArea.operating_logic,
-      status: UserMapConclusionStatus.emerging,
-      visibility: UserMapConclusionVisibility.user_visible,
-      title: LIVE_TEA_UMC_TITLE,
-      summary: LIVE_TEA_UMC_SUMMARY,
-      confidenceScore: 0.6,
-      confidenceLevel: UserMapConfidenceLevel.medium,
-      evidenceCount: 1,
+      type: ReferenceType.preference,
+      confidence: ReferenceConfidence.medium,
+      status: ReferenceStatus.active,
+      statement: LIVE_TEA_UMC_SUMMARY,
     },
   });
 
@@ -79,5 +74,21 @@ export async function seedLiveTeaMapUnderstanding(args: {
     );
   }
 
-  return { umcId: umc.id, journalId, conversationId };
+  const umcCount = await args.db.userMapConclusion.count({
+    where: { userId: args.userId },
+  });
+  if (umcCount !== 0) {
+    throw new Error(`Live tea seed must not create UMC rows; found ${umcCount}`);
+  }
+
+  const canonicalConceptCount = await args.db.canonicalConcept.count({
+    where: { userId: args.userId },
+  });
+  if (canonicalConceptCount !== 0) {
+    throw new Error(
+      `Live tea seed must not create canonical concepts; found ${canonicalConceptCount}`,
+    );
+  }
+
+  return { referenceItemId: reference.id, journalId, conversationId };
 }
