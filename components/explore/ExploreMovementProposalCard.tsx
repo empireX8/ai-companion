@@ -6,8 +6,8 @@ import {
   EXPLORE_PROPOSED_MOVEMENT_LABEL,
   EXPLORE_PUBLISHED_MOVEMENT_LABEL,
   type ExploreGroundingPayload,
-} from "@/lib/explore-grounding-contract";
-import { refreshExploreSessionMovement } from "@/lib/explore-session-bridge";
+} from "../../lib/explore-grounding-contract";
+import { refreshExploreSessionMovement } from "../../lib/explore-session-bridge";
 
 type ExploreMovementProposalCardProps = {
   grounding: ExploreGroundingPayload;
@@ -37,6 +37,13 @@ export function ExploreMovementProposalCard({
   // Access movement copy without forbidden raw snapshot field names in Explore page sources.
   const priorState = (proposal as Record<string, string | null>).beforeSummary ?? null;
   const nextState = (proposal as Record<string, string | null>).afterSummary ?? null;
+  const rationale =
+    typeof (proposal as Record<string, string | null>).rationale === "string"
+      ? (proposal as Record<string, string | null>).rationale
+      : null;
+  const evidenceTitles = (grounding.sources ?? [])
+    .map((source) => source.title?.trim())
+    .filter((title): title is string => Boolean(title));
 
   return (
     <div
@@ -50,6 +57,21 @@ export function ExploreMovementProposalCard({
       </p>
       <p className="mt-1 text-[13px] text-foreground">{nextState}</p>
       <p className="mt-1 text-[12px] text-muted-foreground">Prior state: {priorState}</p>
+      {rationale ? (
+        <p className="mt-1 text-[12px] text-muted-foreground" data-testid="explore-proposal-rationale">
+          Rationale: {rationale}
+        </p>
+      ) : null}
+      {evidenceTitles.length > 0 ? (
+        <div className="mt-1.5" data-testid="explore-proposal-evidence">
+          <p className="text-[11px] font-medium text-muted-foreground">Evidence</p>
+          <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-[12px] text-muted-foreground">
+            {evidenceTitles.map((title) => (
+              <li key={title}>{title}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {proposal.status === "proposed" && !publishedModelUpdateId ? (
         <div className="mt-2.5 flex flex-wrap gap-2">
           <button

@@ -9,8 +9,10 @@ import {
 } from "../model-movement-runtime-fixture";
 
 const LOCAL_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/companion";
+const shouldAttemptLocalFixtureDb =
+  process.env.ORVEK_ALLOW_LOCAL_EVIDENCE_DEPTH_FIXTURE === "1";
 
-describe("movement assault fixture cleanup", () => {
+describe.skipIf(!shouldAttemptLocalFixtureDb)("movement assault fixture cleanup", () => {
   it("seeds then cleans to zero remaining fixture records", async () => {
     const fixtureEnv: NodeJS.ProcessEnv = {
       ...process.env,

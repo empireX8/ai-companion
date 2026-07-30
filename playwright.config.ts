@@ -7,7 +7,7 @@ const DESKTOP_PARITY_READY_URL = `${DESKTOP_PARITY_BASE_URL}/sign-in`;
 
 export default defineConfig({
   testDir: "./scripts",
-  testMatch: /(?:v0-route-smoke|movement-report-completion|durable-actions-assault|explore-grounding-movement-assault|explore-send-readiness-isolated|investigations-production-assault|desktop-production-parity-closure|desktop-frozen-reference-inspector-restoration|contradiction-final-production-audit|orvek-canonical-model-authority-phase6)\.playwright\.ts/,
+  testMatch: /(?:v0-route-smoke|movement-report-completion|durable-actions-assault|explore-grounding-movement-assault|explore-send-readiness-isolated|investigations-production-assault|desktop-production-parity-closure|desktop-frozen-reference-inspector-restoration|contradiction-final-production-audit|orvek-canonical-model-authority-phase6|live-canonical-explore-proposal)\.playwright\.ts/,
   timeout: process.env.PHASE6_MANAGE_SERVER === "1" ? 1_200_000 : 300_000,
   retries: 0,
   expect: {

@@ -68,9 +68,10 @@ describe("explore movement semantic restoration source assertions", () => {
         encoding: "utf8",
       }
     );
+    // ExploreMovementProposalCard may change for live proposal review surfacing
+    // (rationale/evidence/Publish). Keep adjacent shell strips untouched.
     const shellFiles = [
       "components/orvek-v0/pages/explore.tsx",
-      "components/explore/ExploreMovementProposalCard.tsx",
       "components/explore/ExploreConversationReviewStrip.tsx",
       "components/explore/ExploreModelMovementStrip.tsx",
     ];

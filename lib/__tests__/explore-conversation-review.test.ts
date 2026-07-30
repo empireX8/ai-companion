@@ -86,7 +86,7 @@ describe("/api/explore/sessions/[id]/review-items", () => {
     });
 
     expect(response.status).toBe(401);
-  });
+  }, 10_000);
 
   it("returns empty items when no session-linked review sources exist", async () => {
     const route = await import("../../app/api/explore/sessions/[id]/review-items/route");

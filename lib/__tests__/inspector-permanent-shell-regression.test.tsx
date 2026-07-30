@@ -144,6 +144,19 @@ vi.mock("@/components/orvek-v0/durable-user-action-controls", async () => {
   ];
 
   return {
+    supportsCanonicalProposeCorrection: (object: OrvekObject) =>
+      object.inspectorObjectType === "canonical_concept",
+    CanonicalProposeCorrectionControls: ({ object }: { object: OrvekObject }) =>
+      createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "canonical-propose-correction-button",
+          "data-shell-item": "inspector-canonical-correction-action",
+          "data-live-object-id": object.id,
+        },
+        "Propose correction",
+      ),
     supportsDurableCorrection: () => true,
     DurableCorrectionControls: ({ object }: { object: OrvekObject }) =>
       createElement(

@@ -4,11 +4,13 @@ import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { useCanonicalData } from "@/components/orvek-v0-canonical/canonical-data-context"
 import { minimumPermanentSlots } from "@/components/orvek-v0-canonical/permanent-presentation"
+import { ExploreMovementProposalCard } from "../../explore/ExploreMovementProposalCard"
 import { useOrvekData } from "@/lib/orvek-v0/data-provider"
 import { useOrvekPageHandlers } from "@/lib/orvek-v0/page-handlers"
 import {
   formatCanonicalCorrectionContextCopy,
-} from "@/lib/canonical-correction-handoff"
+} from "../../../lib/canonical-correction-handoff"
+import type { ExploreGroundingPayload } from "../../../lib/explore-grounding-contract"
 import { useWorkbench } from "@/components/orvek-v0/store"
 import { Chip, SectionLabel } from "@/components/orvek-v0/primitives"
 import { ArrowRight, PanelRight, Send, Sparkles } from "lucide-react"
@@ -121,6 +123,7 @@ function FreeExplore() {
   const data = useOrvekData()
   const exploreHandlers = useOrvekPageHandlers().explore
   const grounding = getObjects(exploreGroundingIds)
+  const [publishedModelUpdateId, setPublishedModelUpdateId] = useState<string | null>(null)
 
   const referenceSurface = data.referenceSurface === true
   const liveMessages = data.exploreMessages ?? []
@@ -135,10 +138,29 @@ function FreeExplore() {
       : null
   const conversationSlots = minimumPermanentSlots(liveMessages, 2)
   const groundingSlots = minimumPermanentSlots(grounding, 5)
+
+  const latestGroundingRaw = (data.exploreLatestGrounding ?? null) as ExploreGroundingPayload | null
+  const latestGrounding: ExploreGroundingPayload | null =
+    latestGroundingRaw && publishedModelUpdateId
+      ? {
+          ...latestGroundingRaw,
+          movementProposal: {
+            ...latestGroundingRaw.movementProposal,
+            status: "published",
+            modelUpdateId: publishedModelUpdateId,
+          },
+        }
+      : latestGroundingRaw
+  const hasProposedMovement =
+    latestGrounding?.movementProposal.status === "proposed" ||
+    latestGrounding?.movementProposal.status === "published" ||
+    Boolean(publishedModelUpdateId)
+
   const movementAvailable =
     useFixtureConversation ||
     Boolean(exploreHandlers?.onOpenInspector) ||
-    (data.exploreMovement?.length ?? 0) > 0
+    (data.exploreMovement?.length ?? 0) > 0 ||
+    hasProposedMovement
 
   const detectionCopy =
     data.exploreLiveDetectionCopy ??
@@ -146,9 +168,14 @@ function FreeExplore() {
       ? "Orvek is reading the model · 1 receipt extracted · 1 question detected"
       : isLoading
         ? "Loading model activity…"
-        : "No model activity is ready for review.")
+        : hasProposedMovement
+          ? "A proposed model update is ready for review."
+          : "No model activity is ready for review.")
   const detectionActive =
-    referenceSurface || Boolean(data.exploreLiveDetectionCopy) || isLoading
+    referenceSurface ||
+    Boolean(data.exploreLiveDetectionCopy) ||
+    isLoading ||
+    hasProposedMovement
 
   const draft = data.explore?.composerDraft ?? ""
 
@@ -222,6 +249,16 @@ function FreeExplore() {
         </div>
       </div>
 
+      {!useFixtureConversation && latestGrounding ? (
+        <ExploreMovementProposalCard
+          grounding={latestGrounding}
+          sessionId={data.freeExploreChatSessionId ?? null}
+          publishedModelUpdateId={publishedModelUpdateId}
+          onPublished={(modelUpdateId) => setPublishedModelUpdateId(modelUpdateId)}
+          onRejected={() => setPublishedModelUpdateId(null)}
+        />
+      ) : null}
+
       {/* live detection line */}
       <div
         className="mt-3 flex items-center gap-2 text-[12px] text-muted-foreground"
@@ -267,7 +304,9 @@ function FreeExplore() {
             <>
               {isLoading
                 ? "Loading possible model updates…"
-                : "No model update is ready for review."}
+                : hasProposedMovement
+                  ? "A proposed model update is ready for review."
+                  : "No model update is ready for review."}
             </>
           )}
         </span>

@@ -38,8 +38,12 @@ describe("EvidencePointerSurfacingRationale schema model contracts", () => {
   it("pins one rationale row per source object per user", () => {
     const rationale = modelBlock("EvidencePointerSurfacingRationale");
 
-    expect(rationale).toContain("@@unique([userId, sourceObjectType, sourceObjectId])");
-    expect(rationale).toContain("@@index([userId, sourceObjectType, sourceObjectId])");
+    expect(rationale).toContain(
+      '@@unique([userId, sourceObjectType, sourceObjectId], map: "epsr_user_src_uniq")',
+    );
+    expect(rationale).toContain(
+      '@@index([userId, sourceObjectType, sourceObjectId], map: "epsr_user_src_idx")',
+    );
   });
 
   it("reuses UnderstandingLinkSourceType for durable source identity", () => {
@@ -71,9 +75,8 @@ describe("EvidencePointerSurfacingRationale migration SQL contracts", () => {
   });
 
   it("pins source lookup uniqueness in migration SQL", () => {
-    expect(migrationSql).toContain(
-      "EvidencePointerSurfacingRationale_userId_sourceObjectType_sourceObjectId_key",
-    );
+    expect(migrationSql).toContain("epsr_user_src_uniq");
+    expect(migrationSql).toContain("epsr_user_src_idx");
   });
 });
 

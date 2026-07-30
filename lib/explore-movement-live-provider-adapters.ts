@@ -8,6 +8,7 @@
 
 import { z } from "zod";
 
+import { isCanonicalModelAuthorityEnabledForUser } from "./canonical-model-authority-flag";
 import {
   EXPLORE_MOVEMENT_OPENAI_STRICT_ENVELOPE_KEY,
   EXPLORE_MOVEMENT_REFEREE_OUTCOMES,
@@ -152,6 +153,24 @@ export function isExploreMovementSemanticEnabled(
   return normalised === "1" || normalised === "true";
 }
 
+/**
+ * Live Explore semantic adjudication runs when the global semantic flag is on,
+ * or when Canonical Model Authority V1 is enabled for this exact user.
+ * Gate-off / non-allowlisted users keep the previous fail-closed default.
+ */
+export function isExploreMovementSemanticEnabledForUser(
+  userId: string,
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  if (isExploreMovementSemanticEnabled(env)) {
+    return true;
+  }
+
+  // Lazy import path avoided: keep this module free of circular deps by
+  // accepting the canonical gate check via a tiny local re-export surface.
+  return isCanonicalModelAuthorityEnabledForUser(userId, env);
+}
+
 export function openaiApiKeyPresent(
   env: Record<string, string | undefined> = process.env
 ): boolean {
@@ -183,11 +202,15 @@ function resolveTimeoutMs(
 /**
  * Resolve provider config only when the feature gate is on and credentials exist.
  * Does not construct runners.
+ *
+ * `forceEnabled` is used after a caller already decided semantic movement should
+ * run (global flag or canonical allowlisted user).
  */
 export function resolveExploreMovementProviderConfig(
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
+  options?: { forceEnabled?: boolean },
 ): ExploreMovementProviderConfigSuccess | ExploreMovementProviderConfigFailure {
-  if (!isExploreMovementSemanticEnabled(env)) {
+  if (!options?.forceEnabled && !isExploreMovementSemanticEnabled(env)) {
     return {
       ok: false,
       errorCode: "feature_disabled",

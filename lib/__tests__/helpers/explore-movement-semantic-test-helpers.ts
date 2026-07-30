@@ -6,6 +6,7 @@
 import {
   ExploreMovementProposalStatus,
   UnderstandingLinkTargetType,
+  UserMapConfidenceLevel,
   UserMapConclusionStatus,
   UserMapConclusionVisibility,
   type PrismaClient,
@@ -319,6 +320,9 @@ export function makeSemanticTestDb(args?: {
     summary: string;
     status?: UserMapConclusionStatus;
     visibility?: UserMapConclusionVisibility;
+    confidenceScore?: number;
+    confidenceLevel?: UserMapConfidenceLevel;
+    updatedAt?: Date;
     supersededById?: string | null;
     candidateLifecycleStatus?: null;
     evidenceCount?: number;
@@ -366,6 +370,9 @@ export function makeSemanticTestDb(args?: {
       "Evening recovery boundary weakens when meetings stack without a hard stop.",
     status: UserMapConclusionStatus.supported,
     visibility: UserMapConclusionVisibility.user_visible,
+    confidenceScore: 0.72,
+    confidenceLevel: UserMapConfidenceLevel.medium,
+    updatedAt: new Date("2026-07-01T12:00:00.000Z"),
     supersededById: null,
     candidateLifecycleStatus: null,
     evidenceCount: 3,

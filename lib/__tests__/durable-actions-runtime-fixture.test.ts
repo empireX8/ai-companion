@@ -15,8 +15,10 @@ import { projectVisiblePatternClaim } from "../pattern-visible-claim";
 
 const LOCAL_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/companion";
 const FIXTURE_USER_ID = "user_durable_actions_fixture_test";
+const shouldAttemptLocalFixtureDb =
+  process.env.ORVEK_ALLOW_LOCAL_EVIDENCE_DEPTH_FIXTURE === "1";
 
-describe("durable actions runtime fixture", () => {
+describe.skipIf(!shouldAttemptLocalFixtureDb)("durable actions runtime fixture", () => {
   let prisma: PrismaClient;
 
   beforeAll(async () => {

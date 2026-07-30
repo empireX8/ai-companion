@@ -24,7 +24,7 @@ import {
 } from "./explore-grounding-retrieval";
 import {
   createExploreMovementLiveAdapters,
-  isExploreMovementSemanticEnabled,
+  isExploreMovementSemanticEnabledForUser,
   resolveExploreMovementProviderConfig,
   type ExploreMovementCallBudget,
 } from "./explore-movement-live-provider-adapters";
@@ -141,6 +141,30 @@ function insufficientMovement(
   };
 }
 
+function logExploreMovementInsufficientEvidence(args: {
+  reason: string;
+  userId: string;
+  conversationId: string;
+  assistantMessageId?: string;
+  userMessageId?: string;
+  sourceCount?: number;
+  candidateCount?: number;
+  targetCount?: number;
+  detail?: string | null;
+}): void {
+  console.log("[EXPLORE_MOVEMENT_INSUFFICIENT_EVIDENCE]", {
+    reason: args.reason,
+    userId: args.userId,
+    conversationId: args.conversationId,
+    assistantMessageId: args.assistantMessageId,
+    userMessageId: args.userMessageId,
+    sourceCount: args.sourceCount,
+    candidateCount: args.candidateCount,
+    targetCount: args.targetCount,
+    detail: args.detail ?? undefined,
+  });
+}
+
 async function trySemanticMovementProposal(args: {
   userId: string;
   db: PrismaClient;
@@ -156,9 +180,18 @@ async function trySemanticMovementProposal(args: {
   proposalCreated: boolean;
 }> {
   const enabled =
-    args.semantic?.semanticEnabled ?? isExploreMovementSemanticEnabled();
+    args.semantic?.semanticEnabled ??
+    isExploreMovementSemanticEnabledForUser(args.userId);
 
   if (!enabled) {
+    logExploreMovementInsufficientEvidence({
+      reason: "semantic_gate_disabled",
+      userId: args.userId,
+      conversationId: args.conversationId,
+      assistantMessageId: args.assistantMessageId,
+      userMessageId: args.userMessageId,
+      sourceCount: args.sources.length,
+    });
     return {
       movementProposal: insufficientMovement(),
       proposalCreated: false,
@@ -173,6 +206,14 @@ async function trySemanticMovementProposal(args: {
     assistantMessageId: args.assistantMessageId,
   });
   if (!ownership.ok) {
+    logExploreMovementInsufficientEvidence({
+      reason: `ownership_${ownership.reason}`,
+      userId: args.userId,
+      conversationId: args.conversationId,
+      assistantMessageId: args.assistantMessageId,
+      userMessageId: args.userMessageId,
+      sourceCount: args.sources.length,
+    });
     return {
       movementProposal: insufficientMovement(),
       proposalCreated: false,
@@ -187,6 +228,15 @@ async function trySemanticMovementProposal(args: {
   });
 
   if (qualifyingConclusions.length === 0) {
+    logExploreMovementInsufficientEvidence({
+      reason: "no_qualifying_target",
+      userId: args.userId,
+      conversationId: args.conversationId,
+      assistantMessageId: args.assistantMessageId,
+      userMessageId: args.userMessageId,
+      sourceCount: args.sources.length,
+      targetCount: 0,
+    });
     return {
       movementProposal: insufficientMovement(),
       proposalCreated: false,
@@ -202,15 +252,37 @@ async function trySemanticMovementProposal(args: {
 
   if (!adjudicatorRunner || !objectivityReferee) {
     if (args.semantic?.useInjectedProvidersOnly) {
+      logExploreMovementInsufficientEvidence({
+        reason: "injected_providers_missing",
+        userId: args.userId,
+        conversationId: args.conversationId,
+        assistantMessageId: args.assistantMessageId,
+        userMessageId: args.userMessageId,
+        sourceCount: args.sources.length,
+        targetCount: qualifyingConclusions.length,
+      });
       return {
         movementProposal: insufficientMovement(),
         proposalCreated: false,
       };
     }
 
-    const config = resolveExploreMovementProviderConfig();
+    const config = resolveExploreMovementProviderConfig(process.env, {
+      forceEnabled: true,
+    });
     if (!config.ok) {
       // Chat and grounding still succeed; movement fails closed.
+      console.log("[EXPLORE_MOVEMENT_PROVIDER_CONFIG]", config.errorCode, config.message);
+      logExploreMovementInsufficientEvidence({
+        reason: `provider_config_${config.errorCode}`,
+        userId: args.userId,
+        conversationId: args.conversationId,
+        assistantMessageId: args.assistantMessageId,
+        userMessageId: args.userMessageId,
+        sourceCount: args.sources.length,
+        targetCount: qualifyingConclusions.length,
+        detail: config.message,
+      });
       return {
         movementProposal: insufficientMovement(),
         proposalCreated: false,
@@ -231,6 +303,15 @@ async function trySemanticMovementProposal(args: {
       adjudicatorModelId = adapters.adjudicatorModelId;
       refereeModelId = adapters.refereeModelId;
     } catch {
+      logExploreMovementInsufficientEvidence({
+        reason: "provider_adapter_creation_failed",
+        userId: args.userId,
+        conversationId: args.conversationId,
+        assistantMessageId: args.assistantMessageId,
+        userMessageId: args.userMessageId,
+        sourceCount: args.sources.length,
+        targetCount: qualifyingConclusions.length,
+      });
       return {
         movementProposal: insufficientMovement(),
         proposalCreated: false,
@@ -239,6 +320,15 @@ async function trySemanticMovementProposal(args: {
   }
 
   if (!adjudicatorRunner || !objectivityReferee) {
+    logExploreMovementInsufficientEvidence({
+      reason: "providers_unresolved",
+      userId: args.userId,
+      conversationId: args.conversationId,
+      assistantMessageId: args.assistantMessageId,
+      userMessageId: args.userMessageId,
+      sourceCount: args.sources.length,
+      targetCount: qualifyingConclusions.length,
+    });
     return {
       movementProposal: insufficientMovement(),
       proposalCreated: false,
@@ -265,6 +355,16 @@ async function trySemanticMovementProposal(args: {
   });
 
   if (!adjudication.ok) {
+    logExploreMovementInsufficientEvidence({
+      reason: `adjudication_${adjudication.code}`,
+      userId: args.userId,
+      conversationId: args.conversationId,
+      assistantMessageId: args.assistantMessageId,
+      userMessageId: args.userMessageId,
+      sourceCount: args.sources.length,
+      targetCount: qualifyingConclusions.length,
+      detail: adjudication.rationale,
+    });
     return {
       movementProposal: insufficientMovement({
         rationale:
@@ -280,6 +380,16 @@ async function trySemanticMovementProposal(args: {
     adjudication.adjudicatorCalls !== EXPLORE_MOVEMENT_SUCCESS_ADJUDICATOR_CALLS ||
     adjudication.refereeCalls !== EXPLORE_MOVEMENT_SUCCESS_REFEREE_CALLS
   ) {
+    logExploreMovementInsufficientEvidence({
+      reason: "semantic_call_count_mismatch",
+      userId: args.userId,
+      conversationId: args.conversationId,
+      assistantMessageId: args.assistantMessageId,
+      userMessageId: args.userMessageId,
+      sourceCount: args.sources.length,
+      targetCount: qualifyingConclusions.length,
+      detail: `adjudicator=${adjudication.adjudicatorCalls};referee=${adjudication.refereeCalls}`,
+    });
     return {
       movementProposal: insufficientMovement(),
       proposalCreated: false,
@@ -291,6 +401,15 @@ async function trySemanticMovementProposal(args: {
     evidenceSourceIds: adjudication.evidenceSourceIds,
   });
   if (!cited.ok) {
+    logExploreMovementInsufficientEvidence({
+      reason: "cited_sources_unresolvable",
+      userId: args.userId,
+      conversationId: args.conversationId,
+      assistantMessageId: args.assistantMessageId,
+      userMessageId: args.userMessageId,
+      sourceCount: args.sources.length,
+      targetCount: qualifyingConclusions.length,
+    });
     return {
       movementProposal: insufficientMovement(),
       proposalCreated: false,
@@ -313,6 +432,15 @@ async function trySemanticMovementProposal(args: {
       },
     });
   } catch {
+    logExploreMovementInsufficientEvidence({
+      reason: "proposal_provenance_invalid",
+      userId: args.userId,
+      conversationId: args.conversationId,
+      assistantMessageId: args.assistantMessageId,
+      userMessageId: args.userMessageId,
+      sourceCount: args.sources.length,
+      targetCount: qualifyingConclusions.length,
+    });
     return {
       movementProposal: insufficientMovement(),
       proposalCreated: false,
@@ -334,7 +462,18 @@ async function trySemanticMovementProposal(args: {
       userFacingSummary: adjudication.decision.userFacingSummary,
       provenance,
     });
-  } catch {
+  } catch (error) {
+    console.log("[EXPLORE_MOVEMENT_PROPOSAL_CREATE_ERROR]", error);
+    logExploreMovementInsufficientEvidence({
+      reason: "proposal_create_failed",
+      userId: args.userId,
+      conversationId: args.conversationId,
+      assistantMessageId: args.assistantMessageId,
+      userMessageId: args.userMessageId,
+      sourceCount: args.sources.length,
+      targetCount: qualifyingConclusions.length,
+      detail: error instanceof Error ? error.message : String(error),
+    });
     return {
       movementProposal: insufficientMovement(),
       proposalCreated: false,
@@ -391,8 +530,9 @@ export async function orchestrateExploreReplyGrounding(args: {
   userMessageContent: string;
   assistantReplyContent: string;
   /**
-   * Retained for caller compatibility. Semantic proposal creation is gated by
-   * ORVEK_EXPLORE_MOVEMENT_SEMANTIC_ENABLED (default off) plus injected deps.
+   * Retained for caller compatibility. Semantic proposal creation runs when
+   * ORVEK_EXPLORE_MOVEMENT_SEMANTIC_ENABLED is on, or when Canonical Model
+   * Authority V1 is enabled for the user (exact allowlist hit).
    */
   createProposalWhenSufficient?: boolean;
   /** Injected semantic adjudicator/referee for tests. */
@@ -411,6 +551,17 @@ export async function orchestrateExploreReplyGrounding(args: {
   });
 
   if (sources.length === 0) {
+    if (candidates.length > 0) {
+      logExploreMovementInsufficientEvidence({
+        reason: "no_grounding_sources_selected",
+        userId: args.userId,
+        conversationId: args.conversationId,
+        assistantMessageId: args.assistantMessageId,
+        userMessageId: args.userMessageId,
+        sourceCount: 0,
+        candidateCount: candidates.length,
+      });
+    }
     const payload = emptyExploreGroundingPayload({
       conversationId: args.conversationId,
       assistantMessageId: args.assistantMessageId,
@@ -442,10 +593,30 @@ export async function orchestrateExploreReplyGrounding(args: {
       });
       movementProposal = semanticResult.movementProposal;
       proposalCreated = semanticResult.proposalCreated;
-    } catch {
+    } catch (error) {
+      logExploreMovementInsufficientEvidence({
+        reason: "semantic_movement_unhandled_exception",
+        userId: args.userId,
+        conversationId: args.conversationId,
+        assistantMessageId: args.assistantMessageId,
+        userMessageId: args.userMessageId,
+        sourceCount: sources.length,
+        candidateCount: candidates.length,
+        detail: error instanceof Error ? error.message : String(error),
+      });
       movementProposal = insufficientMovement();
       proposalCreated = false;
     }
+  } else {
+    logExploreMovementInsufficientEvidence({
+      reason: "proposal_creation_disabled",
+      userId: args.userId,
+      conversationId: args.conversationId,
+      assistantMessageId: args.assistantMessageId,
+      userMessageId: args.userMessageId,
+      sourceCount: sources.length,
+      candidateCount: candidates.length,
+    });
   }
 
   return {

@@ -49,14 +49,13 @@ describe("explore fixed-semantics containment source regression", () => {
     expect(publishRoute).toContain('status: "blocked"');
   });
 
-  it("does not alter Explore shell presentation files in this containment slice", () => {
+  it("does not alter legacy Explore shell presentation files in this containment slice", () => {
     const changed = execSync("git diff --name-only HEAD && git ls-files --others --exclude-standard", {
       cwd: ROOT,
       encoding: "utf8",
     });
     const shellFiles = [
       "components/orvek-v0/pages/explore.tsx",
-      "components/explore/ExploreMovementProposalCard.tsx",
       "components/explore/ExploreConversationReviewStrip.tsx",
     ];
     for (const relativePath of shellFiles) {
