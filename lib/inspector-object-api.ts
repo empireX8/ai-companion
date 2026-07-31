@@ -197,7 +197,11 @@ export async function fetchInspectorModelUpdateDetail(
   }
   const payload = (await response.json()) as Partial<InspectorModelUpdateDetail>;
   return payload.item && payload.report
-    ? ({ item: payload.item, report: payload.report } as InspectorModelUpdateDetail)
+    ? ({
+        item: payload.item,
+        report: payload.report,
+        canonicalInspectorProjection: payload.canonicalInspectorProjection ?? null,
+      } as InspectorModelUpdateDetail)
     : null;
 }
 
