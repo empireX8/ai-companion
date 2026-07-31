@@ -105,6 +105,160 @@ function isProceduralPacketSummary(text: string): boolean {
   )
 }
 
+function normalizeRole(value: string | null | undefined): string {
+  return value?.trim().toLowerCase() ?? ""
+}
+
+function evidenceLabel(item: InspectorEvidenceLinkItem): string | null {
+  const card = projectInspectorEvidenceCard(item)
+  const text = firstMeaningfulModelUpdateText([
+    card.summary,
+    card.title,
+    item.evidenceSummaryLabel,
+    item.objectTitle,
+  ])
+  if (!text) return null
+  const target = sanitizeInspectorDisplayText(item.evidenceTargetLabel)
+  if (!target) return text
+  return text.toLowerCase().startsWith(target.toLowerCase())
+    ? text
+    : `${target} · ${text}`
+}
+
+function buildCanonicalProjectionViewModel(input: {
+  obj: OrvekObject
+  detail: InspectorModelUpdateDetail
+  resolveSelectionId: (
+    objectType: string | null | undefined,
+    objectId: string | null | undefined,
+  ) => string | null
+  getObjectTitle: (id: string) => string | undefined
+}): ProductionModelUpdateCanonicalViewModel | null {
+  const projection = input.detail.canonicalInspectorProjection
+  if (!projection) return null
+
+  const satellites: Record<string, OrvekObject> = {}
+  const receiptIds: string[] = []
+  const contextIds: string[] = []
+  const relatedIds: string[] = []
+  const usedIds = new Set<string>()
+  const seenReceipts = new Set<string>()
+  const evidencePool = dedupeInspectorEvidenceLinks([
+    ...projection.directMovementEvidence,
+    ...projection.resultingRevisionEvidence,
+  ])
+
+  const addEvidenceSatellite = (
+    item: InspectorEvidenceLinkItem,
+    index: number,
+    bucket: "receipt" | "context",
+  ) => {
+    const title = evidenceLabel(item)
+    if (!title) return
+    const key = `${bucket}:${title.toLowerCase()}`
+    if (seenReceipts.has(key)) return
+    seenReceipts.add(key)
+    const selectionId = `mu-${bucket}-${input.obj.id}-${index}`
+    const navigationId = input.resolveSelectionId(item.sourceType, item.sourceId) ?? selectionId
+    if (bucket === "context") {
+      contextIds.push(selectionId)
+    } else {
+      receiptIds.push(selectionId)
+    }
+    if (!satellites[selectionId]) {
+      satellites[selectionId] = {
+        id: selectionId,
+        type: bucket === "context" ? "context" : "receipt",
+        title,
+        sourceText: title,
+        inspectorObjectType: item.sourceType ?? undefined,
+        inspectorObjectId: item.sourceId ?? undefined,
+        ...(navigationId !== selectionId ? { relatedIds: [navigationId] } : {}),
+      }
+    }
+    if (navigationId !== selectionId && !satellites[navigationId]) {
+      satellites[navigationId] = {
+        id: navigationId,
+        type: "receipt",
+        title:
+          firstMeaningfulModelUpdateText([
+            item.objectTitle,
+            input.getObjectTitle(navigationId),
+            title,
+          ]) ?? title,
+        inspectorObjectType: item.sourceType ?? undefined,
+        inspectorObjectId: item.sourceId ?? undefined,
+      }
+    }
+  }
+
+  evidencePool.forEach((item, index) => {
+    addEvidenceSatellite(item, index, "receipt")
+    if (normalizeRole(item.linkRole) === "context") {
+      addEvidenceSatellite(item, index, "context")
+    }
+  })
+
+  for (const related of projection.relatedObjects) {
+    const title = firstMeaningfulModelUpdateText([
+      related.title,
+      input.getObjectTitle(related.selectionId),
+    ])
+    if (!title || usedIds.has(related.selectionId)) continue
+    usedIds.add(related.selectionId)
+    relatedIds.push(related.selectionId)
+    satellites[related.selectionId] = {
+      id: related.selectionId,
+      type: "map-object",
+      title,
+      summary: projection.currentUnderstandingNow.summary,
+      inspectorObjectType: related.inspectorObjectType,
+      inspectorObjectId: related.selectionId,
+    }
+  }
+
+  const supporting = dedupeStrings(
+    evidencePool
+      .filter((item) => normalizeRole(item.linkRole) === "supports")
+      .map(evidenceLabel)
+      .filter((value): value is string => Boolean(value)),
+  ).slice(0, 4)
+  const conflicting = dedupeStrings(
+    evidencePool
+      .filter((item) => normalizeRole(item.linkRole) === "contradicts")
+      .map(evidenceLabel)
+      .filter((value): value is string => Boolean(value)),
+  ).slice(0, 3)
+
+  const recorded = formatRecordedLabel(projection.createdAt)
+  const object: OrvekObject = {
+    ...input.obj,
+    type: "model-update",
+    title: projection.displayedTitle,
+    summary: projection.distinctSummary ?? undefined,
+    whyItMatters: projection.rationale ?? undefined,
+    whyResurfaced: undefined,
+    before: projection.before ?? undefined,
+    after: projection.after ?? undefined,
+    subtype: resolveModelUpdateShellLabel({
+      updateTypeLabel: projection.updateLabel,
+      affectedObjectTypeLabel: input.detail.item.affectedObjectTypeLabel,
+    }) ?? projection.updateLabel,
+    lastUpdated: recorded ?? input.obj.lastUpdated,
+    receiptIds: receiptIds.length > 0 ? receiptIds : undefined,
+    supporting: supporting.length > 0 ? supporting : undefined,
+    conflicting: conflicting.length > 0 ? conflicting : undefined,
+    contextIds: contextIds.length > 0 ? contextIds : undefined,
+    relatedIds: relatedIds.length > 0 ? relatedIds : undefined,
+    whatWouldChange: undefined,
+    canonicalReportId: projection.modelUpdateId,
+    inspectorObjectType: "model_update",
+    inspectorObjectId: projection.modelUpdateId,
+  }
+
+  return { object, satellites, reportId: projection.modelUpdateId }
+}
+
 /**
  * @deprecated Presentation-only helper retained for existing unit tests while
  * the canonical OrvekObject composer is the active production path.
@@ -164,6 +318,11 @@ export function composeProductionModelUpdateCanonicalViewModel(input: {
   ) => string | null
   getObjectTitle: (id: string) => string | undefined
 }): ProductionModelUpdateCanonicalViewModel {
+  const canonicalProjection = buildCanonicalProjectionViewModel(input)
+  if (canonicalProjection) {
+    return canonicalProjection
+  }
+
   const { obj, detail, modelUpdateEvidence, affectedContext, resolveSelectionId, getObjectTitle } =
     input
 

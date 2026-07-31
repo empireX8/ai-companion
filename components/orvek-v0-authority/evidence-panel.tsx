@@ -1553,6 +1553,26 @@ function useProductionModelUpdateInspector(
         affectedContext: cached?.affectedContext ?? prev.affectedContext,
       }))
 
+      if (detail.canonicalInspectorProjection) {
+        const modelUpdateEvidence = [
+          ...detail.canonicalInspectorProjection.directMovementEvidence,
+          ...detail.canonicalInspectorProjection.resultingRevisionEvidence,
+        ]
+        cacheRef.current.set(modelUpdateId, {
+          detail,
+          modelUpdateEvidence,
+          affectedContext: EMPTY_AFFECTED_OBJECT_CONTEXT,
+        })
+        setState({
+          isLoading: false,
+          isResolving: false,
+          detail,
+          modelUpdateEvidence,
+          affectedContext: EMPTY_AFFECTED_OBJECT_CONTEXT,
+        })
+        return
+      }
+
       try {
         const [modelUpdateEvidence, affectedContext] = await Promise.all([
           fetchInspectorEvidenceLinks(INSPECTOR_MODEL_UPDATE_EVIDENCE_ENDPOINT(modelUpdateId)),

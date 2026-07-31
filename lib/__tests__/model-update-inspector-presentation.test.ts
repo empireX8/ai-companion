@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import path from "node:path"
 import { describe, expect, it } from "vitest"
 
 import type {
@@ -302,6 +304,166 @@ describe("model-update inspector presentation composer", () => {
     expect(object.after).toContain("Energy drops")
     expect(reportId).toBe("mu-test")
     expect(object.canonicalReportId).toBe("mu-test")
+  })
+
+  it("uses the server-verified canonical projection without reconstructing lineage", () => {
+    const { object, satellites, reportId } =
+      composeProductionModelUpdateCanonicalViewModel({
+        obj: {
+          id: "mu-canonical",
+          type: "model-update",
+          title: "I like tea again now",
+          summary: "I like tea again now",
+          before: "Client stale before",
+          after: "Client stale after",
+        },
+        detail: {
+          item: {
+            id: "mu-canonical",
+            createdAt: "2026-07-28T12:00:00.000Z",
+            updateTypeLabel: "Conclusion Strengthened",
+            affectedObjectType: "canonical_concept_revision" as never,
+            affectedObjectTypeLabel: "Canonical model revision",
+            affectedObjectId: null,
+            affectedObjectHref: null,
+            userFacingSummary: "I like tea again now",
+          },
+          report: buildReport({
+            stronglySupportedClaims: {
+              items: [
+                {
+                  text: "Fallback report prose must not become Why it matters.",
+                  classification: "supported_claim",
+                  evidenceStatus: "VERIFIED",
+                  evidenceRefs: [],
+                },
+              ],
+              emptyState: null,
+            },
+            whatWouldChangeThisConclusion: {
+              items: [
+                {
+                  text: "Fallback change condition must stay out.",
+                  classification: "change_condition",
+                  evidenceStatus: "INFERRED",
+                  evidenceRefs: [],
+                },
+              ],
+              emptyState: null,
+            },
+          }),
+          canonicalInspectorProjection: {
+            projectionType: "canonical_model_update_inspector",
+            modelUpdateId: "mu-canonical",
+            updateLabel: "Conclusion Strengthened",
+            displayedTitle: "I like tea again now",
+            distinctSummary: null,
+            createdAt: "2026-07-28T12:00:00.000Z",
+            rationale: "The user explicitly corrected the previous tea preference.",
+            before: "I don't like tea anymore",
+            after: "I like tea again now",
+            resultingStateAtPublication: {
+              title: "I like tea again now",
+              summary: "I like tea again now",
+              version: 2,
+              acceptedAt: "2026-07-28T12:00:00.000Z",
+            },
+            currentUnderstandingNow: {
+              title: "I like green tea but not black tea",
+              summary: "I like green tea but not black tea",
+              version: 3,
+              acceptedAt: "2026-07-29T12:00:00.000Z",
+            },
+            directMovementEvidence: [
+              {
+                id: "uel-direct",
+                sourceTypeLabel: "Conversation message",
+                evidenceSummaryLabel: "The user said they like tea again now.",
+                sourceObjectHref: null,
+                createdAt: "2026-07-28T12:01:00.000Z",
+                hasEvidence: true,
+                sourceType: "message",
+                sourceId: "msg-1",
+                linkRole: "supports",
+                evidenceTarget: "direct_movement",
+                evidenceTargetLabel: "Movement evidence",
+              },
+            ],
+            resultingRevisionEvidence: [
+              {
+                id: "uel-revision",
+                sourceTypeLabel: "Conversation message",
+                evidenceSummaryLabel: "Linked evidence",
+                sourceObjectHref: null,
+                createdAt: null,
+                hasEvidence: true,
+                sourceType: "message",
+                sourceId: undefined,
+                objectTitle: "Resulting revision evidence",
+                linkRole: "contradicts",
+                evidenceTarget: "resulting_revision",
+                evidenceTargetLabel: "Resulting revision evidence",
+              },
+            ],
+            relatedObjects: [
+              {
+                selectionId: "opaque-canonical-selection",
+                title: "I like green tea but not black tea",
+                inspectorObjectType: "canonical_concept",
+              },
+            ],
+          },
+        },
+        modelUpdateEvidence: [],
+        affectedContext: {
+          userMap: null,
+          pattern: null,
+          contradiction: null,
+          affectedEvidence: [],
+        },
+        resolveSelectionId: () => null,
+        getObjectTitle: () => undefined,
+      })
+
+    expect(object.title).toBe("I like tea again now")
+    expect(object.summary).toBeUndefined()
+    expect(object.whyItMatters).toBe(
+      "The user explicitly corrected the previous tea preference.",
+    )
+    expect(object.before).toBe("I don't like tea anymore")
+    expect(object.after).toBe("I like tea again now")
+    expect(object.whatWouldChange).toBeUndefined()
+    expect(JSON.stringify(object)).not.toContain("Fallback report prose")
+    expect(JSON.stringify(object)).not.toContain("Fallback change condition")
+    expect(object.supporting?.[0]).toContain("Movement evidence")
+    expect(object.conflicting?.[0]).toContain("Resulting revision evidence")
+    expect(object.receiptIds?.map((id) => satellites[id]?.title)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Movement evidence"),
+        expect.stringContaining("Resulting revision evidence"),
+      ]),
+    )
+    expect(object.relatedIds).toEqual(["opaque-canonical-selection"])
+    expect(satellites["opaque-canonical-selection"]?.inspectorObjectType).toBe(
+      "canonical_concept",
+    )
+    expect(reportId).toBe("mu-canonical")
+  })
+
+  it("keeps browser composer source free of raw canonical lineage fields", () => {
+    const source = readFileSync(
+      path.join(
+        process.cwd(),
+        "lib/orvek-v0/production/model-update-inspector-presentation.ts",
+      ),
+      "utf8",
+    )
+
+    expect(source).not.toContain("canonicalConceptId")
+    expect(source).not.toContain("previousRevisionId")
+    expect(source).not.toContain("resultingRevisionId")
+    expect(source).not.toContain("exploreProposalId")
+    expect(source).not.toContain("internalNotes")
   })
 
   it("detects the false unavailable affected-object copy", () => {
