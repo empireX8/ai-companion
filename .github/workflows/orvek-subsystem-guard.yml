@@ -43,7 +43,7 @@ jobs:
             local line
             line="$(grep -m1 -F "$label" <<< "$body" || true)"
             [[ -n "$line" ]] || fail "Missing required PR field: $label"
-            local value="${line#*${label}}"
+            local value="${line#"$label"}"
             value="$(printf '%s' "$value" | xargs)"
             printf '%s' "$value"
           }
