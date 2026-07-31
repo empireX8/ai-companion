@@ -15,6 +15,13 @@ const renderState = vi.hoisted(() => ({
   selectedId: null as string | null,
   inspectorTab: "evidence" as "evidence" | "movement",
   exploreActive: false,
+  canGoBack: false,
+  backTarget: null as {
+    selectedId: string;
+    inspectorTab: "evidence" | "movement";
+    trailLabel: string | null;
+    scrollTop: number;
+  } | null,
   handlers: {
     setInspectorTab: vi.fn(),
     setInspectorScrollTopCapture: vi.fn(),
@@ -80,8 +87,8 @@ vi.mock("@/components/orvek-v0/store", () => ({
     pendingInspectorScrollTop: null,
     consumePendingInspectorScrollTop:
       renderState.handlers.consumePendingInspectorScrollTop,
-    canGoBack: false,
-    backTarget: null,
+    canGoBack: renderState.canGoBack,
+    backTarget: renderState.backTarget,
     goBack: renderState.handlers.goBack,
     pushSelection: renderState.handlers.pushSelection,
     openReport: renderState.handlers.openReport,
@@ -467,6 +474,8 @@ function renderInspector({
   recentIds = [],
   exploreActive = false,
   exploreMovement = [],
+  canGoBack = false,
+  backTarget = null,
 }: {
   selectedId?: string | null;
   tab?: "evidence" | "movement";
@@ -481,11 +490,20 @@ function renderInspector({
     text: string;
     linkId?: string;
   }>;
+  canGoBack?: boolean;
+  backTarget?: {
+    selectedId: string;
+    inspectorTab: "evidence" | "movement";
+    trailLabel: string | null;
+    scrollTop: number;
+  } | null;
 } = {}): string {
   renderState.objects = objects;
   renderState.selectedId = selectedId;
   renderState.inspectorTab = tab;
   renderState.exploreActive = exploreActive;
+  renderState.canGoBack = canGoBack;
+  renderState.backTarget = backTarget;
   renderState.api = buildApi({
     objects,
     referenceSurface,
@@ -507,6 +525,8 @@ function renderFrozenReferenceInspector({
   renderState.selectedId = selectedId;
   renderState.inspectorTab = tab;
   renderState.exploreActive = false;
+  renderState.canGoBack = false;
+  renderState.backTarget = null;
   renderState.api = buildApi({
     objects: FROZEN_REFERENCE_OBJECTS,
     referenceSurface: true,
@@ -520,6 +540,8 @@ beforeEach(() => {
   renderState.selectedId = null;
   renderState.inspectorTab = "evidence";
   renderState.exploreActive = false;
+  renderState.canGoBack = false;
+  renderState.backTarget = null;
   Object.values(renderState.handlers).forEach((handler) => handler.mockClear());
 });
 
@@ -800,6 +822,44 @@ describe("permanent shared Inspector shell", () => {
     expect(canonicalHtml).toContain("Movement evidence · The user said");
     expect(canonicalHtml).toContain("Resulting revision evidence · Linked evidence");
     expect(canonicalHtml).toContain("No change condition is available.");
+
+    const canonicalEvidence: OrvekObject = {
+      id: "canonical-evidence-mu-canonical-direct_movement_evidence-0",
+      type: "receipt",
+      title: "The user said they like tea again now.",
+      subtype: "Movement evidence · Conversation message",
+      summary: "The user said they like tea again now.",
+      sourceText: "I like tea again now.",
+      sourceOrigin: "Movement evidence · Conversation message · Supporting",
+      date: "28 Jul 2026, 13:01",
+      lastUpdated: "28 Jul 2026, 13:01",
+      inspectorObjectType: "canonical_model_update_evidence",
+      inspectorObjectId: "canonical-evidence-mu-canonical-direct_movement_evidence-0",
+    };
+    const canonicalEvidenceHtml = renderInspector({
+      selectedId: canonicalEvidence.id,
+      objects: {
+        [canonicalModelUpdate.id]: canonicalModelUpdate,
+        [canonicalEvidence.id]: canonicalEvidence,
+      },
+      canGoBack: true,
+      backTarget: {
+        selectedId: canonicalModelUpdate.id,
+        inspectorTab: "evidence",
+        trailLabel: "Viewing supporting receipt",
+        scrollTop: 32,
+      },
+    });
+    expect(canonicalEvidenceHtml).toContain("Back to I like tea again now");
+    expect(canonicalEvidenceHtml).toContain("Viewing supporting receipt");
+    expect(canonicalEvidenceHtml).toContain("Movement evidence · Conversation message");
+    expect(canonicalEvidenceHtml).toContain("I like tea again now.");
+    expect(canonicalEvidenceHtml).toContain("No supporting receipt is available.");
+    expect(canonicalEvidenceHtml).toContain("No supporting signal is available.");
+    expect(canonicalEvidenceHtml).toContain("No conflicting signal is available.");
+    expect(canonicalEvidenceHtml).toContain("No relevant background is available.");
+    expect(canonicalEvidenceHtml).toContain("No related object is available.");
+    expect(canonicalEvidenceHtml).toContain("No change condition is available.");
 
     const contradiction: OrvekObject = {
       id: "stored-contradiction",

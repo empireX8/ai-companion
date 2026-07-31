@@ -214,6 +214,18 @@ describe("What Changed canonical non-downgrade", () => {
         confidenceContribution: null,
         createdAt: new Date("2026-07-28T12:01:00.000Z"),
       },
+      {
+        id: "uel-direct-raw-source",
+        sourceType: "message",
+        sourceId: "msg-private-source-id",
+        role: "context",
+        summary: null,
+        snippet: null,
+        quote: "RAW PRIVATE SOURCE TEXT",
+        weight: null,
+        confidenceContribution: null,
+        createdAt: new Date("2026-07-28T12:00:30.000Z"),
+      },
     ]);
     readConceptMock.mockResolvedValueOnce({
       authorityType: "canonical_concept_revision",
@@ -229,12 +241,12 @@ describe("What Changed canonical non-downgrade", () => {
           id: "uel-revision-1",
           sourceType: "message",
           role: "supports",
-          summary: "Linked evidence",
+          summary: "RAW REDACTED REVISION TEXT",
           disclosure: "redacted",
-          sourceId: null,
+          sourceId: "raw-revision-source-id",
           snippet: null,
           quote: null,
-          sourceObjectHref: null,
+          sourceObjectHref: "/messages/raw-revision-source-id",
         },
       ],
       revisionHistory: [
@@ -295,11 +307,69 @@ describe("What Changed canonical non-downgrade", () => {
       detail?.canonicalInspectorProjection?.resultingRevisionEvidence[0]
         ?.evidenceTarget,
     ).toBe("resulting_revision");
+    const projection = detail?.canonicalInspectorProjection;
+    const direct = projection?.directMovementEvidence[0];
+    const unavailableDirect = projection?.directMovementEvidence[1];
+    const revision = projection?.resultingRevisionEvidence[0];
+    expect(direct?.sourceId).toBeUndefined();
+    expect(direct?.sourceObjectHref).toBeNull();
+    expect(direct?.canonicalEvidenceDrilldown).toMatchObject({
+      selectionId: `canonical-evidence-${MODEL_UPDATE_ID}-direct_movement_evidence-0`,
+      evidenceClass: "direct_movement_evidence",
+      evidenceClassLabel: "Movement evidence",
+      sourceType: "message",
+      sourceTypeLabel: "Conversation message",
+      role: "supports",
+      roleLabel: "Supporting",
+      title: "The user said they like tea again now.",
+      summary: "The user said they like tea again now.",
+      snippet: null,
+      recordedAt: "2026-07-28T12:01:00.000Z",
+      recordedLabel: "28 Jul 2026, 13:01",
+      provenanceLabel: "Movement evidence",
+      sourceDisclosure: "available",
+    });
+    expect(unavailableDirect?.sourceId).toBeUndefined();
+    expect(unavailableDirect?.canonicalEvidenceDrilldown).toMatchObject({
+      evidenceClass: "direct_movement_evidence",
+      role: "context",
+      sourceDisclosure: "unavailable",
+      summary: null,
+      snippet: null,
+    });
+    expect(revision?.sourceId).toBeUndefined();
+    expect(revision?.sourceObjectHref).toBeNull();
+    expect(revision?.canonicalEvidenceDrilldown).toMatchObject({
+      selectionId: `canonical-evidence-${MODEL_UPDATE_ID}-resulting_revision_evidence-0`,
+      evidenceClass: "resulting_revision_evidence",
+      evidenceClassLabel: "Resulting revision evidence",
+      sourceType: "message",
+      sourceTypeLabel: "Conversation message",
+      role: "supports",
+      roleLabel: "Supporting",
+      title: "Resulting revision evidence · Conversation message",
+      summary: null,
+      snippet: null,
+      recordedAt: null,
+      recordedLabel: null,
+      provenanceLabel: "Resulting revision evidence",
+      sourceDisclosure: "redacted",
+    });
     expect(
       findManyEvidenceLinks.mock.calls.some((call) =>
         JSON.stringify(call[0]).includes("canonical_concept_revision"),
       ),
     ).toBe(false);
+
+    const projected = JSON.stringify(projection);
+    expect(projected).not.toContain("uel-direct-1");
+    expect(projected).not.toContain("uel-direct-raw-source");
+    expect(projected).not.toContain("uel-revision-1");
+    expect(projected).not.toContain("msg-1");
+    expect(projected).not.toContain("msg-private-source-id");
+    expect(projected).not.toContain("raw-revision-source-id");
+    expect(projected).not.toContain("RAW PRIVATE SOURCE TEXT");
+    expect(projected).not.toContain("RAW REDACTED REVISION TEXT");
 
     const serialized = JSON.stringify(detail);
     expect(serialized).not.toContain("canonicalConceptId");

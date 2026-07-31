@@ -110,6 +110,15 @@ function normalizeRole(value: string | null | undefined): string {
 }
 
 function evidenceLabel(item: InspectorEvidenceLinkItem): string | null {
+  const drilldown = item.canonicalEvidenceDrilldown
+  if (drilldown) {
+    const text = firstMeaningfulModelUpdateText([drilldown.summary, drilldown.title])
+    if (!text) return null
+    return text.toLowerCase().startsWith(drilldown.provenanceLabel.toLowerCase())
+      ? text
+      : `${drilldown.provenanceLabel} · ${text}`
+  }
+
   const card = projectInspectorEvidenceCard(item)
   const text = firstMeaningfulModelUpdateText([
     card.summary,
@@ -123,6 +132,31 @@ function evidenceLabel(item: InspectorEvidenceLinkItem): string | null {
   return text.toLowerCase().startsWith(target.toLowerCase())
     ? text
     : `${target} · ${text}`
+}
+
+function buildCanonicalEvidenceDrilldownObject(item: InspectorEvidenceLinkItem): OrvekObject | null {
+  const drilldown = item.canonicalEvidenceDrilldown
+  if (!drilldown) return null
+
+  const sourceOrigin = dedupeStrings([
+    drilldown.provenanceLabel,
+    drilldown.sourceTypeLabel,
+    drilldown.roleLabel,
+  ]).join(" · ")
+
+  return {
+    id: drilldown.selectionId,
+    type: "receipt",
+    title: drilldown.title,
+    subtype: `${drilldown.evidenceClassLabel} · ${drilldown.sourceTypeLabel}`,
+    summary: drilldown.summary ?? undefined,
+    sourceText: drilldown.snippet ?? undefined,
+    sourceOrigin,
+    date: drilldown.recordedLabel ?? undefined,
+    lastUpdated: drilldown.recordedLabel ?? undefined,
+    inspectorObjectType: "canonical_model_update_evidence",
+    inspectorObjectId: drilldown.selectionId,
+  }
 }
 
 function buildCanonicalProjectionViewModel(input: {
@@ -158,23 +192,28 @@ function buildCanonicalProjectionViewModel(input: {
     const key = `${bucket}:${title.toLowerCase()}`
     if (seenReceipts.has(key)) return
     seenReceipts.add(key)
-    const selectionId = `mu-${bucket}-${input.obj.id}-${index}`
-    const navigationId = input.resolveSelectionId(item.sourceType, item.sourceId) ?? selectionId
+    const drilldownObject = buildCanonicalEvidenceDrilldownObject(item)
+    const selectionId =
+      drilldownObject?.id ?? `mu-${bucket}-${input.obj.id}-${index}`
+    const navigationId = drilldownObject
+      ? selectionId
+      : input.resolveSelectionId(item.sourceType, item.sourceId) ?? selectionId
     if (bucket === "context") {
       contextIds.push(selectionId)
     } else {
       receiptIds.push(selectionId)
     }
     if (!satellites[selectionId]) {
-      satellites[selectionId] = {
-        id: selectionId,
-        type: bucket === "context" ? "context" : "receipt",
-        title,
-        sourceText: title,
-        inspectorObjectType: item.sourceType ?? undefined,
-        inspectorObjectId: item.sourceId ?? undefined,
-        ...(navigationId !== selectionId ? { relatedIds: [navigationId] } : {}),
-      }
+      satellites[selectionId] =
+        drilldownObject ?? {
+          id: selectionId,
+          type: bucket === "context" ? "context" : "receipt",
+          title,
+          sourceText: title,
+          inspectorObjectType: item.sourceType ?? undefined,
+          inspectorObjectId: item.sourceId ?? undefined,
+          ...(navigationId !== selectionId ? { relatedIds: [navigationId] } : {}),
+        }
     }
     if (navigationId !== selectionId && !satellites[navigationId]) {
       satellites[navigationId] = {

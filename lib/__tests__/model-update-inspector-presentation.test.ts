@@ -520,6 +520,216 @@ describe("model-update inspector presentation composer", () => {
     expect(satellites["existing-canonical-workbench-object"]).toBeUndefined()
   })
 
+  it("projects canonical receipt clicks to meaningful safe evidence objects", () => {
+    const rawRedactedText = "RAW REDACTED SOURCE TEXT SHOULD NOT LEAK"
+    const rawAuthorityId = "uel-raw-authority-id"
+    const { object, satellites } = composeProductionModelUpdateCanonicalViewModel({
+      obj: {
+        id: "mu-canonical",
+        type: "model-update",
+        title: "I like tea again now",
+      },
+      detail: {
+        item: {
+          id: "mu-canonical",
+          createdAt: "2026-07-28T12:00:00.000Z",
+          updateTypeLabel: "Conclusion Strengthened",
+          affectedObjectType: "canonical_concept_revision" as never,
+          affectedObjectTypeLabel: "Canonical model revision",
+          affectedObjectId: null,
+          affectedObjectHref: null,
+          userFacingSummary: "I like tea again now",
+        },
+        report: buildReport(),
+        canonicalInspectorProjection: {
+          projectionType: "canonical_model_update_inspector",
+          modelUpdateId: "mu-canonical",
+          updateLabel: "Conclusion Strengthened",
+          displayedTitle: "I like tea again now",
+          distinctSummary: null,
+          createdAt: "2026-07-28T12:00:00.000Z",
+          rationale: null,
+          before: "I don't like tea anymore",
+          after: "I like tea again now",
+          resultingStateAtPublication: {
+            title: "I like tea again now",
+            summary: "I like tea again now",
+            version: 2,
+            acceptedAt: "2026-07-28T12:00:00.000Z",
+          },
+          currentUnderstandingNow: {
+            title: "I like tea again now",
+            summary: "I like tea again now",
+            version: 2,
+            acceptedAt: "2026-07-28T12:00:00.000Z",
+          },
+          directMovementEvidence: [
+            {
+              id: "canonical-evidence-mu-canonical-direct_movement_evidence-0",
+              sourceTypeLabel: "Conversation message",
+              evidenceSummaryLabel: "The user said they like tea again now.",
+              sourceObjectHref: null,
+              createdAt: "2026-07-28T12:01:00.000Z",
+              hasEvidence: true,
+              sourceType: "message",
+              linkRole: "supports",
+              evidenceTarget: "direct_movement",
+              evidenceTargetLabel: "Movement evidence",
+              canonicalEvidenceDrilldown: {
+                selectionId: "canonical-evidence-mu-canonical-direct_movement_evidence-0",
+                evidenceClass: "direct_movement_evidence",
+                evidenceClassLabel: "Movement evidence",
+                sourceType: "message",
+                sourceTypeLabel: "Conversation message",
+                role: "supports",
+                roleLabel: "Supporting",
+                title: "The user said they like tea again now.",
+                summary: "The user said they like tea again now.",
+                snippet: "I like tea again now.",
+                recordedAt: "2026-07-28T12:01:00.000Z",
+                recordedLabel: "28 Jul 2026, 13:01",
+                provenanceLabel: "Movement evidence",
+                sourceDisclosure: "available",
+              },
+            },
+          ],
+          resultingRevisionEvidence: [
+            {
+              id: "canonical-evidence-mu-canonical-resulting_revision_evidence-0",
+              sourceTypeLabel: "Conversation message",
+              evidenceSummaryLabel: rawRedactedText,
+              sourceObjectHref: null,
+              createdAt: null,
+              hasEvidence: true,
+              sourceType: "message",
+              linkRole: "contradicts",
+              evidenceTarget: "resulting_revision",
+              evidenceTargetLabel: "Resulting revision evidence",
+              canonicalEvidenceDrilldown: {
+                selectionId: "canonical-evidence-mu-canonical-resulting_revision_evidence-0",
+                evidenceClass: "resulting_revision_evidence",
+                evidenceClassLabel: "Resulting revision evidence",
+                sourceType: "message",
+                sourceTypeLabel: "Conversation message",
+                role: "contradicts",
+                roleLabel: "Conflicting",
+                title: "Resulting revision evidence · Conversation message",
+                summary: null,
+                snippet: null,
+                recordedAt: null,
+                recordedLabel: null,
+                provenanceLabel: "Resulting revision evidence",
+                sourceDisclosure: "redacted",
+              },
+            },
+          ],
+          relatedObjects: [],
+        },
+      },
+      modelUpdateEvidence: [],
+      affectedContext: {
+        userMap: null,
+        pattern: null,
+        contradiction: null,
+        affectedEvidence: [],
+      },
+      resolveSelectionId: () => rawAuthorityId,
+      getObjectTitle: () => undefined,
+    })
+
+    expect(object.receiptIds).toEqual([
+      "canonical-evidence-mu-canonical-direct_movement_evidence-0",
+      "canonical-evidence-mu-canonical-resulting_revision_evidence-0",
+    ])
+    expect(object.supporting).toEqual([
+      "Movement evidence · The user said they like tea again now.",
+    ])
+    expect(object.conflicting).toEqual([
+      "Resulting revision evidence · Conversation message",
+    ])
+
+    const direct =
+      satellites["canonical-evidence-mu-canonical-direct_movement_evidence-0"]
+    expect(direct).toMatchObject({
+      type: "receipt",
+      title: "The user said they like tea again now.",
+      subtype: "Movement evidence · Conversation message",
+      summary: "The user said they like tea again now.",
+      sourceText: "I like tea again now.",
+      sourceOrigin: "Movement evidence · Conversation message · Supporting",
+      date: "28 Jul 2026, 13:01",
+      lastUpdated: "28 Jul 2026, 13:01",
+      inspectorObjectType: "canonical_model_update_evidence",
+      inspectorObjectId: "canonical-evidence-mu-canonical-direct_movement_evidence-0",
+    })
+
+    const revision =
+      satellites["canonical-evidence-mu-canonical-resulting_revision_evidence-0"]
+    expect(revision).toMatchObject({
+      type: "receipt",
+      title: "Resulting revision evidence · Conversation message",
+      subtype: "Resulting revision evidence · Conversation message",
+      sourceOrigin: "Resulting revision evidence · Conversation message · Conflicting",
+      inspectorObjectType: "canonical_model_update_evidence",
+    })
+    expect(revision?.summary).toBeUndefined()
+    expect(revision?.sourceText).toBeUndefined()
+    expect(revision?.receiptIds).toBeUndefined()
+    expect(revision?.supporting).toBeUndefined()
+    expect(revision?.conflicting).toBeUndefined()
+    expect(revision?.contextIds).toBeUndefined()
+    expect(revision?.relatedIds).toBeUndefined()
+    expect(revision?.whatWouldChange).toBeUndefined()
+    expect(revision?.title).not.toContain("Movement evidence")
+    expect(JSON.stringify({ object, satellites })).not.toContain(rawAuthorityId)
+    expect(JSON.stringify({ object, satellites })).not.toContain(rawRedactedText)
+  })
+
+  it("preserves legacy noncanonical receipt drill-down through resolved source navigation", () => {
+    const { object, satellites } = composeProductionModelUpdateCanonicalViewModel({
+      obj: {
+        id: "mu-legacy",
+        type: "model-update",
+        title: "Legacy movement",
+      },
+      detail: buildDetail({ id: "mu-legacy" }),
+      modelUpdateEvidence: [
+        {
+          createdAt: "2026-07-17T19:38:00.000Z",
+          sourceType: "reference_item",
+          sourceId: "ref-1",
+          sourceTypeLabel: "Reference item",
+          objectTitle: "Reference item",
+          evidenceSummaryLabel: "I notice energy collapses after long meetings.",
+          linkRole: "supports",
+          sourceObjectHref: "/references/ref-1",
+          hasEvidence: true,
+        },
+      ],
+      affectedContext: {
+        userMap: null,
+        pattern: null,
+        contradiction: null,
+        affectedEvidence: [],
+      },
+      resolveSelectionId: (objectType, objectId) =>
+        objectType === "reference_item" && objectId === "ref-1"
+          ? "receipt-ref-1"
+          : null,
+      getObjectTitle: () => "Existing reference receipt",
+    })
+
+    const receiptId = object.receiptIds?.[0]
+    expect(receiptId).toBe("mu-receipt-mu-legacy-0")
+    expect(satellites[receiptId!]?.relatedIds).toEqual(["receipt-ref-1"])
+    expect(satellites["receipt-ref-1"]).toMatchObject({
+      type: "receipt",
+      title: "Existing reference receipt",
+      inspectorObjectType: "reference_item",
+      inspectorObjectId: "ref-1",
+    })
+  })
+
   it("drops inherited thin-packet supporting and conflicting prose for canonical projections", () => {
     const thinPacketWarning =
       "The linked packet is still thin enough that this movement may change materially with more receipts."
