@@ -40,6 +40,9 @@ export type InspectorEvidenceLinkItem = {
   sourceId?: string;
   objectTitle?: string | null;
   linkRole?: string | null;
+  /** Browser-safe provenance label for canonical ModelUpdate Inspector receipts. */
+  evidenceTarget?: "direct_movement" | "resulting_revision";
+  evidenceTargetLabel?: string;
 };
 
 import type { ContradictionDualSourcePresentation } from "./contradiction-dual-source-presentation-contract";
@@ -60,6 +63,38 @@ export type InspectorContradictionProjection = {
 export type InspectorModelUpdateDetail = {
   item: WhatChangedListItem;
   report: RealityTrackingModelMovementReport;
+  canonicalInspectorProjection?: CanonicalModelUpdateInspectorProjection | null;
+};
+
+export type CanonicalModelUpdateInspectorProjection = {
+  projectionType: "canonical_model_update_inspector";
+  modelUpdateId: string;
+  updateLabel: string;
+  displayedTitle: string;
+  distinctSummary: string | null;
+  createdAt: string;
+  rationale: string | null;
+  before: string | null;
+  after: string | null;
+  resultingStateAtPublication: {
+    title: string;
+    summary: string;
+    version: number;
+    acceptedAt: string;
+  };
+  currentUnderstandingNow: {
+    title: string;
+    summary: string;
+    version: number;
+    acceptedAt: string;
+  };
+  directMovementEvidence: InspectorEvidenceLinkItem[];
+  resultingRevisionEvidence: InspectorEvidenceLinkItem[];
+  relatedObjects: Array<{
+    selectionId: string;
+    title: string;
+    inspectorObjectType: "canonical_concept";
+  }>;
 };
 
 export type InspectorInvestigationEvidenceItem = {
@@ -162,7 +197,11 @@ export async function fetchInspectorModelUpdateDetail(
   }
   const payload = (await response.json()) as Partial<InspectorModelUpdateDetail>;
   return payload.item && payload.report
-    ? ({ item: payload.item, report: payload.report } as InspectorModelUpdateDetail)
+    ? ({
+        item: payload.item,
+        report: payload.report,
+        canonicalInspectorProjection: payload.canonicalInspectorProjection ?? null,
+      } as InspectorModelUpdateDetail)
     : null;
 }
 

@@ -755,6 +755,52 @@ describe("permanent shared Inspector shell", () => {
     expect(countAttribute(modelUpdateHtml, "data-shell-item", "inspector-before")).toBe(1);
     expect(countAttribute(modelUpdateHtml, "data-shell-item", "inspector-after")).toBe(1);
 
+    const canonicalModelUpdate: OrvekObject = {
+      id: "canonical-model-update",
+      type: "model-update",
+      title: "I like tea again now",
+      summary: undefined,
+      before: "I don't like tea anymore",
+      after: "I like tea again now",
+      whyItMatters: "The user explicitly corrected the previous tea preference.",
+      receiptIds: ["movement-receipt", "revision-receipt"],
+      supporting: ["Movement evidence · The user said they like tea again now."],
+      conflicting: ["Resulting revision evidence · Linked evidence"],
+      relatedIds: ["canonical-related"],
+      inspectorObjectType: "model_update",
+      inspectorObjectId: "mu-canonical",
+    };
+    const canonicalHtml = renderInspector({
+      selectedId: canonicalModelUpdate.id,
+      objects: {
+        [canonicalModelUpdate.id]: canonicalModelUpdate,
+        "movement-receipt": {
+          id: "movement-receipt",
+          type: "receipt",
+          title: "Movement evidence · The user said they like tea again now.",
+        },
+        "revision-receipt": {
+          id: "revision-receipt",
+          type: "receipt",
+          title: "Resulting revision evidence · Linked evidence",
+        },
+        "canonical-related": {
+          id: "canonical-related",
+          type: "map-object",
+          title: "I like green tea but not black tea",
+          inspectorObjectType: "canonical_concept",
+          inspectorObjectId: "canonical-related",
+        },
+      },
+    });
+    expect(countAttribute(canonicalHtml, "data-shell-slot", "inspector-summary")).toBe(
+      1,
+    );
+    expect(canonicalHtml).toContain("No current summary is available.");
+    expect(canonicalHtml).toContain("Movement evidence · The user said");
+    expect(canonicalHtml).toContain("Resulting revision evidence · Linked evidence");
+    expect(canonicalHtml).toContain("No change condition is available.");
+
     const contradiction: OrvekObject = {
       id: "stored-contradiction",
       type: "map-object",

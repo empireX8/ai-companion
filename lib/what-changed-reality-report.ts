@@ -46,6 +46,16 @@ import {
   type WhatChangedListItem,
 } from "./public-intelligence-safe-slice";
 import { buildPublicWatchForWhere } from "./watch-for";
+import {
+  firstMeaningfulModelUpdateText,
+  resolveModelUpdateDisplayTitle,
+} from "./model-update-identity";
+import type {
+  CanonicalModelUpdateInspectorProjection,
+  InspectorEvidenceLinkItem,
+  InspectorModelUpdateDetail,
+} from "./inspector-object-api";
+import type { CanonicalProductConceptV1 } from "./canonical-model-product-projection";
 
 type ModelUpdateDetailRow = {
   id: string;
@@ -707,6 +717,123 @@ function buildAnalysisText(args: {
   }
 
   return null;
+}
+
+function normalizedLabel(value: string | null | undefined): string {
+  return normalizeWhitespace(value ?? "").toLowerCase();
+}
+
+function movementEvidenceToInspectorItem(
+  item: ModelMovementRealityPacketEvidence
+): InspectorEvidenceLinkItem {
+  return {
+    id: item.id,
+    sourceTypeLabel: item.sourceTypeLabel,
+    evidenceSummaryLabel: item.analysisText ?? item.displayLabel,
+    sourceObjectHref: item.href,
+    createdAt: item.createdAt,
+    hasEvidence: true,
+    sourceType: item.sourceType,
+    sourceId: item.sourceId,
+    objectTitle: item.displayLabel,
+    linkRole: item.role,
+    evidenceTarget: "direct_movement",
+    evidenceTargetLabel: "Movement evidence",
+  };
+}
+
+function revisionEvidenceToInspectorItem(
+  item: CanonicalProductConceptV1["evidence"][number]
+): InspectorEvidenceLinkItem {
+  return {
+    id: item.id,
+    sourceTypeLabel: sourceTypeLabel(item.sourceType),
+    evidenceSummaryLabel: item.summary,
+    sourceObjectHref: item.sourceObjectHref,
+    createdAt: null,
+    hasEvidence: true,
+    sourceType: item.sourceType,
+    sourceId: item.sourceId ?? undefined,
+    objectTitle:
+      item.disclosure === "redacted"
+        ? "Resulting revision evidence"
+        : item.summary,
+    linkRole: item.role,
+    evidenceTarget: "resulting_revision",
+    evidenceTargetLabel: "Resulting revision evidence",
+  };
+}
+
+function buildCanonicalInspectorProjection(args: {
+  row: ModelUpdateDetailRow;
+  movement: CanonicalProductConceptV1["movementHistory"][number];
+  concept: CanonicalProductConceptV1;
+  directEvidence: ModelMovementRealityPacketEvidence[];
+  movementRationale: string | null;
+}): CanonicalModelUpdateInspectorProjection {
+  const resultingRevision = args.concept.revisionHistory.find(
+    (revision) => revision.id === args.movement.resultingRevisionId,
+  );
+  if (!resultingRevision) {
+    throw new CanonicalModelAuthorityError(
+      "BROKEN_CANONICAL_PROJECTION",
+      "Canonical What Changed resulting revision missing from product history",
+    );
+  }
+
+  const updateLabel = formatModelUpdateType(args.row.updateType as never);
+  const displayedTitle = resolveModelUpdateDisplayTitle({
+    userFacingSummary: args.movement.userFacingSummary,
+    affectedObjectTitle: args.concept.title,
+    packetTargetLabel: args.concept.summary,
+    updateTypeLabel: updateLabel,
+    affectedObjectTypeLabel: formatLinkedObjectType(
+      UnderstandingLinkTargetType.canonical_concept_revision,
+    ),
+  });
+  const summaryCandidate = firstMeaningfulModelUpdateText([
+    args.movement.userFacingSummary,
+  ]);
+  const distinctSummary =
+    summaryCandidate && normalizedLabel(summaryCandidate) !== normalizedLabel(displayedTitle)
+      ? summaryCandidate
+      : null;
+
+  return {
+    projectionType: "canonical_model_update_inspector",
+    modelUpdateId: args.row.id,
+    updateLabel,
+    displayedTitle,
+    distinctSummary,
+    createdAt: args.row.createdAt.toISOString(),
+    rationale: args.movementRationale ?? resultingRevision.rationale ?? null,
+    before: args.movement.beforeSummary,
+    after: args.movement.afterSummary,
+    resultingStateAtPublication: {
+      title: resultingRevision.title,
+      summary: resultingRevision.summary,
+      version: resultingRevision.version,
+      acceptedAt: resultingRevision.acceptedAt,
+    },
+    currentUnderstandingNow: {
+      title: args.concept.title,
+      summary: args.concept.summary,
+      version: args.concept.version,
+      acceptedAt: args.concept.acceptedAt,
+    },
+    directMovementEvidence: args.directEvidence.map(movementEvidenceToInspectorItem),
+    resultingRevisionEvidence:
+      args.concept.currentRevisionId === args.movement.resultingRevisionId
+        ? args.concept.evidence.map(revisionEvidenceToInspectorItem)
+        : [],
+    relatedObjects: [
+      {
+        selectionId: args.concept.conceptId,
+        title: args.concept.title,
+        inspectorObjectType: "canonical_concept",
+      },
+    ],
+  };
 }
 
 function buildAffectedObjectDetail(args: {
@@ -1465,7 +1592,7 @@ export async function buildWhatChangedInspectorDetail(args: {
   userId: string;
   modelUpdateId: string;
   db?: WhatChangedRealityReportDb;
-}): Promise<{ item: WhatChangedListItem; report: RealityTrackingModelMovementReport } | null> {
+}): Promise<InspectorModelUpdateDetail | null> {
   const db = args.db ?? (prismadb as unknown as WhatChangedRealityReportDb);
   const authorityDb = (args.db ?? prismadb) as unknown as typeof prismadb;
 
@@ -1500,6 +1627,9 @@ export async function buildWhatChangedInspectorDetail(args: {
 
   let beforeSummary = row.beforeSummary;
   let afterSummary = row.afterSummary;
+  let canonicalConcept: CanonicalProductConceptV1 | null = null;
+  let canonicalMovement: CanonicalProductConceptV1["movementHistory"][number] | null =
+    null;
 
   const deterministicMatches =
     await findCanonicalProposalsByDeterministicModelUpdateId({
@@ -1603,16 +1733,39 @@ export async function buildWhatChangedInspectorDetail(args: {
         "Canonical What Changed target concept not found",
       );
     }
+    if (
+      !Array.isArray(concept.movementHistory) ||
+      !Array.isArray(concept.revisionHistory) ||
+      !Array.isArray(concept.evidence)
+    ) {
+      throw new CanonicalModelAuthorityError(
+        "BROKEN_CANONICAL_PROJECTION",
+        "Canonical What Changed product projection is incomplete",
+      );
+    }
     const movement = concept.movementHistory.find(
       (entry) => entry.modelUpdateId === row.id,
     );
+    const previousRevision = concept.revisionHistory.find(
+      (revision) => revision.id === row.previousRevisionId,
+    );
+    const resultingRevision = concept.revisionHistory.find(
+      (revision) => revision.id === row.resultingRevisionId,
+    );
     if (
       !movement ||
+      !previousRevision ||
+      !resultingRevision ||
       movement.exploreProposalId !== row.exploreProposalId ||
       movement.previousRevisionId !== row.previousRevisionId ||
       movement.resultingRevisionId !== row.resultingRevisionId ||
       movement.beforeSummary !== row.beforeSummary ||
       movement.afterSummary !== row.afterSummary ||
+      movement.beforeSummary !== previousRevision.summary ||
+      movement.afterSummary !== resultingRevision.summary ||
+      movement.userFacingSummary !== row.userFacingSummary ||
+      movement.updateType !== row.updateType ||
+      movement.createdAt !== row.createdAt.toISOString() ||
       concept.conceptId !== row.canonicalConceptId ||
       row.affectedObjectId !== movement.resultingRevisionId
     ) {
@@ -1623,6 +1776,8 @@ export async function buildWhatChangedInspectorDetail(args: {
     }
     beforeSummary = movement.beforeSummary;
     afterSummary = movement.afterSummary;
+    canonicalConcept = concept;
+    canonicalMovement = movement;
   }
 
   const baseItem = toWhatChangedListItem(row as never);
@@ -1630,14 +1785,23 @@ export async function buildWhatChangedInspectorDetail(args: {
     return null;
   }
 
-  const [verifiedItem] = await applyVerifiedAffectedObjectHrefs({
+  const [verifiedItemRaw] = await applyVerifiedAffectedObjectHrefs({
     userId: args.userId,
     items: [baseItem],
   });
 
-  if (!verifiedItem) {
+  if (!verifiedItemRaw) {
     return null;
   }
+
+  const verifiedItem =
+    canonicalConcept && canonicalMovement
+      ? {
+          ...verifiedItemRaw,
+          affectedObjectId: null,
+          affectedObjectHref: null,
+        }
+      : verifiedItemRaw;
 
   const movementEvidenceSelect = {
     id: true,
@@ -1652,28 +1816,29 @@ export async function buildWhatChangedInspectorDetail(args: {
     createdAt: true,
   } as const;
 
-  const [movementEvidenceRows, affectedObjectEvidenceRows] = await Promise.all([
-    db.understandingEvidenceLink.findMany({
-      where: {
-        userId: args.userId,
-        targetType: "model_update",
-        targetId: row.id,
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: MOVEMENT_EVIDENCE_LINK_LIMIT,
-      select: movementEvidenceSelect,
-    }),
-    db.understandingEvidenceLink.findMany({
-      where: {
-        userId: args.userId,
-        targetType: row.affectedObjectType,
-        targetId: row.affectedObjectId,
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: MOVEMENT_EVIDENCE_LINK_LIMIT,
-      select: movementEvidenceSelect,
-    }),
-  ]);
+  const movementEvidenceRows = await db.understandingEvidenceLink.findMany({
+    where: {
+      userId: args.userId,
+      targetType: "model_update",
+      targetId: row.id,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: MOVEMENT_EVIDENCE_LINK_LIMIT,
+    select: movementEvidenceSelect,
+  });
+  const affectedObjectEvidenceRows =
+    canonicalConcept && canonicalMovement
+      ? []
+      : await db.understandingEvidenceLink.findMany({
+          where: {
+            userId: args.userId,
+            targetType: row.affectedObjectType,
+            targetId: row.affectedObjectId,
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: MOVEMENT_EVIDENCE_LINK_LIMIT,
+          select: movementEvidenceSelect,
+        });
 
   const evidenceRows = mergeMovementEvidenceLinkRows(
     movementEvidenceRows,
@@ -2000,6 +2165,18 @@ export async function buildWhatChangedInspectorDetail(args: {
     contradiction,
   });
 
+  const movementRationale = decodeMovementRationaleFromInternalNotes(row.internalNotes);
+  const canonicalInspectorProjection =
+    canonicalConcept && canonicalMovement
+      ? buildCanonicalInspectorProjection({
+          row,
+          movement: canonicalMovement,
+          concept: canonicalConcept,
+          directEvidence: evidence,
+          movementRationale,
+        })
+      : null;
+
   const packet: ModelMovementRealityPacket = {
     item: verifiedItem,
     modelUpdate: {
@@ -2012,7 +2189,7 @@ export async function buildWhatChangedInspectorDetail(args: {
       before: beforeSummary,
       after: afterSummary,
       confidenceShift: row.confidenceDelta,
-      movementRationale: decodeMovementRationaleFromInternalNotes(row.internalNotes),
+      movementRationale,
     },
     affectedObject,
     evidence,
@@ -2042,5 +2219,6 @@ export async function buildWhatChangedInspectorDetail(args: {
   return {
     item: verifiedItem,
     report: buildDeterministicModelMovementRealityReport(packet),
+    ...(canonicalInspectorProjection ? { canonicalInspectorProjection } : {}),
   };
 }
