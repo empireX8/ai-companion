@@ -520,6 +520,102 @@ describe("model-update inspector presentation composer", () => {
     expect(satellites["existing-canonical-workbench-object"]).toBeUndefined()
   })
 
+  it("drops inherited thin-packet supporting and conflicting prose for canonical projections", () => {
+    const thinPacketWarning =
+      "The linked packet is still thin enough that this movement may change materially with more receipts."
+    const inheritedSupporting = "Receipt count makes this look stronger than it is."
+    const { object } = composeProductionModelUpdateCanonicalViewModel({
+      obj: {
+        id: "mu-canonical",
+        type: "model-update",
+        title: "I like tea again now",
+        supporting: [inheritedSupporting],
+        conflicting: [thinPacketWarning],
+      },
+      detail: {
+        item: {
+          id: "mu-canonical",
+          createdAt: "2026-07-28T12:00:00.000Z",
+          updateTypeLabel: "Conclusion Strengthened",
+          affectedObjectType: "canonical_concept_revision" as never,
+          affectedObjectTypeLabel: "Canonical model revision",
+          affectedObjectId: null,
+          affectedObjectHref: null,
+          userFacingSummary: "I like tea again now",
+        },
+        report: buildReport({
+          speculations: {
+            items: [
+              {
+                text: thinPacketWarning,
+                classification: "speculation",
+                evidenceStatus: "INFERRED",
+                evidenceRefs: [],
+              },
+            ],
+            emptyState: null,
+          },
+        }),
+        canonicalInspectorProjection: {
+          projectionType: "canonical_model_update_inspector",
+          modelUpdateId: "mu-canonical",
+          updateLabel: "Conclusion Strengthened",
+          displayedTitle: "I like tea again now",
+          distinctSummary: null,
+          createdAt: "2026-07-28T12:00:00.000Z",
+          rationale: null,
+          before: "I don't like tea anymore",
+          after: "I like tea again now",
+          resultingStateAtPublication: {
+            title: "I like tea again now",
+            summary: "I like tea again now",
+            version: 2,
+            acceptedAt: "2026-07-28T12:00:00.000Z",
+          },
+          currentUnderstandingNow: {
+            title: "I like tea again now",
+            summary: "I like tea again now",
+            version: 2,
+            acceptedAt: "2026-07-28T12:00:00.000Z",
+          },
+          directMovementEvidence: [
+            {
+              id: "uel-direct",
+              sourceTypeLabel: "Conversation message",
+              evidenceSummaryLabel: "The user said they like tea again now.",
+              sourceObjectHref: null,
+              createdAt: "2026-07-28T12:01:00.000Z",
+              hasEvidence: true,
+              sourceType: "message",
+              sourceId: "msg-1",
+              linkRole: "supports",
+              evidenceTarget: "direct_movement",
+              evidenceTargetLabel: "Movement evidence",
+            },
+          ],
+          resultingRevisionEvidence: [],
+          relatedObjects: [],
+        },
+      },
+      modelUpdateEvidence: [],
+      affectedContext: {
+        userMap: null,
+        pattern: null,
+        contradiction: null,
+        affectedEvidence: [],
+      },
+      resolveSelectionId: () => null,
+      getObjectTitle: () => undefined,
+    })
+
+    expect(object.supporting).toEqual([
+      "Movement evidence · The user said they like tea again now.",
+    ])
+    expect(object.supporting).not.toContain(inheritedSupporting)
+    expect(object.conflicting).toBeUndefined()
+    expect(JSON.stringify(object)).not.toContain(thinPacketWarning)
+  })
+
   it("keeps browser composer source free of raw canonical lineage fields", () => {
     const source = readFileSync(
       path.join(

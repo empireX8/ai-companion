@@ -224,8 +224,11 @@ function buildCanonicalProjectionViewModel(input: {
   ).slice(0, 3)
 
   const recorded = formatRecordedLabel(projection.createdAt)
+  const objectBase = { ...input.obj }
+  delete objectBase.supporting
+  delete objectBase.conflicting
   const object: OrvekObject = {
-    ...input.obj,
+    ...objectBase,
     type: "model-update",
     title: projection.displayedTitle,
     summary: projection.distinctSummary ?? undefined,
