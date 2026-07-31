@@ -17,6 +17,7 @@ const findManyMu = vi.fn();
 const findFirstProposal = vi.fn();
 const findManyProposals = vi.fn();
 const findManyEvidenceLinks = vi.fn();
+const findManyPatternClaims = vi.fn();
 const readConceptMock = vi.fn();
 
 vi.mock("../prismadb", () => ({
@@ -35,7 +36,10 @@ vi.mock("../prismadb", () => ({
     userMapConclusion: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => []) },
     investigation: { findFirst: vi.fn(async () => null) },
     fieldworkAssignment: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => []) },
-    patternClaim: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => []) },
+    patternClaim: {
+      findFirst: vi.fn(async () => null),
+      findMany: (...args: unknown[]) => findManyPatternClaims(...args),
+    },
     contradictionNode: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => []) },
     surfacedAction: { findMany: vi.fn(async () => []) },
     journalEntry: { findMany: vi.fn(async () => []) },
@@ -101,9 +105,11 @@ describe("What Changed canonical non-downgrade", () => {
     findFirstProposal.mockReset();
     findManyProposals.mockReset();
     findManyEvidenceLinks.mockReset();
+    findManyPatternClaims.mockReset();
     readConceptMock.mockReset();
     findManyMu.mockResolvedValue([]);
     findManyEvidenceLinks.mockResolvedValue([]);
+    findManyPatternClaims.mockResolvedValue([]);
     findManyProposals.mockResolvedValue([canonicalProposal()]);
   });
 
@@ -225,6 +231,25 @@ describe("What Changed canonical non-downgrade", () => {
         weight: null,
         confidenceContribution: null,
         createdAt: new Date("2026-07-28T12:00:30.000Z"),
+      },
+      {
+        id: "uel-direct-pattern-raw-id",
+        sourceType: "pattern_claim",
+        sourceId: "pattern-raw-source-id",
+        role: "supports",
+        summary: null,
+        snippet: null,
+        quote: "RAW PATTERN QUOTE TEXT",
+        weight: null,
+        confidenceContribution: null,
+        createdAt: new Date("2026-07-28T12:00:15.000Z"),
+      },
+    ]);
+    findManyPatternClaims.mockResolvedValueOnce([
+      {
+        id: "pattern-raw-source-id",
+        summary: "UNPROJECTED PATTERN DISPLAY LABEL",
+        status: "active",
       },
     ]);
     readConceptMock.mockResolvedValueOnce({
@@ -364,20 +389,102 @@ describe("What Changed canonical non-downgrade", () => {
     const projected = JSON.stringify(projection);
     expect(projected).not.toContain("uel-direct-1");
     expect(projected).not.toContain("uel-direct-raw-source");
+    expect(projected).not.toContain("uel-direct-pattern-raw-id");
     expect(projected).not.toContain("uel-revision-1");
     expect(projected).not.toContain("msg-1");
     expect(projected).not.toContain("msg-private-source-id");
+    expect(projected).not.toContain("pattern-raw-source-id");
     expect(projected).not.toContain("raw-revision-source-id");
     expect(projected).not.toContain("RAW PRIVATE SOURCE TEXT");
+    expect(projected).not.toContain("RAW PATTERN QUOTE TEXT");
+    expect(projected).not.toContain("UNPROJECTED PATTERN DISPLAY LABEL");
     expect(projected).not.toContain("RAW REDACTED REVISION TEXT");
 
     const serialized = JSON.stringify(detail);
+    expect(serialized).toContain(
+      `canonical-evidence-${MODEL_UPDATE_ID}-direct_movement_evidence-0`,
+    );
+    expect(serialized).toContain(
+      `canonical-evidence-${MODEL_UPDATE_ID}-direct_movement_evidence-1`,
+    );
+    expect(serialized).toContain(
+      `canonical-evidence-${MODEL_UPDATE_ID}-resulting_revision_evidence-0`,
+    );
+    expect(serialized).toContain("Movement evidence");
+    expect(serialized).toContain("Resulting revision evidence");
+    expect(serialized).toContain("Conversation message");
+    expect(serialized).toContain("Supporting");
+    expect(serialized).toContain("The user said they like tea again now.");
+    expect(serialized).not.toContain("uel-direct-1");
+    expect(serialized).not.toContain("uel-direct-raw-source");
+    expect(serialized).not.toContain("uel-direct-pattern-raw-id");
+    expect(serialized).not.toContain("uel-revision-1");
+    expect(serialized).not.toContain("msg-1");
+    expect(serialized).not.toContain("msg-private-source-id");
+    expect(serialized).not.toContain("pattern-raw-source-id");
+    expect(serialized).not.toContain("/patterns/pattern-raw-source-id");
+    expect(serialized).not.toContain("raw-revision-source-id");
+    expect(serialized).not.toContain("/messages/raw-revision-source-id");
+    expect(serialized).not.toContain("RAW PRIVATE SOURCE TEXT");
+    expect(serialized).not.toContain("RAW PATTERN QUOTE TEXT");
+    expect(serialized).not.toContain("UNPROJECTED PATTERN DISPLAY LABEL");
+    expect(serialized).not.toContain("RAW REDACTED REVISION TEXT");
     expect(serialized).not.toContain("canonicalConceptId");
     expect(serialized).not.toContain("previousRevisionId");
     expect(serialized).not.toContain("resultingRevisionId");
     expect(serialized).not.toContain("exploreProposalId");
     expect(serialized).not.toContain("internalNotes");
     expect(serialized).not.toContain("movementRationale");
+  });
+
+  it("preserves noncanonical report evidence refs in the complete API detail", async () => {
+    findFirstMu.mockResolvedValueOnce(
+      baseRow({
+        id: "mu-noncanonical",
+        affectedObjectType: UnderstandingLinkTargetType.usermap_conclusion,
+        affectedObjectId: "umc-1",
+        userFacingSummary: "Legacy movement summary",
+        beforeSummary: "Earlier legacy read",
+        afterSummary: "Later legacy read",
+        canonicalConceptId: null,
+        previousRevisionId: null,
+        resultingRevisionId: null,
+        exploreProposalId: null,
+      }),
+    );
+    findManyEvidenceLinks.mockResolvedValueOnce([
+      {
+        id: "legacy-uel-raw-id",
+        sourceType: "message",
+        sourceId: "legacy-message-source-id",
+        role: "supports",
+        summary: "Legacy evidence summary",
+        snippet: null,
+        quote: null,
+        weight: null,
+        confidenceContribution: null,
+        createdAt: new Date("2026-07-28T12:01:00.000Z"),
+      },
+    ]);
+
+    const detail = await buildWhatChangedInspectorDetail({
+      userId: "u1",
+      modelUpdateId: "mu-noncanonical",
+    });
+
+    expect(detail?.canonicalInspectorProjection).toBeUndefined();
+    const serialized = JSON.stringify(detail);
+    expect(serialized).toContain("legacy-uel-raw-id");
+    expect(serialized).toContain("legacy-message-source-id");
+    expect(
+      detail?.report.facts.items.some((item) =>
+        item.evidenceRefs.some(
+          (ref) =>
+            ref.id === "legacy-uel-raw-id" &&
+            ref.sourceId === "legacy-message-source-id",
+        ),
+      ),
+    ).toBe(true);
   });
 
   it("does not relabel current-revision evidence as resulting-revision evidence for older movements", async () => {

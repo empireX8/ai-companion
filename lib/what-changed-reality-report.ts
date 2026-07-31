@@ -994,6 +994,61 @@ function buildCanonicalInspectorProjection(args: {
   };
 }
 
+function canonicalReportEvidenceFromProjection(
+  projection: CanonicalModelUpdateInspectorProjection,
+): ModelMovementRealityPacketEvidence[] {
+  return [
+    ...projection.directMovementEvidence,
+    ...projection.resultingRevisionEvidence,
+  ].flatMap((item) => {
+    const drilldown = item.canonicalEvidenceDrilldown;
+    if (!drilldown) {
+      return [];
+    }
+    const title = drilldown.title.toLowerCase().startsWith(
+      drilldown.provenanceLabel.toLowerCase(),
+    )
+      ? drilldown.title
+      : `${drilldown.provenanceLabel} · ${drilldown.title}`;
+    const createdAt = drilldown.recordedAt ?? projection.createdAt;
+
+    return [
+      {
+        id: drilldown.selectionId,
+        sourceType: drilldown.sourceType as UnderstandingLinkSourceType,
+        sourceId: drilldown.selectionId,
+        role: drilldown.role as UnderstandingLinkRole,
+        createdAt,
+        sourceTypeLabel: drilldown.sourceTypeLabel,
+        displayLabel: title,
+        href: null,
+        analysisText: drilldown.summary ?? drilldown.snippet ?? drilldown.title,
+        safeSummary: drilldown.summary,
+        safeSnippet: drilldown.snippet,
+        sourceDisclosure: drilldown.sourceDisclosure,
+      },
+    ];
+  });
+}
+
+function buildCanonicalReportPacket(args: {
+  packet: ModelMovementRealityPacket;
+  projection: CanonicalModelUpdateInspectorProjection;
+}): ModelMovementRealityPacket {
+  return {
+    ...args.packet,
+    modelUpdate: {
+      ...args.packet.modelUpdate,
+      movementRationale: null,
+    },
+    affectedObject: null,
+    evidence: canonicalReportEvidenceFromProjection(args.projection),
+    relatedFieldwork: [],
+    relatedActions: [],
+    recentMovements: [],
+  };
+}
+
 function buildAffectedObjectDetail(args: {
   affectedObjectType: UnderstandingLinkTargetType;
   affectedObjectId: string;
@@ -2382,10 +2437,16 @@ export async function buildWhatChangedInspectorDetail(args: {
       createdAt: item.createdAt.toISOString(),
     })),
   };
+  const reportPacket = canonicalInspectorProjection
+    ? buildCanonicalReportPacket({
+        packet,
+        projection: canonicalInspectorProjection,
+      })
+    : packet;
 
   return {
     item: verifiedItem,
-    report: buildDeterministicModelMovementRealityReport(packet),
+    report: buildDeterministicModelMovementRealityReport(reportPacket),
     ...(canonicalInspectorProjection ? { canonicalInspectorProjection } : {}),
   };
 }
