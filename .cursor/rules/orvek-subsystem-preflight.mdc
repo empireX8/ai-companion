@@ -1,0 +1,53 @@
+---
+description: Mandatory Orvek subsystem ledger retrieval and preflight before diagnosis or edits
+alwaysApply: true
+---
+
+# Orvek Subsystem Preflight
+
+For every Orvek engineering diagnosis, plan, implementation, review, repair, closeout, or merge decision, do not rely on chat history or remembered project state.
+
+Before substantive reasoning or edits, read from the current target branch:
+
+1. `AGENTS.md`
+2. `docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md`
+3. `docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json`
+4. `docs/architecture/ORVEK-AGENT-STARTUP-PROTOCOL-001.md`
+5. the active PR/branch diff and the relevant accepted subsystem contract or receipt
+
+Then output:
+
+```text
+ORVEK EXECUTION PREFLIGHT
+
+Ledger revision: <commit SHA actually read>
+Active subsystem: <SUBSYS-NNN>
+Current status: <ledger status>
+Upstream proofs: <accepted prerequisites>
+Expected unavailable after this work: <capabilities that must remain unavailable>
+Issue classification: <BROKEN | NOT_BUILT | OPERATIONAL_UNKNOWN | MIXED>
+Controlling invariant: <exact invariant>
+Permitted scope: <bounded scope>
+Prohibited scope: <downstream or unrelated work>
+Exit proof: <required proof>
+```
+
+Do not continue when:
+
+- the active subsystem cannot be identified;
+- an upstream dependency has not passed;
+- the requested change belongs to a later subsystem;
+- visual emptiness or missing behaviour has not been classified against expected incompleteness;
+- the PR body lacks the required preflight fields;
+- a subsystem status change omits both ledger-file updates.
+
+Rules:
+
+- Producer before consumer.
+- Authority before projection.
+- One active subsystem per PR.
+- Unsupported behaviour must remain neutral, empty, disabled, masked, unavailable, or fail closed.
+- Never simulate completion with padding, generic fan-out, fixture intelligence, or invented relationships.
+- Every implementation must prove at least one downstream capability remains unavailable.
+- A supported invariant violation is `BROKEN`; a declared unavailable capability is `NOT_BUILT`.
+- If the task is emergency containment, contain only; do not silently build the replacement subsystem.
