@@ -1,0 +1,131 @@
+name: Orvek subsystem guard
+
+on:
+  pull_request:
+    branches:
+      - staging
+      - main
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate-orvek-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR subsystem preflight
+        shell: bash
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API_URL: ${{ github.api_url }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          body="${PR_BODY:-}"
+
+          fail() {
+            echo "::error::$1"
+            exit 1
+          }
+
+          value_after() {
+            local label="$1"
+            local line
+            line="$(grep -m1 -F "$label" <<< "$body" || true)"
+            [[ -n "$line" ]] || fail "Missing required PR field: $label"
+            local value="${line#*${label}}"
+            value="$(printf '%s' "$value" | xargs)"
+            printf '%s' "$value"
+          }
+
+          require_real_value() {
+            local label="$1"
+            local value
+            value="$(value_after "$label")"
+            [[ -n "$value" ]] || fail "Empty required PR field: $label"
+            case "$value" in
+              REPLACE_*|TODO*|TBD*|PLACEHOLDER*|SUBSYS-NNN|"BROKEN | NOT_BUILT | OPERATIONAL_UNKNOWN | MIXED")
+                fail "Placeholder remains in required PR field: $label"
+                ;;
+            esac
+          }
+
+          grep -Fq "## ORVEK EXECUTION PREFLIGHT" <<< "$body" \
+            || fail "Missing '## ORVEK EXECUTION PREFLIGHT' section."
+
+          applicability="$(value_after "**Orvek applicability:**")"
+
+          if [[ "$applicability" == "NOT_APPLICABLE" ]]; then
+            reason="$(value_after "**Why not Orvek work:**")"
+            [[ -n "$reason" && "$reason" != "NOT_APPLICABLE" && "$reason" != REPLACE_* ]] \
+              || fail "A concrete 'Why not Orvek work' reason is required."
+            echo "Non-Orvek PR declared with reason: $reason"
+            exit 0
+          fi
+
+          [[ "$applicability" == "APPLICABLE" ]] \
+            || fail "Orvek applicability must be APPLICABLE or NOT_APPLICABLE."
+
+          required_fields=(
+            "**Ledger revision:**"
+            "**Active subsystem:**"
+            "**Current status:**"
+            "**Upstream proofs:**"
+            "**Expected unavailable after this work:**"
+            "**Issue classification:**"
+            "**Controlling invariant:**"
+            "**Permitted scope:**"
+            "**Prohibited scope:**"
+            "**Exit proof:**"
+            "**Ledger status change:**"
+          )
+
+          for field in "${required_fields[@]}"; do
+            require_real_value "$field"
+          done
+
+          ledger_revision="$(value_after "**Ledger revision:**")"
+          [[ "$ledger_revision" =~ ^[0-9a-fA-F]{7,40}$ ]] \
+            || fail "Ledger revision must be a 7-40 character commit SHA actually read."
+
+          subsystem="$(value_after "**Active subsystem:**")"
+          [[ "$subsystem" =~ ^SUBSYS-[0-9]{3}$ ]] \
+            || fail "Active subsystem must match SUBSYS-NNN."
+
+          classification="$(value_after "**Issue classification:**")"
+          case "$classification" in
+            BROKEN|NOT_BUILT|OPERATIONAL_UNKNOWN|MIXED) ;;
+            *) fail "Issue classification must be BROKEN, NOT_BUILT, OPERATIONAL_UNKNOWN, or MIXED." ;;
+          esac
+
+          ledger_change="$(value_after "**Ledger status change:**")"
+          case "$ledger_change" in
+            YES|NO) ;;
+            *) fail "Ledger status change must be YES or NO." ;;
+          esac
+
+          if [[ "$ledger_change" == "YES" ]]; then
+            files_url="${API_URL}/repos/${REPOSITORY}/pulls/${PR_NUMBER}/files?per_page=100"
+            changed_files="$(curl -fsSL \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$files_url" | jq -r '.[].filename')"
+
+            grep -Fxq "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md" <<< "$changed_files" \
+              || fail "Ledger status change is YES, but the Markdown ledger is not changed."
+            grep -Fxq "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json" <<< "$changed_files" \
+              || fail "Ledger status change is YES, but the JSON ledger is not changed."
+          fi
+
+          echo "Orvek subsystem preflight passed for ${subsystem}."
