@@ -443,11 +443,81 @@ describe("model-update inspector presentation composer", () => {
         expect.stringContaining("Resulting revision evidence"),
       ]),
     )
-    expect(object.relatedIds).toEqual(["opaque-canonical-selection"])
-    expect(satellites["opaque-canonical-selection"]?.inspectorObjectType).toBe(
-      "canonical_concept",
-    )
+    expect(object.relatedIds).toBeUndefined()
+    expect(satellites["opaque-canonical-selection"]).toBeUndefined()
     expect(reportId).toBe("mu-canonical")
+  })
+
+  it("uses an existing resolved workbench selection id for canonical related objects", () => {
+    const { object, satellites } = composeProductionModelUpdateCanonicalViewModel({
+      obj: {
+        id: "mu-canonical",
+        type: "model-update",
+        title: "I like tea again now",
+      },
+      detail: {
+        item: {
+          id: "mu-canonical",
+          createdAt: "2026-07-28T12:00:00.000Z",
+          updateTypeLabel: "Conclusion Strengthened",
+          affectedObjectType: "canonical_concept_revision" as never,
+          affectedObjectTypeLabel: "Canonical model revision",
+          affectedObjectId: null,
+          affectedObjectHref: null,
+          userFacingSummary: "I like tea again now",
+        },
+        report: buildReport(),
+        canonicalInspectorProjection: {
+          projectionType: "canonical_model_update_inspector",
+          modelUpdateId: "mu-canonical",
+          updateLabel: "Conclusion Strengthened",
+          displayedTitle: "I like tea again now",
+          distinctSummary: null,
+          createdAt: "2026-07-28T12:00:00.000Z",
+          rationale: null,
+          before: "I don't like tea anymore",
+          after: "I like tea again now",
+          resultingStateAtPublication: {
+            title: "I like tea again now",
+            summary: "I like tea again now",
+            version: 2,
+            acceptedAt: "2026-07-28T12:00:00.000Z",
+          },
+          currentUnderstandingNow: {
+            title: "I like green tea but not black tea",
+            summary: "I like green tea but not black tea",
+            version: 3,
+            acceptedAt: "2026-07-29T12:00:00.000Z",
+          },
+          directMovementEvidence: [],
+          resultingRevisionEvidence: [],
+          relatedObjects: [
+            {
+              selectionId: "opaque-canonical-selection",
+              title: "I like green tea but not black tea",
+              inspectorObjectType: "canonical_concept",
+            },
+          ],
+        },
+      },
+      modelUpdateEvidence: [],
+      affectedContext: {
+        userMap: null,
+        pattern: null,
+        contradiction: null,
+        affectedEvidence: [],
+      },
+      resolveSelectionId: (objectType, objectId) =>
+        objectType === "canonical_concept" &&
+        objectId === "opaque-canonical-selection"
+          ? "existing-canonical-workbench-object"
+          : null,
+      getObjectTitle: () => undefined,
+    })
+
+    expect(object.relatedIds).toEqual(["existing-canonical-workbench-object"])
+    expect(satellites["opaque-canonical-selection"]).toBeUndefined()
+    expect(satellites["existing-canonical-workbench-object"]).toBeUndefined()
   })
 
   it("keeps browser composer source free of raw canonical lineage fields", () => {

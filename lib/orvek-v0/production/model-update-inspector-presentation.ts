@@ -200,21 +200,14 @@ function buildCanonicalProjectionViewModel(input: {
   })
 
   for (const related of projection.relatedObjects) {
-    const title = firstMeaningfulModelUpdateText([
-      related.title,
-      input.getObjectTitle(related.selectionId),
-    ])
-    if (!title || usedIds.has(related.selectionId)) continue
-    usedIds.add(related.selectionId)
-    relatedIds.push(related.selectionId)
-    satellites[related.selectionId] = {
-      id: related.selectionId,
-      type: "map-object",
-      title,
-      summary: projection.currentUnderstandingNow.summary,
-      inspectorObjectType: related.inspectorObjectType,
-      inspectorObjectId: related.selectionId,
-    }
+    const resolvedSelectionId = input.resolveSelectionId(
+      related.inspectorObjectType,
+      related.selectionId,
+    )
+    if (!resolvedSelectionId) continue
+    if (usedIds.has(resolvedSelectionId)) continue
+    usedIds.add(resolvedSelectionId)
+    relatedIds.push(resolvedSelectionId)
   }
 
   const supporting = dedupeStrings(
