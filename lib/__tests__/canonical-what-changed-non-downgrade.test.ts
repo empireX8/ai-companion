@@ -17,6 +17,7 @@ const findManyMu = vi.fn();
 const findFirstProposal = vi.fn();
 const findManyProposals = vi.fn();
 const findManyEvidenceLinks = vi.fn();
+const findManyMessages = vi.fn();
 const readConceptMock = vi.fn();
 
 vi.mock("../prismadb", () => ({
@@ -39,7 +40,7 @@ vi.mock("../prismadb", () => ({
     contradictionNode: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => []) },
     surfacedAction: { findMany: vi.fn(async () => []) },
     journalEntry: { findMany: vi.fn(async () => []) },
-    message: { findMany: vi.fn(async () => []) },
+    message: { findMany: (...args: unknown[]) => findManyMessages(...args) },
     quickCheckIn: { findMany: vi.fn(async () => []) },
     session: { findMany: vi.fn(async () => []) },
   },
@@ -101,9 +102,11 @@ describe("What Changed canonical non-downgrade", () => {
     findFirstProposal.mockReset();
     findManyProposals.mockReset();
     findManyEvidenceLinks.mockReset();
+    findManyMessages.mockReset();
     readConceptMock.mockReset();
     findManyMu.mockResolvedValue([]);
     findManyEvidenceLinks.mockResolvedValue([]);
+    findManyMessages.mockResolvedValue([]);
     findManyProposals.mockResolvedValue([canonicalProposal()]);
   });
 
@@ -209,10 +212,18 @@ describe("What Changed canonical non-downgrade", () => {
         role: "supports",
         summary: "The user said they like tea again now.",
         snippet: null,
-        quote: null,
+        quote: "RAW PRIVATE MESSAGE TEXT MUST NOT LEAK",
         weight: null,
         confidenceContribution: null,
         createdAt: new Date("2026-07-28T12:01:00.000Z"),
+      },
+    ]);
+    findManyMessages.mockResolvedValueOnce([
+      {
+        id: "msg-1",
+        content: "RAW MESSAGE ROW CONTENT MUST NOT LEAK",
+        createdAt: new Date("2026-07-28T12:01:00.000Z"),
+        sessionId: "session-1",
       },
     ]);
     readConceptMock.mockResolvedValueOnce({
@@ -291,10 +302,60 @@ describe("What Changed canonical non-downgrade", () => {
       detail?.canonicalInspectorProjection?.directMovementEvidence[0]
         ?.evidenceTarget,
     ).toBe("direct_movement");
+    const directEvidence =
+      detail?.canonicalInspectorProjection?.directMovementEvidence[0];
+    expect(directEvidence?.sourceId).toBeUndefined();
+    expect(directEvidence?.sourceObjectHref).toBeNull();
+    expect(
+      directEvidence?.canonicalEvidenceDrilldown?.selectionId,
+    ).toMatch(/^canonical-evidence-[a-f0-9]{64}$/);
+    expect(
+      directEvidence?.canonicalEvidenceDrilldown?.selectionId,
+    ).not.toContain(MODEL_UPDATE_ID);
+    expect(directEvidence?.canonicalEvidenceDrilldown).toMatchObject({
+      evidenceClass: "direct_movement_evidence",
+      evidenceClassLabel: "Movement evidence",
+      sourceType: "message",
+      sourceTypeLabel: "Conversation message",
+      role: "supports",
+      roleLabel: "Supporting",
+      title: "The user said they like tea again now.",
+      summary: "The user said they like tea again now.",
+      snippet: null,
+      recordedAt: "2026-07-28T12:01:00.000Z",
+      recordedLabel: "28 Jul 2026, 13:01",
+      provenanceLabel: "Movement evidence",
+      sourceDisclosure: "available",
+    });
     expect(
       detail?.canonicalInspectorProjection?.resultingRevisionEvidence[0]
         ?.evidenceTarget,
     ).toBe("resulting_revision");
+    const revisionEvidence =
+      detail?.canonicalInspectorProjection?.resultingRevisionEvidence[0];
+    expect(revisionEvidence?.sourceId).toBeUndefined();
+    expect(revisionEvidence?.sourceObjectHref).toBeNull();
+    expect(
+      revisionEvidence?.canonicalEvidenceDrilldown?.selectionId,
+    ).toMatch(/^canonical-evidence-[a-f0-9]{64}$/);
+    expect(
+      revisionEvidence?.canonicalEvidenceDrilldown?.selectionId,
+    ).not.toContain(MODEL_UPDATE_ID);
+    expect(revisionEvidence?.canonicalEvidenceDrilldown).toMatchObject({
+      evidenceClass: "resulting_revision_evidence",
+      evidenceClassLabel: "Resulting revision evidence",
+      sourceType: "message",
+      sourceTypeLabel: "Conversation message",
+      role: "supports",
+      roleLabel: "Supporting",
+      title: "Resulting revision evidence · Conversation message",
+      summary: null,
+      snippet: null,
+      recordedAt: null,
+      recordedLabel: null,
+      provenanceLabel: "Resulting revision evidence",
+      sourceDisclosure: "redacted",
+    });
     expect(
       findManyEvidenceLinks.mock.calls.some((call) =>
         JSON.stringify(call[0]).includes("canonical_concept_revision"),
@@ -308,6 +369,12 @@ describe("What Changed canonical non-downgrade", () => {
     expect(serialized).not.toContain("exploreProposalId");
     expect(serialized).not.toContain("internalNotes");
     expect(serialized).not.toContain("movementRationale");
+    expect(serialized).not.toContain("msg-1");
+    expect(serialized).not.toContain("session-1");
+    expect(serialized).not.toContain("uel-direct-1");
+    expect(serialized).not.toContain("uel-revision-1");
+    expect(serialized).not.toContain("RAW PRIVATE MESSAGE TEXT MUST NOT LEAK");
+    expect(serialized).not.toContain("RAW MESSAGE ROW CONTENT MUST NOT LEAK");
   });
 
   it("does not relabel current-revision evidence as resulting-revision evidence for older movements", async () => {

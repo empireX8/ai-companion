@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import {
   ContradictionStatus,
   ExploreMovementAuthorityMode,
@@ -25,6 +27,7 @@ import {
   REALITY_TRACKING_OUTPUT_PROMPT_VERSION,
   type RealityTrackingClaim,
   type RealityTrackingClaimClassification,
+  type RealityTrackingClaimSection,
   type RealityTrackingEvidenceRef,
   type RealityTrackingEvidenceStatus,
   type RealityTrackingModelMovementReport,
@@ -51,6 +54,8 @@ import {
   resolveModelUpdateDisplayTitle,
 } from "./model-update-identity";
 import type {
+  CanonicalModelUpdateEvidenceDisclosure,
+  CanonicalModelUpdateEvidenceDrilldownProjection,
   CanonicalModelUpdateInspectorProjection,
   InspectorEvidenceLinkItem,
   InspectorModelUpdateDetail,
@@ -259,6 +264,9 @@ export type ModelMovementRealityPacketEvidence = {
   displayLabel: string;
   href: string | null;
   analysisText: string | null;
+  safeSummary?: string | null;
+  safeSnippet?: string | null;
+  sourceDisclosure?: CanonicalModelUpdateEvidenceDisclosure;
 };
 
 type ModelMovementRelatedFieldwork = {
@@ -723,44 +731,272 @@ function normalizedLabel(value: string | null | undefined): string {
   return normalizeWhitespace(value ?? "").toLowerCase();
 }
 
-function movementEvidenceToInspectorItem(
-  item: ModelMovementRealityPacketEvidence
-): InspectorEvidenceLinkItem {
+function safeCanonicalEvidenceText(value: string | null | undefined): string | null {
+  const normalized = normalizeWhitespace(value ?? "");
+  return normalized ? normalized : null;
+}
+
+function formatInspectorRecordedLabel(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Europe/London",
+  }).format(date);
+}
+
+function roleLabel(role: UnderstandingLinkRole): string {
+  switch (role) {
+    case "supports":
+      return "Supporting";
+    case "contradicts":
+      return "Conflicting";
+    case "context":
+      return "Context";
+    default:
+      return toTitleCase(role);
+  }
+}
+
+type ResolvedEvidenceSourceIds = ReadonlyMap<
+  UnderstandingLinkSourceType,
+  ReadonlySet<string>
+>;
+
+/**
+ * A populated link summary, snippet, quote, sourceType or sourceId is not proof
+ * that the underlying source row exists and belongs to the authenticated user.
+ * Eligibility requires the declared source to have been returned by the existing
+ * user-scoped query for its source type. Source types with no user-scoped
+ * resolution query cannot be verified here and therefore fail closed.
+ */
+function canonicalEvidenceSourceIsEligible(args: {
+  sourceType: UnderstandingLinkSourceType;
+  sourceId: string;
+  resolvedSourceIds: ResolvedEvidenceSourceIds;
+}): boolean {
+  const resolved = args.resolvedSourceIds.get(args.sourceType);
+  if (!resolved) {
+    return false;
+  }
+  return resolved.has(args.sourceId);
+}
+
+function canonicalEvidenceSelectionId(args: {
+  modelUpdateId: string;
+  evidenceClass: "direct_movement_evidence" | "resulting_revision_evidence";
+  relationshipId: string;
+}): string {
+  const digest = createHash("sha256")
+    .update("orvek:canonical-evidence-drilldown:v1")
+    .update("\0")
+    .update(args.modelUpdateId)
+    .update("\0")
+    .update(args.evidenceClass)
+    .update("\0")
+    .update(args.relationshipId)
+    .digest("hex");
+
+  return `canonical-evidence-${digest}`;
+}
+
+function canonicalEvidenceTitleCandidate(
+  value: string | null | undefined
+): string | null {
+  if (!value) {
+    return null;
+  }
+  const normalized = normalizeWhitespace(value);
+  if (
+    !normalized ||
+    normalizedLabel(normalized) === "context" ||
+    normalizedLabel(normalized) === "receipt"
+  ) {
+    return null;
+  }
+  return normalized;
+}
+
+function canonicalEvidenceTitle(args: {
+  evidenceClassLabel: string;
+  sourceTypeLabel: string;
+  sourceTitle: string | null;
+  summary: string | null;
+  recordedLabel: string | null;
+}): string {
+  const sourceTitle = canonicalEvidenceTitleCandidate(args.sourceTitle);
+  const summary = canonicalEvidenceTitleCandidate(args.summary);
+  return (
+    firstMeaningfulModelUpdateText([
+      sourceTitle && normalizedLabel(sourceTitle) !== normalizedLabel(args.sourceTypeLabel)
+        ? sourceTitle
+        : null,
+      summary,
+      args.recordedLabel ? `${args.sourceTypeLabel} · ${args.recordedLabel}` : null,
+      `${args.evidenceClassLabel} · ${args.sourceTypeLabel}`,
+    ]) ?? `${args.evidenceClassLabel} · ${args.sourceTypeLabel}`
+  );
+}
+
+function buildDirectMovementEvidenceDrilldown(args: {
+  modelUpdateId: string;
+  item: ModelMovementRealityPacketEvidence;
+}): CanonicalModelUpdateEvidenceDrilldownProjection {
+  const evidenceClass = "direct_movement_evidence" as const;
+  const evidenceClassLabel = "Movement evidence";
+  const recordedLabel = formatInspectorRecordedLabel(args.item.createdAt);
+  const sourceDisclosure = args.item.sourceDisclosure ?? "unavailable";
+  const summary = sourceDisclosure === "available" ? args.item.safeSummary ?? null : null;
+  const snippet = sourceDisclosure === "available" ? args.item.safeSnippet ?? null : null;
+
   return {
-    id: item.id,
-    sourceTypeLabel: item.sourceTypeLabel,
-    evidenceSummaryLabel: item.analysisText ?? item.displayLabel,
-    sourceObjectHref: item.href,
-    createdAt: item.createdAt,
-    hasEvidence: true,
-    sourceType: item.sourceType,
-    sourceId: item.sourceId,
-    objectTitle: item.displayLabel,
-    linkRole: item.role,
-    evidenceTarget: "direct_movement",
-    evidenceTargetLabel: "Movement evidence",
+    selectionId: canonicalEvidenceSelectionId({
+      modelUpdateId: args.modelUpdateId,
+      evidenceClass,
+      relationshipId: args.item.id,
+    }),
+    evidenceClass,
+    evidenceClassLabel,
+    sourceType: args.item.sourceType,
+    sourceTypeLabel: args.item.sourceTypeLabel,
+    role: args.item.role,
+    roleLabel: roleLabel(args.item.role),
+    title: canonicalEvidenceTitle({
+      evidenceClassLabel,
+      sourceTypeLabel: args.item.sourceTypeLabel,
+      sourceTitle: null,
+      summary,
+      recordedLabel,
+    }),
+    summary,
+    snippet,
+    recordedAt: args.item.createdAt,
+    recordedLabel,
+    provenanceLabel: evidenceClassLabel,
+    sourceDisclosure,
   };
 }
 
-function revisionEvidenceToInspectorItem(
-  item: CanonicalProductConceptV1["evidence"][number]
+function buildResultingRevisionEvidenceDrilldown(args: {
+  modelUpdateId: string;
+  item: CanonicalProductConceptV1["evidence"][number];
+}): CanonicalModelUpdateEvidenceDrilldownProjection {
+  const evidenceClass = "resulting_revision_evidence" as const;
+  const evidenceClassLabel = "Resulting revision evidence";
+  const sourceTypeLabelValue = sourceTypeLabel(args.item.sourceType);
+  const sourceDisclosure: CanonicalModelUpdateEvidenceDisclosure =
+    args.item.disclosure === "public" ? "available" : "redacted";
+  const summary =
+    sourceDisclosure === "available"
+      ? safeCanonicalEvidenceText(args.item.summary)
+      : null;
+  const snippet =
+    sourceDisclosure === "available"
+      ? safeCanonicalEvidenceText(args.item.snippet)
+      : null;
+
+  return {
+    selectionId: canonicalEvidenceSelectionId({
+      modelUpdateId: args.modelUpdateId,
+      evidenceClass,
+      relationshipId: args.item.id,
+    }),
+    evidenceClass,
+    evidenceClassLabel,
+    sourceType: args.item.sourceType,
+    sourceTypeLabel: sourceTypeLabelValue,
+    role: args.item.role,
+    roleLabel: roleLabel(args.item.role),
+    title: canonicalEvidenceTitle({
+      evidenceClassLabel,
+      sourceTypeLabel: sourceTypeLabelValue,
+      sourceTitle: null,
+      summary,
+      recordedLabel: null,
+    }),
+    summary,
+    snippet,
+    recordedAt: null,
+    recordedLabel: null,
+    provenanceLabel: evidenceClassLabel,
+    sourceDisclosure,
+  };
+}
+
+/**
+ * Keyed by evidence relationship id so the report projector and the Inspector
+ * projection share one verified set. Relationships whose source did not resolve
+ * as eligible are omitted and therefore have no valid drill-down projection.
+ */
+function buildDirectMovementEvidenceDrilldownIndex(args: {
+  modelUpdateId: string;
+  directEvidence: ModelMovementRealityPacketEvidence[];
+  eligibleRelationshipIds: ReadonlySet<string>;
+}): Map<string, CanonicalModelUpdateEvidenceDrilldownProjection> {
+  const index = new Map<
+    string,
+    CanonicalModelUpdateEvidenceDrilldownProjection
+  >();
+
+  for (const item of args.directEvidence) {
+    if (!args.eligibleRelationshipIds.has(item.id)) {
+      continue;
+    }
+    index.set(
+      item.id,
+      buildDirectMovementEvidenceDrilldown({
+        modelUpdateId: args.modelUpdateId,
+        item,
+      }),
+    );
+  }
+
+  return index;
+}
+
+function movementEvidenceToInspectorItem(
+  drilldown: CanonicalModelUpdateEvidenceDrilldownProjection,
 ): InspectorEvidenceLinkItem {
   return {
-    id: item.id,
-    sourceTypeLabel: sourceTypeLabel(item.sourceType),
-    evidenceSummaryLabel: item.summary,
-    sourceObjectHref: item.sourceObjectHref,
+    id: drilldown.selectionId,
+    sourceTypeLabel: drilldown.sourceTypeLabel,
+    evidenceSummaryLabel: drilldown.summary ?? drilldown.title,
+    sourceObjectHref: null,
+    createdAt: drilldown.recordedAt,
+    hasEvidence: true,
+    sourceType: drilldown.sourceType,
+    objectTitle: drilldown.title,
+    linkRole: drilldown.role,
+    evidenceTarget: "direct_movement",
+    evidenceTargetLabel: drilldown.evidenceClassLabel,
+    canonicalEvidenceDrilldown: drilldown,
+  };
+}
+
+function revisionEvidenceToInspectorItem(args: {
+  modelUpdateId: string;
+  item: CanonicalProductConceptV1["evidence"][number];
+}): InspectorEvidenceLinkItem {
+  const drilldown = buildResultingRevisionEvidenceDrilldown(args);
+  return {
+    id: drilldown.selectionId,
+    sourceTypeLabel: drilldown.sourceTypeLabel,
+    evidenceSummaryLabel: drilldown.summary ?? drilldown.title,
+    sourceObjectHref: null,
     createdAt: null,
     hasEvidence: true,
-    sourceType: item.sourceType,
-    sourceId: item.sourceId ?? undefined,
-    objectTitle:
-      item.disclosure === "redacted"
-        ? "Resulting revision evidence"
-        : item.summary,
-    linkRole: item.role,
+    sourceType: drilldown.sourceType,
+    objectTitle: drilldown.title,
+    linkRole: drilldown.role,
     evidenceTarget: "resulting_revision",
-    evidenceTargetLabel: "Resulting revision evidence",
+    evidenceTargetLabel: drilldown.evidenceClassLabel,
+    canonicalEvidenceDrilldown: drilldown,
   };
 }
 
@@ -768,7 +1004,7 @@ function buildCanonicalInspectorProjection(args: {
   row: ModelUpdateDetailRow;
   movement: CanonicalProductConceptV1["movementHistory"][number];
   concept: CanonicalProductConceptV1;
-  directEvidence: ModelMovementRealityPacketEvidence[];
+  directEvidenceDrilldowns: CanonicalModelUpdateEvidenceDrilldownProjection[];
   movementRationale: string | null;
 }): CanonicalModelUpdateInspectorProjection {
   const resultingRevision = args.concept.revisionHistory.find(
@@ -821,10 +1057,17 @@ function buildCanonicalInspectorProjection(args: {
       version: args.concept.version,
       acceptedAt: args.concept.acceptedAt,
     },
-    directMovementEvidence: args.directEvidence.map(movementEvidenceToInspectorItem),
+    directMovementEvidence: args.directEvidenceDrilldowns.map((drilldown) =>
+      movementEvidenceToInspectorItem(drilldown),
+    ),
     resultingRevisionEvidence:
       args.concept.currentRevisionId === args.movement.resultingRevisionId
-        ? args.concept.evidence.map(revisionEvidenceToInspectorItem)
+        ? args.concept.evidence.map((item) =>
+            revisionEvidenceToInspectorItem({
+              modelUpdateId: args.row.id,
+              item,
+            }),
+          )
         : [],
     relatedObjects: [
       {
@@ -833,6 +1076,116 @@ function buildCanonicalInspectorProjection(args: {
         inspectorObjectType: "canonical_concept",
       },
     ],
+  };
+}
+
+type CanonicalEvidenceDrilldownIndex = ReadonlyMap<
+  string,
+  CanonicalModelUpdateEvidenceDrilldownProjection
+>;
+
+/**
+ * Replaces one browser-visible evidence reference with its verified drill-down
+ * projection. A reference with no safe projection is dropped rather than
+ * rewritten, so an unsafe relationship can never reach the browser.
+ */
+function projectCanonicalReportEvidenceRef(args: {
+  ref: RealityTrackingEvidenceRef;
+  drilldownIndex: CanonicalEvidenceDrilldownIndex;
+}): RealityTrackingEvidenceRef[] {
+  const drilldown = args.drilldownIndex.get(args.ref.id);
+  if (!drilldown) {
+    return [];
+  }
+
+  return [
+    {
+      id: drilldown.selectionId,
+      sourceType: drilldown.sourceType,
+      sourceTypeLabel: drilldown.sourceTypeLabel,
+      sourceId: drilldown.selectionId,
+      role: drilldown.role,
+      label: drilldown.title,
+      href: null,
+      createdAt: drilldown.recordedAt ?? args.ref.createdAt,
+    },
+  ];
+}
+
+function projectCanonicalReportClaim(args: {
+  claim: RealityTrackingClaim;
+  drilldownIndex: CanonicalEvidenceDrilldownIndex;
+}): RealityTrackingClaim {
+  const evidenceRefs = args.claim.evidenceRefs.flatMap((ref) =>
+    projectCanonicalReportEvidenceRef({
+      ref,
+      drilldownIndex: args.drilldownIndex,
+    }),
+  );
+
+  // Only a claim that lost every reference genuinely becomes unverified.
+  const lostAllReferences =
+    args.claim.evidenceRefs.length > 0 && evidenceRefs.length === 0;
+
+  return {
+    ...args.claim,
+    evidenceStatus: lostAllReferences
+      ? buildEvidenceStatus(evidenceRefs, args.claim.classification)
+      : args.claim.evidenceStatus,
+    evidenceRefs,
+  };
+}
+
+function projectCanonicalReportSection<
+  TSection extends RealityTrackingClaimSection,
+>(section: TSection, drilldownIndex: CanonicalEvidenceDrilldownIndex): TSection {
+  return {
+    ...section,
+    items: section.items.map((claim) =>
+      projectCanonicalReportClaim({ claim, drilldownIndex }),
+    ),
+  };
+}
+
+/**
+ * Applied after the deterministic report exists, so report prose, sections,
+ * classifications, counts and conclusions stay derived from the original
+ * verified packet.
+ */
+function projectCanonicalReportEvidenceReferences(args: {
+  report: RealityTrackingModelMovementReport;
+  drilldownIndex: CanonicalEvidenceDrilldownIndex;
+}): RealityTrackingModelMovementReport {
+  const index = args.drilldownIndex;
+
+  return {
+    ...args.report,
+    facts: projectCanonicalReportSection(args.report.facts, index),
+    stronglySupportedClaims: projectCanonicalReportSection(
+      args.report.stronglySupportedClaims,
+      index,
+    ),
+    inferences: projectCanonicalReportSection(args.report.inferences, index),
+    speculations: projectCanonicalReportSection(args.report.speculations, index),
+    overreachGuardrails: projectCanonicalReportSection(
+      args.report.overreachGuardrails,
+      index,
+    ),
+    loopPatternDetection: projectCanonicalReportSection(
+      args.report.loopPatternDetection,
+      index,
+    ),
+    modelMovement: projectCanonicalReportSection(args.report.modelMovement, index),
+    realityGate: projectCanonicalReportSection(args.report.realityGate, index),
+    fieldworkWatchFor: projectCanonicalReportSection(
+      args.report.fieldworkWatchFor,
+      index,
+    ),
+    reentryAction: projectCanonicalReportSection(args.report.reentryAction, index),
+    whatWouldChangeThisConclusion: projectCanonicalReportSection(
+      args.report.whatWouldChangeThisConclusion,
+      index,
+    ),
   };
 }
 
@@ -2120,40 +2473,76 @@ export async function buildWhatChangedInspectorDetail(args: {
     visibleContradictions.map((item) => item.id)
   );
 
-  const evidence = evidenceRows.map((link) => ({
-    id: link.id,
-    sourceType: link.sourceType,
-    sourceId: link.sourceId,
-    role: link.role,
-    createdAt: link.createdAt.toISOString(),
-    sourceTypeLabel: sourceTypeLabel(link.sourceType),
-    displayLabel: buildDisplayLabel({
-      link,
-      patternById,
-      contradictionById,
-      actionById,
-      journalById,
-      messageById,
-      quickCheckInById,
-      sessionById,
-    }),
-    href: buildSourceHref(
-      link.sourceType,
-      link.sourceId,
-      visiblePatternIds,
-      visibleContradictionIds
-    ),
-    analysisText: buildAnalysisText({
-      link,
-      patternById,
-      contradictionById,
-      actionById,
-      journalById,
-      messageById,
-      quickCheckInById,
-      sessionById,
-    }),
-  }));
+  const resolvedEvidenceSourceIds: ResolvedEvidenceSourceIds = new Map<
+    UnderstandingLinkSourceType,
+    ReadonlySet<string>
+  >([
+    ["pattern_claim", new Set(patternById.keys())],
+    ["contradiction_node", new Set(contradictionById.keys())],
+    ["surfaced_action", new Set(actionById.keys())],
+    ["journal_entry", new Set(journalById.keys())],
+    ["message", new Set(messageById.keys())],
+    ["quick_check_in", new Set(quickCheckInById.keys())],
+    ["session", new Set(sessionById.keys())],
+  ]);
+
+  const eligibleEvidenceRelationshipIds = new Set(
+    evidenceRows
+      .filter((link) =>
+        canonicalEvidenceSourceIsEligible({
+          sourceType: link.sourceType,
+          sourceId: link.sourceId,
+          resolvedSourceIds: resolvedEvidenceSourceIds,
+        }),
+      )
+      .map((link) => link.id),
+  );
+
+  const evidence: ModelMovementRealityPacketEvidence[] = evidenceRows.map((link) => {
+    const safeSummary = safeCanonicalEvidenceText(link.summary);
+    const safeSnippet = safeCanonicalEvidenceText(link.snippet);
+    const sourceDisclosure: CanonicalModelUpdateEvidenceDisclosure =
+      eligibleEvidenceRelationshipIds.has(link.id) && (safeSummary || safeSnippet)
+        ? "available"
+        : "unavailable";
+    return {
+      id: link.id,
+      sourceType: link.sourceType,
+      sourceId: link.sourceId,
+      role: link.role,
+      createdAt: link.createdAt.toISOString(),
+      sourceTypeLabel: sourceTypeLabel(link.sourceType),
+      displayLabel: buildDisplayLabel({
+        link,
+        patternById,
+        contradictionById,
+        actionById,
+        journalById,
+        messageById,
+        quickCheckInById,
+        sessionById,
+      }),
+      href: buildSourceHref(
+        link.sourceType,
+        link.sourceId,
+        visiblePatternIds,
+        visibleContradictionIds
+      ),
+      analysisText: buildAnalysisText({
+        link,
+        patternById,
+        contradictionById,
+        actionById,
+        journalById,
+        messageById,
+        quickCheckInById,
+        sessionById,
+      }),
+      safeSummary,
+      safeSnippet,
+      sourceDisclosure,
+    };
+  });
 
   const affectedObject = buildAffectedObjectDetail({
     affectedObjectType: row.affectedObjectType,
@@ -2166,13 +2555,23 @@ export async function buildWhatChangedInspectorDetail(args: {
   });
 
   const movementRationale = decodeMovementRationaleFromInternalNotes(row.internalNotes);
-  const canonicalInspectorProjection =
+  const canonicalEvidenceDrilldownIndex =
     canonicalConcept && canonicalMovement
+      ? buildDirectMovementEvidenceDrilldownIndex({
+          modelUpdateId: row.id,
+          directEvidence: evidence,
+          eligibleRelationshipIds: eligibleEvidenceRelationshipIds,
+        })
+      : null;
+  const canonicalInspectorProjection =
+    canonicalConcept && canonicalMovement && canonicalEvidenceDrilldownIndex
       ? buildCanonicalInspectorProjection({
           row,
           movement: canonicalMovement,
           concept: canonicalConcept,
-          directEvidence: evidence,
+          directEvidenceDrilldowns: [
+            ...canonicalEvidenceDrilldownIndex.values(),
+          ],
           movementRationale,
         })
       : null;
@@ -2215,10 +2614,17 @@ export async function buildWhatChangedInspectorDetail(args: {
       createdAt: item.createdAt.toISOString(),
     })),
   };
+  const report = buildDeterministicModelMovementRealityReport(packet);
 
   return {
     item: verifiedItem,
-    report: buildDeterministicModelMovementRealityReport(packet),
+    report:
+      canonicalInspectorProjection && canonicalEvidenceDrilldownIndex
+        ? projectCanonicalReportEvidenceReferences({
+            report,
+            drilldownIndex: canonicalEvidenceDrilldownIndex,
+          })
+        : report,
     ...(canonicalInspectorProjection ? { canonicalInspectorProjection } : {}),
   };
 }

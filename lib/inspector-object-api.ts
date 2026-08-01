@@ -43,6 +43,34 @@ export type InspectorEvidenceLinkItem = {
   /** Browser-safe provenance label for canonical ModelUpdate Inspector receipts. */
   evidenceTarget?: "direct_movement" | "resulting_revision";
   evidenceTargetLabel?: string;
+  /** Browser-safe drill-down projection for canonical ModelUpdate receipt clicks. */
+  canonicalEvidenceDrilldown?: CanonicalModelUpdateEvidenceDrilldownProjection;
+};
+
+export type CanonicalModelUpdateEvidenceClass =
+  | "direct_movement_evidence"
+  | "resulting_revision_evidence";
+
+export type CanonicalModelUpdateEvidenceDisclosure =
+  | "available"
+  | "redacted"
+  | "unavailable";
+
+export type CanonicalModelUpdateEvidenceDrilldownProjection = {
+  selectionId: string;
+  evidenceClass: CanonicalModelUpdateEvidenceClass;
+  evidenceClassLabel: string;
+  sourceType: string;
+  sourceTypeLabel: string;
+  role: string;
+  roleLabel: string;
+  title: string;
+  summary: string | null;
+  snippet: string | null;
+  recordedAt: string | null;
+  recordedLabel: string | null;
+  provenanceLabel: string;
+  sourceDisclosure: CanonicalModelUpdateEvidenceDisclosure;
 };
 
 import type { ContradictionDualSourcePresentation } from "./contradiction-dual-source-presentation-contract";
