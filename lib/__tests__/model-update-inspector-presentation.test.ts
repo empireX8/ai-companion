@@ -435,20 +435,20 @@ describe("model-update inspector presentation composer", () => {
     expect(object.whatWouldChange).toBeUndefined()
     expect(JSON.stringify(object)).not.toContain("Fallback report prose")
     expect(JSON.stringify(object)).not.toContain("Fallback change condition")
-    expect(object.supporting?.[0]).toContain("Movement evidence")
-    expect(object.conflicting?.[0]).toContain("Resulting revision evidence")
-    expect(object.receiptIds?.map((id) => satellites[id]?.title)).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining("Movement evidence"),
-        expect.stringContaining("Resulting revision evidence"),
-      ]),
-    )
+    // An explicit evidence relationship is a receipt and nothing else.
+    expect(object.supporting).toBeUndefined()
+    expect(object.conflicting).toBeUndefined()
+    expect(object.contextIds).toBeUndefined()
+    // Neither entry carries an accepted drill-down projection, so canonical
+    // selection fails closed rather than minting a positional receipt identity.
+    expect(object.receiptIds).toBeUndefined()
+    expect(satellites).toEqual({})
     expect(object.relatedIds).toBeUndefined()
     expect(satellites["opaque-canonical-selection"]).toBeUndefined()
     expect(reportId).toBe("mu-canonical")
   })
 
-  it("uses an existing resolved workbench selection id for canonical related objects", () => {
+  it("keeps canonical related-object selection unavailable even when the workbench resolves one", () => {
     const { object, satellites } = composeProductionModelUpdateCanonicalViewModel({
       obj: {
         id: "mu-canonical",
@@ -515,7 +515,7 @@ describe("model-update inspector presentation composer", () => {
       getObjectTitle: () => undefined,
     })
 
-    expect(object.relatedIds).toEqual(["existing-canonical-workbench-object"])
+    expect(object.relatedIds).toBeUndefined()
     expect(satellites["opaque-canonical-selection"]).toBeUndefined()
     expect(satellites["existing-canonical-workbench-object"]).toBeUndefined()
   })
@@ -608,11 +608,11 @@ describe("model-update inspector presentation composer", () => {
       getObjectTitle: () => undefined,
     })
 
-    expect(object.supporting).toEqual([
-      "Movement evidence · The user said they like tea again now.",
-    ])
-    expect(object.supporting).not.toContain(inheritedSupporting)
+    expect(object.supporting).toBeUndefined()
     expect(object.conflicting).toBeUndefined()
+    expect(object.contextIds).toBeUndefined()
+    expect(object.relatedIds).toBeUndefined()
+    expect(JSON.stringify(object)).not.toContain(inheritedSupporting)
     expect(JSON.stringify(object)).not.toContain(thinPacketWarning)
   })
 

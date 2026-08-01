@@ -240,10 +240,14 @@ describe("ModelUpdate Inspector reader integration", () => {
     })
 
     expect(object.title).toBe("I like tea again now")
-    expect(object.supporting).toEqual([
-      "Movement evidence · The user said they like tea again now.",
-    ])
+    // An explicit evidence relationship is a receipt and nothing else, and this
+    // entry carries no accepted drill-down projection, so canonical selection
+    // fails closed rather than minting a positional receipt identity.
+    expect(object.supporting).toBeUndefined()
     expect(object.conflicting).toBeUndefined()
+    expect(object.contextIds).toBeUndefined()
+    expect(object.relatedIds).toBeUndefined()
+    expect(object.receiptIds).toBeUndefined()
     expect(object.whatWouldChange).toBeUndefined()
     expect(JSON.stringify(object)).not.toContain(thinPacketWarning)
     expect(JSON.stringify(object)).not.toContain(inheritedChange)

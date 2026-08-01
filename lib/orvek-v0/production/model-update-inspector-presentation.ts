@@ -10,6 +10,7 @@ import {
   sanitizeInspectorDisplayText,
 } from "../../inspector-evidence-presentation"
 import type {
+  CanonicalModelUpdateEvidenceDrilldownProjection,
   InspectorEvidenceLinkItem,
   InspectorModelUpdateDetail,
 } from "../../inspector-object-api"
@@ -105,130 +106,78 @@ function isProceduralPacketSummary(text: string): boolean {
   )
 }
 
-function normalizeRole(value: string | null | undefined): string {
-  return value?.trim().toLowerCase() ?? ""
+/**
+ * Only an accepted direct-movement drill-down projection is server authority for
+ * canonical evidence selection. Resulting-revision projections stay unavailable
+ * until their own consumer slice is accepted.
+ */
+function directMovementEvidenceDrilldown(
+  item: InspectorEvidenceLinkItem,
+): CanonicalModelUpdateEvidenceDrilldownProjection | null {
+  const drilldown = item.canonicalEvidenceDrilldown
+  if (!drilldown || drilldown.evidenceClass !== "direct_movement_evidence") {
+    return null
+  }
+  return drilldown.selectionId.trim() ? drilldown : null
 }
 
-function evidenceLabel(item: InspectorEvidenceLinkItem): string | null {
-  const card = projectInspectorEvidenceCard(item)
-  const text = firstMeaningfulModelUpdateText([
-    card.summary,
-    card.title,
-    item.evidenceSummaryLabel,
-    item.objectTitle,
+/**
+ * Adapts one accepted browser-safe projection into the permanent Inspector
+ * object shape. Nothing is inferred: an absent projected field stays absent so
+ * the shell keeps its honest neutral state, and summary or snippet text is
+ * carried only while the server marks the source disclosure as available.
+ */
+function canonicalEvidenceSelectionObject(
+  drilldown: CanonicalModelUpdateEvidenceDrilldownProjection,
+): OrvekObject {
+  const disclosed = drilldown.sourceDisclosure === "available"
+  const provenance = dedupeStrings([
+    drilldown.provenanceLabel,
+    drilldown.sourceTypeLabel,
+    drilldown.roleLabel,
   ])
-  if (!text) return null
-  const target = sanitizeInspectorDisplayText(item.evidenceTargetLabel)
-  if (!target) return text
-  return text.toLowerCase().startsWith(target.toLowerCase())
-    ? text
-    : `${target} · ${text}`
+
+  return {
+    id: drilldown.selectionId,
+    type: "receipt",
+    title: drilldown.title,
+    subtype: provenance.length > 0 ? provenance.join(" · ") : undefined,
+    summary: disclosed ? drilldown.summary ?? undefined : undefined,
+    sourceText: disclosed ? drilldown.snippet ?? undefined : undefined,
+    sourceOrigin: sanitizeInspectorDisplayText(drilldown.sourceTypeLabel) ?? undefined,
+    lastUpdated: drilldown.recordedLabel ?? undefined,
+    date: drilldown.recordedLabel ?? undefined,
+  }
 }
 
 function buildCanonicalProjectionViewModel(input: {
   obj: OrvekObject
   detail: InspectorModelUpdateDetail
-  resolveSelectionId: (
-    objectType: string | null | undefined,
-    objectId: string | null | undefined,
-  ) => string | null
-  getObjectTitle: (id: string) => string | undefined
 }): ProductionModelUpdateCanonicalViewModel | null {
   const projection = input.detail.canonicalInspectorProjection
   if (!projection) return null
 
   const satellites: Record<string, OrvekObject> = {}
   const receiptIds: string[] = []
-  const contextIds: string[] = []
-  const relatedIds: string[] = []
-  const usedIds = new Set<string>()
-  const seenReceipts = new Set<string>()
-  const evidencePool = dedupeInspectorEvidenceLinks([
-    ...projection.directMovementEvidence,
-    ...projection.resultingRevisionEvidence,
-  ])
+  const selectedEvidenceIds = new Set<string>()
 
-  const addEvidenceSatellite = (
-    item: InspectorEvidenceLinkItem,
-    index: number,
-    bucket: "receipt" | "context",
-  ) => {
-    const title = evidenceLabel(item)
-    if (!title) return
-    const key = `${bucket}:${title.toLowerCase()}`
-    if (seenReceipts.has(key)) return
-    seenReceipts.add(key)
-    const selectionId = `mu-${bucket}-${input.obj.id}-${index}`
-    const navigationId = input.resolveSelectionId(item.sourceType, item.sourceId) ?? selectionId
-    if (bucket === "context") {
-      contextIds.push(selectionId)
-    } else {
-      receiptIds.push(selectionId)
-    }
-    if (!satellites[selectionId]) {
-      satellites[selectionId] = {
-        id: selectionId,
-        type: bucket === "context" ? "context" : "receipt",
-        title,
-        sourceText: title,
-        inspectorObjectType: item.sourceType ?? undefined,
-        inspectorObjectId: item.sourceId ?? undefined,
-        ...(navigationId !== selectionId ? { relatedIds: [navigationId] } : {}),
-      }
-    }
-    if (navigationId !== selectionId && !satellites[navigationId]) {
-      satellites[navigationId] = {
-        id: navigationId,
-        type: "receipt",
-        title:
-          firstMeaningfulModelUpdateText([
-            item.objectTitle,
-            input.getObjectTitle(navigationId),
-            title,
-          ]) ?? title,
-        inspectorObjectType: item.sourceType ?? undefined,
-        inspectorObjectId: item.sourceId ?? undefined,
-      }
-    }
+  // Only accepted direct-movement drill-down projections are selectable in this
+  // slice. One accepted relationship becomes exactly one receipt, so two
+  // relationships to the same source stay two separate rows. Resulting-revision
+  // evidence, related canonical concepts, and direct items whose accepted
+  // projection is absent or carries a blank selection id all fail closed: no
+  // receipt id, no satellite, and no positional fallback identity.
+  for (const item of projection.directMovementEvidence) {
+    const drilldown = directMovementEvidenceDrilldown(item)
+    if (!drilldown || selectedEvidenceIds.has(drilldown.selectionId)) continue
+    selectedEvidenceIds.add(drilldown.selectionId)
+    receiptIds.push(drilldown.selectionId)
+    satellites[drilldown.selectionId] = canonicalEvidenceSelectionObject(drilldown)
   }
-
-  evidencePool.forEach((item, index) => {
-    addEvidenceSatellite(item, index, "receipt")
-    if (normalizeRole(item.linkRole) === "context") {
-      addEvidenceSatellite(item, index, "context")
-    }
-  })
-
-  for (const related of projection.relatedObjects) {
-    const resolvedSelectionId = input.resolveSelectionId(
-      related.inspectorObjectType,
-      related.selectionId,
-    )
-    if (!resolvedSelectionId) continue
-    if (usedIds.has(resolvedSelectionId)) continue
-    usedIds.add(resolvedSelectionId)
-    relatedIds.push(resolvedSelectionId)
-  }
-
-  const supporting = dedupeStrings(
-    evidencePool
-      .filter((item) => normalizeRole(item.linkRole) === "supports")
-      .map(evidenceLabel)
-      .filter((value): value is string => Boolean(value)),
-  ).slice(0, 4)
-  const conflicting = dedupeStrings(
-    evidencePool
-      .filter((item) => normalizeRole(item.linkRole) === "contradicts")
-      .map(evidenceLabel)
-      .filter((value): value is string => Boolean(value)),
-  ).slice(0, 3)
 
   const recorded = formatRecordedLabel(projection.createdAt)
-  const objectBase = { ...input.obj }
-  delete objectBase.supporting
-  delete objectBase.conflicting
   const object: OrvekObject = {
-    ...objectBase,
+    ...input.obj,
     type: "model-update",
     title: projection.displayedTitle,
     summary: projection.distinctSummary ?? undefined,
@@ -242,10 +191,14 @@ function buildCanonicalProjectionViewModel(input: {
     }) ?? projection.updateLabel,
     lastUpdated: recorded ?? input.obj.lastUpdated,
     receiptIds: receiptIds.length > 0 ? receiptIds : undefined,
-    supporting: supporting.length > 0 ? supporting : undefined,
-    conflicting: conflicting.length > 0 ? conflicting : undefined,
-    contextIds: contextIds.length > 0 ? contextIds : undefined,
-    relatedIds: relatedIds.length > 0 ? relatedIds : undefined,
+    // An explicit evidence relationship is a receipt and nothing else. These
+    // pathways carry no explicit projection in this slice, so they stay empty
+    // rather than being derived from link role, shared wording, report prose or
+    // the flat evidence collection.
+    supporting: undefined,
+    conflicting: undefined,
+    contextIds: undefined,
+    relatedIds: undefined,
     whatWouldChange: undefined,
     canonicalReportId: projection.modelUpdateId,
     inspectorObjectType: "model_update",
