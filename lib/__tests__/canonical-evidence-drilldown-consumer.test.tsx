@@ -2,9 +2,10 @@
  * SUBSYS-003 Slice B — canonical evidence selection consumer.
  *
  * Proves that the permanent Inspector renders the accepted PR #195
- * `canonicalEvidenceDrilldown` projection for direct-movement evidence, reuses
- * the existing selection and Back pattern, and leaves every capability that has
- * not passed its own exit gate unavailable.
+ * `canonicalEvidenceDrilldown` projection for both genuine evidence classes —
+ * direct movement and resulting revision — through one adapter, reuses the
+ * existing selection and Back pattern, and leaves every capability that has not
+ * passed its own exit gate unavailable.
  */
 
 import React from "react";
@@ -189,6 +190,7 @@ const MODEL_UPDATE_TITLE = "I like tea again now";
 const FIRST_SELECTION_ID = "canonical-evidence-1a1a1a1a1a1a1a1a";
 const SECOND_SELECTION_ID = "canonical-evidence-2b2b2b2b2b2b2b2b";
 const REVISION_SELECTION_ID = "canonical-evidence-3c3c3c3c3c3c3c3c";
+const SECOND_REVISION_SELECTION_ID = "canonical-evidence-5e5e5e5e5e5e5e5e";
 const CONCEPT_SELECTION_ID = "canonical-concept-4d4d4d4d4d4d4d4d";
 
 /** Private values the browser must never receive or render. */
@@ -681,26 +683,168 @@ describe("canonical evidence drill-down consumer", () => {
     expect(object.relatedIds).toBeUndefined();
   });
 
-  it("leaves resulting-revision evidence selection unavailable in this slice", () => {
-    const revision = revisionDrilldown();
+  it("turns one genuine resulting-revision projection into exactly one selectable evidence object", () => {
     const { object, satellites } = compose({
-      projection: canonicalProjection({
-        direct: [directDrilldown()],
-        resulting: [revision],
-      }),
+      projection: canonicalProjection({ resulting: [revisionDrilldown()] }),
     });
 
-    // No server-selection satellite, no positional fallback, no receipt id.
-    expect(satellites[REVISION_SELECTION_ID]).toBeUndefined();
-    expect(object.receiptIds).toEqual([FIRST_SELECTION_ID]);
-    expect(Object.keys(satellites)).toEqual([FIRST_SELECTION_ID]);
+    expect(object.receiptIds).toEqual([REVISION_SELECTION_ID]);
+    expect(Object.keys(satellites)).toEqual([REVISION_SELECTION_ID]);
+    expect(satellites[REVISION_SELECTION_ID]?.type).toBe("receipt");
     expect(
       Object.keys(satellites).some((id) => id.startsWith(`mu-receipt-${MODEL_UPDATE_ID}`)),
     ).toBe(false);
-    expect(JSON.stringify({ object, satellites })).not.toContain(revision.title);
-    expect(JSON.stringify({ object, satellites })).not.toContain(
+  });
+
+  it("builds the resulting-revision object from its projected class, source, role, title, date and provenance", () => {
+    const revision = revisionDrilldown();
+    const { satellites } = compose({
+      projection: canonicalProjection({ resulting: [revision] }),
+    });
+    const selected = satellites[REVISION_SELECTION_ID];
+
+    expect(selected?.title).toBe(revision.title);
+    expect(selected?.summary).toBe(revision.summary);
+    expect(selected?.sourceText).toBe(revision.snippet);
+    expect(selected?.sourceOrigin).toBe(revision.sourceTypeLabel);
+    expect(selected?.subtype).toBe(
+      "Resulting revision evidence · Journal entry · Supporting",
+    );
+
+    // The producer projects no recorded time for this class, so the shell keeps
+    // its neutral date state rather than borrowing the movement's timestamp.
+    expect(selected?.lastUpdated).toBeUndefined();
+    expect(selected?.date).toBeUndefined();
+
+    // A projected recorded label is consumed exactly as given, never derived.
+    const dated = compose({
+      projection: canonicalProjection({
+        resulting: [
+          revisionDrilldown({
+            recordedAt: "2026-07-28T12:05:00.000Z",
+            recordedLabel: "28 Jul 2026, 13:05",
+          }),
+        ],
+      }),
+    }).satellites[REVISION_SELECTION_ID];
+    expect(dated?.lastUpdated).toBe("28 Jul 2026, 13:05");
+    expect(dated?.date).toBe("28 Jul 2026, 13:05");
+
+    const serialized = JSON.stringify(selected);
+    expect(serialized).not.toContain(LEGACY_ENVELOPE_TITLE);
+    expect(serialized).not.toContain(LEGACY_ENVELOPE_SUMMARY);
+    expect(serialized).not.toContain(PRIVATE_SOURCE_ID);
+    expect(serialized).not.toContain(REPORT_FACT);
+    expect(serialized).not.toContain(REPORT_CHANGE_CONDITION);
+  });
+
+  it("labels each evidence class honestly when the ModelUpdate projects both", () => {
+    const { object, satellites } = compose({
+      projection: canonicalProjection({
+        direct: [directDrilldown()],
+        resulting: [revisionDrilldown()],
+      }),
+    });
+
+    expect(object.receiptIds).toEqual([FIRST_SELECTION_ID, REVISION_SELECTION_ID]);
+    expect(satellites[FIRST_SELECTION_ID]?.subtype).toContain("Movement evidence");
+    expect(satellites[FIRST_SELECTION_ID]?.subtype).not.toContain(
       "Resulting revision evidence",
     );
+    expect(satellites[REVISION_SELECTION_ID]?.subtype).toContain(
+      "Resulting revision evidence",
+    );
+    expect(satellites[REVISION_SELECTION_ID]?.subtype).not.toContain("Movement evidence");
+    expect(object.supporting).toBeUndefined();
+    expect(object.conflicting).toBeUndefined();
+    expect(object.contextIds).toBeUndefined();
+    expect(object.relatedIds).toBeUndefined();
+    expect(object.whatWouldChange).toBeUndefined();
+  });
+
+  it("keeps two resulting-revision relationships to the same source separate", () => {
+    const first = revisionDrilldown();
+    const second = revisionDrilldown({
+      selectionId: SECOND_REVISION_SELECTION_ID,
+      role: "context",
+      roleLabel: "Context",
+      title: "A second relationship to the same journal entry.",
+      summary: "A second relationship to the same journal entry.",
+    });
+
+    const { object, satellites } = compose({
+      projection: canonicalProjection({ resulting: [first, second] }),
+    });
+
+    expect(object.receiptIds).toEqual([
+      REVISION_SELECTION_ID,
+      SECOND_REVISION_SELECTION_ID,
+    ]);
+    expect(Object.keys(satellites)).toHaveLength(2);
+    expect(satellites[REVISION_SELECTION_ID]?.title).toBe(first.title);
+    expect(satellites[SECOND_REVISION_SELECTION_ID]?.title).toBe(second.title);
+    expect(object.contextIds).toBeUndefined();
+    expect(object.relatedIds).toBeUndefined();
+  });
+
+  it("fails closed for a resulting-revision item whose accepted projection is absent or blank", () => {
+    const withoutDrilldown: InspectorEvidenceLinkItem = {
+      ...evidenceLinkItem(revisionDrilldown()),
+      canonicalEvidenceDrilldown: undefined,
+    };
+    const withBlankSelectionId = evidenceLinkItem(
+      revisionDrilldown({ selectionId: "   " }),
+    );
+
+    const projection = canonicalProjection({});
+    projection.resultingRevisionEvidence = [withoutDrilldown, withBlankSelectionId];
+
+    const { object, satellites } = compose({ projection });
+
+    expect(object.receiptIds).toBeUndefined();
+    expect(satellites).toEqual({});
+    expect(
+      Object.keys(satellites).some((id) => id.startsWith(`mu-receipt-${MODEL_UPDATE_ID}`)),
+    ).toBe(false);
+    expect(JSON.stringify({ object, satellites })).not.toContain(PRIVATE_SOURCE_ID);
+  });
+
+  it("fails closed for a projection carrying an unrecognised evidence class", () => {
+    const projection = canonicalProjection({});
+    projection.resultingRevisionEvidence = [
+      evidenceLinkItem(
+        revisionDrilldown({
+          evidenceClass: "canonical_concept_evidence" as never,
+          evidenceClassLabel: "Canonical concept evidence",
+        }),
+      ),
+    ];
+
+    const { object, satellites } = compose({ projection });
+
+    expect(object.receiptIds).toBeUndefined();
+    expect(satellites).toEqual({});
+  });
+
+  it("keeps redacted resulting-revision evidence private while showing its projected class", () => {
+    const redacted = revisionDrilldown({
+      sourceDisclosure: "redacted",
+      summary: PRIVATE_REDACTED_TEXT,
+      snippet: PRIVATE_REDACTED_TEXT,
+      title: "Resulting revision evidence · Journal entry",
+    });
+
+    const { satellites } = compose({
+      projection: canonicalProjection({ resulting: [redacted] }),
+    });
+    const selected = satellites[REVISION_SELECTION_ID];
+
+    expect(selected?.summary).toBeUndefined();
+    expect(selected?.sourceText).toBeUndefined();
+    expect(JSON.stringify(selected)).not.toContain(PRIVATE_REDACTED_TEXT);
+    expect(JSON.stringify(selected)).not.toContain(PRIVATE_SOURCE_ID);
+    expect(selected?.subtype).toContain("Resulting revision evidence");
+    expect(selected?.subtype).toContain("Journal entry");
   });
 
   it("leaves canonical concept related-object selection unavailable even when a resolver offers one", () => {
@@ -850,6 +994,82 @@ describe("canonical evidence selection in the permanent Inspector", () => {
     expect(tagWithAttribute(afterBack, "data-live-object-id", FIRST_SELECTION_ID)).toContain(
       'data-shell-item="inspector-receipt-row"',
     );
+  });
+
+  it("renders resulting-revision-only evidence as a live receipt row instead of Receipts · 0", () => {
+    const revision = revisionDrilldown();
+    const viewModel = compose({
+      projection: canonicalProjection({ resulting: [revision] }),
+    });
+    const html = renderInspector({ viewModel, selectedId: MODEL_UPDATE_ID });
+    const row = tagWithAttribute(html, "data-live-object-id", REVISION_SELECTION_ID);
+
+    expect(html).not.toContain("Receipts · 0");
+    expect(html).toContain("Receipts · 1");
+    expect(row).toContain('data-shell-item="inspector-receipt-row"');
+    expect(row).not.toContain('disabled=""');
+
+    // The same relationship appears once, and never as a second pathway.
+    expect(countAttribute(html, "data-live-object-id", REVISION_SELECTION_ID)).toBe(1);
+    expect(countOccurrences(html, revision.title)).toBe(1);
+    expect(html).toContain("No supporting signal is available.");
+    expect(html).toContain("No conflicting signal is available.");
+    expect(html).toContain("No relevant background is available.");
+    expect(html).toContain("No related object is available.");
+    expect(html).toContain("No change condition is available.");
+  });
+
+  it("opens exactly one resulting-revision evidence object and offers Back to the originating ModelUpdate", () => {
+    const viewModel = compose({
+      projection: canonicalProjection({
+        direct: [directDrilldown()],
+        resulting: [revisionDrilldown()],
+      }),
+    });
+
+    const html = renderInspector({
+      viewModel,
+      selectedId: REVISION_SELECTION_ID,
+      canGoBack: true,
+      backTargetId: MODEL_UPDATE_ID,
+      backTrailLabel: "Viewing supporting receipt",
+    });
+
+    expect(countAttribute(html, "data-shell-slot", "inspector-object-identity")).toBe(1);
+    expect(countAttribute(html, "data-shell-slot", "inspector-receipt-source")).toBe(1);
+    expect(html).toContain("The evening journal repeats the tea preference.");
+    expect(html).toContain("Made tea again tonight");
+    expect(html).toContain("Resulting revision evidence · Journal entry · Supporting");
+
+    // Only the clicked relationship opens; the direct-movement sibling stays closed.
+    expect(html).not.toContain("The user said they like tea again now.");
+    expect(html).not.toContain("Movement evidence · Conversation message · Supporting");
+
+    expect(html).toContain(`Back to ${MODEL_UPDATE_TITLE}`);
+    expect(html).toContain("Viewing supporting receipt");
+
+    for (const copy of EMPTY_PATHWAY_COPY) {
+      expect(html, copy).toContain(copy);
+    }
+    expect(html).not.toContain(PRIVATE_SOURCE_ID);
+    expect(html).not.toContain(REPORT_FACT);
+    expect(html).not.toContain(REPORT_CHANGE_CONDITION);
+  });
+
+  it("reopens the originating canonical ModelUpdate after Back from resulting-revision evidence", () => {
+    const viewModel = compose({
+      projection: canonicalProjection({ resulting: [revisionDrilldown()] }),
+    });
+
+    const afterBack = renderInspector({ viewModel, selectedId: MODEL_UPDATE_ID });
+
+    expect(afterBack).toContain(MODEL_UPDATE_TITLE);
+    expect(afterBack).toContain(`>${MODEL_UPDATE_ID}<`);
+    expect(afterBack).toContain('data-shell-slot="inspector-object-movement"');
+    expect(afterBack).not.toContain("Back to");
+    expect(
+      tagWithAttribute(afterBack, "data-live-object-id", REVISION_SELECTION_ID),
+    ).toContain('data-shell-item="inspector-receipt-row"');
   });
 
   it("renders no private text for redacted evidence in the permanent Inspector", () => {

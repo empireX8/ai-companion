@@ -10,6 +10,7 @@ import {
   sanitizeInspectorDisplayText,
 } from "../../inspector-evidence-presentation"
 import type {
+  CanonicalModelUpdateEvidenceClass,
   CanonicalModelUpdateEvidenceDrilldownProjection,
   InspectorEvidenceLinkItem,
   InspectorModelUpdateDetail,
@@ -107,15 +108,22 @@ function isProceduralPacketSummary(text: string): boolean {
 }
 
 /**
- * Only an accepted direct-movement drill-down projection is server authority for
- * canonical evidence selection. Resulting-revision projections stay unavailable
- * until their own consumer slice is accepted.
+ * Direct-movement and resulting-revision evidence are the two genuine canonical
+ * evidence classes, and each one reaches the browser as an accepted server
+ * projection, so both are selectable through this single adapter. An absent
+ * projection, an unrecognised class, or a blank selection id is not server
+ * authority and fails closed.
  */
-function directMovementEvidenceDrilldown(
+const SELECTABLE_EVIDENCE_CLASSES: ReadonlySet<CanonicalModelUpdateEvidenceClass> = new Set([
+  "direct_movement_evidence",
+  "resulting_revision_evidence",
+])
+
+function acceptedEvidenceDrilldown(
   item: InspectorEvidenceLinkItem,
 ): CanonicalModelUpdateEvidenceDrilldownProjection | null {
   const drilldown = item.canonicalEvidenceDrilldown
-  if (!drilldown || drilldown.evidenceClass !== "direct_movement_evidence") {
+  if (!drilldown || !SELECTABLE_EVIDENCE_CLASSES.has(drilldown.evidenceClass)) {
     return null
   }
   return drilldown.selectionId.trim() ? drilldown : null
@@ -161,14 +169,18 @@ function buildCanonicalProjectionViewModel(input: {
   const receiptIds: string[] = []
   const selectedEvidenceIds = new Set<string>()
 
-  // Only accepted direct-movement drill-down projections are selectable in this
-  // slice. One accepted relationship becomes exactly one receipt, so two
-  // relationships to the same source stay two separate rows. Resulting-revision
-  // evidence, related canonical concepts, and direct items whose accepted
-  // projection is absent or carries a blank selection id all fail closed: no
-  // receipt id, no satellite, and no positional fallback identity.
-  for (const item of projection.directMovementEvidence) {
-    const drilldown = directMovementEvidenceDrilldown(item)
+  // Only the two explicit projection collections are read, and only an accepted
+  // projection inside them is selectable. One accepted relationship becomes
+  // exactly one receipt, and the server keeps each relationship's selection id
+  // distinct, so two relationships to the same source stay two separate rows.
+  // Related canonical concepts, and any item whose accepted projection is
+  // absent or carries a blank selection id, fail closed: no receipt id, no
+  // satellite, and no positional fallback identity.
+  for (const item of [
+    ...projection.directMovementEvidence,
+    ...projection.resultingRevisionEvidence,
+  ]) {
+    const drilldown = acceptedEvidenceDrilldown(item)
     if (!drilldown || selectedEvidenceIds.has(drilldown.selectionId)) continue
     selectedEvidenceIds.add(drilldown.selectionId)
     receiptIds.push(drilldown.selectionId)
