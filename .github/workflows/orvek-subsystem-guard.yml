@@ -31,7 +31,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          body="${PR_BODY:-}"
+          body="$(printf '%s' "${PR_BODY:-}" | tr -d '\r')"
 
           fail() {
             echo "::error::$1"
