@@ -1,7 +1,7 @@
 {
   "ledgerId": "ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001",
   "date": "2026-07-31",
-  "status": "CONTROLLING_EXECUTION_LEDGER_PROPOSED",
+  "status": "CONTROLLING_EXECUTION_LEDGER_ACCEPTED",
   "baseBranch": "staging",
   "purpose": "Define the objective subsystem dependency order, current capability status, expected unavailable behaviour, and defect thresholds for the core Orvek product.",
   "classificationRules": {
@@ -33,22 +33,39 @@
     {
       "id": "SUBSYS-000",
       "name": "Execution ledger and capability classifier",
-      "status": "DESIGNED_NOT_BUILT",
+      "status": "SUPPORTED_PARTIAL",
       "dependsOn": [],
-      "expectedUnavailable": [],
+      "expectedUnavailable": [
+        "runtime semantic correctness enforcement",
+        "runtime result envelope and protected selectable-object construction",
+        "private-data runtime enforcement",
+        "copy-source provenance",
+        "guard self-protection and base-owned validator enforcement",
+        "repository-administrator resistance"
+      ],
       "exitGate": [
         "all major subsystems represented",
         "current status explicit",
         "supported and unsupported behaviour explicit",
         "future PRs name one subsystem id",
         "conflicting roadmaps are not independently controlling"
+      ],
+      "supportedPath": "controlling subsystem ledger -> mandatory PR declaration -> base-branch upstream-status check -> changed-path and reported-rename-path scope check -> Markdown/JSON status parity -> GitHub CI and local verification",
+      "exitProof": [
+        "PR #193 established the controlling ledger and mandatory preflight",
+        "PR #200 merged the bounded order/scope gate",
+        "TEST 1 through TEST 12 passed",
+        "full repository verification passed before PR #200 merge",
+        "issue #199 broad runtime safety architecture was superseded and closed"
       ]
     },
     {
       "id": "SUBSYS-001",
       "name": "Canonical Model Authority V1",
       "status": "PROVEN_BOUNDED",
-      "dependsOn": ["SUBSYS-000"],
+      "dependsOn": [
+        "SUBSYS-000"
+      ],
       "supportedPath": "owned UserMapConclusion -> CanonicalConcept registration -> revision 1 -> canonical Explore strengthening proposal -> revision 2 -> current pointer -> ModelUpdate -> product and AI projection",
       "unsupported": [
         "mass historical backfill",
@@ -68,7 +85,9 @@
       "id": "SUBSYS-002",
       "name": "Canonical ModelUpdate Inspector reader",
       "status": "PROVEN_BOUNDED",
-      "dependsOn": ["SUBSYS-001"],
+      "dependsOn": [
+        "SUBSYS-001"
+      ],
       "supportedPath": "canonical ModelUpdate id -> authenticated server lineage verification -> browser-safe movement projection -> permanent Inspector",
       "unsupported": [
         "evidence drill-down",
@@ -87,7 +106,9 @@
       "id": "SUBSYS-003",
       "name": "Canonical evidence drill-down",
       "status": "NOT_ACCEPTED",
-      "dependsOn": ["SUBSYS-002"],
+      "dependsOn": [
+        "SUBSYS-002"
+      ],
       "contract": "docs/architecture/ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001.md#slice-a",
       "currentVerdict": "PR #192 must not merge as-is",
       "supportedPathTarget": "canonical ModelUpdate -> exact verified evidence link/source -> browser-safe evidence projection -> one selected evidence object -> existing Back path",
@@ -104,7 +125,9 @@
       "id": "SUBSYS-004",
       "name": "Canonical concept related-object drill-down",
       "status": "DESIGNED_NOT_BUILT",
-      "dependsOn": ["SUBSYS-003"],
+      "dependsOn": [
+        "SUBSYS-003"
+      ],
       "contract": "docs/architecture/ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001.md#slice-b",
       "expectedUnavailable": [
         "related canonical concept click unavailable or neutral",
@@ -117,7 +140,9 @@
       "id": "SUBSYS-005",
       "name": "Complete canonical revision lifecycle",
       "status": "NOT_BUILT",
-      "dependsOn": ["SUBSYS-004"],
+      "dependsOn": [
+        "SUBSYS-004"
+      ],
       "orderedOperations": [
         "revision 3+ strengthening",
         "correction",
@@ -139,7 +164,9 @@
       "name": "PatternClaim and contradiction canonical integration",
       "status": "SUPPORTED_PARTIAL",
       "canonicalIntegrationStatus": "NOT_BUILT",
-      "dependsOn": ["SUBSYS-005"],
+      "dependsOn": [
+        "SUBSYS-005"
+      ],
       "expectedUnavailable": [
         "specialised existing pathways continue within their own contracts",
         "no canonical-revision claim until registration and canonical transaction exist"
@@ -150,7 +177,9 @@
       "name": "Investigation and Fieldwork canonical integration",
       "status": "SUPPORTED_PARTIAL",
       "canonicalLifecycleStatus": "NOT_BUILT",
-      "dependsOn": ["SUBSYS-006"],
+      "dependsOn": [
+        "SUBSYS-006"
+      ],
       "expectedUnavailable": [
         "existing records may appear where already supported",
         "no automatic canonical model change from investigation or fieldwork result"
@@ -160,7 +189,9 @@
       "id": "SUBSYS-008",
       "name": "Decision and Outcome authority",
       "status": "NOT_BUILT",
-      "dependsOn": ["SUBSYS-007"],
+      "dependsOn": [
+        "SUBSYS-007"
+      ],
       "expectedUnavailable": [
         "SurfacedAction is not automatically a Decision",
         "local React success is not durable outcome authority",
@@ -172,7 +203,9 @@
       "name": "Goals Watch Fors and Experiments",
       "status": "SUPPORTED_PARTIAL",
       "unifiedLifecycleStatus": "NOT_BUILT",
-      "dependsOn": ["SUBSYS-008"],
+      "dependsOn": [
+        "SUBSYS-008"
+      ],
       "expectedUnavailable": [
         "existing objects may appear independently",
         "no automatic complete experiment lifecycle",
@@ -184,8 +217,22 @@
       "name": "Full shared consumer parity",
       "status": "SUPPORTED_PARTIAL",
       "allFamilyStatus": "NOT_BUILT",
-      "dependsOn": ["SUBSYS-006", "SUBSYS-007", "SUBSYS-008", "SUBSYS-009"],
-      "consumers": ["Today", "Map", "Timeline", "Inspector", "What Changed", "Explore", "Reports", "AI context"],
+      "dependsOn": [
+        "SUBSYS-006",
+        "SUBSYS-007",
+        "SUBSYS-008",
+        "SUBSYS-009"
+      ],
+      "consumers": [
+        "Today",
+        "Map",
+        "Timeline",
+        "Inspector",
+        "What Changed",
+        "Explore",
+        "Reports",
+        "AI context"
+      ],
       "expectedUnavailable": [
         "bounded V1 parity only",
         "other families may remain specialised or absent from some consumers",
@@ -197,7 +244,9 @@
       "name": "Capture and ingestion",
       "status": "SUPPORTED_PARTIAL",
       "broaderIntegrationStatus": "NOT_BUILT",
-      "dependsOn": ["SUBSYS-010"],
+      "dependsOn": [
+        "SUBSYS-010"
+      ],
       "orderedSlices": [
         "approved-shell text Capture entry",
         "durable input persistence and provenance",
@@ -219,7 +268,10 @@
       "name": "Reports checkpoints and Today re-entry",
       "status": "SUPPORTED_PARTIAL",
       "fullModelReportingStatus": "NOT_BUILT",
-      "dependsOn": ["SUBSYS-010", "SUBSYS-011"],
+      "dependsOn": [
+        "SUBSYS-010",
+        "SUBSYS-011"
+      ],
       "expectedUnavailable": [
         "What Changed may report one bounded canonical movement",
         "no claim that all model change is represented",
@@ -230,7 +282,14 @@
       "id": "SUBSYS-013",
       "name": "Historical migration and legacy authority shutdown",
       "status": "NOT_BUILT",
-      "dependsOn": ["SUBSYS-006", "SUBSYS-007", "SUBSYS-008", "SUBSYS-009", "SUBSYS-010", "SUBSYS-012"],
+      "dependsOn": [
+        "SUBSYS-006",
+        "SUBSYS-007",
+        "SUBSYS-008",
+        "SUBSYS-009",
+        "SUBSYS-010",
+        "SUBSYS-012"
+      ],
       "expectedUnavailable": [
         "legacy and canonical rows may coexist",
         "registered canonical concept outranks bound legacy seed",
@@ -243,7 +302,9 @@
       "name": "Operational and launch hardening",
       "status": "OPERATIONAL_UNKNOWN",
       "fullLaunchGateStatus": "NOT_BUILT",
-      "dependsOn": ["SUBSYS-013"],
+      "dependsOn": [
+        "SUBSYS-013"
+      ],
       "expectedUnavailable": [
         "controlled-rollout language only",
         "no whole-product production-readiness claim",

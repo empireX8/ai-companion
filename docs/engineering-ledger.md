@@ -1996,3 +1996,20 @@ Optional future slices per `docs/phase2-final-acceptance-post-governance-contrac
 - **Verification passed:** `bash scripts/verify-mindlab.sh` completed cleanly on 2026-07-30 after the final code edit: 381 test files passed, 3 skipped; 4,904 tests passed, 139 skipped; `git diff --check`, `npx tsc --noEmit`, `npm run build`, trust-language, and legacy-surface audits all passed. The authenticated browser regression passed on the final tree with the real live start state: legacy tea reference present, zero canonical conclusions, zero canonical concepts, zero seeded proposals, then proposal creation, detail API, review, publish, Inspector hydration, prompt propagation, and Map propagation: `PHASE6_MANAGE_SERVER=1 PHASE6_SKIP_BUILD=1 DESKTOP_PARITY_BASE_URL=http://localhost:3100 CANONICAL_AUTHORITY_DB_TEST_URL='postgresql://user@127.0.0.1:5432/companion_canonical_authority_test' DATABASE_URL='postgresql://user@127.0.0.1:5432/companion_canonical_authority_test' npx playwright test scripts/live-canonical-explore-proposal.playwright.ts` -> `1 passed (58.4s)`.
 - **What remains partial:** The branch remains unmerged by request.
 - **Next exact step:** Push `hotfix/live-canonical-explore-proposal` to PR #188 and keep the PR open for review.
+
+---
+
+## SUBSYS-000 — Minimal Order and Scope Gate Acceptance
+
+- **Status:** `SUPPORTED_PARTIAL`
+- **Date:** 2026-08-03
+- **Ledger revision read:** `f57b65496e4784f70caf13b3bc2033a9d56f0864`
+- **Status before:** `DESIGNED_NOT_BUILT`
+- **Status after:** `SUPPORTED_PARTIAL`
+- **Upstream proofs:** PR #193 established the controlling subsystem ledger and mandatory preflight. PR #200 merged the bounded static order/scope gate.
+- **Files changed:** both subsystem ledger files, `config/orvek-subsystem-scope.json`, and `docs/engineering-ledger.md`.
+- **Supported:** one active subsystem declaration; base-branch upstream-status checks; changed-path scope; both Git-reported rename paths; Markdown/JSON status parity; properly declared non-Orvek PR handling.
+- **Verification:** `bash scripts/verify-mindlab.sh`, JSON parsing, `git diff --check`, and the actual SUBSYS-000 base/head scope check passed before push.
+- **What remains unavailable:** runtime semantic validation, runtime result envelopes, protected selectable-object factories, private-data runtime enforcement, copy-source provenance, guard self-protection, base-owned validation, and repository-administrator resistance.
+- **Superseded control target:** issue #199 was closed as not planned after PR #200 established the accepted bounded control surface.
+- **Next exact subsystem:** `SUBSYS-003 — Canonical evidence drill-down`, beginning with a controlled read-only custody replay and stopping at the first failing checkpoint.
