@@ -13,6 +13,7 @@
         "scripts/orvek-order-scope-check.sh",
         "scripts/verify-mindlab.sh",
         ".github/workflows/orvek-order-scope.yml",
+        ".github/workflows/orvek-subsystem-guard.yml",
         "package.json",
         "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
         "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json",
