@@ -88,7 +88,22 @@ The sequence below controls the current core Orvek product. Future specialised a
 
 ### SUBSYS-000 — Execution ledger and capability classifier
 
-**Status:** `DESIGNED_NOT_BUILT` until this document is accepted.
+**Status:** `SUPPORTED_PARTIAL`.
+
+**Supported by the accepted SUBSYS-000 controls:**
+
+- the Markdown and JSON ledgers define the controlling subsystem order and current status;
+- every Orvek PR must declare exactly one active subsystem;
+- the static order/scope gate checks base-branch upstream status, changed-path scope, both Git-reported rename paths, and Markdown/JSON status parity;
+- properly declared non-Orvek PRs remain permitted.
+
+**Explicitly not built by SUBSYS-000:**
+
+- runtime semantic correctness enforcement;
+- runtime result envelopes or protected selectable-object factories;
+- private-data runtime enforcement;
+- copy-source provenance;
+- guard self-protection, base-owned validator execution, and repository-administrator resistance.
 
 **Purpose:** provide one source for subsystem order, status, expected unavailable behaviour, defect thresholds, entrance gates, and exit proofs.
 

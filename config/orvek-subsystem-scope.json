@@ -17,6 +17,7 @@
         "package.json",
         "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
         "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json",
+        "docs/engineering-ledger.md",
         "AGENTS.md",
         ".github/pull_request_template.md"
       ],
