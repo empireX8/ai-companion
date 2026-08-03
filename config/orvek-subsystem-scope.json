@@ -1,0 +1,102 @@
+{
+  "policyVersion": 1,
+  "description": "Orvek order and scope gate configuration. Static path/status enforcement only. Never inspects product or user data. Allowlist entries ending with / are directory prefixes; all other entries are exact file paths. This file is loaded from the evaluated tree (typically HEAD); it is not self-protected. Modifications to the gate or this config require manual review. Copy-source provenance is not inferred and remains NOT_BUILT. Guard self-protection and repository-admin resistance remain NOT_BUILT.",
+  "ledger": {
+    "markdown": "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
+    "json": "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json"
+  },
+  "subsystems": {
+    "SUBSYS-000": {
+      "requiredUpstream": {},
+      "allowedPathPrefixes": [
+        "config/orvek-subsystem-scope.json",
+        "scripts/orvek-order-scope-check.sh",
+        "scripts/verify-mindlab.sh",
+        ".github/workflows/orvek-order-scope.yml",
+        "package.json",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json",
+        "AGENTS.md",
+        ".github/pull_request_template.md"
+      ],
+      "forbiddenPathPrefixes": [
+        "app/",
+        "components/",
+        "prisma/"
+      ]
+    },
+    "SUBSYS-001": {
+      "requiredUpstream": {},
+      "allowedPathPrefixes": [
+        "lib/canonical-concept-inspector-load-state.ts",
+        "lib/canonical-concept-registration.ts",
+        "docs/architecture/ORVEK-CANONICAL-OBJECT-MAP-001.md",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json"
+      ],
+      "forbiddenPathPrefixes": [
+        "prisma/"
+      ]
+    },
+    "SUBSYS-002": {
+      "requiredUpstream": {
+        "SUBSYS-001": "PROVEN_BOUNDED"
+      },
+      "allowedPathPrefixes": [
+        "lib/orvek-v0/production/model-update-inspector-presentation.ts",
+        "docs/architecture/ORVEK-CANONICAL-MODELUPDATE-INSPECTOR-READER-CONTRACT-001.md",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json"
+      ],
+      "forbiddenPathPrefixes": [
+        "prisma/",
+        "components/orvek-v0-authority/"
+      ]
+    },
+    "SUBSYS-003": {
+      "requiredUpstream": {
+        "SUBSYS-002": "PROVEN_BOUNDED"
+      },
+      "allowedPathPrefixes": [
+        "components/orvek-v0-authority/",
+        "docs/architecture/ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001.md",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json"
+      ],
+      "forbiddenPathPrefixes": [
+        "prisma/",
+        "app/"
+      ]
+    },
+    "SUBSYS-004": {
+      "requiredUpstream": {
+        "SUBSYS-003": "PROVEN_BOUNDED"
+      },
+      "allowedPathPrefixes": [
+        "components/orvek-v0-authority/",
+        "docs/architecture/ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001.md",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json"
+      ],
+      "forbiddenPathPrefixes": [
+        "prisma/",
+        "app/"
+      ]
+    },
+    "SUBSYS-005": {
+      "requiredUpstream": {
+        "SUBSYS-004": "PROVEN_BOUNDED"
+      },
+      "allowedPathPrefixes": [
+        "lib/canonical-concept-inspector-load-state.ts",
+        "lib/canonical-concept-registration.ts",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json"
+      ],
+      "forbiddenPathPrefixes": [
+        "prisma/",
+        "app/"
+      ]
+    }
+  }
+}

@@ -22,6 +22,7 @@
     "db:studio": "prisma studio",
     "check:trust": "bash scripts/check-trust-language.sh",
     "check:legacy": "bash scripts/check-legacy-surfaces.sh",
+    "orvek:order-scope": "bash scripts/orvek-order-scope-check.sh",
     "verify": "bash scripts/verify-mindlab.sh",
     "prove:contradiction-product-round-trip": "bash scripts/dev/prove-contradiction-product-round-trip.sh",
     "prove:contradiction-final-production-audit": "bash scripts/dev/prove-contradiction-final-production-audit.sh"

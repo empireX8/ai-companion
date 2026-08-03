@@ -63,6 +63,9 @@ echo "=========================================="
 # ── 1. Git whitespace check ────────────────────────────────────────────────────
 check "git diff --check" "git diff --check"
 
+# ── 1b. Orvek order and scope gate (static; no user-data inspection) ───────────
+check "Orvek order/scope self-test" "bash scripts/orvek-order-scope-check.sh self-test"
+
 # ── 2. TypeScript compilation ──────────────────────────────────────────────────
 check "TypeScript (tsc --noEmit)" "npx tsc --noEmit"
 
