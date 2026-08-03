@@ -1,0 +1,41 @@
+name: Orvek order and scope
+
+on:
+  pull_request:
+    branches:
+      - staging
+      - main
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+
+jobs:
+  order-scope:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run order and scope gate
+        shell: bash
+        env:
+          ORVEK_PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          export ORVEK_PR_BODY="$(printf '%s' "${ORVEK_PR_BODY:-}" | tr -d '\r')"
+          bash scripts/orvek-order-scope-check.sh \
+            --base="${BASE_SHA}" \
+            --head="${HEAD_SHA}"
+
+      - name: Run named objective self-tests
+        run: bash scripts/orvek-order-scope-check.sh self-test
