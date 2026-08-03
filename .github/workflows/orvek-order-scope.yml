@@ -32,6 +32,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          export ORVEK_PR_BODY="$(printf '%s' "${ORVEK_PR_BODY:-}" | tr -d '\r')"
           bash scripts/orvek-order-scope-check.sh \
             --base="${BASE_SHA}" \
             --head="${HEAD_SHA}"
