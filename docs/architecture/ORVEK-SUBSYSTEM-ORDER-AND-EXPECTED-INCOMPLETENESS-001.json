@@ -110,16 +110,52 @@
         "SUBSYS-002"
       ],
       "contract": "docs/architecture/ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001.md#slice-a",
-      "currentVerdict": "PR #192 must not merge as-is",
-      "supportedPathTarget": "canonical ModelUpdate -> exact verified evidence link/source -> browser-safe evidence projection -> one selected evidence object -> existing Back path",
+      "architectureRecord": "docs/architecture/ORVEK-CANONICAL-EVIDENCE-REFERENCE-TO-AUTHORITY-MATRIX-001.md",
+      "receiptIdentityDecision": "PROJECTION_ONLY",
+      "currentVerdict": "PR #192 must not merge as-is; static custody records timestamp loss, Inspector misuse of public continuity projection, and selected-object adapter breach of server-issued selection identity",
+      "supportedPathTarget": "canonical ModelUpdate -> exact verified evidence link/source -> Inspector-safe browser-safe evidence projection -> one selected evidence object using the exact server-issued selection id -> existing Back path to the originating ModelUpdate",
+      "entranceGate": [
+        "Receipt identity is accepted as projection-only",
+        "source and edge authority are separately defined",
+        "direct movement and resulting-revision binding rules are fixed",
+        "Inspector-safe disclosure is separated from generic public continuity",
+        "allowed source types have explicit fail-closed adapter rules",
+        "selection and Back identity are defined",
+        "live-data confirmation is either completed or explicitly recorded as operationally unavailable without fabricated assumptions"
+      ],
+      "exitGate": [
+        "one explicit relationship produces exactly one selected evidence object",
+        "the selected id is the exact server-issued opaque id",
+        "evidence class, source type, role, title, disclosure state, provenance and available recorded date survive",
+        "redacted/unavailable source text remains absent",
+        "no unrelated supporting, conflicting, context or related pathway is populated",
+        "direct movement evidence is never inferred from revision evidence",
+        "resulting-revision evidence is never presented as direct movement evidence",
+        "Back returns to the originating canonical ModelUpdate",
+        "hard refresh/reopen preserves the same authoritative relationship identity",
+        "noncanonical behaviour remains unchanged",
+        "live-shape regression passes before status promotion",
+        "Existing public continuity projection behaviour remains unchanged. Focused regression proof must demonstrate that SUBSYS-003 does not broaden public disclosure, expose additional source fields, change public eligibility, or weaken redaction."
+      ],
       "expectedUnavailable": [
-        "evidence click unavailable or fail-closed",
+        "evidence click unavailable or fail-closed until runtime acceptance",
+        "live-data confirmation remains operationally unknown",
+        "SUBSYS-004 and all downstream work blocked",
+        "empty satellite sections are correct",
         "supporting empty",
         "conflicting empty",
         "context empty",
         "related objects empty"
       ],
-      "defectThreshold": "Any generic fan-out, synthetic relationship, padding-created object, redacted text leak, or pathway population without an explicit projected relationship."
+      "defectThreshold": [
+        "positional replacement of server-issued selection identity",
+        "general public continuity labels presented as evidence meaning",
+        "source or edge fields invented by the browser",
+        "generic evidence-pool fan-out",
+        "target classification inferred rather than persisted",
+        "redacted text exposure",
+        "padding-created objects or relationships"
+      ]
     },
     {
       "id": "SUBSYS-004",
