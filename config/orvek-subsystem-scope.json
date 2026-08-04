@@ -62,6 +62,7 @@
       "allowedPathPrefixes": [
         "components/orvek-v0-authority/",
         "docs/architecture/ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001.md",
+        "docs/architecture/ORVEK-CANONICAL-EVIDENCE-REFERENCE-TO-AUTHORITY-MATRIX-001.md",
         "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
         "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json"
       ],
