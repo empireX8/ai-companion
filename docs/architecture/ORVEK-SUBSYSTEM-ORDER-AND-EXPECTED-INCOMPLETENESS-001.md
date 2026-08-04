@@ -193,36 +193,85 @@ canonical ModelUpdate id
 
 **Controlling contract:** `ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001`, Slice A.
 
-**Current implementation verdict:** PR #192 must not merge as-is. Its visible fan-out of one evidence pool into multiple pathways violates the contract requirement that supporting, conflicting, context, and related-object collections remain empty unless explicit projected relationships exist.
+**Controlling architecture record:** `docs/architecture/ORVEK-CANONICAL-EVIDENCE-REFERENCE-TO-AUTHORITY-MATRIX-001.md`.
+
+**Receipt identity decision:** `PROJECTION_ONLY` — no Receipt table is authorised.
+
+**Current implementation verdict:** PR #192 must not merge as-is. Its visible fan-out of one evidence pool into multiple pathways violates the contract requirement that supporting, conflicting, context, and related-object collections remain empty unless explicit projected relationships exist. Static custody also records timestamp loss in canonical revision evidence projection, Inspector misuse of general public continuity projection, and selected-object adapter breach of server-issued selection identity.
 
 **Required supported path:**
 
 ```text
 canonical ModelUpdate
 → exact verified evidence link/source
-→ browser-safe evidence projection
-→ one selected evidence object
-→ existing Back path
+→ Inspector-safe browser-safe evidence projection
+→ one selected evidence object using the exact server-issued selection id
+→ existing Back path to the originating ModelUpdate
 ```
 
 **Required invariants:**
 
-- evidence class identifies direct movement evidence or resulting-revision evidence;
+- evidence class identifies direct movement evidence or resulting-revision evidence from persisted target binding only;
 - source identity and link role are preserved;
 - one source is not manufactured into multiple semantic relationships;
 - `supporting`, `conflicting`, `contextIds`, and `relatedIds` remain empty unless independently explicit;
 - no permanent-shell padding creates apparent objects;
 - redacted or unavailable text remains absent;
+- public continuity labels are not presented as evidence meaning;
 - noncanonical behaviour remains unchanged.
+
+**Entrance gate for runtime work:**
+
+Runtime SUBSYS-003 work may begin only when:
+
+- Receipt identity is accepted as projection-only;
+- source and edge authority are separately defined;
+- direct movement and resulting-revision binding rules are fixed;
+- Inspector-safe disclosure is separated from generic public continuity;
+- allowed source types have explicit fail-closed adapter rules;
+- selection and Back identity are defined;
+- live-data confirmation is either completed or explicitly recorded as operationally unavailable without being replaced by fabricated assumptions.
+
+This control-plane slice records the architecture conditions above. Live stored-row confirmation remains `OPERATIONAL_UNKNOWN`.
 
 **Expected behaviour until accepted:**
 
 - canonical ModelUpdate summary may work;
 - evidence click may be unavailable or must fail closed;
 - empty Inspector satellite sections are correct;
-- no invented evidence detail is permitted.
+- no invented evidence detail is permitted;
+- live-data confirmation remains operationally unknown;
+- SUBSYS-004 and all downstream work remain blocked.
 
-**Exit gate:** live-shape regression proves one explicit relationship yields one authorised evidence object and no unrelated pathway population.
+**Expected unavailable:**
+
+- evidence click unavailable or fail-closed until runtime acceptance;
+- live-data confirmation remains operationally unknown;
+- SUBSYS-004 and all downstream work blocked;
+- empty satellite sections are correct;
+- supporting empty;
+- conflicting empty;
+- context empty;
+- related objects empty.
+
+**Exit gate:**
+
+Runtime acceptance requires all of:
+
+- one explicit relationship produces exactly one selected evidence object;
+- the selected id is the exact server-issued opaque id;
+- evidence class, source type, role, title, disclosure state, provenance, and available recorded date survive;
+- redacted/unavailable source text remains absent;
+- no unrelated supporting, conflicting, context, or related pathway is populated;
+- direct movement evidence is never inferred from revision evidence;
+- resulting-revision evidence is never presented as direct movement evidence;
+- Back returns to the originating canonical ModelUpdate;
+- hard refresh/reopen preserves the same authoritative relationship identity;
+- noncanonical behaviour remains unchanged;
+- live-shape regression passes before status promotion;
+- existing public continuity projection behaviour remains unchanged. Focused regression proof must demonstrate that SUBSYS-003 does not broaden public disclosure, expose additional source fields, change public eligibility, or weaken redaction.
+
+**Defect threshold:** positional replacement of server-issued selection identity; general public continuity labels presented as evidence meaning; source or edge fields invented by the browser; generic evidence-pool fan-out; target classification inferred rather than persisted; redacted text exposure; padding-created objects or relationships.
 
 ### SUBSYS-004 — Canonical concept related-object drill-down
 
@@ -457,7 +506,7 @@ all supported canonical movements
 | Eligible owned UMC → canonical revision 1 → strengthening proposal → revision 2 | `PROVEN_BOUNDED` | Exact revision and movement persistence across refresh | Wrong pointer, mutable history, duplicate movement, ownership failure, or consumer disagreement |
 | Registered canonical concept current projection | `PROVEN_BOUNDED` | Current canonical revision outranks bound UMC | Any integrated consumer uses bound UMC as current truth |
 | Canonical ModelUpdate Inspector summary | `PROVEN_BOUNDED` | Verified before/after and safe labels | Browser reconstructs lineage or displays mismatched lineage |
-| Canonical evidence drill-down | `NOT_ACCEPTED` | Unavailable/fail closed/neutral | Synthetic fan-out or false source detail |
+| Canonical evidence drill-down | `NOT_ACCEPTED` | Unavailable/fail closed/neutral; live-data confirmation operationally unknown | Synthetic fan-out, positional selection ids, continuity labels as evidence meaning, or false source detail |
 | Evidence-object supporting/conflicting/context/related sections | `NOT_BUILT` unless explicitly projected | Empty neutral states | Populated from generic evidence without explicit relationships |
 | Canonical concept related-object drill-down | `DESIGNED_NOT_BUILT` | Unavailable or neutral | Stale seed fallback or mixed revision state |
 | Persistent canonical correction | `NOT_BUILT` | Honest handoff only; no persisted-success claim | UI claims model changed without new revision |
