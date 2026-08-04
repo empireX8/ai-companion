@@ -64,7 +64,21 @@
         "docs/architecture/ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001.md",
         "docs/architecture/ORVEK-CANONICAL-EVIDENCE-REFERENCE-TO-AUTHORITY-MATRIX-001.md",
         "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
-        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json"
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json",
+        "lib/canonical-model-projection.ts",
+        "lib/canonical-inspector-evidence-projection.ts",
+        "lib/what-changed-reality-report.ts",
+        "lib/inspector-object-api.ts",
+        "lib/orvek-v0/orvek-types.ts",
+        "lib/orvek-v0/production/model-update-inspector-presentation.ts",
+        "lib/__tests__/canonical-model-projection.test.ts",
+        "lib/__tests__/canonical-inspector-evidence-projection.test.ts",
+        "lib/__tests__/canonical-evidence-drilldown-producer.test.ts",
+        "lib/__tests__/model-update-inspector-presentation.test.ts",
+        "lib/__tests__/canonical-product-public-evidence.test.ts",
+        "lib/__tests__/canonical-explore-proposal-publication.test.ts",
+        "lib/__tests__/canonical-revision-evidence.test.ts",
+        "lib/__tests__/what-changed-detail-route.test.ts"
       ],
       "forbiddenPathPrefixes": [
         "prisma/",
