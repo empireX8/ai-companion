@@ -376,33 +376,66 @@ describe("model-update inspector presentation composer", () => {
             },
             directMovementEvidence: [
               {
-                id: "uel-direct",
+                id: "canonical-evidence-direct-1",
                 sourceTypeLabel: "Conversation message",
-                evidenceSummaryLabel: "The user said they like tea again now.",
+                evidenceSummaryLabel: "Movement evidence · Conversation message",
                 sourceObjectHref: null,
                 createdAt: "2026-07-28T12:01:00.000Z",
                 hasEvidence: true,
                 sourceType: "message",
-                sourceId: "msg-1",
                 linkRole: "supports",
                 evidenceTarget: "direct_movement",
                 evidenceTargetLabel: "Movement evidence",
+                canonicalEvidenceDrilldown: {
+                  selectionId: "canonical-evidence-direct-1",
+                  evidenceClass: "direct_movement_evidence",
+                  evidenceClassLabel: "Movement evidence",
+                  sourceType: "message",
+                  sourceTypeLabel: "Conversation message",
+                  role: "supports",
+                  roleLabel: "Supporting",
+                  title: "Movement evidence · Conversation message",
+                  summary: null,
+                  snippet: "Exact authorised source snippet.",
+                  sourceOrigin: "Conversation message · Supporting · Movement evidence",
+                  recordedAt: "2026-07-28T12:01:00.000Z",
+                  recordedLabel: "28 Jul 2026, 13:01",
+                  provenanceLabel: "Movement evidence",
+                  sourceDisclosure: "available",
+                  returnSelectionId: "mu-canonical",
+                },
               },
             ],
             resultingRevisionEvidence: [
               {
-                id: "uel-revision",
+                id: "canonical-evidence-revision-1",
                 sourceTypeLabel: "Conversation message",
-                evidenceSummaryLabel: "Linked evidence",
+                evidenceSummaryLabel: "Resulting revision evidence · Conversation message",
                 sourceObjectHref: null,
                 createdAt: null,
                 hasEvidence: true,
                 sourceType: "message",
-                sourceId: undefined,
-                objectTitle: "Resulting revision evidence",
                 linkRole: "contradicts",
                 evidenceTarget: "resulting_revision",
                 evidenceTargetLabel: "Resulting revision evidence",
+                canonicalEvidenceDrilldown: {
+                  selectionId: "canonical-evidence-revision-1",
+                  evidenceClass: "resulting_revision_evidence",
+                  evidenceClassLabel: "Resulting revision evidence",
+                  sourceType: "message",
+                  sourceTypeLabel: "Conversation message",
+                  role: "contradicts",
+                  roleLabel: "Conflicting",
+                  title: "Resulting revision evidence · Conversation message",
+                  summary: null,
+                  snippet: null,
+                  sourceOrigin: "Conversation message · Conflicting · Resulting revision evidence",
+                  recordedAt: null,
+                  recordedLabel: null,
+                  provenanceLabel: "Resulting revision evidence",
+                  sourceDisclosure: "redacted",
+                  returnSelectionId: "mu-canonical",
+                },
               },
             ],
             relatedObjects: [
@@ -435,20 +468,39 @@ describe("model-update inspector presentation composer", () => {
     expect(object.whatWouldChange).toBeUndefined()
     expect(JSON.stringify(object)).not.toContain("Fallback report prose")
     expect(JSON.stringify(object)).not.toContain("Fallback change condition")
-    expect(object.supporting?.[0]).toContain("Movement evidence")
-    expect(object.conflicting?.[0]).toContain("Resulting revision evidence")
-    expect(object.receiptIds?.map((id) => satellites[id]?.title)).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining("Movement evidence"),
-        expect.stringContaining("Resulting revision evidence"),
-      ]),
-    )
+    expect(object.supporting).toBeUndefined()
+    expect(object.conflicting).toBeUndefined()
+    expect(object.contextIds).toBeUndefined()
     expect(object.relatedIds).toBeUndefined()
+    expect(object.receiptIds).toEqual([
+      "canonical-evidence-direct-1",
+      "canonical-evidence-revision-1",
+    ])
+    expect(satellites["canonical-evidence-direct-1"]).toMatchObject({
+      id: "canonical-evidence-direct-1",
+      type: "receipt",
+      title: "Movement evidence · Conversation message",
+      sourceText: "Exact authorised source snippet.",
+      sourceOrigin: expect.stringContaining("Conversation message"),
+      date: "28 Jul 2026, 13:01",
+      evidenceClass: "direct_movement_evidence",
+      evidenceSourceDisclosure: "available",
+      returnSelectionId: "mu-canonical",
+    })
+    expect(satellites["canonical-evidence-revision-1"]).toMatchObject({
+      id: "canonical-evidence-revision-1",
+      type: "receipt",
+      title: "Resulting revision evidence · Conversation message",
+      evidenceSourceDisclosure: "redacted",
+      returnSelectionId: "mu-canonical",
+    })
+    expect(satellites["canonical-evidence-revision-1"]?.sourceText).toBeUndefined()
+    expect(satellites["canonical-evidence-revision-1"]?.summary).toBeUndefined()
     expect(satellites["opaque-canonical-selection"]).toBeUndefined()
     expect(reportId).toBe("mu-canonical")
   })
 
-  it("uses an existing resolved workbench selection id for canonical related objects", () => {
+  it("keeps canonical related concept selection unavailable under SUBSYS-003", () => {
     const { object, satellites } = composeProductionModelUpdateCanonicalViewModel({
       obj: {
         id: "mu-canonical",
@@ -515,7 +567,8 @@ describe("model-update inspector presentation composer", () => {
       getObjectTitle: () => undefined,
     })
 
-    expect(object.relatedIds).toEqual(["existing-canonical-workbench-object"])
+    expect(object.relatedIds).toBeUndefined()
+    expect(object.receiptIds).toBeUndefined()
     expect(satellites["opaque-canonical-selection"]).toBeUndefined()
     expect(satellites["existing-canonical-workbench-object"]).toBeUndefined()
   })
@@ -580,17 +633,34 @@ describe("model-update inspector presentation composer", () => {
           },
           directMovementEvidence: [
             {
-              id: "uel-direct",
+              id: "canonical-evidence-direct-thin",
               sourceTypeLabel: "Conversation message",
-              evidenceSummaryLabel: "The user said they like tea again now.",
+              evidenceSummaryLabel: "Movement evidence · Conversation message",
               sourceObjectHref: null,
               createdAt: "2026-07-28T12:01:00.000Z",
               hasEvidence: true,
               sourceType: "message",
-              sourceId: "msg-1",
               linkRole: "supports",
               evidenceTarget: "direct_movement",
               evidenceTargetLabel: "Movement evidence",
+              canonicalEvidenceDrilldown: {
+                selectionId: "canonical-evidence-direct-thin",
+                evidenceClass: "direct_movement_evidence",
+                evidenceClassLabel: "Movement evidence",
+                sourceType: "message",
+                sourceTypeLabel: "Conversation message",
+                role: "supports",
+                roleLabel: "Supporting",
+                title: "Movement evidence · Conversation message",
+                summary: null,
+                snippet: "The user said they like tea again now.",
+                sourceOrigin: "Conversation message · Supporting · Movement evidence",
+                recordedAt: "2026-07-28T12:01:00.000Z",
+                recordedLabel: "28 Jul 2026, 13:01",
+                provenanceLabel: "Movement evidence",
+                sourceDisclosure: "available",
+                returnSelectionId: "mu-canonical",
+              },
             },
           ],
           resultingRevisionEvidence: [],
@@ -608,12 +678,13 @@ describe("model-update inspector presentation composer", () => {
       getObjectTitle: () => undefined,
     })
 
-    expect(object.supporting).toEqual([
-      "Movement evidence · The user said they like tea again now.",
-    ])
-    expect(object.supporting).not.toContain(inheritedSupporting)
+    expect(object.supporting).toBeUndefined()
     expect(object.conflicting).toBeUndefined()
+    expect(object.contextIds).toBeUndefined()
+    expect(object.relatedIds).toBeUndefined()
+    expect(object.receiptIds).toEqual(["canonical-evidence-direct-thin"])
     expect(JSON.stringify(object)).not.toContain(thinPacketWarning)
+    expect(JSON.stringify(object)).not.toContain(inheritedSupporting)
   })
 
   it("keeps browser composer source free of raw canonical lineage fields", () => {

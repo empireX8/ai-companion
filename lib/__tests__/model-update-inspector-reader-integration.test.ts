@@ -120,21 +120,45 @@ function canonicalDetail(): InspectorModelUpdateDetail {
       },
       directMovementEvidence: [
         {
-          id: "uel-direct",
+          id: "canonical-evidence-direct-reader",
           sourceTypeLabel: "Conversation message",
-          evidenceSummaryLabel: "The user said they like tea again now.",
+          evidenceSummaryLabel: "Conversation message · 28 Jul 2026, 13:01",
           sourceObjectHref: null,
           createdAt: "2026-07-28T12:01:00.000Z",
           hasEvidence: true,
           sourceType: "message",
-          sourceId: "msg-1",
           linkRole: "supports",
           evidenceTarget: "direct_movement",
           evidenceTargetLabel: "Movement evidence",
+          canonicalEvidenceDrilldown: {
+            selectionId: "canonical-evidence-direct-reader",
+            evidenceClass: "direct_movement_evidence",
+            evidenceClassLabel: "Movement evidence",
+            sourceType: "message",
+            sourceTypeLabel: "Conversation message",
+            role: "supports",
+            roleLabel: "Supporting",
+            title: "Conversation message · 28 Jul 2026, 13:01",
+            summary: null,
+            snippet: "The user said they like tea again now.",
+            sourceOrigin:
+              "Conversation message · Supporting · Movement evidence",
+            recordedAt: "2026-07-28T12:01:00.000Z",
+            recordedLabel: "28 Jul 2026, 13:01",
+            provenanceLabel: "Movement evidence",
+            sourceDisclosure: "available",
+            returnSelectionId: "mu-canonical",
+          },
         },
       ],
       resultingRevisionEvidence: [],
-      relatedObjects: [],
+      relatedObjects: [
+        {
+          selectionId: "opaque-canonical-selection",
+          title: "Related concept must stay unavailable",
+          inspectorObjectType: "canonical_concept",
+        },
+      ],
     },
   }
 }
@@ -225,7 +249,7 @@ describe("ModelUpdate Inspector reader integration", () => {
       conflicting: [thinPacketWarning],
       whatWouldChange: [inheritedChange],
     }
-    const { object } = composeProductionModelUpdateCanonicalViewModel({
+    const { object, satellites } = composeProductionModelUpdateCanonicalViewModel({
       obj: selected,
       detail: detail!,
       modelUpdateEvidence: [],
@@ -240,14 +264,32 @@ describe("ModelUpdate Inspector reader integration", () => {
     })
 
     expect(object.title).toBe("I like tea again now")
-    expect(object.supporting).toEqual([
-      "Movement evidence · The user said they like tea again now.",
-    ])
+    expect(object.supporting).toBeUndefined()
     expect(object.conflicting).toBeUndefined()
+    expect(object.contextIds).toBeUndefined()
+    expect(object.relatedIds).toBeUndefined()
     expect(object.whatWouldChange).toBeUndefined()
+    expect(object.receiptIds).toEqual(["canonical-evidence-direct-reader"])
+    expect(Object.keys(satellites)).toEqual(["canonical-evidence-direct-reader"])
+    expect(satellites["canonical-evidence-direct-reader"]).toMatchObject({
+      id: "canonical-evidence-direct-reader",
+      type: "receipt",
+      title: "Conversation message · 28 Jul 2026, 13:01",
+      sourceText: "The user said they like tea again now.",
+      sourceOrigin: expect.stringContaining("Conversation message"),
+      date: "28 Jul 2026, 13:01",
+      evidenceClass: "direct_movement_evidence",
+      evidenceSourceDisclosure: "available",
+      returnSelectionId: "mu-canonical",
+    })
+    expect(satellites["canonical-evidence-direct-reader"]?.summary).toBeUndefined()
+    expect(satellites["opaque-canonical-selection"]).toBeUndefined()
     expect(JSON.stringify(object)).not.toContain(thinPacketWarning)
     expect(JSON.stringify(object)).not.toContain(inheritedChange)
     expect(JSON.stringify(object)).not.toContain("disconfirmation")
+    expect(JSON.stringify(object)).not.toContain("msg-1")
+    expect(JSON.stringify(satellites)).not.toContain("mu-receipt-")
+    expect(JSON.stringify(satellites)).not.toContain("mu-context-")
   })
 
   it("preserves legacy report-derived fields for noncanonical ModelUpdates", async () => {

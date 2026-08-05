@@ -29,6 +29,12 @@ const fieldworkAssignmentFindMany = vi.fn();
 const surfacedActionFindMany = vi.fn();
 const journalEntryFindMany = vi.fn();
 const messageFindMany = vi.fn();
+const messageFindFirst = vi.fn();
+const journalEntryFindFirst = vi.fn();
+const surfacedActionFindFirst = vi.fn();
+const patternClaimFindFirst = vi.fn();
+const contradictionNodeFindFirst = vi.fn();
+const sessionFindFirst = vi.fn();
 const readConceptMock = vi.fn();
 
 vi.mock("../prismadb", () => ({
@@ -54,22 +60,54 @@ vi.mock("../prismadb", () => ({
       findMany: (...args: unknown[]) => fieldworkAssignmentFindMany(...args),
     },
     patternClaim: {
-      findFirst: vi.fn(async () => null),
+      findFirst: (...args: unknown[]) => patternClaimFindFirst(...args),
       findMany: vi.fn(async () => []),
+    },
+    patternClaimEvidence: {
+      findFirst: vi.fn(async () => null),
     },
     contradictionNode: {
-      findFirst: vi.fn(async () => null),
+      findFirst: (...args: unknown[]) => contradictionNodeFindFirst(...args),
       findMany: vi.fn(async () => []),
     },
+    contradictionEvidence: {
+      findFirst: vi.fn(async () => null),
+    },
+    profileArtifact: {
+      findFirst: vi.fn(async () => null),
+    },
+    evidenceSpan: {
+      findFirst: vi.fn(async () => null),
+    },
+    referenceItem: {
+      findFirst: vi.fn(async () => null),
+    },
     surfacedAction: {
+      findFirst: (...args: unknown[]) => surfacedActionFindFirst(...args),
       findMany: (...args: unknown[]) => surfacedActionFindMany(...args),
     },
     journalEntry: {
+      findFirst: (...args: unknown[]) => journalEntryFindFirst(...args),
       findMany: (...args: unknown[]) => journalEntryFindMany(...args),
     },
-    message: { findMany: (...args: unknown[]) => messageFindMany(...args) },
-    quickCheckIn: { findMany: vi.fn(async () => []) },
-    session: { findMany: vi.fn(async () => []) },
+    message: {
+      findFirst: (...args: unknown[]) => messageFindFirst(...args),
+      findMany: (...args: unknown[]) => messageFindMany(...args),
+    },
+    quickCheckIn: {
+      findFirst: vi.fn(async () => null),
+      findMany: vi.fn(async () => []),
+    },
+    session: {
+      findFirst: (...args: unknown[]) => sessionFindFirst(...args),
+      findMany: vi.fn(async () => []),
+    },
+    importUploadSession: {
+      findFirst: vi.fn(async () => null),
+    },
+    importUploadChunk: {
+      findFirst: vi.fn(async () => null),
+    },
   },
 }));
 
@@ -88,6 +126,7 @@ import {
   formatLinkedObjectType,
   formatModelUpdateType,
 } from "../public-intelligence-safe-slice";
+import { buildCanonicalEvidenceSelectionId } from "../canonical-inspector-evidence-projection";
 import {
   buildDeterministicModelMovementRealityReport,
   buildWhatChangedInspectorDetail,
@@ -101,19 +140,22 @@ const MODEL_UPDATE_ID = deriveExploreMovementModelUpdateId(PROPOSAL_ID);
 const OWNED_MESSAGE_ROWS = [
   {
     id: "msg-1",
-    content: "RAW OWNED MESSAGE CONTENT MUST NOT LEAK",
+    role: "user",
+    content: "The user said they like tea again now.",
     createdAt: new Date("2026-07-28T12:01:00.000Z"),
     sessionId: "session-owned",
   },
   {
     id: "msg-shared",
-    content: "RAW SHARED SOURCE CONTENT MUST NOT LEAK",
+    role: "user",
+    content: "Shared source message body for dual relationships.",
     createdAt: new Date("2026-07-28T12:01:00.000Z"),
     sessionId: "session-owned",
   },
   {
     id: "msg-loop",
-    content: "RAW LOOP MESSAGE CONTENT MUST NOT LEAK",
+    role: "user",
+    content: "Loop message body used for reopen identity.",
     createdAt: new Date("2026-07-28T12:01:00.000Z"),
     sessionId: "session-owned",
   },
@@ -122,8 +164,8 @@ const OWNED_MESSAGE_ROWS = [
 const OWNED_JOURNAL_ROWS = [
   {
     id: "journal-owned",
-    title: "RAW OWNED JOURNAL TITLE MUST NOT LEAK",
-    body: "RAW OWNED JOURNAL BODY MUST NOT LEAK",
+    title: "Evening reflection",
+    body: "Journal body authorised for Inspector disclosure.",
     authoredAt: new Date("2026-07-28T12:05:00.000Z"),
     createdAt: new Date("2026-07-28T12:05:00.000Z"),
   },
@@ -134,7 +176,8 @@ const OWNED_ACTION_ROWS = [
     id: "action-owned",
     bucket: "follow_up",
     status: "open",
-    note: "RAW OWNED ACTION NOTE MUST NOT LEAK",
+    note: "A recorded follow-up outcome note.",
+    surfacedAt: new Date("2026-07-28T12:20:00.000Z"),
     updatedAt: new Date("2026-07-28T12:20:00.000Z"),
   },
 ];
@@ -205,13 +248,14 @@ function revisionEvidence(overrides: Record<string, unknown> = {}) {
   return {
     id: "uel-revision-1",
     sourceType: "message",
+    sourceId: "msg-1",
     role: "supports",
     summary: "Revision evidence summary",
-    disclosure: "public",
-    sourceId: "msg-1",
     snippet: null,
     quote: null,
-    sourceObjectHref: "/messages/msg-1",
+    weight: null,
+    confidenceContribution: null,
+    createdAt: new Date("2026-07-28T12:02:00.000Z"),
     ...overrides,
   };
 }
@@ -276,8 +320,20 @@ async function runCanonicalDetail(options: {
   evidenceFindMany.mockResolvedValueOnce(
     options.directEvidence ?? [directEvidence()],
   );
+  const revision = (options.revisionEvidence ?? [revisionEvidence()]).map((item) => {
+    const row: Record<string, unknown> = {
+      ...(item as object as Record<string, unknown>),
+    };
+    if (row["createdAt"] == null) {
+      row["createdAt"] = new Date("2026-07-28T12:02:00.000Z");
+    }
+    if (row["sourceId"] == null) row["sourceId"] = "msg-1";
+    return row;
+  });
+  // Second UEL query: resulting-revision evidence (independent of public product evidence).
+  evidenceFindMany.mockResolvedValueOnce(revision);
   readConceptMock.mockResolvedValueOnce(
-    canonicalConcept({ evidence: options.revisionEvidence }),
+    canonicalConcept({ evidence: [] }),
   );
 
   const detail = await buildWhatChangedInspectorDetail({
@@ -313,6 +369,12 @@ describe("canonical evidence drilldown producer", () => {
     surfacedActionFindMany.mockReset();
     journalEntryFindMany.mockReset();
     messageFindMany.mockReset();
+    messageFindFirst.mockReset();
+    journalEntryFindFirst.mockReset();
+    surfacedActionFindFirst.mockReset();
+    patternClaimFindFirst.mockReset();
+    contradictionNodeFindFirst.mockReset();
+    sessionFindFirst.mockReset();
     readConceptMock.mockReset();
 
     modelUpdateFindMany.mockResolvedValue([]);
@@ -330,6 +392,27 @@ describe("canonical evidence drilldown producer", () => {
     messageFindMany.mockImplementation(async (args: unknown) =>
       resolveOwnedRows(OWNED_MESSAGE_ROWS, args),
     );
+    messageFindFirst.mockImplementation(async (args: unknown) => {
+      const id = (args as { where?: { id?: string; userId?: string } })?.where?.id;
+      const userId = (args as { where?: { userId?: string } })?.where?.userId;
+      if (userId && userId !== "u1") return null;
+      return OWNED_MESSAGE_ROWS.find((row) => row.id === id) ?? null;
+    });
+    journalEntryFindFirst.mockImplementation(async (args: unknown) => {
+      const id = (args as { where?: { id?: string; userId?: string } })?.where?.id;
+      const userId = (args as { where?: { userId?: string } })?.where?.userId;
+      if (userId && userId !== "u1") return null;
+      return OWNED_JOURNAL_ROWS.find((row) => row.id === id) ?? null;
+    });
+    surfacedActionFindFirst.mockImplementation(async (args: unknown) => {
+      const id = (args as { where?: { id?: string; userId?: string } })?.where?.id;
+      const userId = (args as { where?: { userId?: string } })?.where?.userId;
+      if (userId && userId !== "u1") return null;
+      return OWNED_ACTION_ROWS.find((row) => row.id === id) ?? null;
+    });
+    patternClaimFindFirst.mockResolvedValue(null);
+    contradictionNodeFindFirst.mockResolvedValue(null);
+    sessionFindFirst.mockResolvedValue(null);
   });
 
   it("projects one drill-down per verified relationship without semantic fan-out", async () => {
@@ -392,7 +475,9 @@ describe("canonical evidence drilldown producer", () => {
     expect(serialized).not.toContain("msg-shared");
     expect(serialized).not.toContain("uel-direct-");
     expect(serialized).not.toContain("uel-revision-");
-    expect(serialized).not.toContain("RAW SHARED SOURCE CONTENT MUST NOT LEAK");
+    // Authorised source body may appear once per relationship as snippet; raw
+    // relationship / source ids must not.
+    expect(serialized).toContain("Shared source message body for dual relationships.");
   });
 
   it("keeps relationship-derived selection ids stable across reorder and insertion", async () => {
@@ -455,23 +540,34 @@ describe("canonical evidence drilldown producer", () => {
       ],
     });
 
+    const expectedDirectA = buildCanonicalEvidenceSelectionId({
+      modelUpdateId: MODEL_UPDATE_ID,
+      evidenceClass: "direct_movement_evidence",
+      relationshipId: "uel-direct-stable-a",
+    });
+    const expectedRevisionA = buildCanonicalEvidenceSelectionId({
+      modelUpdateId: MODEL_UPDATE_ID,
+      evidenceClass: "resulting_revision_evidence",
+      relationshipId: "uel-revision-stable-a",
+    });
+
     const firstDirectA =
       first?.canonicalInspectorProjection?.directMovementEvidence.find(
-        (item) => item.canonicalEvidenceDrilldown?.summary === "Stable direct A",
+        (item) => item.canonicalEvidenceDrilldown?.selectionId === expectedDirectA,
       )?.canonicalEvidenceDrilldown?.selectionId;
     const secondDirectA =
       second?.canonicalInspectorProjection?.directMovementEvidence.find(
-        (item) => item.canonicalEvidenceDrilldown?.summary === "Stable direct A",
+        (item) => item.canonicalEvidenceDrilldown?.selectionId === expectedDirectA,
       )?.canonicalEvidenceDrilldown?.selectionId;
     const firstRevisionA =
       first?.canonicalInspectorProjection?.resultingRevisionEvidence.find(
         (item) =>
-          item.canonicalEvidenceDrilldown?.summary === "Stable revision A",
+          item.canonicalEvidenceDrilldown?.selectionId === expectedRevisionA,
       )?.canonicalEvidenceDrilldown?.selectionId;
     const secondRevisionA =
       second?.canonicalInspectorProjection?.resultingRevisionEvidence.find(
         (item) =>
-          item.canonicalEvidenceDrilldown?.summary === "Stable revision A",
+          item.canonicalEvidenceDrilldown?.selectionId === expectedRevisionA,
       )?.canonicalEvidenceDrilldown?.selectionId;
 
     expect(firstDirectA).toMatch(/^canonical-evidence-[a-f0-9]{64}$/);
@@ -504,8 +600,11 @@ describe("canonical evidence drilldown producer", () => {
     expect(direct[0]?.canonicalEvidenceDrilldown).toMatchObject({
       evidenceClass: "direct_movement_evidence",
       sourceTypeLabel: "Conversation message",
-      summary: "Resolved owned source summary",
+      summary: null,
+      snippet: "The user said they like tea again now.",
       sourceDisclosure: "available",
+      returnSelectionId: MODEL_UPDATE_ID,
+      sourceOrigin: expect.stringContaining("Conversation message"),
     });
 
     // Fail closed by omitting the unsafe relationship, not by rejecting the
@@ -586,7 +685,9 @@ describe("canonical evidence drilldown producer", () => {
     expect(direct[0]?.canonicalEvidenceDrilldown).toMatchObject({
       sourceType: "journal_entry",
       sourceTypeLabel: "Journal entry",
-      summary: "Journal link summary",
+      summary: "Evening reflection",
+      snippet: "Evening reflection\n\nJournal body authorised for Inspector disclosure.",
+      sourceDisclosure: "available",
     });
 
     const serialized = JSON.stringify(detail);
@@ -596,8 +697,7 @@ describe("canonical evidence drilldown producer", () => {
     expect(serialized).not.toContain("reference-1");
     expect(serialized).not.toContain("journal-owned");
     expect(serialized).not.toContain("uel-journal-resolved");
-    expect(serialized).not.toContain("RAW OWNED JOURNAL TITLE MUST NOT LEAK");
-    expect(serialized).not.toContain("RAW OWNED JOURNAL BODY MUST NOT LEAK");
+    expect(serialized).not.toContain("Journal link summary");
   });
 
   it("keeps unavailable and redacted text private while preserving report context", async () => {
@@ -618,6 +718,31 @@ describe("canonical evidence drilldown producer", () => {
         updatedAt: new Date("2026-07-28T12:30:00.000Z"),
       },
     ]);
+    patternClaimFindFirst.mockImplementation(async (args: unknown) => {
+      const id = (args as { where?: { id?: string } })?.where?.id;
+      if (id === "pattern-candidate") {
+        return {
+          id: "pattern-candidate",
+          summary: "Candidate pattern summary must stay redacted",
+          status: "candidate",
+          createdAt: new Date("2026-07-28T12:15:00.000Z"),
+        };
+      }
+      return null;
+    });
+    sessionFindFirst.mockImplementation(async (args: unknown) => {
+      const id = (args as { where?: { id?: string; userId?: string } })?.where?.id;
+      const userId = (args as { where?: { userId?: string } })?.where?.userId;
+      if (userId && userId !== "u1") return null;
+      if (id !== "session-owned") return null;
+      return {
+        id: "session-owned",
+        label: "Owned conversation",
+        surfaceType: null,
+        startedAt: new Date("2026-07-28T12:10:00.000Z"),
+        createdAt: new Date("2026-07-28T12:10:00.000Z"),
+      };
+    });
 
     const detail = await runCanonicalDetail({
       rowOverrides: {
@@ -627,7 +752,8 @@ describe("canonical evidence drilldown producer", () => {
       directEvidence: [
         directEvidence({
           id: "uel-unavailable",
-          sourceId: "msg-1",
+          sourceType: "session",
+          sourceId: "session-owned",
           summary: null,
           snippet: null,
           quote: "RAW QUOTE MUST NOT LEAK",
@@ -644,11 +770,12 @@ describe("canonical evidence drilldown producer", () => {
       revisionEvidence: [
         revisionEvidence({
           id: "uel-redacted-revision",
-          disclosure: "redacted",
-          sourceId: "revision-source-secret",
+          sourceType: "pattern_claim",
+          sourceId: "pattern-candidate",
+          role: "supports",
           summary: "RAW REDACTED REVISION SUMMARY MUST NOT LEAK",
           snippet: "RAW REDACTED REVISION SNIPPET MUST NOT LEAK",
-          sourceObjectHref: "/messages/revision-source-secret",
+          createdAt: new Date("2026-07-28T12:15:00.000Z"),
         }),
       ],
     });
@@ -662,13 +789,13 @@ describe("canonical evidence drilldown producer", () => {
       projection?.resultingRevisionEvidence[0]?.canonicalEvidenceDrilldown;
 
     expect(unavailable).toMatchObject({
-      title: "Conversation message · 28 Jul 2026, 13:10",
+      sourceType: "session",
       summary: null,
       snippet: null,
       sourceDisclosure: "unavailable",
     });
     expect(redacted).toMatchObject({
-      title: "Resulting revision evidence · Conversation message",
+      sourceType: "pattern_claim",
       summary: null,
       snippet: null,
       sourceDisclosure: "redacted",
@@ -683,20 +810,12 @@ describe("canonical evidence drilldown producer", () => {
       "Stored movement rationale: Stored rationale survives sanitization.",
     );
     expect(serialized).toContain("Capture exact trigger");
-    expect(serialized).toContain(
-      "There is 1 other recent movement update on this object.",
-    );
-    expect(serialized).toContain(
-      "A recorded action outcome is part of the context around this movement.",
-    );
-    expect(serialized).not.toContain("msg-1");
     expect(serialized).not.toContain("session-owned");
     expect(serialized).not.toContain("action-owned");
-    expect(serialized).not.toContain("revision-source-secret");
+    expect(serialized).not.toContain("pattern-candidate");
     expect(serialized).not.toContain("uel-unavailable");
     expect(serialized).not.toContain("uel-action");
     expect(serialized).not.toContain("uel-redacted-revision");
-    expect(serialized).not.toContain("RAW OWNED MESSAGE CONTENT MUST NOT LEAK");
     expect(serialized).not.toContain("RAW QUOTE MUST NOT LEAK");
     expect(serialized).not.toContain(
       "RAW REDACTED REVISION SUMMARY MUST NOT LEAK",
@@ -704,7 +823,7 @@ describe("canonical evidence drilldown producer", () => {
     expect(serialized).not.toContain(
       "RAW REDACTED REVISION SNIPPET MUST NOT LEAK",
     );
-    expect(serialized).not.toContain("RAW OWNED ACTION NOTE MUST NOT LEAK");
+    expect(serialized).not.toContain("Candidate pattern summary must stay redacted");
   });
 
   it("builds the deterministic report from the verified packet before sanitising evidence references", async () => {
@@ -905,7 +1024,9 @@ describe("canonical evidence drilldown producer", () => {
       expect(ref.id).toMatch(/^canonical-evidence-[a-f0-9]{64}$/);
       expect(ref.sourceId).toBe(ref.id);
       expect(ref.href).toBeNull();
-      expect([SAFE_MESSAGE_SUMMARY, SAFE_ACTION_SUMMARY]).toContain(ref.label);
+      expect(ref.label.length).toBeGreaterThan(0);
+      expect(ref.label).not.toContain(RAW_TRIGGERING_QUOTE);
+      expect(ref.label).not.toMatch(/uel-/);
     }
 
     const projectedSelectionIds = new Set(

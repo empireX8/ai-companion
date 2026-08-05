@@ -67,10 +67,17 @@ export type CanonicalModelUpdateEvidenceDrilldownProjection = {
   title: string;
   summary: string | null;
   snippet: string | null;
+  /** Safe source-family / capture-surface origin label. */
+  sourceOrigin: string | null;
   recordedAt: string | null;
   recordedLabel: string | null;
   provenanceLabel: string;
   sourceDisclosure: CanonicalModelUpdateEvidenceDisclosure;
+  /**
+   * Opaque navigation identity for returning to the originating canonical
+   * ModelUpdate. Not a lineage authority field.
+   */
+  returnSelectionId: string;
 };
 
 import type { ContradictionDualSourcePresentation } from "./contradiction-dual-source-presentation-contract";
