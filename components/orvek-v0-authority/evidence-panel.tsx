@@ -6,6 +6,7 @@ import type { OrvekObject } from "@/lib/orvek-v0/orvek-types"
 import { useOrvekData, useOrvekObjectGraph } from "@/lib/orvek-v0/data-provider"
 import { isProductionDisplay } from "@/lib/orvek-v0/display-contract"
 import { minimumPermanentSlots } from "@/components/orvek-v0-canonical/permanent-presentation"
+import { resolveReceiptTrailLabel } from "./receipt-trail-label"
 import {
   CanonicalProposeCorrectionControls,
   DurableCorrectionControls,
@@ -874,7 +875,7 @@ function InspectorEvidenceSections({
             <LinkedRow
               key={receipt?.id ?? `empty-receipt-${index}`}
               obj={receipt}
-              trailLabel="Viewing supporting receipt"
+              trailLabel={resolveReceiptTrailLabel(receipt)}
               shellItem="inspector-receipt-row"
               emptyLabel="No supporting receipt is available."
               isLoading={isLoading}
