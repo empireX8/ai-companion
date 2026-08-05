@@ -78,7 +78,9 @@
         "lib/__tests__/canonical-product-public-evidence.test.ts",
         "lib/__tests__/canonical-explore-proposal-publication.test.ts",
         "lib/__tests__/canonical-revision-evidence.test.ts",
-        "lib/__tests__/what-changed-detail-route.test.ts"
+        "lib/__tests__/what-changed-detail-route.test.ts",
+        "lib/__tests__/canonical-what-changed-non-downgrade.test.ts",
+        "lib/__tests__/model-update-inspector-reader-integration.test.ts"
       ],
       "forbiddenPathPrefixes": [
         "prisma/",
