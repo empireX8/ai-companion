@@ -2013,3 +2013,73 @@ Optional future slices per `docs/phase2-final-acceptance-post-governance-contrac
 - **What remains unavailable:** runtime semantic validation, runtime result envelopes, protected selectable-object factories, private-data runtime enforcement, copy-source provenance, guard self-protection, base-owned validation, and repository-administrator resistance.
 - **Superseded control target:** issue #199 was closed as not planned after PR #200 established the accepted bounded control surface.
 - **Next exact subsystem:** `SUBSYS-003 — Canonical evidence drill-down`, beginning with a controlled read-only custody replay and stopping at the first failing checkpoint.
+
+---
+
+## SUBSYS-003 — Canonical Evidence Drill-Down Closeout
+
+- **Status:** complete, bounded
+- **Date:** 2026-08-06
+- **Active closeout subsystem:** `SUBSYS-000`
+- **Status before:** `NOT_ACCEPTED`
+- **Status after:** `PROVEN_BOUNDED`
+- **Implementation PR:** #206
+- **Implementation head:** `5b39ff6b07cbbe7c220d2cb9bc4dc22dd16f77b4`
+- **Merge commit:** `f4ce52045fb756ef8406d2ed8ef7aa89ab299c67`
+- **Ledger revision read for closeout:** `f4ce52045fb756ef8406d2ed8ef7aa89ab299c67`
+- **Supported path:**
+  ```text
+  canonical ModelUpdate
+  → exact independently persisted evidence relationship
+  → owned eligible source
+  → Inspector-safe browser projection
+  → exact server-issued opaque selected evidence object
+  → Back to the originating canonical ModelUpdate
+  ```
+- **Receipt identity:** `PROJECTION_ONLY` — no Receipt table or writer authorised.
+- **Files changed by PR #206 (runtime):**
+  - `lib/canonical-model-projection.ts`
+  - `lib/canonical-inspector-evidence-projection.ts`
+  - `lib/what-changed-reality-report.ts`
+  - `lib/inspector-object-api.ts`
+  - `lib/orvek-v0/orvek-types.ts`
+  - `lib/orvek-v0/production/model-update-inspector-presentation.ts`
+  - `components/orvek-v0-authority/receipt-trail-label.ts`
+  - `components/orvek-v0-authority/evidence-panel.tsx`
+- **Files changed by PR #206 (tests):**
+  - `lib/__tests__/canonical-model-projection.test.ts`
+  - `lib/__tests__/canonical-inspector-evidence-projection.test.ts`
+  - `lib/__tests__/canonical-evidence-drilldown-producer.test.ts`
+  - `lib/__tests__/model-update-inspector-presentation.test.ts`
+  - `lib/__tests__/canonical-what-changed-non-downgrade.test.ts`
+  - `lib/__tests__/model-update-inspector-reader-integration.test.ts`
+  - `components/orvek-v0-authority/receipt-trail-label.test.ts`
+- **Closeout files changed:**
+  - `docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md`
+  - `docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json`
+  - `docs/engineering-ledger.md`
+- **Verification results:**
+  - producer suite PASS 10 / 10
+  - focused SUBSYS-003 suite PASS 66
+  - `bash scripts/verify-mindlab.sh` PASS 7 / FAIL 0 / SKIP 0
+  - Vitest PASS 4958
+  - build PASS
+  - Orvek subsystem guard, Orvek order and scope, CodeRabbit, and Vercel all PASS on the implementation tip
+- **Deployed proof:**
+  - correct evidence opens
+  - exact opaque identity survives hard refresh/reopen
+  - Back returns to the originating tea ModelUpdate
+  - Context is not falsely labelled Supporting (`Viewing evidence receipt`)
+  - private/redacted text remains absent
+  - no synthetic supporting/conflicting/context/related fan-out
+  - deployed response timestamps `2026-08-06T12:01:00.392Z` and `2026-08-06T12:10:01.713Z`
+  - stable Assistant Context evidence ID `canonical-evidence-41deb4c3eaf7e498b09ec41a24cc051edba5962716b665798fbb18939a146db4`
+  - Reference-item remained `sourceDisclosure=redacted` with `snippet=null`
+- **Honest limitations:**
+  - projection-only Receipt identity
+  - no Receipt table
+  - no canonical writers
+  - no related canonical-concept drill-down
+  - no whole-product completion, production-wide readiness, or security-certification claim
+- **What remains unavailable:** `SUBSYS-004` and every later subsystem
+- **Next exact subsystem:** `SUBSYS-004 — Canonical concept related-object drill-down`

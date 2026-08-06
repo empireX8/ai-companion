@@ -105,15 +105,15 @@
     {
       "id": "SUBSYS-003",
       "name": "Canonical evidence drill-down",
-      "status": "NOT_ACCEPTED",
+      "status": "PROVEN_BOUNDED",
       "dependsOn": [
         "SUBSYS-002"
       ],
       "contract": "docs/architecture/ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001.md#slice-a",
       "architectureRecord": "docs/architecture/ORVEK-CANONICAL-EVIDENCE-REFERENCE-TO-AUTHORITY-MATRIX-001.md",
       "receiptIdentityDecision": "PROJECTION_ONLY",
-      "currentVerdict": "PR #192 must not merge as-is; static custody records timestamp loss, Inspector misuse of public continuity projection, and selected-object adapter breach of server-issued selection identity",
-      "supportedPathTarget": "canonical ModelUpdate -> exact verified evidence link/source -> Inspector-safe browser-safe evidence projection -> one selected evidence object using the exact server-issued selection id -> existing Back path to the originating ModelUpdate",
+      "currentVerdict": "PR #206 merged as f4ce52045fb756ef8406d2ed8ef7aa89ab299c67 with implementation head 5b39ff6b07cbbe7c220d2cb9bc4dc22dd16f77b4; bounded Slice A evidence drill-down passed its exit gate. PR #192 remains superseded and is not acceptance authority.",
+      "supportedPathTarget": "canonical ModelUpdate -> exact independently persisted evidence relationship -> owned eligible source -> Inspector-safe browser projection -> exact server-issued opaque selected evidence object -> Back to the originating canonical ModelUpdate",
       "entranceGate": [
         "Receipt identity is accepted as projection-only",
         "source and edge authority are separately defined",
@@ -137,15 +137,38 @@
         "live-shape regression passes before status promotion",
         "Existing public continuity projection behaviour remains unchanged. Focused regression proof must demonstrate that SUBSYS-003 does not broaden public disclosure, expose additional source fields, change public eligibility, or weaken redaction."
       ],
+      "exitProof": [
+        "PR #206 merged",
+        "implementation head 5b39ff6b07cbbe7c220d2cb9bc4dc22dd16f77b4",
+        "merge commit f4ce52045fb756ef8406d2ed8ef7aa89ab299c67",
+        "one explicit relationship produces one evidence object",
+        "exact server-issued opaque identity survives",
+        "evidence class, source type, role, title, disclosure, provenance and date survive",
+        "redacted/unavailable text remains absent",
+        "no synthetic supporting/conflicting/context/related fan-out",
+        "direct and resulting-revision evidence are not confused",
+        "Back returns correctly",
+        "refresh/reopen preserves identity",
+        "noncanonical and public continuity behaviour remain unchanged",
+        "formal tea four-row regression PASS",
+        "producer tests PASS 10 / 10",
+        "focused SUBSYS-003 tests PASS 66",
+        "full verify-mindlab PASS 7 / FAIL 0 / SKIP 0",
+        "Vitest PASS 4958",
+        "all remote checks PASS",
+        "deployed proof timestamps 2026-08-06T12:01:00.392Z and 2026-08-06T12:10:01.713Z",
+        "stable Assistant Context evidence ID canonical-evidence-41deb4c3eaf7e498b09ec41a24cc051edba5962716b665798fbb18939a146db4",
+        "Reference item remained redacted with null snippet"
+      ],
       "expectedUnavailable": [
-        "evidence click unavailable or fail-closed until runtime acceptance",
-        "live-data confirmation remains operationally unknown",
-        "SUBSYS-004 and all downstream work blocked",
-        "empty satellite sections are correct",
-        "supporting empty",
-        "conflicting empty",
-        "context empty",
-        "related objects empty"
+        "SUBSYS-004 and all downstream work remain unavailable",
+        "related canonical-concept drill-down unavailable",
+        "no invented satellite relationships",
+        "no Receipt persistence",
+        "no canonical writers",
+        "no whole-product completion claim",
+        "no production-wide readiness claim",
+        "no security-certification claim"
       ],
       "defectThreshold": [
         "positional replacement of server-issued selection identity",
@@ -351,8 +374,7 @@
   "immediateExecutionOrder": [
     "accept SUBSYS-000 ledger",
     "close or supersede PR #192 without merging as-is",
-    "reimplement SUBSYS-003 only",
-    "pass SUBSYS-003 exit gate",
+    "SUBSYS-003 Slice A reimplementation and exit gate completed in PR #206",
     "implement SUBSYS-004",
     "select one bounded SUBSYS-005 lifecycle operation",
     "continue family-by-family through SUBSYS-006 to SUBSYS-009",
@@ -374,6 +396,7 @@
   ],
   "currentPr192Classification": {
     "classification": "ACTUAL_DEFECT",
-    "reason": "The accepted Slice A contract already forbids synthetic relationships, but the implementation fans one flat evidence pool into multiple semantic pathways. The correct incomplete state was empty neutral sections."
+    "status": "SUPERSEDED_BY_PR_206",
+    "reason": "Historical: the accepted Slice A contract already forbade synthetic relationships, but PR #192 fanned one flat evidence pool into multiple semantic pathways. PR #206 is the acceptance authority for bounded SUBSYS-003 Slice A."
   }
 }
