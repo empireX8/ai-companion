@@ -105,26 +105,6 @@ function isProceduralPacketSummary(text: string): boolean {
   )
 }
 
-function normalizeRole(value: string | null | undefined): string {
-  return value?.trim().toLowerCase() ?? ""
-}
-
-function evidenceLabel(item: InspectorEvidenceLinkItem): string | null {
-  const card = projectInspectorEvidenceCard(item)
-  const text = firstMeaningfulModelUpdateText([
-    card.summary,
-    card.title,
-    item.evidenceSummaryLabel,
-    item.objectTitle,
-  ])
-  if (!text) return null
-  const target = sanitizeInspectorDisplayText(item.evidenceTargetLabel)
-  if (!target) return text
-  return text.toLowerCase().startsWith(target.toLowerCase())
-    ? text
-    : `${target} · ${text}`
-}
-
 function buildCanonicalProjectionViewModel(input: {
   obj: OrvekObject
   detail: InspectorModelUpdateDetail
@@ -139,94 +119,72 @@ function buildCanonicalProjectionViewModel(input: {
 
   const satellites: Record<string, OrvekObject> = {}
   const receiptIds: string[] = []
-  const contextIds: string[] = []
-  const relatedIds: string[] = []
-  const usedIds = new Set<string>()
   const seenReceipts = new Set<string>()
-  const evidencePool = dedupeInspectorEvidenceLinks([
+
+  const evidenceItems = [
     ...projection.directMovementEvidence,
     ...projection.resultingRevisionEvidence,
-  ])
+  ]
 
-  const addEvidenceSatellite = (
-    item: InspectorEvidenceLinkItem,
-    index: number,
-    bucket: "receipt" | "context",
-  ) => {
-    const title = evidenceLabel(item)
-    if (!title) return
-    const key = `${bucket}:${title.toLowerCase()}`
-    if (seenReceipts.has(key)) return
-    seenReceipts.add(key)
-    const selectionId = `mu-${bucket}-${input.obj.id}-${index}`
-    const navigationId = input.resolveSelectionId(item.sourceType, item.sourceId) ?? selectionId
-    if (bucket === "context") {
-      contextIds.push(selectionId)
-    } else {
-      receiptIds.push(selectionId)
-    }
-    if (!satellites[selectionId]) {
-      satellites[selectionId] = {
-        id: selectionId,
-        type: bucket === "context" ? "context" : "receipt",
-        title,
-        sourceText: title,
-        inspectorObjectType: item.sourceType ?? undefined,
-        inspectorObjectId: item.sourceId ?? undefined,
-        ...(navigationId !== selectionId ? { relatedIds: [navigationId] } : {}),
-      }
-    }
-    if (navigationId !== selectionId && !satellites[navigationId]) {
-      satellites[navigationId] = {
-        id: navigationId,
-        type: "receipt",
-        title:
-          firstMeaningfulModelUpdateText([
-            item.objectTitle,
-            input.getObjectTitle(navigationId),
-            title,
-          ]) ?? title,
-        inspectorObjectType: item.sourceType ?? undefined,
-        inspectorObjectId: item.sourceId ?? undefined,
-      }
+  for (const item of evidenceItems) {
+    const drilldown = item.canonicalEvidenceDrilldown
+    if (!drilldown?.selectionId) continue
+    if (seenReceipts.has(drilldown.selectionId)) continue
+    seenReceipts.add(drilldown.selectionId)
+
+    const title = firstMeaningfulModelUpdateText([drilldown.title])
+    if (!title) continue
+
+    receiptIds.push(drilldown.selectionId)
+
+    const sourceOrigin =
+      firstMeaningfulModelUpdateText([
+        drilldown.sourceOrigin,
+        [drilldown.sourceTypeLabel, drilldown.roleLabel, drilldown.provenanceLabel]
+          .filter(Boolean)
+          .join(" · "),
+        drilldown.sourceTypeLabel,
+        drilldown.provenanceLabel,
+      ]) ?? undefined
+
+    const disclosureAvailable = drilldown.sourceDisclosure === "available"
+    const summary =
+      disclosureAvailable && drilldown.summary
+        ? drilldown.summary
+        : undefined
+    const sourceText =
+      disclosureAvailable && drilldown.snippet
+        ? drilldown.snippet
+        : undefined
+
+    satellites[drilldown.selectionId] = {
+      id: drilldown.selectionId,
+      type: "receipt",
+      title,
+      ...(summary ? { summary } : {}),
+      ...(sourceText ? { sourceText } : {}),
+      ...(sourceOrigin ? { sourceOrigin } : {}),
+      ...(drilldown.recordedLabel ? { date: drilldown.recordedLabel } : {}),
+      evidenceClass: drilldown.evidenceClass,
+      evidenceClassLabel: drilldown.evidenceClassLabel,
+      evidenceSourceType: drilldown.sourceType,
+      evidenceSourceTypeLabel: drilldown.sourceTypeLabel,
+      evidenceRole: drilldown.role,
+      evidenceRoleLabel: drilldown.roleLabel,
+      evidenceProvenanceLabel: drilldown.provenanceLabel,
+      evidenceSourceDisclosure: drilldown.sourceDisclosure,
+      evidenceRecordedAt: drilldown.recordedAt ?? undefined,
+      returnSelectionId: drilldown.returnSelectionId,
     }
   }
-
-  evidencePool.forEach((item, index) => {
-    addEvidenceSatellite(item, index, "receipt")
-    if (normalizeRole(item.linkRole) === "context") {
-      addEvidenceSatellite(item, index, "context")
-    }
-  })
-
-  for (const related of projection.relatedObjects) {
-    const resolvedSelectionId = input.resolveSelectionId(
-      related.inspectorObjectType,
-      related.selectionId,
-    )
-    if (!resolvedSelectionId) continue
-    if (usedIds.has(resolvedSelectionId)) continue
-    usedIds.add(resolvedSelectionId)
-    relatedIds.push(resolvedSelectionId)
-  }
-
-  const supporting = dedupeStrings(
-    evidencePool
-      .filter((item) => normalizeRole(item.linkRole) === "supports")
-      .map(evidenceLabel)
-      .filter((value): value is string => Boolean(value)),
-  ).slice(0, 4)
-  const conflicting = dedupeStrings(
-    evidencePool
-      .filter((item) => normalizeRole(item.linkRole) === "contradicts")
-      .map(evidenceLabel)
-      .filter((value): value is string => Boolean(value)),
-  ).slice(0, 3)
 
   const recorded = formatRecordedLabel(projection.createdAt)
   const objectBase = { ...input.obj }
   delete objectBase.supporting
   delete objectBase.conflicting
+  delete objectBase.contextIds
+  delete objectBase.relatedIds
+  delete objectBase.whatWouldChange
   const object: OrvekObject = {
     ...objectBase,
     type: "model-update",
@@ -242,10 +200,10 @@ function buildCanonicalProjectionViewModel(input: {
     }) ?? projection.updateLabel,
     lastUpdated: recorded ?? input.obj.lastUpdated,
     receiptIds: receiptIds.length > 0 ? receiptIds : undefined,
-    supporting: supporting.length > 0 ? supporting : undefined,
-    conflicting: conflicting.length > 0 ? conflicting : undefined,
-    contextIds: contextIds.length > 0 ? contextIds : undefined,
-    relatedIds: relatedIds.length > 0 ? relatedIds : undefined,
+    supporting: undefined,
+    conflicting: undefined,
+    contextIds: undefined,
+    relatedIds: undefined,
     whatWouldChange: undefined,
     canonicalReportId: projection.modelUpdateId,
     inspectorObjectType: "model_update",

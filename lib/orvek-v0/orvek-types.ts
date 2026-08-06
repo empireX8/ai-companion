@@ -117,6 +117,19 @@ export interface OrvekObject {
   inspectorObjectType?: string
   inspectorObjectId?: string
 
+  /** SUBSYS-003 Slice A — selected evidence Receipt metadata (projection only). */
+  evidenceClass?: string
+  evidenceClassLabel?: string
+  evidenceSourceType?: string
+  evidenceSourceTypeLabel?: string
+  evidenceRole?: string
+  evidenceRoleLabel?: string
+  evidenceProvenanceLabel?: string
+  evidenceSourceDisclosure?: "available" | "redacted" | "unavailable"
+  evidenceRecordedAt?: string
+  /** Opaque Back target for the originating ModelUpdate selection. */
+  returnSelectionId?: string
+
   /**
    * Canonical authority identity for correction handoff only.
    * Present when inspectorObjectType is canonical_concept.

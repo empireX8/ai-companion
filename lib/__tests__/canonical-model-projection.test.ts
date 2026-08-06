@@ -698,6 +698,12 @@ describe.skipIf(!shouldAttemptRealDb)(
             row.role === UnderstandingLinkRole.context,
         ),
       ).toBe(true);
+      for (const link of links) {
+        const projected = projection.currentRevision.evidence.find(
+          (row) => row.id === link.id,
+        );
+        expect(projected?.createdAt).toBe(link.createdAt.toISOString());
+      }
     });
 
     it("9. evidence count equals supports links", async () => {

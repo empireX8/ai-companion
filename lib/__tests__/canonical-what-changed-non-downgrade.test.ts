@@ -37,12 +37,37 @@ vi.mock("../prismadb", () => ({
     investigation: { findFirst: vi.fn(async () => null) },
     fieldworkAssignment: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => []) },
     patternClaim: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => []) },
+    patternClaimEvidence: { findFirst: vi.fn(async () => null) },
     contradictionNode: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => []) },
-    surfacedAction: { findMany: vi.fn(async () => []) },
-    journalEntry: { findMany: vi.fn(async () => []) },
-    message: { findMany: (...args: unknown[]) => findManyMessages(...args) },
-    quickCheckIn: { findMany: vi.fn(async () => []) },
-    session: { findMany: vi.fn(async () => []) },
+    contradictionEvidence: { findFirst: vi.fn(async () => null) },
+    profileArtifact: { findFirst: vi.fn(async () => null) },
+    evidenceSpan: { findFirst: vi.fn(async () => null) },
+    referenceItem: { findFirst: vi.fn(async () => null) },
+    surfacedAction: {
+      findFirst: vi.fn(async () => null),
+      findMany: vi.fn(async () => []),
+    },
+    journalEntry: {
+      findFirst: vi.fn(async () => null),
+      findMany: vi.fn(async () => []),
+    },
+    message: {
+      findFirst: async (args: unknown) => {
+        const rows = await findManyMessages(args);
+        return Array.isArray(rows) ? (rows[0] ?? null) : null;
+      },
+      findMany: (...args: unknown[]) => findManyMessages(...args),
+    },
+    quickCheckIn: {
+      findFirst: vi.fn(async () => null),
+      findMany: vi.fn(async () => []),
+    },
+    session: {
+      findFirst: vi.fn(async () => null),
+      findMany: vi.fn(async () => []),
+    },
+    importUploadSession: { findFirst: vi.fn(async () => null) },
+    importUploadChunk: { findFirst: vi.fn(async () => null) },
   },
 }));
 
@@ -204,28 +229,63 @@ describe("What Changed canonical non-downgrade", () => {
       }),
     );
     findFirstProposal.mockResolvedValueOnce(canonicalProposal());
+    // Direct movement evidence: independent source → model_update relationship.
     findManyEvidenceLinks.mockResolvedValueOnce([
       {
         id: "uel-direct-1",
         sourceType: "message",
         sourceId: "msg-1",
         role: "supports",
-        summary: "The user said they like tea again now.",
-        snippet: null,
+        summary: "UEL DIRECT SUMMARY MUST NOT BECOME INSPECTOR TEXT",
+        snippet: "UEL DIRECT SNIPPET MUST NOT BECOME INSPECTOR TEXT",
         quote: "RAW PRIVATE MESSAGE TEXT MUST NOT LEAK",
         weight: null,
         confidenceContribution: null,
         createdAt: new Date("2026-07-28T12:01:00.000Z"),
       },
     ]);
-    findManyMessages.mockResolvedValueOnce([
+    // Resulting-revision evidence: independent source → canonical_concept_revision.
+    findManyEvidenceLinks.mockResolvedValueOnce([
       {
-        id: "msg-1",
-        content: "RAW MESSAGE ROW CONTENT MUST NOT LEAK",
-        createdAt: new Date("2026-07-28T12:01:00.000Z"),
-        sessionId: "session-1",
+        id: "uel-revision-1",
+        sourceType: "message",
+        sourceId: "msg-2",
+        role: "supports",
+        summary: "UEL REVISION SUMMARY MUST NOT BECOME INSPECTOR TEXT",
+        snippet: "UEL REVISION SNIPPET MUST NOT BECOME INSPECTOR TEXT",
+        quote: "RAW REVISION QUOTE MUST NOT LEAK",
+        weight: null,
+        confidenceContribution: null,
+        createdAt: new Date("2026-07-28T12:02:00.000Z"),
       },
     ]);
+    findManyMessages.mockImplementation(async (args: unknown) => {
+      const where = (
+        args as {
+          where?: { id?: string | { in?: string[] }; userId?: string };
+        }
+      )?.where;
+      if (where?.userId && where.userId !== "u1") return [];
+      const ids =
+        typeof where?.id === "string" ? [where.id] : (where?.id?.in ?? []);
+      const owned = [
+        {
+          id: "msg-1",
+          role: "user",
+          content: "The user said they like tea again now.",
+          createdAt: new Date("2026-07-28T12:01:00.000Z"),
+          sessionId: "session-1",
+        },
+        {
+          id: "msg-2",
+          role: "user",
+          content: "Independent resulting-revision source body.",
+          createdAt: new Date("2026-07-28T12:02:00.000Z"),
+          sessionId: "session-2",
+        },
+      ];
+      return owned.filter((row) => ids.length === 0 || ids.includes(row.id));
+    });
     readConceptMock.mockResolvedValueOnce({
       authorityType: "canonical_concept_revision",
       conceptId: "concept_1",
@@ -235,9 +295,10 @@ describe("What Changed canonical non-downgrade", () => {
       summary: "I like tea again now",
       rationale: "The current revision reflects the accepted correction.",
       acceptedAt: "2026-07-28T12:00:00.000Z",
+      // Public continuity labels must not become Inspector evidence authority.
       evidence: [
         {
-          id: "uel-revision-1",
+          id: "uel-public-continuity-shell",
           sourceType: "message",
           role: "supports",
           summary: "Linked evidence",
@@ -319,13 +380,14 @@ describe("What Changed canonical non-downgrade", () => {
       sourceTypeLabel: "Conversation message",
       role: "supports",
       roleLabel: "Supporting",
-      title: "The user said they like tea again now.",
-      summary: "The user said they like tea again now.",
-      snippet: null,
+      title: "Conversation message · 28 Jul 2026, 13:01",
+      summary: null,
+      snippet: "The user said they like tea again now.",
       recordedAt: "2026-07-28T12:01:00.000Z",
       recordedLabel: "28 Jul 2026, 13:01",
       provenanceLabel: "Movement evidence",
       sourceDisclosure: "available",
+      returnSelectionId: MODEL_UPDATE_ID,
     });
     expect(
       detail?.canonicalInspectorProjection?.resultingRevisionEvidence[0]
@@ -341,6 +403,9 @@ describe("What Changed canonical non-downgrade", () => {
     expect(
       revisionEvidence?.canonicalEvidenceDrilldown?.selectionId,
     ).not.toContain(MODEL_UPDATE_ID);
+    expect(
+      revisionEvidence?.canonicalEvidenceDrilldown?.selectionId,
+    ).not.toBe(directEvidence?.canonicalEvidenceDrilldown?.selectionId);
     expect(revisionEvidence?.canonicalEvidenceDrilldown).toMatchObject({
       evidenceClass: "resulting_revision_evidence",
       evidenceClassLabel: "Resulting revision evidence",
@@ -348,19 +413,26 @@ describe("What Changed canonical non-downgrade", () => {
       sourceTypeLabel: "Conversation message",
       role: "supports",
       roleLabel: "Supporting",
-      title: "Resulting revision evidence · Conversation message",
+      title: "Conversation message · 28 Jul 2026, 13:02",
       summary: null,
-      snippet: null,
-      recordedAt: null,
-      recordedLabel: null,
+      snippet: "Independent resulting-revision source body.",
+      recordedAt: "2026-07-28T12:02:00.000Z",
+      recordedLabel: "28 Jul 2026, 13:02",
       provenanceLabel: "Resulting revision evidence",
-      sourceDisclosure: "redacted",
+      sourceDisclosure: "available",
+      returnSelectionId: MODEL_UPDATE_ID,
     });
+    // Resulting-revision Inspector evidence is loaded from its own UEL query.
     expect(
       findManyEvidenceLinks.mock.calls.some((call) =>
         JSON.stringify(call[0]).includes("canonical_concept_revision"),
       ),
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      findManyEvidenceLinks.mock.calls.some((call) =>
+        JSON.stringify(call[0]).includes('"model_update"'),
+      ),
+    ).toBe(true);
 
     const serialized = JSON.stringify(detail);
     expect(serialized).not.toContain("canonicalConceptId");
@@ -370,11 +442,24 @@ describe("What Changed canonical non-downgrade", () => {
     expect(serialized).not.toContain("internalNotes");
     expect(serialized).not.toContain("movementRationale");
     expect(serialized).not.toContain("msg-1");
+    expect(serialized).not.toContain("msg-2");
     expect(serialized).not.toContain("session-1");
+    expect(serialized).not.toContain("session-2");
     expect(serialized).not.toContain("uel-direct-1");
     expect(serialized).not.toContain("uel-revision-1");
+    expect(serialized).not.toContain("UEL DIRECT SUMMARY MUST NOT BECOME INSPECTOR TEXT");
+    expect(serialized).not.toContain("UEL REVISION SUMMARY MUST NOT BECOME INSPECTOR TEXT");
     expect(serialized).not.toContain("RAW PRIVATE MESSAGE TEXT MUST NOT LEAK");
-    expect(serialized).not.toContain("RAW MESSAGE ROW CONTENT MUST NOT LEAK");
+    expect(serialized).not.toContain("RAW REVISION QUOTE MUST NOT LEAK");
+    // Public continuity label must not become Inspector evidence meaning.
+    expect(
+      directEvidence?.canonicalEvidenceDrilldown?.title,
+    ).not.toBe("Linked evidence");
+    expect(
+      revisionEvidence?.canonicalEvidenceDrilldown?.title,
+    ).not.toBe("Linked evidence");
+    expect(serialized).toContain("The user said they like tea again now.");
+    expect(serialized).toContain("Independent resulting-revision source body.");
   });
 
   it("does not relabel current-revision evidence as resulting-revision evidence for older movements", async () => {

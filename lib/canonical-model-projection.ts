@@ -50,6 +50,11 @@ export type CanonicalRevisionEvidenceProjectionV1 = {
   summary: string;
   snippet: string;
   quote: string;
+  /**
+   * Relationship recorded time (UEL createdAt) as ISO — fallback date authority.
+   * Always projected by projectEvidenceForRevisions; optional on hand-built fixtures.
+   */
+  createdAt?: string;
 };
 
 export type CanonicalRevisionProjectionV1 = {
@@ -163,6 +168,7 @@ type EvidenceLinkRow = {
   summary: string;
   snippet: string;
   quote: string;
+  createdAt: Date;
 };
 
 function broken(message: string): never {
@@ -380,6 +386,7 @@ async function projectEvidenceForRevisions(args: {
       summary: link.summary,
       snippet: link.snippet,
       quote: link.quote,
+      createdAt: toIso(link.createdAt),
     });
   }
 
