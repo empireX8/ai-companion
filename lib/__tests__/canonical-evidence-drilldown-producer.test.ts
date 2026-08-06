@@ -35,6 +35,7 @@ const surfacedActionFindFirst = vi.fn();
 const patternClaimFindFirst = vi.fn();
 const contradictionNodeFindFirst = vi.fn();
 const sessionFindFirst = vi.fn();
+const referenceItemFindFirst = vi.fn();
 const readConceptMock = vi.fn();
 
 vi.mock("../prismadb", () => ({
@@ -80,7 +81,7 @@ vi.mock("../prismadb", () => ({
       findFirst: vi.fn(async () => null),
     },
     referenceItem: {
-      findFirst: vi.fn(async () => null),
+      findFirst: (...args: unknown[]) => referenceItemFindFirst(...args),
     },
     surfacedAction: {
       findFirst: (...args: unknown[]) => surfacedActionFindFirst(...args),
@@ -137,6 +138,13 @@ const PROPOSAL_ID = "prop_canonical_evidence_drilldown";
 const MODEL_UPDATE_ID = deriveExploreMovementModelUpdateId(PROPOSAL_ID);
 
 /** Rows the authenticated user genuinely owns. Anything else is unresolvable. */
+const TEA_LIVE_USER_CORRECTION =
+  "Correction: I like tea again now. Please update your understanding of me.";
+const TEA_LIVE_ASSISTANT_CONTEXT =
+  "Got it! Your preference is that you like tea again now. A proposed model update may appear in Explore for review.";
+const TEA_LIVE_REFERENCE_PRIVATE =
+  "PRIVATE_REFERENCE_STATEMENT_MUST_NOT_LEAK";
+
 const OWNED_MESSAGE_ROWS = [
   {
     id: "msg-1",
@@ -158,6 +166,20 @@ const OWNED_MESSAGE_ROWS = [
     content: "Loop message body used for reopen identity.",
     createdAt: new Date("2026-07-28T12:01:00.000Z"),
     sessionId: "session-owned",
+  },
+  {
+    id: "msg-tea-user-correction",
+    role: "user",
+    content: TEA_LIVE_USER_CORRECTION,
+    createdAt: new Date("2026-07-28T12:03:00.000Z"),
+    sessionId: "session-tea-live",
+  },
+  {
+    id: "msg-tea-assistant-context",
+    role: "assistant",
+    content: TEA_LIVE_ASSISTANT_CONTEXT,
+    createdAt: new Date("2026-07-28T12:02:30.000Z"),
+    sessionId: "session-tea-live",
   },
 ];
 
@@ -375,6 +397,7 @@ describe("canonical evidence drilldown producer", () => {
     patternClaimFindFirst.mockReset();
     contradictionNodeFindFirst.mockReset();
     sessionFindFirst.mockReset();
+    referenceItemFindFirst.mockReset();
     readConceptMock.mockReset();
 
     modelUpdateFindMany.mockResolvedValue([]);
@@ -413,6 +436,7 @@ describe("canonical evidence drilldown producer", () => {
     patternClaimFindFirst.mockResolvedValue(null);
     contradictionNodeFindFirst.mockResolvedValue(null);
     sessionFindFirst.mockResolvedValue(null);
+    referenceItemFindFirst.mockResolvedValue(null);
   });
 
   it("projects one drill-down per verified relationship without semantic fan-out", async () => {
@@ -574,6 +598,185 @@ describe("canonical evidence drilldown producer", () => {
     expect(firstRevisionA).toMatch(/^canonical-evidence-[a-f0-9]{64}$/);
     expect(secondDirectA).toBe(firstDirectA);
     expect(secondRevisionA).toBe(firstRevisionA);
+  });
+
+  it("reproduces the deployed tea four-row resulting-revision live shape without fan-out", async () => {
+    referenceItemFindFirst.mockImplementation(async (args: unknown) => {
+      const id = (args as { where?: { id?: string; userId?: string } })?.where?.id;
+      const userId = (args as { where?: { userId?: string } })?.where?.userId;
+      if (userId && userId !== "u1") return null;
+      if (id !== "ref-tea-live") return null;
+      return {
+        id: "ref-tea-live",
+        statement: TEA_LIVE_REFERENCE_PRIVATE,
+        status: "candidate",
+        createdAt: new Date("2026-07-28T12:04:00.000Z"),
+      };
+    });
+    sessionFindFirst.mockImplementation(async (args: unknown) => {
+      const id = (args as { where?: { id?: string; userId?: string } })?.where?.id;
+      const userId = (args as { where?: { userId?: string } })?.where?.userId;
+      if (userId && userId !== "u1") return null;
+      if (id !== "session-tea-live") return null;
+      return {
+        id: "session-tea-live",
+        label: "Tea preference conversation",
+        surfaceType: "explore",
+        startedAt: new Date("2026-07-28T12:00:00.000Z"),
+        createdAt: new Date("2026-07-28T12:00:00.000Z"),
+      };
+    });
+
+    const detail = await runCanonicalDetail({
+      directEvidence: [],
+      revisionEvidence: [
+        revisionEvidence({
+          id: "uel-tea-ref",
+          sourceType: "reference_item",
+          sourceId: "ref-tea-live",
+          role: "supports",
+          summary: "RAW REFERENCE UEL SUMMARY MUST NOT LEAK",
+          snippet: "RAW REFERENCE UEL SNIPPET MUST NOT LEAK",
+          quote: "RAW REFERENCE UEL QUOTE MUST NOT LEAK",
+          createdAt: new Date("2026-07-28T12:04:00.000Z"),
+        }),
+        revisionEvidence({
+          id: "uel-tea-user",
+          sourceType: "message",
+          sourceId: "msg-tea-user-correction",
+          role: "supports",
+          summary: "RAW USER UEL SUMMARY MUST NOT LEAK",
+          createdAt: new Date("2026-07-28T12:03:00.000Z"),
+        }),
+        revisionEvidence({
+          id: "uel-tea-assistant",
+          sourceType: "message",
+          sourceId: "msg-tea-assistant-context",
+          role: "context",
+          summary: "RAW ASSISTANT UEL SUMMARY MUST NOT LEAK",
+          createdAt: new Date("2026-07-28T12:02:00.000Z"),
+        }),
+        revisionEvidence({
+          id: "uel-tea-session",
+          sourceType: "session",
+          sourceId: "session-tea-live",
+          role: "context",
+          summary: "RAW SESSION UEL SUMMARY MUST NOT LEAK",
+          snippet: "RAW SESSION UEL SNIPPET MUST NOT LEAK",
+          quote: "RAW SESSION CHILD MESSAGE MUST NOT LEAK",
+          createdAt: new Date("2026-07-28T12:01:00.000Z"),
+        }),
+      ],
+    });
+
+    const projection = detail?.canonicalInspectorProjection;
+    expect(projection?.directMovementEvidence).toEqual([]);
+    expect(projection?.relatedObjects).toEqual([]);
+
+    const resulting = projection?.resultingRevisionEvidence ?? [];
+    expect(resulting).toHaveLength(4);
+
+    const expectedIds = [
+      "uel-tea-ref",
+      "uel-tea-user",
+      "uel-tea-assistant",
+      "uel-tea-session",
+    ].map((relationshipId) =>
+      buildCanonicalEvidenceSelectionId({
+        modelUpdateId: MODEL_UPDATE_ID,
+        evidenceClass: "resulting_revision_evidence",
+        relationshipId,
+      }),
+    );
+
+    expect(resulting.map((item) => item.id)).toEqual(expectedIds);
+    expect(
+      resulting.map((item) => item.canonicalEvidenceDrilldown?.selectionId),
+    ).toEqual(expectedIds);
+    expect(
+      resulting.map((item) => item.canonicalEvidenceDrilldown?.evidenceClass),
+    ).toEqual([
+      "resulting_revision_evidence",
+      "resulting_revision_evidence",
+      "resulting_revision_evidence",
+      "resulting_revision_evidence",
+    ]);
+    expect(
+      resulting.map((item) => item.canonicalEvidenceDrilldown?.role),
+    ).toEqual(["supports", "supports", "context", "context"]);
+    expect(
+      resulting.map((item) => item.canonicalEvidenceDrilldown?.roleLabel),
+    ).toEqual(["Supporting", "Supporting", "Context", "Context"]);
+    expect(
+      resulting.map((item) => item.canonicalEvidenceDrilldown?.sourceType),
+    ).toEqual(["reference_item", "message", "message", "session"]);
+    expect(
+      resulting.map((item) => item.canonicalEvidenceDrilldown?.sourceDisclosure),
+    ).toEqual(["redacted", "available", "available", "unavailable"]);
+    expect(
+      resulting.map((item) => item.canonicalEvidenceDrilldown?.snippet),
+    ).toEqual([null, TEA_LIVE_USER_CORRECTION, TEA_LIVE_ASSISTANT_CONTEXT, null]);
+    expect(
+      resulting.map((item) => item.canonicalEvidenceDrilldown?.summary),
+    ).toEqual([null, null, null, null]);
+
+    for (const item of resulting) {
+      expect(item.id).toBe(item.canonicalEvidenceDrilldown?.selectionId);
+      expect(item.id).toMatch(/^canonical-evidence-[a-f0-9]{64}$/);
+      expect(item.canonicalEvidenceDrilldown?.returnSelectionId).toBe(
+        MODEL_UPDATE_ID,
+      );
+      expect(item.evidenceTarget).toBe("resulting_revision");
+      expectNoConsumerWiring(item);
+    }
+    expectNoConsumerWiring(projection);
+
+    const [referenceRow, userRow, assistantRow, sessionRow] = resulting;
+    expect(referenceRow?.canonicalEvidenceDrilldown).toMatchObject({
+      sourceType: "reference_item",
+      sourceTypeLabel: "Reference item",
+      provenanceLabel: "Resulting revision evidence",
+      sourceDisclosure: "redacted",
+      snippet: null,
+      summary: null,
+    });
+    expect(userRow?.canonicalEvidenceDrilldown).toMatchObject({
+      sourceType: "message",
+      sourceTypeLabel: "Conversation message",
+      role: "supports",
+      sourceDisclosure: "available",
+      snippet: TEA_LIVE_USER_CORRECTION,
+    });
+    expect(assistantRow?.canonicalEvidenceDrilldown).toMatchObject({
+      sourceType: "message",
+      sourceTypeLabel: "Conversation message",
+      role: "context",
+      roleLabel: "Context",
+      sourceDisclosure: "available",
+      snippet: TEA_LIVE_ASSISTANT_CONTEXT,
+    });
+    expect(sessionRow?.canonicalEvidenceDrilldown).toMatchObject({
+      sourceType: "session",
+      sourceTypeLabel: "Conversation session",
+      role: "context",
+      sourceDisclosure: "unavailable",
+      snippet: null,
+      summary: null,
+    });
+
+    const serialized = JSON.stringify(detail);
+    expect(serialized).toContain(TEA_LIVE_USER_CORRECTION);
+    expect(serialized).toContain(TEA_LIVE_ASSISTANT_CONTEXT);
+    expect(serialized).not.toContain(TEA_LIVE_REFERENCE_PRIVATE);
+    expect(serialized).not.toContain("RAW REFERENCE UEL");
+    expect(serialized).not.toContain("RAW USER UEL");
+    expect(serialized).not.toContain("RAW ASSISTANT UEL");
+    expect(serialized).not.toContain("RAW SESSION");
+    expect(serialized).not.toContain("ref-tea-live");
+    expect(serialized).not.toContain("session-tea-live");
+    expect(serialized).not.toContain("msg-tea-user-correction");
+    expect(serialized).not.toContain("msg-tea-assistant-context");
+    expect(serialized).not.toContain("uel-tea-");
   });
 
   it("projects a direct relationship only when its owned message source resolves", async () => {
