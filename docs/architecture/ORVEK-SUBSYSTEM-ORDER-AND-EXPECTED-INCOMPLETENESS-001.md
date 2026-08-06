@@ -185,28 +185,29 @@ canonical ModelUpdate id
 - canonical writes;
 - navigation-policy repair.
 
-**Expected unavailable behaviour:** receipt and related-object controls may remain neutral or unavailable until SUBSYS-003 and SUBSYS-004 pass.
+**Expected unavailable behaviour:** related-object drill-down remains unavailable until SUBSYS-004 passes. Canonical evidence drill-down is owned by SUBSYS-003.
 
 ### SUBSYS-003 — Canonical evidence drill-down
 
-**Status:** `NOT_ACCEPTED`.
+**Status:** `PROVEN_BOUNDED`.
 
 **Controlling contract:** `ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001`, Slice A.
 
 **Controlling architecture record:** `docs/architecture/ORVEK-CANONICAL-EVIDENCE-REFERENCE-TO-AUTHORITY-MATRIX-001.md`.
 
-**Receipt identity decision:** `PROJECTION_ONLY` — no Receipt table is authorised.
+**Receipt identity decision:** `PROJECTION_ONLY` — no Receipt table or writer is authorised.
 
-**Current implementation verdict:** PR #192 must not merge as-is. Its visible fan-out of one evidence pool into multiple pathways violates the contract requirement that supporting, conflicting, context, and related-object collections remain empty unless explicit projected relationships exist. Static custody also records timestamp loss in canonical revision evidence projection, Inspector misuse of general public continuity projection, and selected-object adapter breach of server-issued selection identity.
+**Accepted bounded verdict:** PR #206 merged as `f4ce52045fb756ef8406d2ed8ef7aa89ab299c67` with implementation head `5b39ff6b07cbbe7c220d2cb9bc4dc22dd16f77b4`. The bounded Slice A evidence drill-down passed its exit gate. Earlier PR #192 remains superseded and must not be treated as acceptance authority.
 
-**Required supported path:**
+**Supported path:**
 
 ```text
 canonical ModelUpdate
-→ exact verified evidence link/source
-→ Inspector-safe browser-safe evidence projection
-→ one selected evidence object using the exact server-issued selection id
-→ existing Back path to the originating ModelUpdate
+→ exact independently persisted evidence relationship
+→ owned eligible source
+→ Inspector-safe browser projection
+→ exact server-issued opaque selected evidence object
+→ Back to the originating canonical ModelUpdate
 ```
 
 **Required invariants:**
@@ -220,58 +221,39 @@ canonical ModelUpdate
 - public continuity labels are not presented as evidence meaning;
 - noncanonical behaviour remains unchanged.
 
-**Entrance gate for runtime work:**
-
-Runtime SUBSYS-003 work may begin only when:
-
-- Receipt identity is accepted as projection-only;
-- source and edge authority are separately defined;
-- direct movement and resulting-revision binding rules are fixed;
-- Inspector-safe disclosure is separated from generic public continuity;
-- allowed source types have explicit fail-closed adapter rules;
-- selection and Back identity are defined;
-- live-data confirmation is either completed or explicitly recorded as operationally unavailable without being replaced by fabricated assumptions.
-
-This control-plane slice records the architecture conditions above. Live stored-row confirmation remains `OPERATIONAL_UNKNOWN`.
-
-**Expected behaviour until accepted:**
-
-- canonical ModelUpdate summary may work;
-- evidence click may be unavailable or must fail closed;
-- empty Inspector satellite sections are correct;
-- no invented evidence detail is permitted;
-- live-data confirmation remains operationally unknown;
-- SUBSYS-004 and all downstream work remain blocked.
-
-**Expected unavailable:**
-
-- evidence click unavailable or fail-closed until runtime acceptance;
-- live-data confirmation remains operationally unknown;
-- SUBSYS-004 and all downstream work blocked;
-- empty satellite sections are correct;
-- supporting empty;
-- conflicting empty;
-- context empty;
-- related objects empty.
-
-**Exit gate:**
-
-Runtime acceptance requires all of:
+**Exit proof:**
 
 - one explicit relationship produces exactly one selected evidence object;
-- the selected id is the exact server-issued opaque id;
-- evidence class, source type, role, title, disclosure state, provenance, and available recorded date survive;
-- redacted/unavailable source text remains absent;
-- no unrelated supporting, conflicting, context, or related pathway is populated;
-- direct movement evidence is never inferred from revision evidence;
-- resulting-revision evidence is never presented as direct movement evidence;
+- exact server-issued opaque identity survives;
+- evidence class, source type, role, title, disclosure, provenance and recorded date survive;
+- redacted/unavailable text remains absent;
+- no synthetic supporting/conflicting/context/related fan-out;
+- direct-movement and resulting-revision evidence are not confused;
 - Back returns to the originating canonical ModelUpdate;
-- hard refresh/reopen preserves the same authoritative relationship identity;
-- noncanonical behaviour remains unchanged;
-- live-shape regression passes before status promotion;
-- existing public continuity projection behaviour remains unchanged. Focused regression proof must demonstrate that SUBSYS-003 does not broaden public disclosure, expose additional source fields, change public eligibility, or weaken redaction.
+- hard refresh/reopen preserves authoritative relationship identity;
+- noncanonical receipt behaviour remains unchanged;
+- public continuity disclosure and eligibility remain unchanged;
+- formal tea four-row live-shape regression PASS (`reproduces the deployed tea four-row resulting-revision live shape without fan-out`);
+- producer suite PASS 10 / 10;
+- focused SUBSYS-003 suite PASS 66;
+- full `verify-mindlab.sh` PASS 7 / FAIL 0 / SKIP 0;
+- Vitest PASS 4958;
+- all remote checks PASS;
+- deployed proof timestamps `2026-08-06T12:01:00.392Z` and `2026-08-06T12:10:01.713Z`;
+- stable Assistant Context evidence ID `canonical-evidence-41deb4c3eaf7e498b09ec41a24cc051edba5962716b665798fbb18939a146db4`;
+- Reference-item remained fail-closed redacted with null snippet.
 
-**Defect threshold:** positional replacement of server-issued selection identity; general public continuity labels presented as evidence meaning; source or edge fields invented by the browser; generic evidence-pool fan-out; target classification inferred rather than persisted; redacted text exposure; padding-created objects or relationships.
+**Expected unavailable after acceptance:**
+
+- SUBSYS-004 related canonical-concept drill-down;
+- invented satellite relationships;
+- Receipt persistence;
+- canonical writers;
+- whole-product completion;
+- production-wide readiness;
+- security certification.
+
+**Defect threshold:** positional replacement of server-issued selection identity; general public continuity labels presented as evidence meaning; source or edge fields invented by the browser; generic evidence-pool fan-out; target classification inferred rather than persisted; redacted text exposure; padding-created objects or relationships; Context evidence labelled Supporting.
 
 ### SUBSYS-004 — Canonical concept related-object drill-down
 
@@ -506,7 +488,7 @@ all supported canonical movements
 | Eligible owned UMC → canonical revision 1 → strengthening proposal → revision 2 | `PROVEN_BOUNDED` | Exact revision and movement persistence across refresh | Wrong pointer, mutable history, duplicate movement, ownership failure, or consumer disagreement |
 | Registered canonical concept current projection | `PROVEN_BOUNDED` | Current canonical revision outranks bound UMC | Any integrated consumer uses bound UMC as current truth |
 | Canonical ModelUpdate Inspector summary | `PROVEN_BOUNDED` | Verified before/after and safe labels | Browser reconstructs lineage or displays mismatched lineage |
-| Canonical evidence drill-down | `NOT_ACCEPTED` | Unavailable/fail closed/neutral; live-data confirmation operationally unknown | Synthetic fan-out, positional selection ids, continuity labels as evidence meaning, or false source detail |
+| Canonical evidence drill-down | `PROVEN_BOUNDED` | Exact opaque selection identity, class/role/disclosure survival, no synthetic fan-out | Synthetic fan-out, positional selection ids, continuity labels as evidence meaning, or false source detail |
 | Evidence-object supporting/conflicting/context/related sections | `NOT_BUILT` unless explicitly projected | Empty neutral states | Populated from generic evidence without explicit relationships |
 | Canonical concept related-object drill-down | `DESIGNED_NOT_BUILT` | Unavailable or neutral | Stale seed fallback or mixed revision state |
 | Persistent canonical correction | `NOT_BUILT` | Honest handoff only; no persisted-success claim | UI claims model changed without new revision |
@@ -520,9 +502,9 @@ all supported canonical movements
 ## 7. Immediate execution order from current repository state
 
 1. Accept SUBSYS-000 ledger.
-2. Close or supersede PR #192; do not merge it as-is.
-3. Reimplement SUBSYS-003 only against the existing Slice A contract and the live failing shape.
-4. Pass SUBSYS-003 exit gate before beginning SUBSYS-004.
+2. Close or supersede PR #192; do not merge it as-is. Completed: PR #206 replaced the rejected path.
+3. Reimplement SUBSYS-003 only against the existing Slice A contract and the live failing shape. Completed in PR #206.
+4. Pass SUBSYS-003 exit gate before beginning SUBSYS-004. Completed; SUBSYS-003 is `PROVEN_BOUNDED`.
 5. Implement SUBSYS-004 canonical concept drill-down.
 6. Decide and document the first SUBSYS-005 lifecycle operation; do not implement all operations in one PR.
 7. Continue family-by-family through SUBSYS-006 to SUBSYS-009.
@@ -559,18 +541,20 @@ When a tester sees an empty, duplicated, stale, disabled, or missing element:
 4. classify it as `EXPECTED_INCOMPLETENESS`, `ACTUAL_DEFECT`, or `OPERATIONAL_UNKNOWN`;
 5. do not change architecture until the classification is supported by the controlling contract and live data.
 
-## 10. Current verdict on PR #192
+## 10. Historical verdict on PR #192
 
-`ACTUAL_DEFECT`, not merely expected incompleteness.
+`ACTUAL_DEFECT`, not merely expected incompleteness. Historical record only.
 
-Reason:
+Reason at the time:
 
-- SUBSYS-003 is not accepted;
-- however, its accepted Slice A contract already forbids synthetic relationships;
-- the implementation presents one flat evidence pool through multiple semantic pathways;
-- therefore it violates the contract rather than simply omitting an unbuilt downstream capability.
+- SUBSYS-003 was not accepted;
+- however, its accepted Slice A contract already forbade synthetic relationships;
+- the PR #192 implementation presented one flat evidence pool through multiple semantic pathways;
+- therefore it violated the contract rather than simply omitting an unbuilt downstream capability.
 
 The correct unavailable state would have been empty neutral satellite sections, not repeated evidence objects.
+
+PR #206 superseded that path and is the acceptance authority for bounded SUBSYS-003 Slice A.
 
 ## 11. What would change this order
 
