@@ -178,4 +178,117 @@ describe("/api/what-changed/[id]", () => {
     expect(routeBody.includes("confidenceDelta")).toBe(false);
     expect(routeSource.includes("/api/model-updates/[id]")).toBe(false);
   });
+
+  it("returns nested browser-safe canonical concept drilldown when the builder supplies one", async () => {
+    const conceptSelectionId = "canonical-concept-route-opaque";
+    buildDetailMock.mockResolvedValueOnce({
+      item: {
+        id: "mu-1",
+        updateTypeLabel: "Conclusion Strengthened",
+        affectedObjectType: "canonical_concept_revision",
+        affectedObjectTypeLabel: "Canonical model revision",
+        affectedObjectId: null,
+        affectedObjectHref: null,
+        userFacingSummary: "I like tea again now",
+        createdAt: "2026-07-28T12:00:00.000Z",
+      },
+      report: makeReport(),
+      canonicalInspectorProjection: {
+        projectionType: "canonical_model_update_inspector",
+        modelUpdateId: "mu-1",
+        updateLabel: "Conclusion Strengthened",
+        displayedTitle: "I like tea again now",
+        distinctSummary: null,
+        createdAt: "2026-07-28T12:00:00.000Z",
+        rationale: null,
+        before: "I don't like tea anymore",
+        after: "I like tea again now",
+        resultingStateAtPublication: {
+          title: "I like tea again now",
+          summary: "I like tea again now",
+          version: 2,
+          acceptedAt: "2026-07-28T12:00:00.000Z",
+        },
+        currentUnderstandingNow: {
+          title: "I like tea again now",
+          summary: "I like tea again now",
+          version: 2,
+          acceptedAt: "2026-07-28T12:00:00.000Z",
+        },
+        directMovementEvidence: [],
+        resultingRevisionEvidence: [],
+        relatedObjects: [
+          {
+            selectionId: conceptSelectionId,
+            title: "I like tea again now",
+            inspectorObjectType: "canonical_concept",
+            canonicalConceptDrilldown: {
+              selectionId: conceptSelectionId,
+              conceptLabel: "Canonical concept",
+              title: "I like tea again now",
+              summary: "I like tea again now",
+              currentRevisionVersion: 2,
+              currentRevisionAcceptedAt: "2026-07-28T12:00:00.000Z",
+              currentRevisionRecordedLabel: "28 Jul 2026, 13:00",
+              rationale: null,
+              evidenceCount: 1,
+              sourceProvenanceLabel: "Historical source",
+              historicalSources: [{ label: "Historical source" }],
+              returnSelectionId: "mu-1",
+            },
+          },
+        ],
+      },
+    });
+
+    const route = await import("../../app/api/what-changed/[id]/route");
+    const response = await route.GET(new Request("http://localhost"), {
+      params: Promise.resolve({ id: "mu-1" }),
+    });
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    const related = payload.canonicalInspectorProjection?.relatedObjects;
+    expect(related).toHaveLength(1);
+    expect(related[0]?.selectionId).toBe(conceptSelectionId);
+    expect(related[0]?.canonicalConceptDrilldown?.selectionId).toBe(
+      conceptSelectionId,
+    );
+    expect(related[0]?.canonicalConceptDrilldown?.title).toBe(
+      "I like tea again now",
+    );
+    expect(related[0]?.canonicalConceptDrilldown?.summary).toBe(
+      "I like tea again now",
+    );
+    expect(related[0]?.canonicalConceptDrilldown?.returnSelectionId).toBe("mu-1");
+
+    const body = JSON.stringify(payload);
+    expect(body).not.toContain("conceptId");
+    expect(body).not.toContain("currentRevisionId");
+    expect(body).not.toContain("previousRevisionId");
+    expect(body).not.toContain("resultingRevisionId");
+    expect(body).not.toContain("registrationKey");
+    expect(body).not.toContain("internalNotes");
+    expect(body).not.toContain("umc_");
+  });
+
+  it("proves no new writer route, schema, or Inspector shell was introduced for SUBSYS-004", () => {
+    const conceptProjection = readFileSync(
+      path.join(process.cwd(), "lib/canonical-inspector-concept-projection.ts"),
+      "utf8",
+    );
+    expect(conceptProjection).toContain("server-only");
+    expect(conceptProjection).toContain("orvek:canonical-concept-drilldown:v1");
+    expect(conceptProjection).not.toContain("prisma.");
+    expect(conceptProjection).not.toMatch(/\bprismadb\b/);
+    expect(conceptProjection).not.toMatch(/\.(create|updateMany|delete)\(/);
+
+    const scope = JSON.parse(
+      readFileSync(
+        path.join(process.cwd(), "config/orvek-subsystem-scope.json"),
+        "utf8",
+      ),
+    );
+    const forbidden = scope.subsystems["SUBSYS-004"].forbiddenPathPrefixes;
+    expect(forbidden).toEqual(expect.arrayContaining(["prisma/", "app/"]));
+  });
 });

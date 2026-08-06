@@ -185,7 +185,7 @@ canonical ModelUpdate id
 - canonical writes;
 - navigation-policy repair.
 
-**Expected unavailable behaviour:** related-object drill-down remains unavailable until SUBSYS-004 passes. Canonical evidence drill-down is owned by SUBSYS-003.
+**Expected unavailable behaviour:** related-object drill-down is owned by SUBSYS-004. Canonical evidence drill-down is owned by SUBSYS-003.
 
 ### SUBSYS-003 — Canonical evidence drill-down
 
@@ -245,8 +245,8 @@ canonical ModelUpdate
 
 **Expected unavailable after acceptance:**
 
-- SUBSYS-004 related canonical-concept drill-down;
-- invented satellite relationships;
+- SUBSYS-005 and all downstream work;
+- invented satellite relationships beyond explicit projections;
 - Receipt persistence;
 - canonical writers;
 - whole-product completion;
@@ -257,19 +257,20 @@ canonical ModelUpdate
 
 ### SUBSYS-004 — Canonical concept related-object drill-down
 
-**Status:** `DESIGNED_NOT_BUILT`.
+**Status:** `PROVEN_BOUNDED`.
 
 **Controlling contract:** `ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001`, Slice B.
 
-**Required path:**
+**Supported path:**
 
 ```text
 canonical ModelUpdate
-→ explicit related canonical concept selection
-→ stable concept identity
-→ current revision
-→ current title and current meaning
-→ permanent Inspector shell
+→ explicit server-verified canonical concept selection
+→ stable opaque concept identity
+→ current canonical revision
+→ current title and current summary
+→ existing permanent Inspector
+→ Back to originating ModelUpdate
 ```
 
 **Required invariants:**
@@ -280,11 +281,33 @@ canonical ModelUpdate
 - missing current revision fails closed;
 - browser does not reconstruct canonical lineage.
 
-**Expected behaviour until built:**
+**Exit proof:**
 
-- related canonical concept click remains unavailable or neutral;
-- stale legacy title must not be used as a fallback;
-- no mixed old-title/current-summary object is permitted.
+- exact server-issued stable concept selection identity;
+- same selection id across current-revision wording changes;
+- current title and summary from one revision projection;
+- tea mixed-state regression passes (never `I don't like tea anymore` title with `I like tea again now` summary);
+- historical seed label-only and never current truth;
+- missing/corrupt current truth fails closed;
+- no synthetic satellite relationships;
+- Back/reopen identity via `returnSelectionId`;
+- noncanonical behaviour unchanged;
+- focused SUBSYS-004 suite PASS 29;
+- SUBSYS-004 order/scope PASS;
+- full `verify-mindlab.sh` PASS 7 / FAIL 0 / SKIP 0;
+- Vitest PASS 4973.
+
+**Expected unavailable after acceptance:**
+
+- canonical correction and other writes;
+- revision 3+ lifecycle;
+- weakening, dispute, retirement, supersession and merge/split;
+- Map/Timeline redesign;
+- schema/backfill;
+- SUBSYS-005 and all downstream work;
+- whole-product completion and launch-readiness claims.
+
+**Defect threshold:** Stale legacy truth is shown as current, title and meaning come from different revisions, or browser reconstructs lineage.
 
 ### SUBSYS-005 — Complete canonical revision lifecycle
 
@@ -490,7 +513,7 @@ all supported canonical movements
 | Canonical ModelUpdate Inspector summary | `PROVEN_BOUNDED` | Verified before/after and safe labels | Browser reconstructs lineage or displays mismatched lineage |
 | Canonical evidence drill-down | `PROVEN_BOUNDED` | Exact opaque selection identity, class/role/disclosure survival, no synthetic fan-out | Synthetic fan-out, positional selection ids, continuity labels as evidence meaning, or false source detail |
 | Evidence-object supporting/conflicting/context/related sections | `NOT_BUILT` unless explicitly projected | Empty neutral states | Populated from generic evidence without explicit relationships |
-| Canonical concept related-object drill-down | `DESIGNED_NOT_BUILT` | Unavailable or neutral | Stale seed fallback or mixed revision state |
+| Canonical concept related-object drill-down | `PROVEN_BOUNDED` | Current revision title/summary via stable opaque selection | Stale seed fallback or mixed revision state |
 | Persistent canonical correction | `NOT_BUILT` | Honest handoff only; no persisted-success claim | UI claims model changed without new revision |
 | Revision 3+, weaken, dispute, retire, merge | `NOT_BUILT` | Absent/disabled/unavailable | In-place canonical mutation or false success |
 | Pattern/contradiction unified canonical lifecycle | `NOT_BUILT` | Existing specialised paths only | Presented as canonical revision authority without registration/transaction |
@@ -505,7 +528,7 @@ all supported canonical movements
 2. Close or supersede PR #192; do not merge it as-is. Completed: PR #206 replaced the rejected path.
 3. Reimplement SUBSYS-003 only against the existing Slice A contract and the live failing shape. Completed in PR #206.
 4. Pass SUBSYS-003 exit gate before beginning SUBSYS-004. Completed; SUBSYS-003 is `PROVEN_BOUNDED`.
-5. Implement SUBSYS-004 canonical concept drill-down.
+5. Implement SUBSYS-004 canonical concept drill-down. Completed; SUBSYS-004 is `PROVEN_BOUNDED`.
 6. Decide and document the first SUBSYS-005 lifecycle operation; do not implement all operations in one PR.
 7. Continue family-by-family through SUBSYS-006 to SUBSYS-009.
 8. Expand shared consumer parity only after each family authority passes.

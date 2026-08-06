@@ -438,13 +438,7 @@ describe("model-update inspector presentation composer", () => {
                 },
               },
             ],
-            relatedObjects: [
-              {
-                selectionId: "opaque-canonical-selection",
-                title: "I like green tea but not black tea",
-                inspectorObjectType: "canonical_concept",
-              },
-            ],
+            relatedObjects: [],
           },
         },
         modelUpdateEvidence: [],
@@ -500,7 +494,121 @@ describe("model-update inspector presentation composer", () => {
     expect(reportId).toBe("mu-canonical")
   })
 
-  it("keeps canonical related concept selection unavailable under SUBSYS-003", () => {
+  it("adapts exact server-issued canonical concept selection into permanent Inspector", () => {
+    const conceptSelectionId = "canonical-concept-opaque-server-id"
+    const { object, satellites } = composeProductionModelUpdateCanonicalViewModel({
+      obj: {
+        id: "mu-canonical",
+        type: "model-update",
+        title: "I like tea again now",
+      },
+      detail: {
+        item: {
+          id: "mu-canonical",
+          createdAt: "2026-07-28T12:00:00.000Z",
+          updateTypeLabel: "Conclusion Strengthened",
+          affectedObjectType: "canonical_concept_revision" as never,
+          affectedObjectTypeLabel: "Canonical model revision",
+          affectedObjectId: null,
+          affectedObjectHref: null,
+          userFacingSummary: "I like tea again now",
+        },
+        report: buildReport(),
+        canonicalInspectorProjection: {
+          projectionType: "canonical_model_update_inspector",
+          modelUpdateId: "mu-canonical",
+          updateLabel: "Conclusion Strengthened",
+          displayedTitle: "I like tea again now",
+          distinctSummary: null,
+          createdAt: "2026-07-28T12:00:00.000Z",
+          rationale: null,
+          before: "I don't like tea anymore",
+          after: "I like tea again now",
+          resultingStateAtPublication: {
+            title: "I like tea again now",
+            summary: "I like tea again now",
+            version: 2,
+            acceptedAt: "2026-07-28T12:00:00.000Z",
+          },
+          currentUnderstandingNow: {
+            title: "I like tea again now",
+            summary: "I like tea again now",
+            version: 2,
+            acceptedAt: "2026-07-28T12:00:00.000Z",
+          },
+          directMovementEvidence: [],
+          resultingRevisionEvidence: [],
+          relatedObjects: [
+            {
+              selectionId: conceptSelectionId,
+              title: "I like tea again now",
+              inspectorObjectType: "canonical_concept",
+              canonicalConceptDrilldown: {
+                selectionId: conceptSelectionId,
+                conceptLabel: "Canonical concept",
+                title: "I like tea again now",
+                summary: "I like tea again now",
+                currentRevisionVersion: 2,
+                currentRevisionAcceptedAt: "2026-07-28T12:00:00.000Z",
+                currentRevisionRecordedLabel: "28 Jul 2026, 13:00",
+                rationale: "Accepted correction rationale.",
+                evidenceCount: 2,
+                sourceProvenanceLabel: "Historical source",
+                historicalSources: [{ label: "Historical source" }],
+                returnSelectionId: "mu-canonical",
+              },
+            },
+          ],
+        },
+      },
+      modelUpdateEvidence: [],
+      affectedContext: {
+        userMap: null,
+        pattern: null,
+        contradiction: null,
+        affectedEvidence: [],
+      },
+      resolveSelectionId: (objectType, objectId) =>
+        objectType === "canonical_concept" &&
+        objectId === conceptSelectionId
+          ? "browser-generated-replacement-must-not-win"
+          : null,
+      getObjectTitle: () => undefined,
+    })
+
+    expect(object.relatedIds).toEqual([conceptSelectionId])
+    expect(object.receiptIds).toBeUndefined()
+    expect(satellites[conceptSelectionId]).toMatchObject({
+      id: conceptSelectionId,
+      type: "map-object",
+      title: "I like tea again now",
+      summary: "I like tea again now",
+      whyItMatters: "Accepted correction rationale.",
+      inspectorObjectType: "canonical_concept",
+      conceptLabel: "Canonical concept",
+      canonicalVersion: 2,
+      currentRevisionAcceptedAt: "2026-07-28T12:00:00.000Z",
+      sourceProvenanceLabel: "Historical source",
+      historicalSources: [{ label: "Historical source" }],
+      evidenceCount: 2,
+      returnSelectionId: "mu-canonical",
+    })
+    expect(satellites[conceptSelectionId]?.receiptIds).toBeUndefined()
+    expect(satellites[conceptSelectionId]?.supporting).toBeUndefined()
+    expect(satellites[conceptSelectionId]?.conflicting).toBeUndefined()
+    expect(satellites[conceptSelectionId]?.contextIds).toBeUndefined()
+    expect(satellites[conceptSelectionId]?.relatedIds).toBeUndefined()
+    expect(satellites[conceptSelectionId]?.whatWouldChange).toBeUndefined()
+    expect(satellites[conceptSelectionId]?.currentRevisionId).toBeUndefined()
+    expect(satellites["browser-generated-replacement-must-not-win"]).toBeUndefined()
+    expect(JSON.stringify(satellites[conceptSelectionId])).not.toContain(
+      "I don't like tea anymore",
+    )
+    expect(JSON.stringify(satellites)).not.toContain("mu-receipt-")
+    expect(JSON.stringify(satellites)).not.toContain("concept_raw")
+  })
+
+  it("ignores related concept entries that lack nested server drilldown", () => {
     const { object, satellites } = composeProductionModelUpdateCanonicalViewModel({
       obj: {
         id: "mu-canonical",
@@ -543,13 +651,7 @@ describe("model-update inspector presentation composer", () => {
           },
           directMovementEvidence: [],
           resultingRevisionEvidence: [],
-          relatedObjects: [
-            {
-              selectionId: "opaque-canonical-selection",
-              title: "I like green tea but not black tea",
-              inspectorObjectType: "canonical_concept",
-            },
-          ],
+          relatedObjects: [],
         },
       },
       modelUpdateEvidence: [],
@@ -559,11 +661,7 @@ describe("model-update inspector presentation composer", () => {
         contradiction: null,
         affectedEvidence: [],
       },
-      resolveSelectionId: (objectType, objectId) =>
-        objectType === "canonical_concept" &&
-        objectId === "opaque-canonical-selection"
-          ? "existing-canonical-workbench-object"
-          : null,
+      resolveSelectionId: () => "existing-canonical-workbench-object",
       getObjectTitle: () => undefined,
     })
 

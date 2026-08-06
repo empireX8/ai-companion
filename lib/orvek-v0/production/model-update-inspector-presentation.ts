@@ -178,6 +178,59 @@ function buildCanonicalProjectionViewModel(input: {
     }
   }
 
+  const relatedIds: string[] = []
+  for (const related of projection.relatedObjects ?? []) {
+    const conceptDrilldown = related.canonicalConceptDrilldown
+    if (!conceptDrilldown?.selectionId) continue
+    if (related.inspectorObjectType !== "canonical_concept") continue
+    // Consume the exact server-issued selection id — never resolveSelectionId / index.
+    if (conceptDrilldown.selectionId !== related.selectionId) continue
+
+    const conceptTitle = firstMeaningfulModelUpdateText([
+      conceptDrilldown.title,
+      related.title,
+    ])
+    if (!conceptTitle) continue
+
+    relatedIds.push(conceptDrilldown.selectionId)
+
+    const conceptSummary = firstMeaningfulModelUpdateText([
+      conceptDrilldown.summary,
+    ])
+    const whyItMatters = firstMeaningfulModelUpdateText([
+      conceptDrilldown.rationale,
+    ])
+    const recorded =
+      conceptDrilldown.currentRevisionRecordedLabel ??
+      formatRecordedLabel(conceptDrilldown.currentRevisionAcceptedAt)
+
+    satellites[conceptDrilldown.selectionId] = {
+      id: conceptDrilldown.selectionId,
+      type: "map-object",
+      title: conceptTitle,
+      ...(conceptSummary ? { summary: conceptSummary } : {}),
+      ...(whyItMatters ? { whyItMatters } : {}),
+      ...(recorded ? { lastUpdated: recorded } : {}),
+      inspectorObjectType: "canonical_concept",
+      conceptLabel: conceptDrilldown.conceptLabel,
+      canonicalVersion: conceptDrilldown.currentRevisionVersion,
+      currentRevisionAcceptedAt: conceptDrilldown.currentRevisionAcceptedAt,
+      ...(conceptDrilldown.currentRevisionRecordedLabel
+        ? { currentRevisionRecordedLabel: conceptDrilldown.currentRevisionRecordedLabel }
+        : {}),
+      ...(conceptDrilldown.sourceProvenanceLabel
+        ? { sourceProvenanceLabel: conceptDrilldown.sourceProvenanceLabel }
+        : {}),
+      ...(conceptDrilldown.historicalSources.length > 0
+        ? { historicalSources: conceptDrilldown.historicalSources.map((s) => ({ label: s.label })) }
+        : {}),
+      evidenceCount: conceptDrilldown.evidenceCount,
+      returnSelectionId: conceptDrilldown.returnSelectionId,
+      // No synthetic satellites: receipts / supporting / conflicting / context /
+      // related / whatWouldChange stay absent without explicit projections.
+    }
+  }
+
   const recorded = formatRecordedLabel(projection.createdAt)
   const objectBase = { ...input.obj }
   delete objectBase.supporting
@@ -203,7 +256,7 @@ function buildCanonicalProjectionViewModel(input: {
     supporting: undefined,
     conflicting: undefined,
     contextIds: undefined,
-    relatedIds: undefined,
+    relatedIds: relatedIds.length > 0 ? relatedIds : undefined,
     whatWouldChange: undefined,
     canonicalReportId: projection.modelUpdateId,
     inspectorObjectType: "model_update",

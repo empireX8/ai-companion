@@ -152,13 +152,7 @@ function canonicalDetail(): InspectorModelUpdateDetail {
         },
       ],
       resultingRevisionEvidence: [],
-      relatedObjects: [
-        {
-          selectionId: "opaque-canonical-selection",
-          title: "Related concept must stay unavailable",
-          inspectorObjectType: "canonical_concept",
-        },
-      ],
+      relatedObjects: [],
     },
   }
 }
@@ -290,6 +284,75 @@ describe("ModelUpdate Inspector reader integration", () => {
     expect(JSON.stringify(object)).not.toContain("msg-1")
     expect(JSON.stringify(satellites)).not.toContain("mu-receipt-")
     expect(JSON.stringify(satellites)).not.toContain("mu-context-")
+  })
+
+  it("carries nested canonical concept drilldown into permanent Inspector satellites", async () => {
+    const conceptSelectionId = "canonical-concept-reader-opaque"
+    const detailWithConcept: InspectorModelUpdateDetail = {
+      ...canonicalDetail(),
+      canonicalInspectorProjection: {
+        ...canonicalDetail().canonicalInspectorProjection!,
+        relatedObjects: [
+          {
+            selectionId: conceptSelectionId,
+            title: "I like tea again now",
+            inspectorObjectType: "canonical_concept",
+            canonicalConceptDrilldown: {
+              selectionId: conceptSelectionId,
+              conceptLabel: "Canonical concept",
+              title: "I like tea again now",
+              summary: "I like tea again now",
+              currentRevisionVersion: 2,
+              currentRevisionAcceptedAt: "2026-07-28T12:00:00.000Z",
+              currentRevisionRecordedLabel: "28 Jul 2026, 13:00",
+              rationale: null,
+              evidenceCount: 1,
+              sourceProvenanceLabel: "Historical source",
+              historicalSources: [{ label: "Historical source" }],
+              returnSelectionId: "mu-canonical",
+            },
+          },
+        ],
+      },
+    }
+    mockFetchDetail(detailWithConcept)
+
+    const detail = await fetchInspectorModelUpdateDetail("mu-canonical")
+    const { object, satellites } = composeProductionModelUpdateCanonicalViewModel({
+      obj: {
+        id: "mu-canonical",
+        type: "model-update",
+        title: "Legacy selected title",
+      },
+      detail: detail!,
+      modelUpdateEvidence: [],
+      affectedContext: {
+        userMap: null,
+        pattern: null,
+        contradiction: null,
+        affectedEvidence: [],
+      },
+      resolveSelectionId: () => "must-not-replace-server-id",
+      getObjectTitle: () => undefined,
+    })
+
+    expect(object.relatedIds).toEqual([conceptSelectionId])
+    expect(satellites[conceptSelectionId]).toMatchObject({
+      id: conceptSelectionId,
+      type: "map-object",
+      title: "I like tea again now",
+      summary: "I like tea again now",
+      inspectorObjectType: "canonical_concept",
+      returnSelectionId: "mu-canonical",
+    })
+    expect(satellites["must-not-replace-server-id"]).toBeUndefined()
+    expect(JSON.stringify(satellites[conceptSelectionId])).not.toContain(
+      "I don't like tea anymore",
+    )
+    expect(JSON.stringify(satellites[conceptSelectionId])).not.toContain("conceptId")
+    expect(JSON.stringify(satellites[conceptSelectionId])).not.toContain(
+      "currentRevisionId",
+    )
   })
 
   it("preserves legacy report-derived fields for noncanonical ModelUpdates", async () => {

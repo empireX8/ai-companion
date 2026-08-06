@@ -80,6 +80,34 @@ export type CanonicalModelUpdateEvidenceDrilldownProjection = {
   returnSelectionId: string;
 };
 
+/** Label-only historical source metadata — never current title/summary authority. */
+export type CanonicalModelUpdateConceptHistoricalSource = {
+  label: string;
+};
+
+/**
+ * SUBSYS-004 Slice B — browser-safe related canonical concept drill-down.
+ * Does not carry raw conceptId, revision ids, ownership, hashes, or seed payloads.
+ */
+export type CanonicalModelUpdateConceptDrilldownProjection = {
+  selectionId: string;
+  conceptLabel: string;
+  title: string;
+  summary: string | null;
+  currentRevisionVersion: number;
+  currentRevisionAcceptedAt: string;
+  currentRevisionRecordedLabel: string | null;
+  rationale: string | null;
+  evidenceCount: number;
+  sourceProvenanceLabel: string | null;
+  historicalSources: CanonicalModelUpdateConceptHistoricalSource[];
+  /**
+   * Opaque navigation identity for returning to the originating canonical
+   * ModelUpdate. Not a lineage authority field.
+   */
+  returnSelectionId: string;
+};
+
 import type { ContradictionDualSourcePresentation } from "./contradiction-dual-source-presentation-contract";
 
 export type InspectorContradictionProjection = {
@@ -129,6 +157,8 @@ export type CanonicalModelUpdateInspectorProjection = {
     selectionId: string;
     title: string;
     inspectorObjectType: "canonical_concept";
+    /** Nested browser-safe concept projection for permanent Inspector adaptation. */
+    canonicalConceptDrilldown: CanonicalModelUpdateConceptDrilldownProjection;
   }>;
 };
 
