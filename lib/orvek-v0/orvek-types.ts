@@ -130,6 +130,13 @@ export interface OrvekObject {
   /** Opaque Back target for the originating ModelUpdate selection. */
   returnSelectionId?: string
 
+  /** SUBSYS-004 Slice B — selected canonical concept metadata (projection only). */
+  conceptLabel?: string
+  currentRevisionAcceptedAt?: string
+  currentRevisionRecordedLabel?: string
+  sourceProvenanceLabel?: string
+  historicalSources?: Array<{ label: string }>
+
   /**
    * Canonical authority identity for correction handoff only.
    * Present when inspectorObjectType is canonical_concept.

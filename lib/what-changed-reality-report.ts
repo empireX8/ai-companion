@@ -15,6 +15,7 @@ import {
 import prismadb from "./prismadb";
 import { CanonicalModelAuthorityError } from "./canonical-model-authority-errors";
 import { projectCanonicalInspectorEvidenceDrilldown } from "./canonical-inspector-evidence-projection";
+import { projectCanonicalRelatedConceptObjects } from "./canonical-inspector-concept-projection";
 import { deriveExploreMovementModelUpdateId } from "./explore-movement-proposal-provenance";
 import {
   findCanonicalProposalsByDeterministicModelUpdateId,
@@ -818,8 +819,10 @@ function buildCanonicalInspectorProjection(args: {
       args.concept.currentRevisionId === args.movement.resultingRevisionId
         ? args.resultingEvidenceDrilldowns.map(drilldownToInspectorItem)
         : [],
-    // SUBSYS-004 related-concept drill-down remains unavailable.
-    relatedObjects: [],
+    relatedObjects: projectCanonicalRelatedConceptObjects({
+      concept: args.concept,
+      returnSelectionId: args.row.id,
+    }),
   };
 }
 

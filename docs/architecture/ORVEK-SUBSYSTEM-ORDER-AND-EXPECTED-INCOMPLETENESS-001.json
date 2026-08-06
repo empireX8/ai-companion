@@ -161,9 +161,8 @@
         "Reference item remained redacted with null snippet"
       ],
       "expectedUnavailable": [
-        "SUBSYS-004 and all downstream work remain unavailable",
-        "related canonical-concept drill-down unavailable",
-        "no invented satellite relationships",
+        "SUBSYS-005 and all downstream work remain unavailable",
+        "no invented satellite relationships beyond explicit projections",
         "no Receipt persistence",
         "no canonical writers",
         "no whole-product completion claim",
@@ -183,15 +182,35 @@
     {
       "id": "SUBSYS-004",
       "name": "Canonical concept related-object drill-down",
-      "status": "DESIGNED_NOT_BUILT",
+      "status": "PROVEN_BOUNDED",
       "dependsOn": [
         "SUBSYS-003"
       ],
       "contract": "docs/architecture/ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001.md#slice-b",
+      "supportedPath": "canonical ModelUpdate -> explicit server-verified canonical concept selection -> stable opaque concept identity -> current canonical revision -> current title and current summary -> existing permanent Inspector -> Back to originating ModelUpdate",
+      "exitProof": [
+        "exact server-issued stable concept selection identity",
+        "same selection id across current-revision wording changes",
+        "current title and summary from one revision projection",
+        "tea mixed-state regression passes",
+        "historical seed label-only and never current truth",
+        "missing/corrupt current truth fails closed",
+        "no synthetic satellite relationships",
+        "Back/reopen identity via returnSelectionId",
+        "noncanonical behaviour unchanged",
+        "focused SUBSYS-004 suite PASS 29",
+        "SUBSYS-004 order/scope PASS",
+        "full verify-mindlab PASS 7 / FAIL 0 / SKIP 0",
+        "Vitest PASS 4973"
+      ],
       "expectedUnavailable": [
-        "related canonical concept click unavailable or neutral",
-        "no legacy-seed fallback",
-        "no mixed old-title and current-summary object"
+        "canonical correction and other writes",
+        "revision 3+ lifecycle",
+        "weakening dispute retirement supersession and merge/split",
+        "Map/Timeline redesign",
+        "schema/backfill",
+        "SUBSYS-005 and all downstream work",
+        "whole-product completion and launch-readiness claims"
       ],
       "defectThreshold": "Stale legacy truth is shown as current, title and meaning come from different revisions, or browser reconstructs lineage."
     },
