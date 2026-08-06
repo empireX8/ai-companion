@@ -95,7 +95,16 @@
         "components/orvek-v0-authority/",
         "docs/architecture/ORVEK-CANONICAL-INSPECTOR-DRILLDOWN-CONTRACT-001.md",
         "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
-        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json"
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json",
+        "lib/canonical-inspector-concept-projection.ts",
+        "lib/inspector-object-api.ts",
+        "lib/what-changed-reality-report.ts",
+        "lib/orvek-v0/orvek-types.ts",
+        "lib/orvek-v0/production/model-update-inspector-presentation.ts",
+        "lib/__tests__/canonical-inspector-concept-projection.test.ts",
+        "lib/__tests__/model-update-inspector-presentation.test.ts",
+        "lib/__tests__/model-update-inspector-reader-integration.test.ts",
+        "lib/__tests__/what-changed-detail-route.test.ts"
       ],
       "forbiddenPathPrefixes": [
         "prisma/",
