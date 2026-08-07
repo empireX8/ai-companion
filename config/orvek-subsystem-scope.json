@@ -34,7 +34,24 @@
         "lib/canonical-concept-registration.ts",
         "docs/architecture/ORVEK-CANONICAL-OBJECT-MAP-001.md",
         "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.md",
-        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json"
+        "docs/architecture/ORVEK-SUBSYSTEM-ORDER-AND-EXPECTED-INCOMPLETENESS-001.json",
+        "lib/explore-movement-proposal.ts",
+        "lib/canonical-publication-integrity.ts",
+        "lib/explore-movement-semantic-contract.ts",
+        "lib/explore-movement-semantic-adjudicator.ts",
+        "lib/__tests__/helpers/explore-movement-semantic-test-helpers.ts",
+        "lib/__tests__/helpers/canonical-phase6-browser-fixture.ts",
+        "lib/__tests__/canonical-explore-proposal-creation.test.ts",
+        "lib/__tests__/canonical-explore-proposal-publication.test.ts",
+        "lib/__tests__/canonical-model-projection.test.ts",
+        "lib/__tests__/canonical-model-product-db-integration.test.ts",
+        "lib/__tests__/canonical-phase6-rollout-e2e.test.ts",
+        "lib/__tests__/explore-movement-semantic-restoration.test.ts",
+        "lib/__tests__/explore-movement-semantic-restoration-corrections.test.ts",
+        "lib/__tests__/explore-movement-semantic-restoration-final-corrections.test.ts",
+        "lib/__tests__/explore-movement-semantic-restoration-db-concurrency.test.ts",
+        "lib/__tests__/explore-movement-fixed-semantics-containment.test.ts",
+        "lib/__tests__/canonical-strengthening-title-coherence.test.ts"
       ],
       "forbiddenPathPrefixes": [
         "prisma/"
